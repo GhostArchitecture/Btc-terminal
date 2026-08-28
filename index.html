@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC/USD — Consensus Spot &amp; Projection Console</title>
+<style>
+  :root{
+    --ink0:#0C111B; --ink1:#131B29; --ink2:#182238; --rule:#233048;
+    --meas:#D9E4EE; --dim:#8298AC; --faint:#50647E;
+    --model:#E5A13C; --model-dim:#9A742F;
+    --up:#66B18D; --down:#CD6E5C; --err:#CD6E5C;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--ink0);color:var(--meas);font-family:var(--mono)}
+  body{font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px}
+  .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+  .num{font-variant-numeric:tabular-nums}
+  .amber{color:var(--model)}
+  .up{color:var(--up)} .down{color:var(--down)}
+  a{color:var(--dim)}
+  button{font:inherit;color:var(--dim);background:var(--ink1);border:1px solid var(--rule);
+    border-radius:3px;padding:4px 10px;cursor:pointer;letter-spacing:.08em}
+  button:hover{color:var(--meas)}
+  button:focus-visible{outline:2px solid var(--model);outline-offset:1px}
+
+  /* header */
+  header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    padding-bottom:10px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+  .mark{font-weight:700;letter-spacing:.06em}
+  .mark small{color:var(--faint);font-weight:400;letter-spacing:.18em;font-size:9.5px;margin-left:8px}
+  .hright{display:flex;align-items:center;gap:10px}
+  .pill{font-size:9.5px;letter-spacing:.16em;padding:3px 8px;border-radius:2px;border:1px solid var(--rule)}
+  .pill.live{color:var(--up);border-color:rgba(102,177,141,.45)}
+  .pill.warn{color:var(--model);border-color:rgba(229,161,60,.45)}
+  .pill.dead{color:var(--err);border-color:rgba(205,110,92,.5)}
+
+  /* spot */
+  #spot{padding:18px 0 8px}
+  #px{font-size:clamp(38px,9vw,64px);font-weight:700;letter-spacing:-.01em;transition:color .5s}
+  @media (prefers-reduced-motion:no-preference){
+    #px.flash-up{color:var(--up);transition:none}
+    #px.flash-down{color:var(--down);transition:none}
+  }
+  .chips{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .chip .lbl{margin-right:6px}
+
+  section{margin-top:22px}
+  .shead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--rule);
+    padding-bottom:5px;margin-bottom:8px}
+  .shead .note{font-size:10.5px;color:var(--faint)}
+
+  /* sources */
+  #srcrows .row{display:grid;grid-template-columns:16px 6.2em 1fr 5.2em 4.6em 4.2em;
+    gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--ink2);font-size:12.5px}
+  #srcrows .row:last-child{border-bottom:0}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);align-self:center}
+  .dot.ok{background:var(--up)} .dot.stale{background:var(--model)} .dot.err{background:var(--err)}
+  .srcname{color:var(--dim)} .srcname em{font-style:normal;color:var(--faint);font-size:9px;letter-spacing:.12em;margin-left:5px}
+  .r{text-align:right}
+
+  /* chart */
+  #chartbox{position:relative;border:1px solid var(--rule);border-radius:3px;background:var(--ink1);
+    padding:6px 6px 2px}
+  canvas{display:block;width:100%;height:340px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:6px 4px 4px;font-size:9.5px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:1px}
+
+  /* tables */
+  .tblwrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px}
+  th{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+    font-weight:400;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule)}
+  th:first-child,td:first-child{text-align:left;padding-left:2px}
+  td{padding:6px 8px;text-align:right;border-bottom:1px dashed var(--ink2);white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  td .sub{display:block;font-size:10px;color:var(--faint)}
+  td.model,th.model{color:var(--model)}
+  td.model .sub{color:var(--model-dim)}
+
+  #method{margin-top:26px;border-top:1px solid var(--rule);padding-top:10px;
+    color:var(--faint);font-size:11px;max-width:70em}
+  #method p{margin-bottom:7px}
+  #method b{color:var(--dim);font-weight:400}
+  #banner{display:none;margin-top:14px;border:1px solid rgba(205,110,92,.5);border-radius:3px;
+    padding:10px 12px;color:var(--err);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mark">BTC/USD<small>CONSENSUS SPOT · PROJECTION CONSOLE</small></div>
+    <div class="hright">
+      <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
+      <span id="status" class="pill dead">INIT</span>
+      <button id="pauseBtn" aria-pressed="false">PAUSE</button>
+    </div>
+  </header>
+
+  <div id="banner"></div>
+
+  <div id="spot">
+    <div class="lbl">Median of live sources</div>
+    <div id="px" class="num">—</div>
+    <div class="chips num" id="chips"></div>
+  </div>
+
+  <section id="sources">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
+      <span class="note num" id="srcnote">0 live</span></div>
+    <div id="srcrows"></div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Trace &amp; projection cone</span>
+      <span class="note num" id="conenote"></span></div>
+    <div id="chartbox">
+      <canvas id="chart" height="340"></canvas>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--meas)"></span>measured (median)</span>
+        <span><span class="sw" style="background:var(--model)"></span>projected median (GBM)</span>
+        <span><span class="sw" style="background:rgba(229,161,60,.35)"></span>P25–P75</span>
+        <span><span class="sw" style="background:rgba(229,161,60,.16)"></span>P5–P95</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Forecast matrix</span>
+      <span class="note num" id="fnote">warming up</span></div>
+    <div class="tblwrap"><table id="matrix">
+      <thead><tr>
+        <th>Horizon</th><th>Martingale</th><th class="model">GBM · MC</th>
+        <th class="model">OU reversion</th><th class="model">Momentum</th><th class="model">Ensemble</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Scorecard — resolved forecasts</span>
+      <span class="note num" id="snote">0 resolved</span></div>
+    <div class="tblwrap"><table id="score">
+      <thead><tr>
+        <th>Model</th><th>n</th><th>MAE (bp)</th><th>vs. benchmark</th><th>Direction calls</th><th>Hit rate</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <div id="method">
+    <p><b>Aggregation.</b> Spot = median of sources fresher than 20 s. Sources polled every 5 s
+      (CoinGecko 60 s; it is itself a composite index). Binance.com excluded: HTTP 451 geo-block for US clients.</p>
+    <p><b>Seeding.</b> Return statistics are initialized from Kraken 1-minute OHLC (last ~180 bars),
+      then rolled forward from live 1-minute bars of the median.</p>
+    <p><b>Models.</b> Volatility: EWMA (RiskMetrics, λ = 0.94) on 1-min log returns.
+      <b>Martingale</b>: E[P] = spot; 90% band = ±1.645·σ√h. <b>GBM</b>: 1,500 Monte-Carlo paths,
+      drift = mean of last 120 one-min returns; cone = per-step percentiles.
+      <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
+      reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
+      <b>Ensemble</b>: median of available point forecasts.</p>
+    <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
+      At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
+      σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
+      The informative output is the dispersion (cone), not the direction. Nothing here is trading advice;
+      the scorecard exists to measure these models against live data rather than assert their skill.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------------------------------------------------------------- utilities */
+const $=id=>document.getElementById(id);
+const fmtUSD=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:2});
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const bp=(a,b)=>1e4*Math.log(a/b);           /* basis points, log */
+const fmtBp=v=>(v>=0?"+":"")+v.toFixed(1)+"bp";
+const fmtPct=v=>(v>=0?"+":"")+v.toFixed(2)+"%";
+let _spare=null;
+function randn(){ if(_spare!==null){const s=_spare;_spare=null;return s;}
+  let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random();
+  const m=Math.sqrt(-2*Math.log(u)), a=2*Math.PI*v;
+  _spare=m*Math.sin(a); return m*Math.cos(a); }
+function quantile(sorted,p){ const i=(sorted.length-1)*p, lo=Math.floor(i), hi=Math.ceil(i);
+  return sorted[lo]+(sorted[hi]-sorted[lo])*(i-lo); }
+
+/* ---------------------------------------------------------------- sources */
+const SOURCES=[
+ {id:"coinbase", name:"Coinbase",  tag:"",      every:5000,
+  url:"https://api.coinbase.com/v2/prices/BTC-USD/spot",
+  parse:j=>+j.data.amount},
+ {id:"kraken",   name:"Kraken",    tag:"",      every:5000,
+  url:"https://api.kraken.com/0/public/Ticker?pair=XBTUSD",
+  parse:j=>{const k=Object.keys(j.result).find(x=>x!=="last");return +j.result[k].c[0];}},
+ {id:"gemini",   name:"Gemini",    tag:"",      every:5000,
+  url:"https://api.gemini.com/v1/pubticker/btcusd",
+  parse:j=>+j.last},
+ {id:"binanceus",name:"Binance.US",tag:"",      every:5000,
+  url:"https://api.binance.us/api/v3/ticker/price?symbol=BTCUSD",
+  parse:j=>+j.price},
+ {id:"bitstamp", name:"Bitstamp",  tag:"",      every:5000,
+  url:"https://www.bitstamp.net/api/v2/ticker/btcusd/",
+  parse:j=>+j.last},
+ {id:"bitfinex", name:"Bitfinex",  tag:"",      every:5000,
+  url:"https://api-pub.bitfinex.com/v2/ticker/tBTCUSD",
+  parse:j=>+j[6]},
+ {id:"coingecko",name:"CoinGecko", tag:"index", every:60000,
+  url:"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+  parse:j=>+j.bitcoin.usd},
+];
+const FRESH_MS=20000, HORIZONS=[5,10,15,30,60];
+
+/* ---------------------------------------------------------------- state */
+const S={
+  src:{},               // id -> {price,t,latency,status,errN}
+  ticks:[],             // [{t,p}] median stream, ~5s
+  bars:new Map(),       // minuteKey -> close (median)
+  barKeys:[],           // sorted minute keys
+  seedInfo:"",
+  paused:false,
+  timers:[],
+  fc:null,              // forecast bundle
+  lastFcAt:0,
+  ledger:{pending:[],stats:{},lastLog:0,resolved:0},
+  lastPx:null,
+};
+SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
+
+/* ---------------------------------------------------------------- fetch loop */
+async function poll(src){
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
+  const t0=performance.now();
+  try{
+    const r=await fetch(src.url,{signal:ctl.signal,cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j=await r.json(); const p=src.parse(j);
+    if(!isFinite(p)||p<=0) throw new Error("bad payload");
+    const st=S.src[src.id];
+    st.price=p; st.t=Date.now(); st.latency=Math.round(performance.now()-t0);
+    st.status="ok"; st.errN=0;
+    onPrice();
+  }catch(e){
+    const st=S.src[src.id]; st.errN++;
+    st.status=(e.name==="AbortError")?"timeout":
+              (e instanceof TypeError)?"blocked":String(e.message||e);
+  }finally{ clearTimeout(to); }
+}
+function startPolling(){
+  stopPolling();
+  SOURCES.forEach((src,i)=>{
+    const kick=setTimeout(()=>{ poll(src);
+      S.timers.push(setInterval(()=>poll(src),src.every)); }, i*450);
+    S.timers.push(kick);
+  });
+}
+function stopPolling(){ S.timers.forEach(clearTimeout); S.timers.forEach(clearInterval); S.timers=[]; }
+
+/* ---------------------------------------------------------------- aggregation */
+function freshPrices(){
+  const now=Date.now(), out=[];
+  for(const s of SOURCES){const st=S.src[s.id];
+    if(st.price!==null && now-st.t<FRESH_MS) out.push(st.price);}
+  return out;
+}
+function medianSpot(){
+  const f=freshPrices().slice().sort((a,b)=>a-b);
+  if(f.length<1) return null;
+  const m=f.length>>1;
+  return f.length%2 ? f[m] : (f[m-1]+f[m])/2;
+}
+function onPrice(){
+  const p=medianSpot(); if(p===null) return;
+  const t=Date.now();
+  const last=S.ticks[S.ticks.length-1];
+  if(!last || t-last.t>=1500){ S.ticks.push({t,p}); if(S.ticks.length>6000) S.ticks.splice(0,1000); }
+  else last.p=p;
+  const mk=Math.floor(t/60000);
+  if(!S.bars.has(mk)){
+    S.bars.set(mk,p); S.barKeys.push(mk); S.barKeys.sort((a,b)=>a-b);
+    if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k);}
+    onBarClose();                       // previous minute finalized
+  }else S.bars.set(mk,p);
+  resolveLedger(p,t);
+  renderSpot(p);
+}
+function closesExcludingCurrent(){
+  const cur=Math.floor(Date.now()/60000);
+  const ks=S.barKeys.filter(k=>k<cur);
+  return ks.map(k=>S.bars.get(k));
+}
+
+/* ---------------------------------------------------------------- seeding */
+async function seed(){
+  try{
+    const r=await fetch("https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1",{cache:"no-store"});
+    const j=await r.json();
+    const key=Object.keys(j.result).find(k=>k!=="last");
+    const rows=j.result[key];
+    const use=rows.slice(-181,-1);      // drop in-progress candle
+    for(const row of use){ const mk=Math.floor(row[0]/60); S.bars.set(mk,+row[4]);
+      if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
+    S.barKeys.sort((a,b)=>a-b);
+    S.seedInfo="seeded: Kraken 1-min OHLC ×"+use.length;
+  }catch(e){
+    try{
+      const r=await fetch("https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=180",{cache:"no-store"});
+      const j=await r.json(); const rows=j.data.ohlc.slice(0,-1);
+      for(const row of rows){ const mk=Math.floor(+row.timestamp/60); S.bars.set(mk,+row.close);
+        if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
+      S.barKeys.sort((a,b)=>a-b);
+      S.seedInfo="seeded: Bitstamp 1-min OHLC ×"+rows.length;
+    }catch(e2){ S.seedInfo="no seed — cold start (needs ~15 live bars)"; }
+  }
+  $("conenote").textContent=S.seedInfo;
+}
+
+/* ---------------------------------------------------------------- statistics */
+function computeStats(){
+  const closes=closesExcludingCurrent();
+  if(closes.length<16) return null;
+  const c=closes.slice(-241);
+  const r=[]; for(let i=1;i<c.length;i++) r.push(Math.log(c[i]/c[i-1]));
+  const rWin=r.slice(-240);
+  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const muSlow=mean(r.slice(-120));
+  // EWMA variance, seeded with sample variance
+  const m0=mean(rWin); let v=mean(rWin.map(x=>(x-m0)*(x-m0)))||1e-10;
+  const L=0.94; for(const x of rWin) v=L*v+(1-L)*x*x;
+  const sig=Math.sqrt(Math.max(v,1e-12));
+  // fast EWMA drift, half-life 10 min
+  const a=1-Math.pow(2,-1/10); let muFast=r[0];
+  for(let i=1;i<r.length;i++) muFast=a*r[i]+(1-a)*muFast;
+  // OU: through-origin AR(1) on deviation from 30-bar log SMA
+  let ou=null;
+  if(c.length>=70){
+    const lp=c.map(Math.log), xs=[];
+    for(let i=29;i<lp.length;i++){ let s=0; for(let k=i-29;k<=i;k++)s+=lp[k];
+      xs.push(lp[i]-s/30); }
+    const P=xs.slice(-150); let num=0,den=0;
+    for(let i=1;i<P.length;i++){ num+=P[i]*P[i-1]; den+=P[i-1]*P[i-1]; }
+    if(den>0){ const b=num/den;
+      if(b>0 && b<0.999 && P.length>=40){
+        let s=0; const tail=c.slice(-30).map(Math.log); for(const x of tail)s+=x;
+        ou={b, sma:s/30};
+      } }
+  }
+  return {sig,muSlow,muFast,ou,nBars:closes.length};
+}
+
+/* ---------------------------------------------------------------- forecasting */
+function simulateCone(P0,mu,sig,steps,M){
+  const paths=new Float64Array(M).fill(P0), cone=[];
+  const drift=mu-0.5*sig*sig;
+  for(let s=0;s<steps;s++){
+    for(let m=0;m<M;m++) paths[m]*=Math.exp(drift+sig*randn());
+    const srt=Float64Array.from(paths).sort();
+    cone.push([quantile(srt,.05),quantile(srt,.25),quantile(srt,.5),quantile(srt,.75),quantile(srt,.95)]);
+  }
+  return cone;
+}
+function recomputeForecast(force){
+  const now=Date.now();
+  if(!force && now-S.lastFcAt<20000) return;
+  const P0=medianSpot(); const st=computeStats();
+  if(P0===null||!st){ renderMatrix(); return; }
+  S.lastFcAt=now;
+  const cone=simulateCone(P0,st.muSlow,st.sig,60,1500);
+  const rows={};
+  for(const h of HORIZONS){
+    const sh=st.sig*Math.sqrt(h), z=1.645;
+    const mart={f:P0, lo:P0*Math.exp(-z*sh), hi:P0*Math.exp(z*sh)};
+    const g=cone[h-1];
+    const gbm={f:g[2], lo:g[0], hi:g[4]};
+    let ouF=null;
+    if(st.ou){ const x0=Math.log(P0)-st.ou.sma;
+      ouF=Math.exp(st.ou.sma + x0*Math.pow(st.ou.b,h)); }
+    const mom=P0*Math.exp(clamp(st.muFast*h,-2.5*sh,2.5*sh));
+    const pts=[P0,gbm.f,mom]; if(ouF!==null)pts.push(ouF);
+    pts.sort((a,b)=>a-b);
+    const m=pts.length>>1;
+    const ens=pts.length%2?pts[m]:(pts[m-1]+pts[m])/2;
+    rows[h]={mart,gbm,ou:ouF,mom,ens};
+  }
+  S.fc={t0:now,P0,cone,rows,sig:st.sig,nBars:st.nBars,ouOn:!!st.ou};
+  maybeLogLedger();
+  renderMatrix(); drawChart();
+}
+
+/* ---------------------------------------------------------------- ledger */
+function maybeLogLedger(){
+  const now=Date.now();
+  if(!S.fc || now-S.ledger.lastLog<60000) return;
+  S.ledger.lastLog=now;
+  const f={};
+  for(const h of HORIZONS){
+    const r=S.fc.rows[h];
+    f[h]={MART:r.mart.f,GBM:r.gbm.f,OU:r.ou,MOM:r.mom,ENS:r.ens};
+  }
+  S.ledger.pending.push({t0:S.fc.t0,P0:S.fc.P0,f});
+  if(S.ledger.pending.length>300) S.ledger.pending.shift();
+}
+function resolveLedger(px,now){
+  const L=S.ledger; let changed=false;
+  for(let i=L.pending.length-1;i>=0;i--){
+    const e=L.pending[i];
+    for(const h of Object.keys(e.f)){
+      if(now>=e.t0+h*60000){
+        const models=e.f[h];
+        for(const m of Object.keys(models)){
+          const F=models[m]; if(F===null||!isFinite(F)) continue;
+          const st=L.stats[m]||(L.stats[m]={n:0,sumAbs:0,dn:0,dh:0});
+          st.n++; st.sumAbs+=Math.abs(bp(px,F));
+          const call=bp(F,e.P0), real=bp(px,e.P0);
+          if(Math.abs(call)>=0.5 && Math.abs(real)>=0.01){
+            st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++;
+          }
+        }
+        delete e.f[h]; L.resolved++; changed=true;
+      }
+    }
+    if(Object.keys(e.f).length===0) L.pending.splice(i,1);
+  }
+  if(changed) renderScore();
+}
+
+/* ---------------------------------------------------------------- rendering */
+function priceAgo(ms){
+  const target=Date.now()-ms;
+  for(let i=S.ticks.length-1;i>=0;i--) if(S.ticks[i].t<=target) return S.ticks[i].p;
+  const mk=Math.floor(target/60000);
+  for(let k=mk;k>=mk-3;k--) if(S.bars.has(k)) return S.bars.get(k);
+  return null;
+}
+function renderSpot(p){
+  const el=$("px");
+  el.textContent=fmtUSD.format(p);
+  if(S.lastPx!==null && p!==S.lastPx){
+    el.classList.remove("flash-up","flash-down"); void el.offsetWidth;
+    el.classList.add(p>S.lastPx?"flash-up":"flash-down");
+    setTimeout(()=>el.classList.remove("flash-up","flash-down"),450);
+  }
+  S.lastPx=p;
+  const spans=[["1M",6e4],["5M",3e5],["15M",9e5],["1H",36e5]];
+  $("chips").innerHTML=spans.map(([l,ms])=>{
+    const q=priceAgo(ms); if(q===null) return '<span class="chip"><span class="lbl">'+l+'</span><span style="color:var(--faint)">—</span></span>';
+    const d=100*(p/q-1), cls=d>=0?"up":"down";
+    return '<span class="chip"><span class="lbl">'+l+'</span><span class="'+cls+'">'+fmtPct(d)+'</span></span>';
+  }).join("");
+}
+function renderSources(){
+  const now=Date.now(); let live=0;
+  const med=medianSpot();
+  $("srcrows").innerHTML=SOURCES.map(s=>{
+    const st=S.src[s.id];
+    let dot="err",ptxt="—",dev="—",lat="—",age="—";
+    if(st.price!==null){
+      ptxt=fmtUSD.format(st.price);
+      lat=st.latency+"ms";
+      const a=now-st.t; age=a<1000?"<1s":Math.round(a/1000)+"s";
+      dot=a<FRESH_MS?"ok":"stale";
+      if(a<FRESH_MS){ live++; if(med) dev=fmtBp(bp(st.price,med)); }
+    }
+    const status=(st.status!=="ok"&&st.status!=="…")?st.status:"";
+    return '<div class="row"><span class="dot '+dot+'"></span>'
+      +'<span class="srcname">'+s.name+(s.tag?'<em>'+s.tag.toUpperCase()+'</em>':'')+'</span>'
+      +'<span class="r num">'+ptxt+(status?' <span style="color:var(--err);font-size:10px">'+status+'</span>':'')+'</span>'
+      +'<span class="r num" style="color:var(--dim)">'+dev+'</span>'
+      +'<span class="r num" style="color:var(--faint)">'+lat+'</span>'
+      +'<span class="r num" style="color:var(--faint)">'+age+'</span></div>';
+  }).join("");
+  $("srcnote").textContent=live+" live / "+SOURCES.length;
+  const pill=$("status");
+  if(S.paused){pill.textContent="PAUSED";pill.className="pill warn";}
+  else if(live>=2){pill.textContent="LIVE";pill.className="pill live";}
+  else if(live===1){pill.textContent="DEGRADED";pill.className="pill warn";}
+  else{pill.textContent="STALLED";pill.className="pill dead";}
+  const blocked=SOURCES.filter(s=>S.src[s.id].status==="blocked").length;
+  const b=$("banner");
+  if(blocked===SOURCES.length){
+    b.style.display="block";
+    b.textContent="All sources unreachable — likely a sandbox network policy, not the endpoints. Save this file and open it in a regular browser; every API used is keyless and CORS-open.";
+  }else b.style.display="none";
+}
+function cellF(F,P0,extra){
+  if(F===null||!isFinite(F)) return '<td class="model" style="color:var(--faint)">—<span class="sub">no signal</span></td>';
+  return '<td class="model num">'+fmtUSD.format(F)+'<span class="sub">'+fmtBp(bp(F,P0))+(extra||"")+'</span></td>';
+}
+function renderMatrix(){
+  const tb=$("matrix").querySelector("tbody");
+  if(!S.fc){
+    const n=closesExcludingCurrent().length;
+    $("fnote").textContent="warming: "+n+"/16 bars";
+    tb.innerHTML='<tr><td colspan="6" style="color:var(--faint)">Accumulating return history…</td></tr>';
+    return;
+  }
+  const {rows,P0,sig,ouOn}=S.fc;
+  $("fnote").textContent="P₀ "+fmtUSD.format(P0)+" · σ₁ₘ "+(1e4*sig).toFixed(1)+"bp · "
+    +(ouOn?"reversion on":"reversion off")+" · refreshed "+new Date(S.fc.t0).toLocaleTimeString();
+  tb.innerHTML=HORIZONS.map(h=>{
+    const r=rows[h];
+    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'
+      +'<td class="num">'+fmtUSD.format(r.mart.f)
+        +'<span class="sub">±'+((1e4*Math.log(r.mart.hi/r.mart.f))).toFixed(0)+'bp (90%)</span></td>'
+      +cellF(r.gbm.f,P0,' · ['+fmtUSD.format(r.gbm.lo)+' – '+fmtUSD.format(r.gbm.hi)+']')
+      +cellF(r.ou,P0)
+      +cellF(r.mom,P0)
+      +cellF(r.ens,P0)
+      +'</tr>';
+  }).join("");
+}
+function renderScore(){
+  const st=S.ledger.stats, tb=$("score").querySelector("tbody");
+  $("snote").textContent=S.ledger.resolved+" resolved · "+S.ledger.pending.length+" pending";
+  const order=[["MART","Martingale (benchmark)"],["GBM","GBM · MC median"],["OU","OU reversion"],["MOM","Momentum"],["ENS","Ensemble"]];
+  const base=st.MART&&st.MART.n?st.MART.sumAbs/st.MART.n:null;
+  tb.innerHTML=order.map(([k,label])=>{
+    const s=st[k];
+    if(!s||!s.n) return '<tr><td>'+label+'</td><td class="num">0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>';
+    const mae=s.sumAbs/s.n;
+    let vs="—";
+    if(k!=="MART"&&base!==null){
+      const d=mae-base; vs='<span class="'+(d<=0?"up":"down")+'">'+(d<=0?"":"+")+d.toFixed(1)+'bp</span>';
+    }
+    const hit=s.dn?((100*s.dh/s.dn).toFixed(0)+"%"):"—";
+    return '<tr><td>'+label+'</td><td class="num">'+s.n+'</td><td class="num">'+mae.toFixed(1)+'</td>'
+      +'<td class="num">'+vs+'</td><td class="num">'+(s.dn||"—")+'</td><td class="num">'+hit+'</td></tr>';
+  }).join("");
+}
+
+/* ---------------------------------------------------------------- chart */
+const cv=$("chart"), cx=cv.getContext("2d");
+function drawChart(){
+  const dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth, H=340;
+  if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,W,H);
+  const now=Date.now(), xMin=-90, xMax=65, padL=8, padR=54, padT=12, padB=22;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
+
+  // history points (minutes offset, price)
+  const hist=[];
+  const cur=Math.floor(now/60000);
+  for(const k of S.barKeys){ const m=(k*60000-now)/60000;
+    if(m>=xMin&&k<cur) hist.push([m,S.bars.get(k)]); }
+  for(const tk of S.ticks){ const m=(tk.t-now)/60000; if(m>=xMin) hist.push([m,tk.p]); }
+  hist.sort((a,b)=>a[0]-b[0]);
+
+  let lo=Infinity,hi=-Infinity;
+  for(const p of hist){lo=Math.min(lo,p[1]);hi=Math.max(hi,p[1]);}
+  if(S.fc){for(const c of S.fc.cone){lo=Math.min(lo,c[0]);hi=Math.max(hi,c[4]);}}
+  if(!isFinite(lo)){ cx.fillStyle="#50647E";cx.font="11px monospace";
+    cx.fillText("awaiting data…",padL+8,H/2); return; }
+  const span=Math.max(hi-lo,1e-6); lo-=span*.08; hi+=span*.08;
+  const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
+
+  // grid
+  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.font="9px "+getComputedStyle(document.body).fontFamily;
+  cx.textAlign="left";
+  for(let m=-90;m<=60;m+=30){ const x=X(m);
+    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke();
+    cx.fillStyle="#50647E";
+    cx.fillText(m===0?"now":(m>0?"+"+m+"m":m+"m"),x+3,H-8);
+  }
+  const yt=5;
+  for(let i=0;i<=yt;i++){ const p=lo+(hi-lo)*i/yt, y=Y(p);
+    cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
+    cx.fillStyle="#50647E";
+    cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
+  }
+
+  // cone
+  if(S.fc){
+    const P0=S.fc.P0, cone=S.fc.cone;
+    const band=(li,hiI,fill)=>{
+      cx.beginPath(); cx.moveTo(X(0),Y(P0));
+      for(let s=0;s<cone.length;s++) cx.lineTo(X(s+1),Y(cone[s][hiI]));
+      for(let s=cone.length-1;s>=0;s--) cx.lineTo(X(s+1),Y(cone[s][li]));
+      cx.closePath(); cx.fillStyle=fill; cx.fill();
+    };
+    band(0,4,"rgba(229,161,60,.14)");
+    band(1,3,"rgba(229,161,60,.20)");
+    cx.beginPath(); cx.moveTo(X(0),Y(P0));
+    for(let s=0;s<cone.length;s++) cx.lineTo(X(s+1),Y(cone[s][2]));
+    cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
+    // ensemble markers
+    cx.fillStyle="#E5A13C";
+    for(const h of HORIZONS){ const e=S.fc.rows[h].ens;
+      cx.beginPath();cx.arc(X(h),Y(e),2.6,0,7);cx.fill(); }
+  }
+
+  // history trace
+  if(hist.length>1){
+    cx.beginPath();
+    hist.forEach((p,i)=>{const x=X(Math.min(p[0],0)),y=Y(p[1]); i?cx.lineTo(x,y):cx.moveTo(x,y);});
+    cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.5; cx.stroke();
+  }
+
+  // NOW divider
+  const x0=X(0);
+  cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(x0,padT);cx.lineTo(x0,padT+ih);cx.stroke();
+  cx.fillStyle="#50647E"; cx.textAlign="right";
+  cx.fillText("MEASURED",x0-5,padT+9);
+  cx.textAlign="left"; cx.fillStyle="#9A742F";
+  cx.fillText("PROJECTED",x0+5,padT+9);
+  cx.textAlign="left";
+}
+
+/* ---------------------------------------------------------------- clock / loop */
+$("pauseBtn").addEventListener("click",()=>{
+  S.paused=!S.paused;
+  $("pauseBtn").textContent=S.paused?"RESUME":"PAUSE";
+  $("pauseBtn").setAttribute("aria-pressed",String(S.paused));
+  if(S.paused) stopPolling(); else startPolling();
+  renderSources();
+});
+function onBarClose(){ recomputeForecast(true); }
+setInterval(()=>{
+  $("clock").textContent=new Date().toLocaleTimeString();
+  renderSources();
+},1000);
+setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
+setInterval(drawChart,2000);
+new ResizeObserver(()=>drawChart()).observe(cv);
+
+(async function init(){
+  renderSources(); renderMatrix(); renderScore();
+  await seed();
+  startPolling();
+  setTimeout(()=>recomputeForecast(true),2500);
+})();
+</script>
+</body>
+</html>
