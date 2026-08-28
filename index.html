@@ -124,12 +124,12 @@
     <div id="chartbox">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--up)"></span>up candle</span>
-        <span><span class="sw" style="background:var(--down)"></span>down candle</span>
-        <span><span class="sw" style="background:var(--model)"></span>pinned projection</span>
-        <span><span class="sw" style="background:rgba(229,161,60,.35)"></span>P25–P75</span>
+        <span><span class="sw" style="background:var(--meas)"></span>control — actual price</span>
+        <span><span class="sw" style="background:var(--model)"></span>projection median</span>
+        <span><span class="sw" style="background:rgba(102,177,141,.4)"></span>actual above projection</span>
+        <span><span class="sw" style="background:rgba(205,110,92,.4)"></span>actual below</span>
         <span><span class="sw" style="background:rgba(229,161,60,.16)"></span>P5–P95</span>
-        <span>○ projected · ● realized — ring green inside the 90% band, red outside</span>
+        <span>○ projected · ● realized — ring green inside the 90% band</span>
       </div>
     </div>
   </section>
@@ -205,17 +205,18 @@
       the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
       pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
       but accountability runs on the pinned sets.</p>
-    <p><b>Chart.</b> The frame is a fixed 60-minute measurement period anchored at the first projection set;
-      x-marks sit at +5/10/15/30/60 labeled with actual clock times, and the cursor sweeps left to right —
-      nothing scrolls. The period's cone and its five targets are pinned at anchor and never re-base; candles
-      (1-min consensus OHLC) and the live head line advance into them, and each mark resolves in place: ring at
-      the projection, dot at the print, green inside that set's 90% band. At period end the five results are
-      written to the period log, the frame wipes, and a new hour begins with re-mapped clock labels. If the tab
-      was suspended past a period boundary, the new period anchors at wake time rather than fabricating a
-      retroactive set. The y-axis holds current price at center and zooms adaptively — tightening while price
-      tracks the band, widening on excursions; the zoom is presentation only and the dollar gridlines are always
-      true. Running band coverage against its 90% target is the calibration verdict; point-forecast confidence
-      remains martingale-capped, and dispersion is the claim under audit.</p>
+    <p><b>Chart.</b> The frame originates ~30 minutes before projection onset and runs to +60: context on the
+      left of the ONSET line, the pinned period on the right, x-marks at +5/10/15/30/60 labeled with actual
+      clock times, cursor sweeping left to right. Two lines duel: the <b>control</b> — actual consensus price at
+      tick resolution — against the pinned <b>projection median</b>. The area between them over the elapsed
+      region is tinted by sign (green where actual runs above projection, red below), so divergence is read
+      spatially; a live Δ readout in bp rides the head. Marks resolve in place (ring at the projection, dot at
+      the print, green inside that set's 90% band); at the hour the five results commit to the period log, the
+      frame wipes, and clock labels remap. A tab suspended past a boundary re-anchors at wake rather than
+      fabricating a retroactive set. The y-axis holds current price at center and zooms adaptively — tightening
+      while the control tracks the band, widening on excursions; the zoom is presentation only and the dollar
+      gridlines are always true. Band coverage against its 90% target remains the calibration verdict;
+      point-forecast confidence is martingale-capped, and dispersion is the claim under audit.</p>
     <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
       At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
       σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
@@ -705,9 +706,9 @@ function render(){
   const spot=S.lastPx, E=S.epoch;
   cx.font="9px "+FONT();
   if(spot===null||!E){ cx.fillStyle="#50647E"; cx.fillText("awaiting first projection set…",padL+8,H/2); return; }
-  const xMin=0, xMax=62;
+  const xMin=-32, xMax=62;
   const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
-  const e=(now-E.t0)/60000;                    /* elapsed minutes in the period */
+  const e=(now-E.t0)/60000;
 
   /* cone percentiles at elapsed time */
   const rowAt=i=>E.cone[Math.min(59,Math.max(0,i))];
@@ -718,21 +719,33 @@ function render(){
     const A=rowAt(a), B=rowAt(a+1);
     return A.map((v,i)=>v+(B[i]-v)*f);
   };
-  const cNow=coneAt(e);
+  const cNow=coneAt(Math.min(e,60));
 
-  /* y-domain: spot at center; pinch when tracking the band, spread on excursions */
+  /* control-line points: seeded 1-min closes before tick coverage, ticks after */
+  const pts=[];
+  const tickStart=S.ticks.length?S.ticks[0].t:Infinity;
+  for(const k of S.barKeys){
+    const tEnd=(k+1)*60000;
+    if(tEnd>=tickStart) continue;
+    const m=(tEnd-E.t0)/60000; if(m<xMin) continue;
+    pts.push({m,p:S.bars.get(k)});
+  }
+  for(const tk of S.ticks){
+    const m=(tk.t-E.t0)/60000; if(m<xMin) continue;
+    pts.push({m,p:tk.p});
+  }
+  pts.sort((a,b)=>a.m-b.m);
+  let minP=spot, maxP=spot;
+  for(const q of pts){ if(q.p<minP)minP=q.p; if(q.p>maxP)maxP=q.p; }
+
+  /* y-domain: spot at center; pinch on tracking, spread on excursion */
   const dev=Math.abs(spot-cNow[2]);
   const edge=Math.max(cNow[4]-cNow[2],1e-9);
-  const track=Math.min(dev/edge,1.3)/1.3;      /* 0 = on median, 1 = at/over band edge */
+  const track=Math.min(dev/edge,1.3)/1.3;
   const tail=E.cone[59];
   const tight=Math.max(1.5*(cNow[4]-cNow[2]),spot*0.0008);
   const wide=Math.max(Math.abs(tail[4]-spot),Math.abs(tail[0]-spot),tight);
-  let mustC=Math.abs(E.P0-spot);
-  for(const k of S.barKeys){
-    const m0=(k*60000-E.t0)/60000; if(m0<-1||m0>e) continue;
-    const cd=S.candles.get(k); if(!cd) continue;
-    mustC=Math.max(mustC,Math.abs(cd.h-spot),Math.abs(cd.l-spot));
-  }
+  const mustC=Math.max(Math.abs(E.P0-spot),maxP-spot,spot-minP);
   const target=Math.max(mustC*1.06, tight+(wide-tight)*track);
   const kE=RM?1:0.06;
   if(yv.c===null){ yv.c=spot; yv.s=target; }
@@ -751,58 +764,90 @@ function render(){
   cx.beginPath();cx.moveTo(padL,Y(spot));cx.lineTo(padL+iw,Y(spot));cx.stroke();
   cx.setLineDash([]);
 
-  /* interval marks mapped to wall clock; unresolved marks pulse in final 30 s */
-  cx.fillStyle="#50647E"; cx.fillText(timeStr(E.t0),padL+2,H-8);
+  /* pre-onset context tint + onset line */
+  cx.fillStyle="rgba(217,228,238,.03)";
+  cx.fillRect(padL,padT,Math.max(0,X(0)-padL),ih);
+  cx.strokeStyle="rgba(229,161,60,.4)"; cx.lineWidth=1;
+  cx.beginPath();cx.moveTo(X(0),padT);cx.lineTo(X(0),padT+ih);cx.stroke();
+  cx.fillStyle="rgba(229,161,60,.6)";
+  cx.fillText("ONSET "+timeStr(E.t0),X(0)+4,padT+20);
+
+  /* time labels + interval marks (pulse in final 30 s) */
+  cx.fillStyle="#50647E"; cx.fillText(timeStr(E.t0-1800000),padL+2,H-8);
+  const tickGap=X(10)-X(5);
   for(const h of HORIZONS){
     const due=E.t0+h*60000, x=X(h), tto=due-now;
     let a=0.22;
     if(!E.res[h]&&tto>0&&tto<=30000) a=RM?0.5:(0.3+0.3*(0.5+0.5*Math.sin(now/170)));
     cx.strokeStyle="rgba(229,161,60,"+a+")"; cx.setLineDash([2,5]); cx.lineWidth=1;
     cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke(); cx.setLineDash([]);
-    cx.fillStyle="rgba(229,161,60,.75)"; cx.textAlign="center";
-    cx.fillText(timeStr(due),x,H-8); cx.textAlign="left";
+    if(tickGap>=34||h>=15){
+      cx.fillStyle="rgba(229,161,60,.75)"; cx.textAlign="center";
+      cx.fillText(timeStr(due),x,H-8); cx.textAlign="left";
+    }
   }
 
   cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
 
-  /* pinned cone spanning the whole period */
+  /* projection band + median spine */
   const band=(li,hiI,fill)=>{
     cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
     for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][hiI]));
     for(let s=E.cone.length-1;s>=0;s--) cx.lineTo(X(s+1),Y(E.cone[s][li]));
     cx.closePath(); cx.fillStyle=fill; cx.fill();
   };
-  band(0,4,"rgba(229,161,60,.13)");
-  band(1,3,"rgba(229,161,60,.19)");
+  band(0,4,"rgba(229,161,60,.11)");
+  band(1,3,"rgba(229,161,60,.16)");
+
+  /* divergence tint between control and projection over the elapsed region */
+  if(e>0.2&&pts.length>1){
+    const eEnd=Math.min(e,60);
+    let pi=0;
+    const actualAt=m=>{
+      while(pi<pts.length-1&&pts[pi+1].m<=m) pi++;
+      const A=pts[pi], B=pts[Math.min(pi+1,pts.length-1)];
+      if(B.m===A.m) return A.p;
+      const f=Math.min(1,Math.max(0,(m-A.m)/(B.m-A.m)));
+      return A.p+(B.p-A.p)*f;
+    };
+    const step=0.25;
+    for(let m=0;m<eEnd;m+=step){
+      const m2=Math.min(m+step,eEnd);
+      const a1=actualAt(m), a2=actualAt(m2);
+      const p1=coneAt(m)[2], p2=coneAt(m2)[2];
+      cx.fillStyle=(a1+a2)>=(p1+p2)?"rgba(102,177,141,.12)":"rgba(205,110,92,.12)";
+      cx.beginPath();
+      cx.moveTo(X(m),Y(a1)); cx.lineTo(X(m2),Y(a2));
+      cx.lineTo(X(m2),Y(p2)); cx.lineTo(X(m),Y(p1));
+      cx.closePath(); cx.fill();
+    }
+  }
+
+  /* projection median line */
   cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
   for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][2]));
-  cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
+  cx.strokeStyle="#E5A13C"; cx.setLineDash([4,4]); cx.lineWidth=1.6; cx.stroke(); cx.setLineDash([]);
 
-  /* candles inside the period */
-  const cw=Math.max(1.8,(iw/(xMax-xMin))*0.62);
-  for(const k of S.barKeys){
-    const m0=(k*60000-E.t0)/60000;
-    if(m0<-1||m0>xMax) continue;
-    const cd=S.candles.get(k); if(!cd) continue;
-    const x=X(m0+0.5), col=cd.c>=cd.o?"#66B18D":"#CD6E5C";
-    cx.strokeStyle=col; cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(x,Y(cd.h));cx.lineTo(x,Y(cd.l));cx.stroke();
-    const yO=Y(cd.o), yC=Y(cd.c), top=Math.min(yO,yC), hgt=Math.max(1,Math.abs(yC-yO));
-    cx.fillStyle=col; cx.fillRect(x-cw/2,top,cw,hgt);
+  /* control line */
+  if(pts.length>1){
+    cx.beginPath();
+    pts.forEach((q,i)=>{ const x=X(q.m), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); });
+    cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.5; cx.stroke();
   }
 
-  /* live median line (recent minutes) + head */
-  const cutoff=now-240000;
-  cx.beginPath(); let started=false;
-  for(const tk of S.ticks){
-    if(tk.t<cutoff||tk.t<E.t0) continue;
-    const x=X((tk.t-E.t0)/60000), y=Y(tk.p);
-    started?cx.lineTo(x,y):(cx.moveTo(x,y),started=true);
-  }
-  if(started){ cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.3; cx.stroke(); }
+  /* head + live gap readout */
+  const xH=X(Math.min(e,xMax));
   const pulse=RM?1:(0.85+0.15*Math.sin(now/300));
   cx.fillStyle="#D9E4EE";
-  cx.beginPath();cx.arc(X(Math.min(e,xMax)),Y(spot),3*pulse,0,7);cx.fill();
+  cx.beginPath();cx.arc(xH,Y(spot),3*pulse,0,7);cx.fill();
+  if(e>0){
+    const gap=bp(spot,cNow[2]);
+    cx.fillStyle=gap>=0?"#66B18D":"#CD6E5C";
+    const gy=Math.max(padT+14,Y(spot)-8);
+    cx.textAlign=xH>padL+iw-90?"right":"left";
+    cx.fillText("\u0394 "+fmtBp(gap),xH+(xH>padL+iw-90?-8:8),gy);
+    cx.textAlign="left";
+  }
 
   /* verdict nodes at the period's marks */
   for(const h of HORIZONS){
@@ -830,8 +875,8 @@ function render(){
   }
   const cov=S.ledger.coverage;
   cx.fillStyle="rgba(229,161,60,.8)"; cx.textAlign="right";
-  cx.fillText("PERIOD "+timeStr(E.t0)+"–"+timeStr(E.t0+3600000)
-    +(cov.total>0?("  ·  band coverage "+cov.inBand+"/"+cov.total+" · "+Math.round(100*cov.inBand/cov.total)+"% (target 90%)"):""),
+  cx.fillText("PERIOD "+timeStr(E.t0)+"\u2013"+timeStr(E.t0+3600000)
+    +(cov.total>0?("  \u00b7  band coverage "+cov.inBand+"/"+cov.total+" \u00b7 "+Math.round(100*cov.inBand/cov.total)+"% (target 90%)"):""),
     padL+iw-4,padT+9);
   cx.textAlign="left";
 }
