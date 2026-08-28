@@ -87,6 +87,13 @@
   #method b{color:var(--dim);font-weight:400}
   #banner{display:none;margin-top:14px;border:1px solid rgba(205,110,92,.5);border-radius:3px;
     padding:10px 12px;color:var(--err);font-size:12px}
+
+  /* page views */
+  #viewData{display:none}
+  body.showData #viewData{display:block}
+  body.showData #viewChart{display:none}
+  #viewChart canvas{height:calc(100dvh - 320px);min-height:340px}
+  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 320px)} }
 </style>
 </head>
 <body>
@@ -97,6 +104,7 @@
     <div class="hright">
       <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
       <span id="status" class="pill dead">INIT</span>
+      <button id="viewBtn" aria-pressed="false">DATA</button>
       <button id="pauseBtn" aria-pressed="false">PAUSE</button>
     </div>
   </header>
@@ -109,14 +117,9 @@
     <div class="chips num" id="chips"></div>
   </div>
 
-  <section id="sources">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
-      <span class="note num" id="srcnote">0 live</span></div>
-    <div id="srcrows"></div>
-  </section>
-
+  <div id="viewChart">
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Trace &amp; projection cone</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Live period &amp; projection</span>
       <span class="note num" id="conenote"></span></div>
     <div id="chartbox">
       <canvas id="chart" height="340"></canvas>
@@ -129,6 +132,14 @@
         <span>○ projected · ● realized — ring green inside the 90% band, red outside</span>
       </div>
     </div>
+  </section>
+  </div>
+
+  <div id="viewData">
+  <section id="sources">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
+      <span class="note num" id="srcnote">0 live</span></div>
+    <div id="srcrows"></div>
   </section>
 
   <section>
@@ -166,6 +177,16 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = MAE bp · direction hit · n — green beats the martingale at that interval, red trails it</div>
   </section>
 
+  <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Period log — 60-minute epochs</span>
+      <span class="note num" id="enote">0 completed</span></div>
+    <div class="tblwrap"><table id="epochlog">
+      <thead><tr><th>Period</th><th class="model">+5m</th><th class="model">+10m</th><th class="model">+15m</th><th class="model">+30m</th><th class="model">+60m</th><th>In band</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = ensemble error at resolution (bp) — green landed inside the 90% band, red outside</div>
+  </section>
+
   <div id="method">
     <p><b>Aggregation.</b> Spot = median of sources fresher than 20 s. Sources polled every 5 s
       (CoinGecko 60 s; it is itself a composite index). Binance.com excluded: HTTP 451 geo-block for US clients.</p>
@@ -179,24 +200,28 @@
       <b>Ensemble</b>: median of available point forecasts.</p>
     <p><b>Interval discipline.</b> Every minute one forecast set is pinned to five wall-clock due times.
       Realized price at each due instant is linearly interpolated from the tick series (never a late sample;
-      residual resolution lag is reported in the scorecard header). Accuracy is scored per interval —
+      residual resolution lag is reported in the scorecard header). If no tick exists within 45 s of a due
+      instant — a suspended tab, a feed outage — that resolution is voided, not scored. Accuracy is scored per interval —
       the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
       pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
       but accountability runs on the pinned sets.</p>
-    <p><b>Chart.</b> Wicks are 1-minute OHLC of the consensus median (green up, red down); the y-axis keeps
-      current price at vertical center with the band spreading symmetrically. The projection cone is pinned to
-      its minute's set — it does not re-base with the display — so as time passes the candles advance into it
-      and paint over the elapsed region: agreement is visible where wicks stay inside amber. Due-lines drift
-      toward the NOW divider and brighten in their final 30 s; on crossing, a verdict node is minted — ring at
-      the projection, dot at the realized price, ring green when the print landed inside that set's 90% band.
-      The running band-coverage figure against its 90% target is the calibration verdict. Honest framing:
-      point-forecast confidence is capped by the martingale property; what can be demonstrated to resolve
-      accurately is the dispersion, and that is what the nodes audit.</p>
+    <p><b>Chart.</b> The frame is a fixed 60-minute measurement period anchored at the first projection set;
+      x-marks sit at +5/10/15/30/60 labeled with actual clock times, and the cursor sweeps left to right —
+      nothing scrolls. The period's cone and its five targets are pinned at anchor and never re-base; candles
+      (1-min consensus OHLC) and the live head line advance into them, and each mark resolves in place: ring at
+      the projection, dot at the print, green inside that set's 90% band. At period end the five results are
+      written to the period log, the frame wipes, and a new hour begins with re-mapped clock labels. If the tab
+      was suspended past a period boundary, the new period anchors at wake time rather than fabricating a
+      retroactive set. The y-axis holds current price at center and zooms adaptively — tightening while price
+      tracks the band, widening on excursions; the zoom is presentation only and the dollar gridlines are always
+      true. Running band coverage against its 90% target is the calibration verdict; point-forecast confidence
+      remains martingale-capped, and dispersion is the claim under audit.</p>
     <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
       At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
       σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
       The informative output is the dispersion (cone), not the direction. Nothing here is trading advice;
       the scorecard exists to measure these models against live data rather than assert their skill.</p>
+  </div>
   </div>
 </div>
 
@@ -251,13 +276,14 @@ const S={
   candles:new Map(),    // minuteKey -> {o,h,l,c} (median OHLC)
   barKeys:[],           // sorted minute keys
   pinnedCone:null,      // {t0,P0,cone} — snapshot at each logged set, holds for the minute
-  resolvedNodes:[],     // [{due,F,R,glo,ghi,born}] verdict trail for the chart
+  epoch:null,           // {t0,P0,cone,F:{h:{ENS,glo,ghi}},res:{h:{R,inB,err}}} — the fixed 60-min frame
+  epochLog:[],          // completed periods
   seedInfo:"",
   paused:false,
   timers:[],
   fc:null,              // forecast bundle
   lastFcAt:0,
-  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0,coverage:{inBand:0,total:0}},
+  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0,coverage:{inBand:0,total:0},voided:0},
   lastPx:null,
 };
 SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
@@ -388,6 +414,55 @@ function computeStats(){
   return {sig,muSlow,muFast,ou,nBars:closes.length};
 }
 
+/* ---------------------------------------------------------------- epoch (fixed 60-min frame) */
+const timeStr=t=>new Date(t).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+function ensureEpoch(){
+  if(S.epoch||!S.fc) return;
+  const F={};
+  for(const h of HORIZONS){ const r=S.fc.rows[h];
+    F[h]={ENS:r.ens,glo:r.gbm.lo,ghi:r.gbm.hi}; }
+  S.epoch={t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone,F,res:{}};
+}
+function epochTick(now){
+  const E=S.epoch; if(!E) return;
+  for(const h of HORIZONS){
+    if(E.res[h]) continue;
+    const due=E.t0+h*60000; if(now<due) continue;
+    const q=priceAtTime(due); if(!q) continue;
+    if(q.lag>45000){ E.res[h]={void:true,born:now}; continue; }
+    const f=E.F[h];
+    E.res[h]={R:q.p,err:bp(q.p,f.ENS),
+      inB:isFinite(f.glo)&&isFinite(f.ghi)&&q.p>=f.glo&&q.p<=f.ghi,born:now};
+  }
+  const end=E.t0+3600000;
+  if((E.res[60]&&now>=end)||now>=end+90000) rollEpoch(now);
+}
+function rollEpoch(now){
+  const E=S.epoch; if(!E) return;
+  S.epochLog.unshift({t0:E.t0,res:E.res});
+  if(S.epochLog.length>24) S.epochLog.pop();
+  S.epoch=null;
+  renderEpochLog();
+  recomputeForecast(true);          // fresh anchor set for the new period
+  ensureEpoch();
+}
+function renderEpochLog(){
+  const tb=$("epochlog").querySelector("tbody");
+  $("enote").textContent=S.epochLog.length+" completed";
+  tb.innerHTML=S.epochLog.map(E=>{
+    let inB=0,n=0;
+    const cells=HORIZONS.map(h=>{
+      const r=E.res[h];
+      if(!r) return '<td style="color:var(--faint)">—</td>';
+      if(r.void) return '<td style="color:var(--faint)">gap</td>';
+      n++; if(r.inB) inB++;
+      return '<td class="num" style="color:var(--'+(r.inB?"up":"down")+')">'+fmtBp(r.err)+'</td>';
+    }).join("");
+    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(E.t0)+'–'+timeStr(E.t0+3600000)+'</td>'
+      +cells+'<td class="num">'+inB+'/'+n+'</td></tr>';
+  }).join("");
+}
+
 /* ---------------------------------------------------------------- forecasting */
 function simulateCone(P0,mu,sig,steps,M){
   const paths=new Float64Array(M).fill(P0), cone=[];
@@ -424,6 +499,7 @@ function recomputeForecast(force){
   }
   S.fc={t0:now,P0,cone,rows,sig:st.sig,nBars:st.nBars,ouOn:!!st.ou};
   maybeLogLedger();
+  ensureEpoch();
   renderMatrix();
 }
 
@@ -457,6 +533,7 @@ function resolveLedger(now){
       const due=e.t0+h*60000;
       if(now<due) continue;
       const q=priceAtTime(due); if(!q) continue;
+      if(q.lag>45000){ delete e.f[h]; L.voided++; changed=true; continue; }
       const models=e.f[h];
       for(const m of ["MART","GBM","OU","MOM","ENS"]){
         const F=models[m]; if(F===null||F===undefined||!isFinite(F)) continue;
@@ -471,8 +548,6 @@ function resolveLedger(now){
         L.coverage.total++;
         if(q.p>=models.glo&&q.p<=models.ghi) L.coverage.inBand++;
       }
-      S.resolvedNodes.push({due,F:models.ENS,R:q.p,glo:models.glo,ghi:models.ghi,born:now});
-      if(S.resolvedNodes.length>80) S.resolvedNodes.shift();
       L.lagN++; L.lagSum+=q.lag; L.lagMax=Math.max(L.lagMax,q.lag);
       L.lastRes[h]={due,R:q.p,P0:e.P0,ens:models.ENS};
       delete e.f[h]; L.resolved++; changed=true;
@@ -570,7 +645,8 @@ function renderMatrix(){
 function renderScore(){
   const L=S.ledger, tb=$("score").querySelector("tbody");
   const lag=L.lagN?(" · lag avg "+(L.lagSum/L.lagN/1000).toFixed(1)+"s max "+(L.lagMax/1000).toFixed(1)+"s"):"";
-  $("snote").textContent=L.resolved+" resolved · "+L.pending.length+" sets open"+lag;
+  const vd=L.voided?(" · voided "+L.voided):"";
+  $("snote").textContent=L.resolved+" resolved · "+L.pending.length+" sets open"+lag+vd;
   const MODELS=["MART","GBM","OU","MOM","ENS"];
   tb.innerHTML=HORIZONS.map(h=>{
     const base=L.stats["MART|"+h];
@@ -619,141 +695,145 @@ const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
 const yv={c:null,s:null};
-function soonestDues(){
-  const out={};
-  for(const h of HORIZONS){ let d=null;
-    for(const e of S.ledger.pending){
-      if(e.f[h]!==undefined){ const t=e.t0+h*60000; if(d===null||t<d) d=t; } }
-    if(d!==null) out[h]=d; }
-  return out;
-}
 function render(){
   const now=Date.now();
-  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=360;
-  if(cv.width!==Math.round(W*dpr)||cv.height!==H*dpr){cv.width=Math.round(W*dpr);cv.height=H*dpr;}
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
-  const xMin=-40, xMax=65, padL=8, padR=56, padT=14, padB=22;
+  const padL=8, padR=56, padT=16, padB=22;
   const iw=W-padL-padR, ih=H-padT-padB;
+  const spot=S.lastPx, E=S.epoch;
+  cx.font="9px "+FONT();
+  if(spot===null||!E){ cx.fillStyle="#50647E"; cx.fillText("awaiting first projection set…",padL+8,H/2); return; }
+  const xMin=0, xMax=62;
   const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
-  const pxPerMin=iw/(xMax-xMin);
-  const spot=S.lastPx;
-  if(spot===null){ cx.fillStyle="#50647E"; cx.font="11px "+FONT();
-    cx.fillText("awaiting data…",padL+8,H/2); return; }
-  const pin=S.pinnedCone||(S.fc?{t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone}:null);
+  const e=(now-E.t0)/60000;                    /* elapsed minutes in the period */
 
-  /* y-domain: spot pinned to vertical center; span covers candles + cone; eased */
-  let span=spot*0.0012;
+  /* cone percentiles at elapsed time */
+  const rowAt=i=>E.cone[Math.min(59,Math.max(0,i))];
+  const coneAt=s=>{
+    if(s<=0) return [E.P0,E.P0,E.P0,E.P0,E.P0];
+    if(s<1){ const B=rowAt(0); return B.map(v=>E.P0+(v-E.P0)*s); }
+    const a=Math.floor(s-1), f=Math.min(1,s-1-a);
+    const A=rowAt(a), B=rowAt(a+1);
+    return A.map((v,i)=>v+(B[i]-v)*f);
+  };
+  const cNow=coneAt(e);
+
+  /* y-domain: spot at center; pinch when tracking the band, spread on excursions */
+  const dev=Math.abs(spot-cNow[2]);
+  const edge=Math.max(cNow[4]-cNow[2],1e-9);
+  const track=Math.min(dev/edge,1.3)/1.3;      /* 0 = on median, 1 = at/over band edge */
+  const tail=E.cone[59];
+  const tight=Math.max(1.5*(cNow[4]-cNow[2]),spot*0.0008);
+  const wide=Math.max(Math.abs(tail[4]-spot),Math.abs(tail[0]-spot),tight);
+  let mustC=Math.abs(E.P0-spot);
   for(const k of S.barKeys){
-    const m=(k*60000-now)/60000; if(m<xMin) continue;
+    const m0=(k*60000-E.t0)/60000; if(m0<-1||m0>e) continue;
     const cd=S.candles.get(k); if(!cd) continue;
-    span=Math.max(span,Math.abs(cd.h-spot),Math.abs(cd.l-spot));
+    mustC=Math.max(mustC,Math.abs(cd.h-spot),Math.abs(cd.l-spot));
   }
-  if(pin){ const tail=pin.cone[pin.cone.length-1];
-    span=Math.max(span,Math.abs(tail[4]-spot),Math.abs(tail[0]-spot)); }
-  span*=1.12;
-  const kE=RM?1:0.1;
-  if(yv.c===null){ yv.c=spot; yv.s=span; }
-  else { yv.c+=(spot-yv.c)*kE; yv.s+=(span-yv.s)*kE; }
+  const target=Math.max(mustC*1.06, tight+(wide-tight)*track);
+  const kE=RM?1:0.06;
+  if(yv.c===null){ yv.c=spot; yv.s=target; }
+  else { yv.c+=(spot-yv.c)*kE; yv.s+=(target-yv.s)*kE; }
   const lo=yv.c-yv.s, hi=yv.c+yv.s;
   const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
 
-  /* grid */
-  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.font="9px "+FONT(); cx.textAlign="left";
-  for(let m=-30;m<=60;m+=30){ const x=X(m);
-    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke();
-    cx.fillStyle="#50647E";
-    cx.fillText(m===0?"now":(m>0?"+"+m+"m":m+"m"),x+3,H-8);
-  }
+  /* horizontal grid + true price labels */
+  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.textAlign="left";
   for(let i=0;i<=5;i++){ const p=lo+(hi-lo)*i/5, y=Y(p);
     cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
     cx.fillStyle="#50647E";
     cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
   }
-  /* center rail = current price */
   cx.strokeStyle="rgba(217,228,238,.18)"; cx.setLineDash([1,3]);
   cx.beginPath();cx.moveTo(padL,Y(spot));cx.lineTo(padL+iw,Y(spot));cx.stroke();
   cx.setLineDash([]);
 
-  /* due-lines: pinned wall-clock targets drifting toward NOW; pulse in last 30s */
-  const dues=soonestDues();
+  /* interval marks mapped to wall clock; unresolved marks pulse in final 30 s */
+  cx.fillStyle="#50647E"; cx.fillText(timeStr(E.t0),padL+2,H-8);
   for(const h of HORIZONS){
-    const due=dues[h]; if(due===undefined) continue;
-    const m=(due-now)/60000; if(m<xMin||m>xMax) continue;
-    const tto=due-now;
+    const due=E.t0+h*60000, x=X(h), tto=due-now;
     let a=0.22;
-    if(tto>0&&tto<=30000) a=RM?0.5:(0.3+0.3*(0.5+0.5*Math.sin(now/170)));
+    if(!E.res[h]&&tto>0&&tto<=30000) a=RM?0.5:(0.3+0.3*(0.5+0.5*Math.sin(now/170)));
     cx.strokeStyle="rgba(229,161,60,"+a+")"; cx.setLineDash([2,5]); cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(X(m),padT);cx.lineTo(X(m),padT+ih);cx.stroke();
-    cx.setLineDash([]);
-    cx.fillStyle="rgba(229,161,60,.75)";
-    cx.fillText("+"+h,X(m)+2,padT+9);
+    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke(); cx.setLineDash([]);
+    cx.fillStyle="rgba(229,161,60,.75)"; cx.textAlign="center";
+    cx.fillText(timeStr(due),x,H-8); cx.textAlign="left";
   }
 
-  /* pinned cone — anchored at its set's t0; the part behind NOW gets overlaid by candles */
-  if(pin){
-    const x0c=(pin.t0-now)/60000;
-    const band=(li,hiI,fill)=>{
-      cx.beginPath(); cx.moveTo(X(x0c),Y(pin.P0));
-      for(let s=0;s<pin.cone.length;s++) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][hiI]));
-      for(let s=pin.cone.length-1;s>=0;s--) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][li]));
-      cx.closePath(); cx.fillStyle=fill; cx.fill();
-    };
-    cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
-    band(0,4,"rgba(229,161,60,.13)");
-    band(1,3,"rgba(229,161,60,.19)");
-    cx.beginPath(); cx.moveTo(X(x0c),Y(pin.P0));
-    for(let s=0;s<pin.cone.length;s++) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][2]));
-    cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
-    cx.restore();
-  }
-
-  /* candles: 1-min median OHLC, painting over the cone's elapsed region */
-  const cw=Math.max(1.5,pxPerMin*0.62);
   cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
+
+  /* pinned cone spanning the whole period */
+  const band=(li,hiI,fill)=>{
+    cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
+    for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][hiI]));
+    for(let s=E.cone.length-1;s>=0;s--) cx.lineTo(X(s+1),Y(E.cone[s][li]));
+    cx.closePath(); cx.fillStyle=fill; cx.fill();
+  };
+  band(0,4,"rgba(229,161,60,.13)");
+  band(1,3,"rgba(229,161,60,.19)");
+  cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
+  for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][2]));
+  cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
+
+  /* candles inside the period */
+  const cw=Math.max(1.8,(iw/(xMax-xMin))*0.62);
   for(const k of S.barKeys){
-    const m=(k*60000-now)/60000+0.5;          /* center of the minute */
-    if(m<xMin-1) continue;
+    const m0=(k*60000-E.t0)/60000;
+    if(m0<-1||m0>xMax) continue;
     const cd=S.candles.get(k); if(!cd) continue;
-    const upC=cd.c>=cd.o, col=upC?"#66B18D":"#CD6E5C";
-    const x=X(m);
+    const x=X(m0+0.5), col=cd.c>=cd.o?"#66B18D":"#CD6E5C";
     cx.strokeStyle=col; cx.lineWidth=1;
-    cx.beginPath(); cx.moveTo(x,Y(cd.h)); cx.lineTo(x,Y(cd.l)); cx.stroke();
-    const yO=Y(cd.o), yC=Y(cd.c);
-    const top=Math.min(yO,yC), hgt=Math.max(1,Math.abs(yC-yO));
+    cx.beginPath();cx.moveTo(x,Y(cd.h));cx.lineTo(x,Y(cd.l));cx.stroke();
+    const yO=Y(cd.o), yC=Y(cd.c), top=Math.min(yO,yC), hgt=Math.max(1,Math.abs(yC-yO));
     cx.fillStyle=col; cx.fillRect(x-cw/2,top,cw,hgt);
+  }
+
+  /* live median line (recent minutes) + head */
+  const cutoff=now-240000;
+  cx.beginPath(); let started=false;
+  for(const tk of S.ticks){
+    if(tk.t<cutoff||tk.t<E.t0) continue;
+    const x=X((tk.t-E.t0)/60000), y=Y(tk.p);
+    started?cx.lineTo(x,y):(cx.moveTo(x,y),started=true);
+  }
+  if(started){ cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.3; cx.stroke(); }
+  const pulse=RM?1:(0.85+0.15*Math.sin(now/300));
+  cx.fillStyle="#D9E4EE";
+  cx.beginPath();cx.arc(X(Math.min(e,xMax)),Y(spot),3*pulse,0,7);cx.fill();
+
+  /* verdict nodes at the period's marks */
+  for(const h of HORIZONS){
+    const rr=E.res[h]; if(!rr||rr.void) continue;
+    const f=E.F[h], x=X(h);
+    const g=RM?1:Math.min(1,(now-rr.born)/400), ez=1-(1-g)*(1-g);
+    if(f.ENS!==null&&isFinite(f.ENS)){
+      cx.strokeStyle="rgba(120,138,158,.5)"; cx.lineWidth=1;
+      cx.beginPath();cx.moveTo(x,Y(f.ENS));cx.lineTo(x,Y(rr.R));cx.stroke();
+      cx.strokeStyle=rr.inB?"#66B18D":"#CD6E5C"; cx.lineWidth=1.4;
+      cx.beginPath();cx.arc(x,Y(f.ENS),4*ez,0,7);cx.stroke();
+    }
+    cx.fillStyle="#D9E4EE";
+    cx.beginPath();cx.arc(x,Y(rr.R),2.4*ez,0,7);cx.fill();
   }
   cx.restore();
 
-  /* resolution nodes: ring = projection (green inside its 90% band, red outside), dot = realized */
-  for(const n of S.resolvedNodes){
-    const m=(n.due-now)/60000; if(m<xMin) continue;
-    const g=RM?1:Math.min(1,(now-n.born)/400);
-    const ease=1-(1-g)*(1-g);
-    const x=X(m);
-    const inB=isFinite(n.glo)&&isFinite(n.ghi)&&n.R>=n.glo&&n.R<=n.ghi;
-    if(n.F!==null&&isFinite(n.F)){
-      cx.strokeStyle="rgba(120,138,158,.5)"; cx.lineWidth=1;
-      cx.beginPath();cx.moveTo(x,Y(n.F));cx.lineTo(x,Y(n.R));cx.stroke();
-      cx.strokeStyle=inB?"#66B18D":"#CD6E5C"; cx.lineWidth=1.4;
-      cx.beginPath();cx.arc(x,Y(n.F),4*ease,0,7);cx.stroke();
-    }
-    cx.fillStyle="#D9E4EE";
-    cx.beginPath();cx.arc(x,Y(n.R),2.4*ease,0,7);cx.fill();
-  }
-
-  /* NOW divider + labels + coverage verdict */
-  const x0=X(0);
+  /* sweep cursor + top labels */
+  const xC=X(Math.min(e,xMax));
   cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
-  cx.beginPath();cx.moveTo(x0,padT);cx.lineTo(x0,padT+ih);cx.stroke();
-  cx.fillStyle="#50647E"; cx.textAlign="right"; cx.fillText("MEASURED",x0-5,padT+9);
-  cx.textAlign="left"; cx.fillStyle="#9A742F"; cx.fillText("PROJECTED",x0+5,padT+9);
-  const cov=S.ledger.coverage;
-  if(cov.total>0){
-    cx.textAlign="right"; cx.fillStyle="rgba(229,161,60,.8)";
-    cx.fillText("band coverage "+cov.inBand+"/"+cov.total+" · "
-      +Math.round(100*cov.inBand/cov.total)+"% (target 90%)",padL+iw-4,padT+9);
-    cx.textAlign="left";
+  cx.beginPath();cx.moveTo(xC,padT);cx.lineTo(xC,padT+ih);cx.stroke();
+  if(xC<padL+iw-250){
+    cx.fillStyle="#50647E"; cx.textAlign="right"; cx.fillText("MEASURED",Math.max(xC-5,padL+58),padT+9);
+    cx.textAlign="left"; cx.fillStyle="#9A742F"; cx.fillText("PROJECTED",xC+5,padT+9);
   }
+  const cov=S.ledger.coverage;
+  cx.fillStyle="rgba(229,161,60,.8)"; cx.textAlign="right";
+  cx.fillText("PERIOD "+timeStr(E.t0)+"–"+timeStr(E.t0+3600000)
+    +(cov.total>0?("  ·  band coverage "+cov.inBand+"/"+cov.total+" · "+Math.round(100*cov.inBand/cov.total)+"% (target 90%)"):""),
+    padL+iw-4,padT+9);
+  cx.textAlign="left";
 }
 let _lastFrame=0;
 function loop(ts){
@@ -769,16 +849,22 @@ $("pauseBtn").addEventListener("click",()=>{
   if(S.paused) stopPolling(); else startPolling();
   renderSources();
 });
+$("viewBtn").addEventListener("click",()=>{
+  const on=document.body.classList.toggle("showData");
+  $("viewBtn").textContent=on?"CHART":"DATA";
+  $("viewBtn").setAttribute("aria-pressed",String(on));
+});
 function onBarClose(){ recomputeForecast(true); }
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
+  epochTick(Date.now());
   renderSources(); renderCommit();
 },1000);
 setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
 requestAnimationFrame(loop);
 
 (async function init(){
-  renderSources(); renderMatrix(); renderScore(); renderCommit();
+  renderSources(); renderMatrix(); renderScore(); renderCommit(); renderEpochLog();
   await seed();
   startPolling();
   setTimeout(()=>recomputeForecast(true),2500);
