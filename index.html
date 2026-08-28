@@ -121,10 +121,12 @@
     <div id="chartbox">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--meas)"></span>measured (median)</span>
-        <span><span class="sw" style="background:var(--model)"></span>projected median (GBM)</span>
+        <span><span class="sw" style="background:var(--up)"></span>up candle</span>
+        <span><span class="sw" style="background:var(--down)"></span>down candle</span>
+        <span><span class="sw" style="background:var(--model)"></span>pinned projection</span>
         <span><span class="sw" style="background:rgba(229,161,60,.35)"></span>P25–P75</span>
         <span><span class="sw" style="background:rgba(229,161,60,.16)"></span>P5–P95</span>
+        <span>○ projected · ● realized — ring green inside the 90% band, red outside</span>
       </div>
     </div>
   </section>
@@ -181,6 +183,15 @@
       the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
       pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
       but accountability runs on the pinned sets.</p>
+    <p><b>Chart.</b> Wicks are 1-minute OHLC of the consensus median (green up, red down); the y-axis keeps
+      current price at vertical center with the band spreading symmetrically. The projection cone is pinned to
+      its minute's set — it does not re-base with the display — so as time passes the candles advance into it
+      and paint over the elapsed region: agreement is visible where wicks stay inside amber. Due-lines drift
+      toward the NOW divider and brighten in their final 30 s; on crossing, a verdict node is minted — ring at
+      the projection, dot at the realized price, ring green when the print landed inside that set's 90% band.
+      The running band-coverage figure against its 90% target is the calibration verdict. Honest framing:
+      point-forecast confidence is capped by the martingale property; what can be demonstrated to resolve
+      accurately is the dispersion, and that is what the nodes audit.</p>
     <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
       At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
       σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
@@ -237,13 +248,16 @@ const S={
   src:{},               // id -> {price,t,latency,status,errN}
   ticks:[],             // [{t,p}] median stream, ~5s
   bars:new Map(),       // minuteKey -> close (median)
+  candles:new Map(),    // minuteKey -> {o,h,l,c} (median OHLC)
   barKeys:[],           // sorted minute keys
+  pinnedCone:null,      // {t0,P0,cone} — snapshot at each logged set, holds for the minute
+  resolvedNodes:[],     // [{due,F,R,glo,ghi,born}] verdict trail for the chart
   seedInfo:"",
   paused:false,
   timers:[],
   fc:null,              // forecast bundle
   lastFcAt:0,
-  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0},
+  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0,coverage:{inBand:0,total:0}},
   lastPx:null,
 };
 SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
@@ -297,9 +311,12 @@ function onPrice(){
   if(!last || t-last.t>=1500){ S.ticks.push({t,p}); if(S.ticks.length>6000) S.ticks.splice(0,1000); }
   else last.p=p;
   const mk=Math.floor(t/60000);
+  const cd=S.candles.get(mk);
+  if(cd){ cd.h=Math.max(cd.h,p); cd.l=Math.min(cd.l,p); cd.c=p; }
+  else S.candles.set(mk,{o:p,h:p,l:p,c:p});
   if(!S.bars.has(mk)){
     S.bars.set(mk,p); S.barKeys.push(mk); S.barKeys.sort((a,b)=>a-b);
-    if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k);}
+    if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k); S.candles.delete(k);}
     onBarClose();                       // previous minute finalized
   }else S.bars.set(mk,p);
   resolveLedger(t);
@@ -320,6 +337,7 @@ async function seed(){
     const rows=j.result[key];
     const use=rows.slice(-181,-1);      // drop in-progress candle
     for(const row of use){ const mk=Math.floor(row[0]/60); S.bars.set(mk,+row[4]);
+      S.candles.set(mk,{o:+row[1],h:+row[2],l:+row[3],c:+row[4]});
       if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
     S.barKeys.sort((a,b)=>a-b);
     S.seedInfo="seeded: Kraken 1-min OHLC ×"+use.length;
@@ -328,6 +346,7 @@ async function seed(){
       const r=await fetch("https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=180",{cache:"no-store"});
       const j=await r.json(); const rows=j.data.ohlc.slice(0,-1);
       for(const row of rows){ const mk=Math.floor(+row.timestamp/60); S.bars.set(mk,+row.close);
+        S.candles.set(mk,{o:+row.open,h:+row.high,l:+row.low,c:+row.close});
         if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
       S.barKeys.sort((a,b)=>a-b);
       S.seedInfo="seeded: Bitstamp 1-min OHLC ×"+rows.length;
@@ -405,7 +424,7 @@ function recomputeForecast(force){
   }
   S.fc={t0:now,P0,cone,rows,sig:st.sig,nBars:st.nBars,ouOn:!!st.ou};
   maybeLogLedger();
-  renderMatrix(); drawChart();
+  renderMatrix();
 }
 
 /* ---------------------------------------------------------------- ledger */
@@ -416,9 +435,10 @@ function maybeLogLedger(){
   const f={};
   for(const h of HORIZONS){
     const r=S.fc.rows[h];
-    f[h]={MART:r.mart.f,GBM:r.gbm.f,OU:r.ou,MOM:r.mom,ENS:r.ens};
+    f[h]={MART:r.mart.f,GBM:r.gbm.f,OU:r.ou,MOM:r.mom,ENS:r.ens,glo:r.gbm.lo,ghi:r.gbm.hi};
   }
   S.ledger.pending.push({t0:S.fc.t0,P0:S.fc.P0,f});
+  S.pinnedCone={t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone};
   if(S.ledger.pending.length>300) S.ledger.pending.shift();
 }
 function priceAtTime(ts){
@@ -438,8 +458,8 @@ function resolveLedger(now){
       if(now<due) continue;
       const q=priceAtTime(due); if(!q) continue;
       const models=e.f[h];
-      for(const m of Object.keys(models)){
-        const F=models[m]; if(F===null||!isFinite(F)) continue;
+      for(const m of ["MART","GBM","OU","MOM","ENS"]){
+        const F=models[m]; if(F===null||F===undefined||!isFinite(F)) continue;
         const st=L.stats[m+"|"+h]||(L.stats[m+"|"+h]={n:0,sumAbs:0,dn:0,dh:0});
         st.n++; st.sumAbs+=Math.abs(bp(q.p,F));
         const call=bp(F,e.P0), real=bp(q.p,e.P0);
@@ -447,6 +467,12 @@ function resolveLedger(now){
           st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++;
         }
       }
+      if(isFinite(models.glo)&&isFinite(models.ghi)){
+        L.coverage.total++;
+        if(q.p>=models.glo&&q.p<=models.ghi) L.coverage.inBand++;
+      }
+      S.resolvedNodes.push({due,F:models.ENS,R:q.p,glo:models.glo,ghi:models.ghi,born:now});
+      if(S.resolvedNodes.length>80) S.resolvedNodes.shift();
       L.lagN++; L.lagSum+=q.lag; L.lagMax=Math.max(L.lagMax,q.lag);
       L.lastRes[h]={due,R:q.p,P0:e.P0,ens:models.ENS};
       delete e.f[h]; L.resolved++; changed=true;
@@ -590,86 +616,149 @@ function renderCommit(){
 
 /* ---------------------------------------------------------------- chart */
 const cv=$("chart"), cx=cv.getContext("2d");
-function drawChart(){
-  const dpr=window.devicePixelRatio||1;
-  const W=cv.clientWidth, H=340;
-  if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
-  cx.setTransform(dpr,0,0,dpr,0,0);
-  cx.clearRect(0,0,W,H);
-  const now=Date.now(), xMin=-90, xMax=65, padL=8, padR=54, padT=12, padB=22;
+const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
+const FONT=()=>getComputedStyle(document.body).fontFamily;
+const yv={c:null,s:null};
+function soonestDues(){
+  const out={};
+  for(const h of HORIZONS){ let d=null;
+    for(const e of S.ledger.pending){
+      if(e.f[h]!==undefined){ const t=e.t0+h*60000; if(d===null||t<d) d=t; } }
+    if(d!==null) out[h]=d; }
+  return out;
+}
+function render(){
+  const now=Date.now();
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=360;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==H*dpr){cv.width=Math.round(W*dpr);cv.height=H*dpr;}
+  cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
+  const xMin=-40, xMax=65, padL=8, padR=56, padT=14, padB=22;
   const iw=W-padL-padR, ih=H-padT-padB;
   const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
-
-  // history points (minutes offset, price)
-  const hist=[];
-  const cur=Math.floor(now/60000);
-  for(const k of S.barKeys){ const m=(k*60000-now)/60000;
-    if(m>=xMin&&k<cur) hist.push([m,S.bars.get(k)]); }
-  for(const tk of S.ticks){ const m=(tk.t-now)/60000; if(m>=xMin) hist.push([m,tk.p]); }
-  hist.sort((a,b)=>a[0]-b[0]);
-
-  let lo=Infinity,hi=-Infinity;
-  for(const p of hist){lo=Math.min(lo,p[1]);hi=Math.max(hi,p[1]);}
-  if(S.fc){for(const c of S.fc.cone){lo=Math.min(lo,c[0]);hi=Math.max(hi,c[4]);}}
-  if(!isFinite(lo)){ cx.fillStyle="#50647E";cx.font="11px monospace";
+  const pxPerMin=iw/(xMax-xMin);
+  const spot=S.lastPx;
+  if(spot===null){ cx.fillStyle="#50647E"; cx.font="11px "+FONT();
     cx.fillText("awaiting data…",padL+8,H/2); return; }
-  const span=Math.max(hi-lo,1e-6); lo-=span*.08; hi+=span*.08;
+  const pin=S.pinnedCone||(S.fc?{t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone}:null);
+
+  /* y-domain: spot pinned to vertical center; span covers candles + cone; eased */
+  let span=spot*0.0012;
+  for(const k of S.barKeys){
+    const m=(k*60000-now)/60000; if(m<xMin) continue;
+    const cd=S.candles.get(k); if(!cd) continue;
+    span=Math.max(span,Math.abs(cd.h-spot),Math.abs(cd.l-spot));
+  }
+  if(pin){ const tail=pin.cone[pin.cone.length-1];
+    span=Math.max(span,Math.abs(tail[4]-spot),Math.abs(tail[0]-spot)); }
+  span*=1.12;
+  const kE=RM?1:0.1;
+  if(yv.c===null){ yv.c=spot; yv.s=span; }
+  else { yv.c+=(spot-yv.c)*kE; yv.s+=(span-yv.s)*kE; }
+  const lo=yv.c-yv.s, hi=yv.c+yv.s;
   const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
 
-  // grid
-  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.font="9px "+getComputedStyle(document.body).fontFamily;
-  cx.textAlign="left";
-  for(let m=-90;m<=60;m+=30){ const x=X(m);
+  /* grid */
+  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.font="9px "+FONT(); cx.textAlign="left";
+  for(let m=-30;m<=60;m+=30){ const x=X(m);
     cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke();
     cx.fillStyle="#50647E";
     cx.fillText(m===0?"now":(m>0?"+"+m+"m":m+"m"),x+3,H-8);
   }
-  const yt=5;
-  for(let i=0;i<=yt;i++){ const p=lo+(hi-lo)*i/yt, y=Y(p);
+  for(let i=0;i<=5;i++){ const p=lo+(hi-lo)*i/5, y=Y(p);
     cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
     cx.fillStyle="#50647E";
     cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
   }
+  /* center rail = current price */
+  cx.strokeStyle="rgba(217,228,238,.18)"; cx.setLineDash([1,3]);
+  cx.beginPath();cx.moveTo(padL,Y(spot));cx.lineTo(padL+iw,Y(spot));cx.stroke();
+  cx.setLineDash([]);
 
-  // cone
-  if(S.fc){
-    const P0=S.fc.P0, cone=S.fc.cone;
+  /* due-lines: pinned wall-clock targets drifting toward NOW; pulse in last 30s */
+  const dues=soonestDues();
+  for(const h of HORIZONS){
+    const due=dues[h]; if(due===undefined) continue;
+    const m=(due-now)/60000; if(m<xMin||m>xMax) continue;
+    const tto=due-now;
+    let a=0.22;
+    if(tto>0&&tto<=30000) a=RM?0.5:(0.3+0.3*(0.5+0.5*Math.sin(now/170)));
+    cx.strokeStyle="rgba(229,161,60,"+a+")"; cx.setLineDash([2,5]); cx.lineWidth=1;
+    cx.beginPath();cx.moveTo(X(m),padT);cx.lineTo(X(m),padT+ih);cx.stroke();
+    cx.setLineDash([]);
+    cx.fillStyle="rgba(229,161,60,.75)";
+    cx.fillText("+"+h,X(m)+2,padT+9);
+  }
+
+  /* pinned cone — anchored at its set's t0; the part behind NOW gets overlaid by candles */
+  if(pin){
+    const x0c=(pin.t0-now)/60000;
     const band=(li,hiI,fill)=>{
-      cx.beginPath(); cx.moveTo(X(0),Y(P0));
-      for(let s=0;s<cone.length;s++) cx.lineTo(X(s+1),Y(cone[s][hiI]));
-      for(let s=cone.length-1;s>=0;s--) cx.lineTo(X(s+1),Y(cone[s][li]));
+      cx.beginPath(); cx.moveTo(X(x0c),Y(pin.P0));
+      for(let s=0;s<pin.cone.length;s++) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][hiI]));
+      for(let s=pin.cone.length-1;s>=0;s--) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][li]));
       cx.closePath(); cx.fillStyle=fill; cx.fill();
     };
-    band(0,4,"rgba(229,161,60,.14)");
-    band(1,3,"rgba(229,161,60,.20)");
-    cx.strokeStyle="rgba(229,161,60,.28)"; cx.setLineDash([2,5]); cx.lineWidth=1;
-    for(const h of HORIZONS){ cx.beginPath(); cx.moveTo(X(h),padT); cx.lineTo(X(h),padT+ih); cx.stroke(); }
-    cx.setLineDash([]);
-    cx.beginPath(); cx.moveTo(X(0),Y(P0));
-    for(let s=0;s<cone.length;s++) cx.lineTo(X(s+1),Y(cone[s][2]));
+    cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
+    band(0,4,"rgba(229,161,60,.13)");
+    band(1,3,"rgba(229,161,60,.19)");
+    cx.beginPath(); cx.moveTo(X(x0c),Y(pin.P0));
+    for(let s=0;s<pin.cone.length;s++) cx.lineTo(X(x0c+s+1),Y(pin.cone[s][2]));
     cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
-    // ensemble markers
-    cx.fillStyle="#E5A13C";
-    for(const h of HORIZONS){ const e=S.fc.rows[h].ens;
-      cx.beginPath();cx.arc(X(h),Y(e),2.6,0,7);cx.fill(); }
+    cx.restore();
   }
 
-  // history trace
-  if(hist.length>1){
-    cx.beginPath();
-    hist.forEach((p,i)=>{const x=X(Math.min(p[0],0)),y=Y(p[1]); i?cx.lineTo(x,y):cx.moveTo(x,y);});
-    cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.5; cx.stroke();
+  /* candles: 1-min median OHLC, painting over the cone's elapsed region */
+  const cw=Math.max(1.5,pxPerMin*0.62);
+  cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
+  for(const k of S.barKeys){
+    const m=(k*60000-now)/60000+0.5;          /* center of the minute */
+    if(m<xMin-1) continue;
+    const cd=S.candles.get(k); if(!cd) continue;
+    const upC=cd.c>=cd.o, col=upC?"#66B18D":"#CD6E5C";
+    const x=X(m);
+    cx.strokeStyle=col; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(x,Y(cd.h)); cx.lineTo(x,Y(cd.l)); cx.stroke();
+    const yO=Y(cd.o), yC=Y(cd.c);
+    const top=Math.min(yO,yC), hgt=Math.max(1,Math.abs(yC-yO));
+    cx.fillStyle=col; cx.fillRect(x-cw/2,top,cw,hgt);
+  }
+  cx.restore();
+
+  /* resolution nodes: ring = projection (green inside its 90% band, red outside), dot = realized */
+  for(const n of S.resolvedNodes){
+    const m=(n.due-now)/60000; if(m<xMin) continue;
+    const g=RM?1:Math.min(1,(now-n.born)/400);
+    const ease=1-(1-g)*(1-g);
+    const x=X(m);
+    const inB=isFinite(n.glo)&&isFinite(n.ghi)&&n.R>=n.glo&&n.R<=n.ghi;
+    if(n.F!==null&&isFinite(n.F)){
+      cx.strokeStyle="rgba(120,138,158,.5)"; cx.lineWidth=1;
+      cx.beginPath();cx.moveTo(x,Y(n.F));cx.lineTo(x,Y(n.R));cx.stroke();
+      cx.strokeStyle=inB?"#66B18D":"#CD6E5C"; cx.lineWidth=1.4;
+      cx.beginPath();cx.arc(x,Y(n.F),4*ease,0,7);cx.stroke();
+    }
+    cx.fillStyle="#D9E4EE";
+    cx.beginPath();cx.arc(x,Y(n.R),2.4*ease,0,7);cx.fill();
   }
 
-  // NOW divider
+  /* NOW divider + labels + coverage verdict */
   const x0=X(0);
   cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
   cx.beginPath();cx.moveTo(x0,padT);cx.lineTo(x0,padT+ih);cx.stroke();
-  cx.fillStyle="#50647E"; cx.textAlign="right";
-  cx.fillText("MEASURED",x0-5,padT+9);
-  cx.textAlign="left"; cx.fillStyle="#9A742F";
-  cx.fillText("PROJECTED",x0+5,padT+9);
-  cx.textAlign="left";
+  cx.fillStyle="#50647E"; cx.textAlign="right"; cx.fillText("MEASURED",x0-5,padT+9);
+  cx.textAlign="left"; cx.fillStyle="#9A742F"; cx.fillText("PROJECTED",x0+5,padT+9);
+  const cov=S.ledger.coverage;
+  if(cov.total>0){
+    cx.textAlign="right"; cx.fillStyle="rgba(229,161,60,.8)";
+    cx.fillText("band coverage "+cov.inBand+"/"+cov.total+" · "
+      +Math.round(100*cov.inBand/cov.total)+"% (target 90%)",padL+iw-4,padT+9);
+    cx.textAlign="left";
+  }
+}
+let _lastFrame=0;
+function loop(ts){
+  if(ts-_lastFrame>33){ _lastFrame=ts; render(); }
+  requestAnimationFrame(loop);
 }
 
 /* ---------------------------------------------------------------- clock / loop */
@@ -686,8 +775,7 @@ setInterval(()=>{
   renderSources(); renderCommit();
 },1000);
 setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
-setInterval(drawChart,2000);
-new ResizeObserver(()=>drawChart()).observe(cv);
+requestAnimationFrame(loop);
 
 (async function init(){
   renderSources(); renderMatrix(); renderScore(); renderCommit();
