@@ -142,14 +142,26 @@
   </section>
 
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Scorecard — resolved forecasts</span>
-      <span class="note num" id="snote">0 resolved</span></div>
-    <div class="tblwrap"><table id="score">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Interval commitments — pinned to wall clock</span>
+      <span class="note num" id="cnote"></span></div>
+    <div class="tblwrap"><table id="commit">
       <thead><tr>
-        <th>Model</th><th>n</th><th>MAE (bp)</th><th>vs. benchmark</th><th>Direction calls</th><th>Hit rate</th>
+        <th>Horizon</th><th>Due</th><th>T−</th><th class="model">Ensemble pinned</th><th>Last realized</th><th>Ens error</th>
       </tr></thead>
       <tbody></tbody>
     </table></div>
+  </section>
+
+  <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Scorecard — accuracy per interval</span>
+      <span class="note num" id="snote">0 resolved</span></div>
+    <div class="tblwrap"><table id="score">
+      <thead><tr>
+        <th>Horizon</th><th>Martingale</th><th class="model">GBM</th><th class="model">OU</th><th class="model">Momentum</th><th class="model">Ensemble</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = MAE bp · direction hit · n — green beats the martingale at that interval, red trails it</div>
   </section>
 
   <div id="method">
@@ -163,6 +175,12 @@
       <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
       reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
       <b>Ensemble</b>: median of available point forecasts.</p>
+    <p><b>Interval discipline.</b> Every minute one forecast set is pinned to five wall-clock due times.
+      Realized price at each due instant is linearly interpolated from the tick series (never a late sample;
+      residual resolution lag is reported in the scorecard header). Accuracy is scored per interval —
+      the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
+      pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
+      but accountability runs on the pinned sets.</p>
     <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
       At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
       σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
@@ -225,7 +243,7 @@ const S={
   timers:[],
   fc:null,              // forecast bundle
   lastFcAt:0,
-  ledger:{pending:[],stats:{},lastLog:0,resolved:0},
+  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0},
   lastPx:null,
 };
 SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
@@ -284,7 +302,7 @@ function onPrice(){
     if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k);}
     onBarClose();                       // previous minute finalized
   }else S.bars.set(mk,p);
-  resolveLedger(p,t);
+  resolveLedger(t);
   renderSpot(p);
 }
 function closesExcludingCurrent(){
@@ -403,28 +421,39 @@ function maybeLogLedger(){
   S.ledger.pending.push({t0:S.fc.t0,P0:S.fc.P0,f});
   if(S.ledger.pending.length>300) S.ledger.pending.shift();
 }
-function resolveLedger(px,now){
+function priceAtTime(ts){
+  const T=S.ticks; if(!T.length||T[T.length-1].t<ts) return null;
+  let j=T.length-1; while(j>0&&T[j-1].t>=ts) j--;
+  if(j===0) return {p:T[0].p,lag:Math.max(0,T[0].t-ts)};
+  const a=T[j-1],b=T[j];
+  if(b.t-a.t<=30000){const f=(ts-a.t)/(b.t-a.t);return {p:a.p+f*(b.p-a.p),lag:0};}
+  return {p:b.p,lag:b.t-ts};
+}
+function resolveLedger(now){
   const L=S.ledger; let changed=false;
   for(let i=L.pending.length-1;i>=0;i--){
     const e=L.pending[i];
     for(const h of Object.keys(e.f)){
-      if(now>=e.t0+h*60000){
-        const models=e.f[h];
-        for(const m of Object.keys(models)){
-          const F=models[m]; if(F===null||!isFinite(F)) continue;
-          const st=L.stats[m]||(L.stats[m]={n:0,sumAbs:0,dn:0,dh:0});
-          st.n++; st.sumAbs+=Math.abs(bp(px,F));
-          const call=bp(F,e.P0), real=bp(px,e.P0);
-          if(Math.abs(call)>=0.5 && Math.abs(real)>=0.01){
-            st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++;
-          }
+      const due=e.t0+h*60000;
+      if(now<due) continue;
+      const q=priceAtTime(due); if(!q) continue;
+      const models=e.f[h];
+      for(const m of Object.keys(models)){
+        const F=models[m]; if(F===null||!isFinite(F)) continue;
+        const st=L.stats[m+"|"+h]||(L.stats[m+"|"+h]={n:0,sumAbs:0,dn:0,dh:0});
+        st.n++; st.sumAbs+=Math.abs(bp(q.p,F));
+        const call=bp(F,e.P0), real=bp(q.p,e.P0);
+        if(Math.abs(call)>=0.5 && Math.abs(real)>=0.01){
+          st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++;
         }
-        delete e.f[h]; L.resolved++; changed=true;
       }
+      L.lagN++; L.lagSum+=q.lag; L.lagMax=Math.max(L.lagMax,q.lag);
+      L.lastRes[h]={due,R:q.p,P0:e.P0,ens:models.ENS};
+      delete e.f[h]; L.resolved++; changed=true;
     }
     if(Object.keys(e.f).length===0) L.pending.splice(i,1);
   }
-  if(changed) renderScore();
+  if(changed){ renderScore(); renderCommit(); }
 }
 
 /* ---------------------------------------------------------------- rendering */
@@ -502,7 +531,7 @@ function renderMatrix(){
     +(ouOn?"reversion on":"reversion off")+" · refreshed "+new Date(S.fc.t0).toLocaleTimeString();
   tb.innerHTML=HORIZONS.map(h=>{
     const r=rows[h];
-    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'
+    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m<span class="sub">'+new Date(S.fc.t0+h*60000).toLocaleTimeString()+'</span></td>'
       +'<td class="num">'+fmtUSD.format(r.mart.f)
         +'<span class="sub">±'+((1e4*Math.log(r.mart.hi/r.mart.f))).toFixed(0)+'bp (90%)</span></td>'
       +cellF(r.gbm.f,P0,' · ['+fmtUSD.format(r.gbm.lo)+' – '+fmtUSD.format(r.gbm.hi)+']')
@@ -513,22 +542,50 @@ function renderMatrix(){
   }).join("");
 }
 function renderScore(){
-  const st=S.ledger.stats, tb=$("score").querySelector("tbody");
-  $("snote").textContent=S.ledger.resolved+" resolved · "+S.ledger.pending.length+" pending";
-  const order=[["MART","Martingale (benchmark)"],["GBM","GBM · MC median"],["OU","OU reversion"],["MOM","Momentum"],["ENS","Ensemble"]];
-  const base=st.MART&&st.MART.n?st.MART.sumAbs/st.MART.n:null;
-  tb.innerHTML=order.map(([k,label])=>{
-    const s=st[k];
-    if(!s||!s.n) return '<tr><td>'+label+'</td><td class="num">0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>';
-    const mae=s.sumAbs/s.n;
-    let vs="—";
-    if(k!=="MART"&&base!==null){
-      const d=mae-base; vs='<span class="'+(d<=0?"up":"down")+'">'+(d<=0?"":"+")+d.toFixed(1)+'bp</span>';
-    }
-    const hit=s.dn?((100*s.dh/s.dn).toFixed(0)+"%"):"—";
-    return '<tr><td>'+label+'</td><td class="num">'+s.n+'</td><td class="num">'+mae.toFixed(1)+'</td>'
-      +'<td class="num">'+vs+'</td><td class="num">'+(s.dn||"—")+'</td><td class="num">'+hit+'</td></tr>';
+  const L=S.ledger, tb=$("score").querySelector("tbody");
+  const lag=L.lagN?(" · lag avg "+(L.lagSum/L.lagN/1000).toFixed(1)+"s max "+(L.lagMax/1000).toFixed(1)+"s"):"";
+  $("snote").textContent=L.resolved+" resolved · "+L.pending.length+" sets open"+lag;
+  const MODELS=["MART","GBM","OU","MOM","ENS"];
+  tb.innerHTML=HORIZONS.map(h=>{
+    const base=L.stats["MART|"+h];
+    const baseMae=(base&&base.n)?base.sumAbs/base.n:null;
+    const cells=MODELS.map(k=>{
+      const s=L.stats[k+"|"+h];
+      if(!s||!s.n) return '<td style="color:var(--faint)">—</td>';
+      const mae=s.sumAbs/s.n;
+      let col="";
+      if(k!=="MART"&&baseMae!==null) col=' style="color:var(--'+(mae<baseMae?"up":"down")+')"';
+      const hit=s.dn?Math.round(100*s.dh/s.dn)+"%":"—";
+      return '<td class="num"'+col+'>'+mae.toFixed(1)+'<span class="sub">'+hit+' · n'+s.n+'</span></td>';
+    }).join("");
+    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'+cells+'</tr>';
   }).join("");
+}
+function renderCommit(){
+  const tb=$("commit").querySelector("tbody"), now=Date.now();
+  tb.innerHTML=HORIZONS.map(h=>{
+    let best=null;
+    for(const e of S.ledger.pending){
+      if(e.f[h]!==undefined){ const due=e.t0+h*60000;
+        if(best===null||due<best.due) best={due,e}; }
+    }
+    let open='<td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td>';
+    if(best){
+      const ms=Math.max(0,best.due-now), mm=Math.floor(ms/60000), ss=Math.floor(ms%60000/1000);
+      const F=best.e.f[h].ENS;
+      open='<td class="num">'+new Date(best.due).toLocaleTimeString()+'</td>'
+        +'<td class="num amber">'+mm+':'+String(ss).padStart(2,"0")+'</td>'
+        +'<td class="num model">'+fmtUSD.format(F)+'<span class="sub">'+fmtBp(bp(F,best.e.P0))+'</span></td>';
+    }
+    const r=S.ledger.lastRes[h];
+    let res='<td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td>';
+    if(r&&r.ens!==null&&isFinite(r.ens)){
+      res='<td class="num">'+fmtUSD.format(r.R)+'<span class="sub">'+new Date(r.due).toLocaleTimeString()+'</span></td>'
+        +'<td class="num" style="color:var(--dim)">'+fmtBp(bp(r.R,r.ens))+'</td>';
+    }
+    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'+open+res+'</tr>';
+  }).join("");
+  $("cnote").textContent=S.ledger.pending.length?("sets open: "+S.ledger.pending.length):"first set logs at next forecast";
 }
 
 /* ---------------------------------------------------------------- chart */
@@ -585,6 +642,9 @@ function drawChart(){
     };
     band(0,4,"rgba(229,161,60,.14)");
     band(1,3,"rgba(229,161,60,.20)");
+    cx.strokeStyle="rgba(229,161,60,.28)"; cx.setLineDash([2,5]); cx.lineWidth=1;
+    for(const h of HORIZONS){ cx.beginPath(); cx.moveTo(X(h),padT); cx.lineTo(X(h),padT+ih); cx.stroke(); }
+    cx.setLineDash([]);
     cx.beginPath(); cx.moveTo(X(0),Y(P0));
     for(let s=0;s<cone.length;s++) cx.lineTo(X(s+1),Y(cone[s][2]));
     cx.strokeStyle="#E5A13C"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
@@ -623,14 +683,14 @@ $("pauseBtn").addEventListener("click",()=>{
 function onBarClose(){ recomputeForecast(true); }
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
-  renderSources();
+  renderSources(); renderCommit();
 },1000);
 setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
 setInterval(drawChart,2000);
 new ResizeObserver(()=>drawChart()).observe(cv);
 
 (async function init(){
-  renderSources(); renderMatrix(); renderScore();
+  renderSources(); renderMatrix(); renderScore(); renderCommit();
   await seed();
   startPolling();
   setTimeout(()=>recomputeForecast(true),2500);
