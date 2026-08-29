@@ -177,7 +177,7 @@
 </div>
     <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
-      <input id="strikeIn" inputmode="decimal" placeholder="strike — revealed at open" aria-label="strike price">
+      <input id="strikeIn" inputmode="decimal" placeholder="strike — USD level" aria-label="strike price">
       <span class="tgl" role="group" aria-label="call direction">
         <button id="callAbove" class="sel">ABOVE</button><button id="callBelow">BELOW</button>
       </span>
@@ -189,11 +189,11 @@
     <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--up)"></span>price above strike</span>
-        <span><span class="sw" style="background:var(--down)"></span>below strike</span>
+        <span><span class="sw" style="background:var(--up)"></span>above strike / rising</span>
+        <span><span class="sw" style="background:var(--down)"></span>below strike / falling</span>
         <span><span class="sw" style="background:var(--model)"></span>strike (dashed) · axis tag = level + odds at set time</span>
-        <span>right gauge · live over/under split</span>
-        <span>single feed line · settlement verified across all feeds (DATA)</span>
+        <span>ghost fields = strike territories · right gauge = live over/under</span>
+        <span>line = validated tape (lowest-latency, peer-confirmed — no aggregation)</span>
       </div>
     </div>
   </section>
@@ -207,40 +207,8 @@
     <div id="seednote" class="lbl" style="margin-top:6px;letter-spacing:.08em"></div>
   </section>
 
-  <section class="tile">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Forecast matrix</span>
-      <span class="note num" id="fnote">warming up</span></div>
-    <div class="tblwrap"><table id="matrix">
-      <thead><tr>
-        <th>Horizon</th><th>Martingale</th><th class="model">GBM · MC</th>
-        <th class="model">OU reversion</th><th class="model">Momentum</th><th class="model">Ensemble</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table></div>
-  </section>
 
-  <section class="tile">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Interval commitments — pinned to wall clock</span>
-      <span class="note num" id="cnote"></span></div>
-    <div class="tblwrap"><table id="commit">
-      <thead><tr>
-        <th>Horizon</th><th>Due</th><th>T−</th><th class="model">Ensemble pinned</th><th>Last realized</th><th>Ens error</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table></div>
-  </section>
 
-  <section class="tile">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Scorecard — accuracy per interval</span>
-      <span class="note num" id="snote">0 resolved</span></div>
-    <div class="tblwrap"><table id="score">
-      <thead><tr>
-        <th>Horizon</th><th>Martingale</th><th class="model">GBM</th><th class="model">OU</th><th class="model">Momentum</th><th class="model">Ensemble</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table></div>
-    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = MAE bp · direction hit · n — green beats the martingale at that interval, red trails it</div>
-  </section>
 
   <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Interval analysis — completed 15-min windows</span>
@@ -263,82 +231,40 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">outcome = ≥⅔ of fresh sources on one side of that strike at expiry · disputed = strike inside the spread · void = under two voters · withdrawn = pulled before settle, logged, untallied</div>
   </section>
 
-  <section class="tile">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Period log — 60-minute epochs</span>
-      <span class="note num" id="enote">0 completed</span></div>
-    <div class="tblwrap"><table id="epochlog">
-      <thead><tr><th>Period</th><th class="model">+5m</th><th class="model">+10m</th><th class="model">+15m</th><th class="model">+30m</th><th class="model">+60m</th><th>In band</th></tr></thead>
-      <tbody></tbody>
-    </table></div>
-    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = ensemble error at resolution (bp) — green landed inside the 90% band, red outside</div>
-  </section>
 
   <div id="method" class="tile">
-    <p><b>Aggregation.</b> Spot = median of sources fresher than 20 s. Sources polled every 5 s
-      (CoinGecko 60 s; it is itself a composite index). Binance.com excluded: HTTP 451 geo-block for US clients.</p>
-    <p><b>Seeding.</b> Return statistics are initialized from Kraken 1-minute OHLC (last ~180 bars),
-      then rolled forward from live 1-minute bars of the median.</p>
-    <p><b>Models.</b> Volatility: EWMA (RiskMetrics, λ = 0.94) on 1-min log returns.
-      <b>Martingale</b>: E[P] = spot; 90% band = ±1.645·σ√h. <b>GBM</b>: 1,500 Monte-Carlo paths,
-      drift = mean of last 120 one-min returns; cone = per-step percentiles.
-      <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
-      reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
-      <b>Ensemble</b>: median of available point forecasts.</p>
-    <p><b>Chart.</b> Two states. With strikes armed, the frame is the round: \u22125 minutes of context, the
-      window phased 5-5-5 with clock-mapped majors and minute minors, dollar gridlines that rescale with the
-      zoom. The plot is a single designated feed \u2014 Coinbase primary, failing over down the source order \u2014
-      trend-colored (rising green, falling red over a 45 s lookback). The y-scale belongs to the price line alone. Each armed strike draws as a dashed Bondi line inside it,
-      denoted on the price axis by a tag carrying its level and the probability frozen at placement with the
-      arm offset; strikes outside the price range appear as edge markers in the gutter and never stretch the
-      scale. The most recent strike is active — drawn heavier, carrying the live OVER/UNDER pair and the
-      right-edge gauge. At settlement each strike line ends in a verdict ring
-      and per-source dots print at the expiry mark. Idle, the frame is a rolling 15-minute trend view with the
-      current window named. The projection engine runs unseen and reports to this page.</p>
-    <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange — sub-second prints, throttled to
-      ~0.4 s history density — with automatic reconnect and backoff and a 15 s silence watchdog. REST polling
-      continues as cross-verification: full 3 s cadence when a socket is down, relaxed to ~12 s while it is
-      healthy; a REST print disputing its own socket by more than 25 bp flags the source as drift rather than
-      overwriting it. No socket, no problem — the source degrades to REST transparently, and settlement votes
-      only ever use prints fresh within 10 s regardless of transport.</p>
-    <p><b>Strike probabilities.</b> While a round is live, three classical estimators read the chance the
-      settlement lands above the armed strike, recomputed each second as time-to-expiry decays: the analytic
-      lognormal (the Black-Scholes digital probability under the EWMA volatility, martingale drift), a
-      drift-adjusted variant tilted by the capped momentum estimate, and an empirical read — the historical
-      frequency of τ-minute moves exceeding the required distance, taken from the recorded bar series with no
-      distributional assumption (overlapping samples; effective n is smaller than it looks). The analytic and
-      drift estimators are hour-anchored: the series is back-traced to the start of the containing hour, and the
-      hour's own realized volatility and trend blend in with shrinkage weight n/(n+15) \u2014 the long-memory EWMA
-      dominates early in the hour, the hour's regime dominates late, and every hour resets the lineage clean at
-      :00 so all four phases share one analytical origin. The empirical estimator stays on the trailing pool for
-      sample breadth. The headline OVER
-      and UNDER figures are the median of the three; the per-model breakdown (with live anchor state) reports
-      below the rounds table.
-      These are distribution reads under stated assumptions, not signals: drift moves the number by a few
-      hundredths at these horizons, and saturation toward 0/100 near expiry with price pinned is the correct
-      shape, not confidence. The final pre-settle read is logged per round and colored by whether it sided with
-      the outcome — the probability engine is audited like everything else.</p>
-    <p><b>Rounds.</b> A round is a 15-minute quarter-hour window, phased 5-5-5. Strikes arm at any moment
-      inside the running window up to 5 s before settlement \u2014 up to six per window, each with its own call,
-      arm timestamp, and the engine's odds captured at placement (a strike armed at T+13 is a different object
-      than one at T+1, and the record says so). Strikes withdraw freely, but withdrawals log as WITHDRAWN with
-      their last probability and are excluded from the hit tally \u2014 the record cannot be gardened. All live
-      strikes settle together at the quarter-hour sharp, each by its own \u2265\u2154 multi-source vote against its own
-      level; splits settle DISPUTED, under two voters VOID. The window open is reconstructed from recorded
-      prints at the boundary instant when the first strike arms. Each settled window writes an interval-analysis
-      row \u2014 open, close, \u0394, realized range from the primary feed, strikes and hits \u2014 and the trend map above
-      that table reads the recent sequence. Calls tally against the 50% coin; logs are session-scoped.</p>
-    <p><b>Interval discipline.</b> Every minute one forecast set is pinned to five wall-clock due times.
-      Realized price at each due instant is linearly interpolated from the tick series (never a late sample;
-      residual resolution lag is reported in the scorecard header). If no tick exists within 45 s of a due
-      instant — a suspended tab, a feed outage — that resolution is voided, not scored. Accuracy is scored per interval —
-      the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
-      pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
-      but accountability runs on the pinned sets.</p>
-    <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
-      At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
-      σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
-      The informative output is the dispersion (cone), not the direction. Nothing here is trading advice;
-      the scorecard exists to measure these models against live data rather than assert their skill.</p>
+    <p><b>Tape.</b> The plotted price is a lowest-latency validated tape: every arriving print — WebSocket or
+      REST, whichever lands newest — must be confirmed by at least one other fresh source within 25 bp before
+      joining; unconfirmed prints are quarantined and the source flagged <i>outlier</i>. No median, no
+      aggregation: the sources validate each other and the freshest confirmed print is the price. The internal
+      volatility series builds from the same tape at 1-minute resolution, seeded from Kraken OHLC at load.</p>
+    <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange with reconnect, backoff, and a 15 s
+      silence watchdog; REST cross-verifies at 3 s (relaxed to ~12 s while a socket is healthy) and a REST print
+      disputing its own socket by &gt;25 bp flags <i>drift</i>. Settlement uses only prints fresh within 10 s.</p>
+    <p><b>Rounds.</b> Intervals open on global time — quarter-hour wall-clock boundaries, phased 5-5-5. One
+      strike per window, armable at any moment to T−5 s; arming over an existing strike replaces it and the
+      prior is logged WITHDRAWN with its last odds — the record cannot be gardened. The window open is
+      reconstructed from recorded prints at the exact boundary; settlement is a ≥⅔ vote of fresh feeds against
+      the strike at the quarter-hour sharp (split → DISPUTED, under two voters → VOID). Calls tally against the
+      50% coin. Each settled window writes an interval-analysis row (open, close, Δ, realized range, strikes,
+      hits) and the trend map reads the recent sequence. Logs are session-scoped.</p>
+    <p><b>Strike probabilities.</b> Three classical estimators read P(settle above strike) each second: the
+      analytic lognormal digital under EWMA volatility with martingale drift, a drift-adjusted variant, and an
+      empirical read from historical τ-minute moves (trailing pool, overlapping samples). The analytic and
+      drift estimators are hour-anchored — the series back-traces to the start of the containing hour, blending
+      the hour's own realized volatility and trend with shrinkage weight n/(n+15), resetting clean at :00 so all
+      four phases share one analytical origin; anchor state reports live below the rounds table. Headline OVER
+      and UNDER are the median of the three; the odds at placement are frozen into each strike's record.
+      Saturation toward 0/100 near expiry with price pinned is correct shape, not confidence. Nothing here is
+      trading advice.</p>
+    <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
+      the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
+      dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
+      ghost-tinted green above the strike and red below, the tape color-keyed to its side. The y-scale dilates
+      instantly to contain jumps and contracts slowly when calm, and from mid-window a close-weight tightens
+      the frame around the price–strike duel so resolution reads with increasing confidence toward the mark.
+      Idle, the frame is the rolling tape, trend-colored. Dollar gridlines are always true; the zoom is
+      presentation only.</p>
   </div>
   </div>
 </div>
@@ -384,19 +310,16 @@ const SOURCES=[
   url:"https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
   parse:j=>+j.bitcoin.usd},
 ];
-const FRESH_MS=20000, HORIZONS=[5,10,15,30,60];
+const FRESH_MS=20000;
 const EXCH=["coinbase","kraken","gemini","binanceus","bitstamp","bitfinex"];
 const BRAID=["#0B4F6C","#0E6E8C","#1489A6","#22A3BC","#45B7CC","#6FCADB"];
 
 /* ---------------------------------------------------------------- state */
 const S={
   src:{},               // id -> {price,t,latency,status,errN}
-  ticks:[],             // [{t,p}] median stream, ~5s
+  tape:[],              // validated lowest-latency prints {t,p,src}
   bars:new Map(),       // minuteKey -> close (median)
-  candles:new Map(),    // minuteKey -> {o,h,l,c} (median OHLC)
   barKeys:[],           // sorted minute keys
-  epoch:null,           // {t0,P0,cone,F:{h:{ENS,glo,ghi}},res:{h:{R,inB,err}}} — the fixed 60-min frame
-  epochLog:[],          // completed periods
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
   intervalLog:[],       // per-window aggregates for trend analysis
   strikeSeq:0,
@@ -406,9 +329,6 @@ const S={
   seedInfo:"",
   paused:false,
   timers:[],
-  fc:null,              // forecast bundle
-  lastFcAt:0,
-  ledger:{pending:[],stats:{},lastLog:0,resolved:0,lastRes:{},lagN:0,lagSum:0,lagMax:0,coverage:{inBand:0,total:0},voided:0},
   lastPx:null,
 };
 SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
@@ -444,7 +364,7 @@ function ingest(id,p){
   st.lastHistT=now;
   st.hist=st.hist||[]; st.hist.push({t:now,p});
   if(st.hist.length>2600) st.hist.splice(0,400);
-  onPrice();
+  acceptPrint(id,p,now);
 }
 function connectWS(f,attempt){
   if(S.paused) return;
@@ -491,7 +411,7 @@ async function poll(src){
     st.status="ok"; st.errN=0;
     st.hist=st.hist||[]; st.hist.push({t:st.t,p});
     if(st.hist.length>2600) st.hist.splice(0,400);
-    onPrice();
+    acceptPrint(src.id,p,Date.now());
   }catch(e){
     const st=S.src[src.id]; st.errN++;
     st.status=(e.name==="AbortError")?"timeout":
@@ -509,34 +429,30 @@ function startPolling(){
 function stopPolling(){ S.timers.forEach(clearTimeout); S.timers.forEach(clearInterval); S.timers=[]; }
 
 /* ---------------------------------------------------------------- aggregation */
-function freshPrices(){
-  const now=Date.now(), out=[];
-  for(const s of SOURCES){const st=S.src[s.id];
-    if(st.price!==null && now-st.t<FRESH_MS) out.push(st.price);}
-  return out;
-}
-function medianSpot(){
-  const f=freshPrices().slice().sort((a,b)=>a-b);
-  if(f.length<1) return null;
-  const m=f.length>>1;
-  return f.length%2 ? f[m] : (f[m-1]+f[m])/2;
-}
-function onPrice(){
-  const p=medianSpot(); if(p===null) return;
-  const t=Date.now();
-  const last=S.ticks[S.ticks.length-1];
-  if(!last || t-last.t>=1500){ S.ticks.push({t,p}); if(S.ticks.length>6000) S.ticks.splice(0,1000); }
-  else last.p=p;
+function acceptPrint(id,p,t){
+  if(!isFinite(p)||p<=0) return;
+  /* peer validation: confirmed by at least one other fresh source within 25bp */
+  let peers=0, ok=false;
+  for(const o of EXCH){
+    if(o===id) continue;
+    const st=S.src[o];
+    if(st.price!==null && t-st.t<=10000){
+      peers++;
+      if(Math.abs(1e4*Math.log(p/st.price))<=25) ok=true;
+    }
+  }
+  if(peers>0&&!ok){ S.src[id].status="outlier"; return; }
+  const last=S.tape[S.tape.length-1];
+  if(!last||t-last.t>=250){
+    S.tape.push({t,p,src:id});
+    if(S.tape.length>4800) S.tape.splice(0,800);
+  } else { last.p=p; last.t=t; last.src=id; }
+  S.lastPx=p;
   const mk=Math.floor(t/60000);
-  const cd=S.candles.get(mk);
-  if(cd){ cd.h=Math.max(cd.h,p); cd.l=Math.min(cd.l,p); cd.c=p; }
-  else S.candles.set(mk,{o:p,h:p,l:p,c:p});
   if(!S.bars.has(mk)){
     S.bars.set(mk,p); S.barKeys.push(mk); S.barKeys.sort((a,b)=>a-b);
-    if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k); S.candles.delete(k);}
-    onBarClose();                       // previous minute finalized
-  }else S.bars.set(mk,p);
-  resolveLedger(t);
+    if(S.barKeys.length>360){const k=S.barKeys.shift(); S.bars.delete(k);}
+  } else S.bars.set(mk,p);
   renderSpot(p);
 }
 function closesExcludingCurrent(){
@@ -554,7 +470,6 @@ async function seed(){
     const rows=j.result[key];
     const use=rows.slice(-181,-1);      // drop in-progress candle
     for(const row of use){ const mk=Math.floor(row[0]/60); S.bars.set(mk,+row[4]);
-      S.candles.set(mk,{o:+row[1],h:+row[2],l:+row[3],c:+row[4]});
       if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
     S.barKeys.sort((a,b)=>a-b);
     S.seedInfo="seeded: Kraken 1-min OHLC ×"+use.length;
@@ -563,7 +478,6 @@ async function seed(){
       const r=await fetch("https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=180",{cache:"no-store"});
       const j=await r.json(); const rows=j.data.ohlc.slice(0,-1);
       for(const row of rows){ const mk=Math.floor(+row.timestamp/60); S.bars.set(mk,+row.close);
-        S.candles.set(mk,{o:+row.open,h:+row.high,l:+row.low,c:+row.close});
         if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
       S.barKeys.sort((a,b)=>a-b);
       S.seedInfo="seeded: Bitstamp 1-min OHLC ×"+rows.length;
@@ -580,29 +494,12 @@ function computeStats(){
   const r=[]; for(let i=1;i<c.length;i++) r.push(Math.log(c[i]/c[i-1]));
   const rWin=r.slice(-240);
   const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
-  const muSlow=mean(r.slice(-120));
-  // EWMA variance, seeded with sample variance
   const m0=mean(rWin); let v=mean(rWin.map(x=>(x-m0)*(x-m0)))||1e-10;
   const L=0.94; for(const x of rWin) v=L*v+(1-L)*x*x;
   const sig=Math.sqrt(Math.max(v,1e-12));
-  // fast EWMA drift, half-life 10 min
   const a=1-Math.pow(2,-1/10); let muFast=r[0];
   for(let i=1;i<r.length;i++) muFast=a*r[i]+(1-a)*muFast;
-  // OU: through-origin AR(1) on deviation from 30-bar log SMA
-  let ou=null;
-  if(c.length>=70){
-    const lp=c.map(Math.log), xs=[];
-    for(let i=29;i<lp.length;i++){ let s=0; for(let k=i-29;k<=i;k++)s+=lp[k];
-      xs.push(lp[i]-s/30); }
-    const P=xs.slice(-150); let num=0,den=0;
-    for(let i=1;i<P.length;i++){ num+=P[i]*P[i-1]; den+=P[i-1]*P[i-1]; }
-    if(den>0){ const b=num/den;
-      if(b>0 && b<0.999 && P.length>=40){
-        let s=0; const tail=c.slice(-30).map(Math.log); for(const x of tail)s+=x;
-        ou={b, sma:s/30};
-      } }
-  }
-  return {sig,muSlow,muFast,ou,nBars:closes.length};
+  return {sig,muFast,nBars:closes.length};
 }
 
 /* ---------------------------------------------------------------- rounds (15-min strike windows) */
@@ -704,13 +601,14 @@ function armRound(){
     captureOpensAt(R);
     S.round=R;
   }
-  if(activeStrikes(R).length>=6){ armMsg("strike cap (6) reached for this window"); return; }
+  const prev=activeStrikes(R);
+  for(const p0 of prev){ p0.withdrawn=true; p0.outcome="WITHDRAWN"; p0.tW=now; logStrike(R,p0); }
   const sk={id:++S.strikeSeq,strike:v,call:S.callSel,tArm:now,
     probAtArm:null,prob:null,probFinal:null,outcome:null,hit:null,up:undefined,dn:undefined,withdrawn:false};
   const P=strikeProbs({strike:v,tEnd:R.tEnd},now);
   if(P){ sk.probAtArm=P.over; sk.prob=P; sk.probFinal=P.over; }
   R.strikes.push(sk);
-  armMsg("armed "+fmtUSD.format(v)+" "+sk.call+" at T+"+mmss(now-lastB));
+  armMsg((prev.length?"replaced \u2014 prior logged WITHDRAWN \u00b7 ":"")+"armed "+fmtUSD.format(v)+" "+sk.call+" at T+"+mmss(now-lastB));
   renderArmBar();
 }
 function withdrawStrike(id){
@@ -818,7 +716,7 @@ function renderProbNote(){
     el.textContent=P?("active "+fmtUSD.format(sk.strike)+" \u2014 analytic "+f(P.anl)
       +" \u00b7 drift "+f(P.drf)+" \u00b7 empirical "+f(P.emp)
       +" \u00b7 headline "+Math.round(P.over*100)+"%"+anchor
-      +" \u00b7 strikes live "+act.length):"";
+      ):"";
   } else el.textContent="";
 }
 function mmss(ms){ ms=Math.max(0,ms);
@@ -830,7 +728,7 @@ function renderArmBar(){
   const tail=nb-now<5000;
   const act=(R&&R.state==="live"&&R.tStart===lastB)?activeStrikes(R):[];
   let s="OPEN "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 settles in "+mmss(nb-now)
-    +" \u00b7 strikes "+act.length+"/6";
+    +(act.length?(" \u00b7 strike "+fmtUSD.format(act[0].strike)+" "+act[0].call):" \u00b7 strike \u2014");
   if(R&&R.state==="settled") s="SETTLED \u00b7 "+s;
   if(tail) s="SETTLING \u00b7 window "+timeStr(nb)+" opens next";
   st.textContent=s;
@@ -898,152 +796,17 @@ function renderIntervals(){
   }).join("");
 }
 
-/* ---------------------------------------------------------------- epoch (fixed 60-min frame) */
+/* ---------------------------------------------------------------- time */
 const timeStr=t=>new Date(t).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-function ensureEpoch(){
-  if(S.epoch||!S.fc) return;
-  const F={};
-  for(const h of HORIZONS){ const r=S.fc.rows[h];
-    F[h]={ENS:r.ens,glo:r.gbm.lo,ghi:r.gbm.hi}; }
-  S.epoch={t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone,F,res:{}};
-}
-function epochTick(now){
-  const E=S.epoch; if(!E) return;
-  for(const h of HORIZONS){
-    if(E.res[h]) continue;
-    const due=E.t0+h*60000; if(now<due) continue;
-    const q=priceAtTime(due); if(!q) continue;
-    if(q.lag>45000){ E.res[h]={void:true,born:now}; continue; }
-    const f=E.F[h];
-    E.res[h]={R:q.p,err:bp(q.p,f.ENS),
-      inB:isFinite(f.glo)&&isFinite(f.ghi)&&q.p>=f.glo&&q.p<=f.ghi,born:now};
-  }
-  const end=E.t0+3600000;
-  if((E.res[60]&&now>=end)||now>=end+90000) rollEpoch(now);
-}
-function rollEpoch(now){
-  const E=S.epoch; if(!E) return;
-  S.epochLog.unshift({t0:E.t0,res:E.res});
-  if(S.epochLog.length>24) S.epochLog.pop();
-  S.epoch=null;
-  renderEpochLog();
-  recomputeForecast(true);          // fresh anchor set for the new period
-  ensureEpoch();
-}
-function renderEpochLog(){
-  const tb=$("epochlog").querySelector("tbody");
-  $("enote").textContent=S.epochLog.length+" completed";
-  tb.innerHTML=S.epochLog.map(E=>{
-    let inB=0,n=0;
-    const cells=HORIZONS.map(h=>{
-      const r=E.res[h];
-      if(!r) return '<td style="color:var(--faint)">—</td>';
-      if(r.void) return '<td style="color:var(--faint)">gap</td>';
-      n++; if(r.inB) inB++;
-      return '<td class="num" style="color:var(--'+(r.inB?"up":"down")+')">'+fmtBp(r.err)+'</td>';
-    }).join("");
-    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(E.t0)+'–'+timeStr(E.t0+3600000)+'</td>'
-      +cells+'<td class="num">'+inB+'/'+n+'</td></tr>';
-  }).join("");
-}
 
 /* ---------------------------------------------------------------- forecasting */
-function simulateCone(P0,mu,sig,steps,M){
-  const paths=new Float64Array(M).fill(P0), cone=[];
-  const drift=mu-0.5*sig*sig;
-  for(let s=0;s<steps;s++){
-    for(let m=0;m<M;m++) paths[m]*=Math.exp(drift+sig*randn());
-    const srt=Float64Array.from(paths).sort();
-    cone.push([quantile(srt,.05),quantile(srt,.25),quantile(srt,.5),quantile(srt,.75),quantile(srt,.95)]);
-  }
-  return cone;
-}
-function recomputeForecast(force){
-  const now=Date.now();
-  if(!force && now-S.lastFcAt<20000) return;
-  const P0=medianSpot(); const st=computeStats();
-  if(P0===null||!st){ renderMatrix(); return; }
-  S.lastFcAt=now;
-  const cone=simulateCone(P0,st.muSlow,st.sig,60,1500);
-  const rows={};
-  for(const h of HORIZONS){
-    const sh=st.sig*Math.sqrt(h), z=1.645;
-    const mart={f:P0, lo:P0*Math.exp(-z*sh), hi:P0*Math.exp(z*sh)};
-    const g=cone[h-1];
-    const gbm={f:g[2], lo:g[0], hi:g[4]};
-    let ouF=null;
-    if(st.ou){ const x0=Math.log(P0)-st.ou.sma;
-      ouF=Math.exp(st.ou.sma + x0*Math.pow(st.ou.b,h)); }
-    const mom=P0*Math.exp(clamp(st.muFast*h,-2.5*sh,2.5*sh));
-    const pts=[P0,gbm.f,mom]; if(ouF!==null)pts.push(ouF);
-    pts.sort((a,b)=>a-b);
-    const m=pts.length>>1;
-    const ens=pts.length%2?pts[m]:(pts[m-1]+pts[m])/2;
-    rows[h]={mart,gbm,ou:ouF,mom,ens};
-  }
-  S.fc={t0:now,P0,cone,rows,sig:st.sig,nBars:st.nBars,ouOn:!!st.ou};
-  maybeLogLedger();
-  ensureEpoch();
-  renderMatrix();
-}
 
 /* ---------------------------------------------------------------- ledger */
-function maybeLogLedger(){
-  const now=Date.now();
-  if(!S.fc || now-S.ledger.lastLog<60000) return;
-  S.ledger.lastLog=now;
-  const f={};
-  for(const h of HORIZONS){
-    const r=S.fc.rows[h];
-    f[h]={MART:r.mart.f,GBM:r.gbm.f,OU:r.ou,MOM:r.mom,ENS:r.ens,glo:r.gbm.lo,ghi:r.gbm.hi};
-  }
-  S.ledger.pending.push({t0:S.fc.t0,P0:S.fc.P0,f});
-  if(S.ledger.pending.length>300) S.ledger.pending.shift();
-}
-function priceAtTime(ts){
-  const T=S.ticks; if(!T.length||T[T.length-1].t<ts) return null;
-  let j=T.length-1; while(j>0&&T[j-1].t>=ts) j--;
-  if(j===0) return {p:T[0].p,lag:Math.max(0,T[0].t-ts)};
-  const a=T[j-1],b=T[j];
-  if(b.t-a.t<=30000){const f=(ts-a.t)/(b.t-a.t);return {p:a.p+f*(b.p-a.p),lag:0};}
-  return {p:b.p,lag:b.t-ts};
-}
-function resolveLedger(now){
-  const L=S.ledger; let changed=false;
-  for(let i=L.pending.length-1;i>=0;i--){
-    const e=L.pending[i];
-    for(const h of Object.keys(e.f)){
-      const due=e.t0+h*60000;
-      if(now<due) continue;
-      const q=priceAtTime(due); if(!q) continue;
-      if(q.lag>45000){ delete e.f[h]; L.voided++; changed=true; continue; }
-      const models=e.f[h];
-      for(const m of ["MART","GBM","OU","MOM","ENS"]){
-        const F=models[m]; if(F===null||F===undefined||!isFinite(F)) continue;
-        const st=L.stats[m+"|"+h]||(L.stats[m+"|"+h]={n:0,sumAbs:0,dn:0,dh:0});
-        st.n++; st.sumAbs+=Math.abs(bp(q.p,F));
-        const call=bp(F,e.P0), real=bp(q.p,e.P0);
-        if(Math.abs(call)>=0.5 && Math.abs(real)>=0.01){
-          st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++;
-        }
-      }
-      if(isFinite(models.glo)&&isFinite(models.ghi)){
-        L.coverage.total++;
-        if(q.p>=models.glo&&q.p<=models.ghi) L.coverage.inBand++;
-      }
-      L.lagN++; L.lagSum+=q.lag; L.lagMax=Math.max(L.lagMax,q.lag);
-      L.lastRes[h]={due,R:q.p,P0:e.P0,ens:models.ENS};
-      delete e.f[h]; L.resolved++; changed=true;
-    }
-    if(Object.keys(e.f).length===0) L.pending.splice(i,1);
-  }
-  if(changed){ renderScore(); renderCommit(); }
-}
 
 /* ---------------------------------------------------------------- rendering */
 function priceAgo(ms){
-  const target=Date.now()-ms;
-  for(let i=S.ticks.length-1;i>=0;i--) if(S.ticks[i].t<=target) return S.ticks[i].p;
+  const target=Date.now()-ms, T=S.tape;
+  for(let i=T.length-1;i>=0;i--) if(T[i].t<=target) return T[i].p;
   const mk=Math.floor(target/60000);
   for(let k=mk;k>=mk-3;k--) if(S.bars.has(k)) return S.bars.get(k);
   return null;
@@ -1066,7 +829,7 @@ function renderSpot(p){
 }
 function renderSources(){
   const now=Date.now(); let live=0;
-  const med=medianSpot();
+  const med=S.lastPx;
   $("srcrows").innerHTML=SOURCES.map(s=>{
     const st=S.src[s.id];
     let dot="err",ptxt="—",dev="—",lat="—",age="—";
@@ -1101,80 +864,6 @@ function renderSources(){
     b.textContent="All sources unreachable — likely a sandbox network policy, not the endpoints. Save this file and open it in a regular browser; every API used is keyless and CORS-open.";
   }else b.style.display="none";
 }
-function cellF(F,P0,extra){
-  if(F===null||!isFinite(F)) return '<td class="model" style="color:var(--faint)">—<span class="sub">no signal</span></td>';
-  return '<td class="model num">'+fmtUSD.format(F)+'<span class="sub">'+fmtBp(bp(F,P0))+(extra||"")+'</span></td>';
-}
-function renderMatrix(){
-  const tb=$("matrix").querySelector("tbody");
-  if(!S.fc){
-    const n=closesExcludingCurrent().length;
-    $("fnote").textContent="warming: "+n+"/16 bars";
-    tb.innerHTML='<tr><td colspan="6" style="color:var(--faint)">Accumulating return history…</td></tr>';
-    return;
-  }
-  const {rows,P0,sig,ouOn}=S.fc;
-  $("fnote").textContent="P₀ "+fmtUSD.format(P0)+" · σ₁ₘ "+(1e4*sig).toFixed(1)+"bp · "
-    +(ouOn?"reversion on":"reversion off")+" · refreshed "+new Date(S.fc.t0).toLocaleTimeString();
-  tb.innerHTML=HORIZONS.map(h=>{
-    const r=rows[h];
-    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m<span class="sub">'+new Date(S.fc.t0+h*60000).toLocaleTimeString()+'</span></td>'
-      +'<td class="num">'+fmtUSD.format(r.mart.f)
-        +'<span class="sub">±'+((1e4*Math.log(r.mart.hi/r.mart.f))).toFixed(0)+'bp (90%)</span></td>'
-      +cellF(r.gbm.f,P0,' · ['+fmtUSD.format(r.gbm.lo)+' – '+fmtUSD.format(r.gbm.hi)+']')
-      +cellF(r.ou,P0)
-      +cellF(r.mom,P0)
-      +cellF(r.ens,P0)
-      +'</tr>';
-  }).join("");
-}
-function renderScore(){
-  const L=S.ledger, tb=$("score").querySelector("tbody");
-  const lag=L.lagN?(" · lag avg "+(L.lagSum/L.lagN/1000).toFixed(1)+"s max "+(L.lagMax/1000).toFixed(1)+"s"):"";
-  const vd=L.voided?(" · voided "+L.voided):"";
-  $("snote").textContent=L.resolved+" resolved · "+L.pending.length+" sets open"+lag+vd;
-  const MODELS=["MART","GBM","OU","MOM","ENS"];
-  tb.innerHTML=HORIZONS.map(h=>{
-    const base=L.stats["MART|"+h];
-    const baseMae=(base&&base.n)?base.sumAbs/base.n:null;
-    const cells=MODELS.map(k=>{
-      const s=L.stats[k+"|"+h];
-      if(!s||!s.n) return '<td style="color:var(--faint)">—</td>';
-      const mae=s.sumAbs/s.n;
-      let col="";
-      if(k!=="MART"&&baseMae!==null) col=' style="color:var(--'+(mae<baseMae?"up":"down")+')"';
-      const hit=s.dn?Math.round(100*s.dh/s.dn)+"%":"—";
-      return '<td class="num"'+col+'>'+mae.toFixed(1)+'<span class="sub">'+hit+' · n'+s.n+'</span></td>';
-    }).join("");
-    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'+cells+'</tr>';
-  }).join("");
-}
-function renderCommit(){
-  const tb=$("commit").querySelector("tbody"), now=Date.now();
-  tb.innerHTML=HORIZONS.map(h=>{
-    let best=null;
-    for(const e of S.ledger.pending){
-      if(e.f[h]!==undefined){ const due=e.t0+h*60000;
-        if(best===null||due<best.due) best={due,e}; }
-    }
-    let open='<td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td>';
-    if(best){
-      const ms=Math.max(0,best.due-now), mm=Math.floor(ms/60000), ss=Math.floor(ms%60000/1000);
-      const F=best.e.f[h].ENS;
-      open='<td class="num">'+new Date(best.due).toLocaleTimeString()+'</td>'
-        +'<td class="num amber">'+mm+':'+String(ss).padStart(2,"0")+'</td>'
-        +'<td class="num model">'+fmtUSD.format(F)+'<span class="sub">'+fmtBp(bp(F,best.e.P0))+'</span></td>';
-    }
-    const r=S.ledger.lastRes[h];
-    let res='<td style="color:var(--faint)">—</td><td style="color:var(--faint)">—</td>';
-    if(r&&r.ens!==null&&isFinite(r.ens)){
-      res='<td class="num">'+fmtUSD.format(r.R)+'<span class="sub">'+new Date(r.due).toLocaleTimeString()+'</span></td>'
-        +'<td class="num" style="color:var(--dim)">'+fmtBp(bp(r.R,r.ens))+'</td>';
-    }
-    return '<tr><td class="num" style="color:var(--dim)">+'+h+'m</td>'+open+res+'</tr>';
-  }).join("");
-  $("cnote").textContent=S.ledger.pending.length?("sets open: "+S.ledger.pending.length):"first set logs at next forecast";
-}
 
 /* ---------------------------------------------------------------- chart */
 const cv=$("chart"), cx=cv.getContext("2d");
@@ -1206,114 +895,139 @@ function yGrid(F,lo,hi,Y){
   }
   cx.font="9px "+FONT();
 }
-const yv={c:null,s:null};
+function headerRow(F,leftTxt,rightTxt){
+  cx.font="9px "+FONT();
+  const rw=cx.measureText(rightTxt).width;
+  while(leftTxt.indexOf("\u00b7")>=0 && cx.measureText(leftTxt).width+rw+18>F.iw)
+    leftTxt=leftTxt.slice(0,leftTxt.lastIndexOf("\u00b7")).trim();
+  if(cx.measureText(leftTxt).width+rw+18>F.iw) leftTxt="";
+  cx.fillStyle="#7D97A6"; cx.textAlign="left"; cx.fillText(leftTxt,F.padL+2,F.padT+9);
+  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right"; cx.fillText(rightTxt,F.padL+F.iw-4,F.padT+9);
+  cx.textAlign="left";
+}
+/* asymmetric eased domain: expand fast, contract slow, hard-contain always */
+function easeDomain(st,cT,sT,needLo,needHi){
+  if(st.c===null){ st.c=cT; st.s=sT; }
+  else{
+    st.c+=(cT-st.c)*(RM?1:0.15);
+    const d=sT-st.s;
+    st.s+=d*(RM?1:(d>0?0.5:0.045));
+  }
+  if(needLo<st.c-st.s||needHi>st.c+st.s){
+    const lo=Math.min(needLo,st.c-st.s), hi=Math.max(needHi,st.c+st.s);
+    st.c=(lo+hi)/2; st.s=(hi-lo)/2;
+  }
+  return {lo:st.c-st.s,hi:st.c+st.s};
+}
+function drawKeyedLine(pts,X,Y,keyFn){
+  if(pts.length<2) return;
+  cx.lineWidth=1.8;
+  let runCol=null;
+  cx.beginPath();
+  for(let j=1;j<pts.length;j++){
+    const col=keyFn(pts,j);
+    if(runCol===null){ runCol=col; cx.moveTo(X(pts[j-1]),Y(pts[j-1].p)); }
+    if(col!==runCol){
+      cx.strokeStyle=runCol; cx.stroke();
+      cx.beginPath(); cx.moveTo(X(pts[j-1]),Y(pts[j-1].p)); runCol=col;
+    }
+    cx.lineTo(X(pts[j]),Y(pts[j].p));
+  }
+  if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
+}
+const yv={c:null,s:null}, yr={c:null,s:null};
 function renderIdle(){
   const now=Date.now(), F=frame();
   cx.font="9px "+FONT();
-  const t0=now-15*60000;
-  const X=t=>F.padL+((t-t0)/(now-t0))*F.iw;
-  /* single feed extents */
-  let priId=null;
-  for(const id of EXCH){ const st=S.src[id];
-    if(st.hist&&st.hist.length>1&&now-st.t<=10000){ priId=id; break; } }
-  if(!priId){ let best=null; for(const id of EXCH){ const st=S.src[id];
-    if(st.hist&&st.hist.length>1&&(best===null||st.t>S.src[best].t)) best=id; } priId=best; }
-  let mn=Infinity,mx=-Infinity; const line=[];
-  if(priId){ for(const q of S.src[priId].hist){ if(q.t<t0-30000) continue;
-    line.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; } }
-  if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
-    cx.fillText("awaiting live feeds\u2026",F.padL+8,F.H/2); return; }
-  const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.2,cT*0.0004);
-  const kE=RM?1:0.1;
-  if(yv.c===null){yv.c=cT;yv.s=sT;} else {yv.c+=(cT-yv.c)*kE; yv.s+=(sT-yv.s)*kE;}
-  const lo=yv.c-yv.s, hi=yv.c+yv.s;
-  const Y=p=>F.padT+(1-(p-lo)/(hi-lo))*F.ih;
-  yGrid(F,lo,hi,Y);
-  /* dynamic clock ticks: 5-min majors, minute minors */
+  const tp=S.tape;
+  if(tp.length<2){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
+    cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
+  const t1=now, t0=Math.max(now-15*60000, tp[0].t-20000);
+  const X=q=>F.padL+((q.t-t0)/(t1-t0))*F.iw;
+  const Xt=t=>F.padL+((t-t0)/(t1-t0))*F.iw;
+  const pts=[]; let mn=Infinity,mx=-Infinity;
+  for(const q of tp){ if(q.t<t0-2000) continue;
+    pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+  if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
+  const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.22, cT*0.0004);
+  const D=easeDomain(yv,cT,sT,mn,mx);
+  const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
+  yGrid(F,D.lo,D.hi,Y);
+  /* dynamic clock ticks */
   cx.font="11px "+FONT();
   for(let t=Math.ceil(t0/300000)*300000; t<=now; t+=300000){
-    const x=X(t);
-    cx.strokeStyle="rgba(15,46,63,.16)";
+    const x=Xt(t);
+    cx.strokeStyle="rgba(15,46,63,.14)";
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke();
-    cx.fillStyle="#3E6274"; cx.textAlign="center";
-    cx.fillText(timeStr(t),x,F.H-8); cx.textAlign="left";
+    cx.fillStyle="#3E6274"; cx.textAlign="center"; cx.fillText(timeStr(t),x,F.H-8); cx.textAlign="left";
   }
   cx.strokeStyle="rgba(15,46,63,.16)";
   for(let t=Math.ceil(t0/60000)*60000; t<=now; t+=60000){
-    const x=X(t);
+    const x=Xt(t);
     cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
   }
   cx.font="9px "+FONT();
-  /* trend-colored feed line */
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-  if(line.length>1){
-    cx.lineWidth=1.8;
-    let li=0, runCol=null;
-    cx.beginPath();
-    for(let j=1;j<line.length;j++){
-      const q=line[j];
-      while(li<j&&line[li].t<q.t-45000) li++;
-      const col=q.p>=line[li].p?UPC:DNC;
-      if(runCol===null){ runCol=col; cx.moveTo(X(line[j-1].t),Y(line[j-1].p)); }
-      if(col!==runCol){
-        cx.strokeStyle=runCol; cx.stroke();
-        cx.beginPath(); cx.moveTo(X(line[j-1].t),Y(line[j-1].p)); runCol=col;
-      }
-      cx.lineTo(X(q.t),Y(q.p));
-    }
-    if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
-    const hd=line[line.length-1];
-    cx.fillStyle=BRAID[Math.max(0,EXCH.indexOf(priId))];
-    cx.beginPath();cx.arc(X(hd.t),Y(hd.p),3,0,7);cx.fill();
-  }
+  /* trend-keyed tape */
+  let li=0;
+  drawKeyedLine(pts,X,Y,(P,j)=>{
+    while(li<j&&P[li].t<P[j].t-45000) li++;
+    if(li>j)li=j;
+    return P[j].p>=P[li].p?UPC:DNC;
+  });
+  const hd=pts[pts.length-1];
+  cx.fillStyle="#0087A8";
+  cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill();
   cx.restore();
+  /* header + centered prompt */
   const nb=nextBoundary(now), lastB=nb-900000;
-  cx.fillStyle="rgba(0,135,168,.6)"; cx.font="11px "+FONT(); cx.textAlign="center";
-  cx.fillText("WINDOW "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 ARM A STRIKE ANYTIME \u00b7 SETTLES "+mmss(nb-now),
-    F.padL+F.iw/2,F.padT+16);
-  if(priId){ cx.fillStyle="#7D97A6"; cx.font="9px "+FONT(); cx.textAlign="left";
-    cx.fillText("line: "+priId.toUpperCase(),F.padL+2,F.padT+9); cx.textAlign="center"; }
+  const nWS=EXCH.filter(id=>S.src[id].ws).length;
+  headerRow(F,"IDLE \u00b7 tape "+nWS+"ws \u00b7 last "+(hd.src||"").toUpperCase(),
+    "WINDOW "+timeStr(lastB)+"\u2013"+timeStr(nb));
+  cx.fillStyle="rgba(0,135,168,.6)"; cx.font="10px "+FONT(); cx.textAlign="center";
+  cx.fillText("ARM ANYTIME \u00b7 SETTLES IN "+mmss(nb-now),F.padL+F.iw/2,F.padT+22);
   cx.textAlign="left"; cx.font="9px "+FONT();
 }
-const yr={c:null,s:null};
 function renderRound(){
   const now=Date.now(), R=S.round, F=frame();
   cx.font="9px "+FONT();
-  const xMin=-5, xMax=15.6;
-  const X=m=>F.padL+(m-xMin)/(xMax-xMin)*F.iw;
-  const rel=t=>(t-R.tStart)/60000;
-  const e=rel(now);
-
-  /* single designated feed line */
-  const PRI=EXCH;
-  let priId=null;
-  for(const id of PRI){ const st=S.src[id];
-    if(st.hist&&st.hist.length>1&&now-st.t<=10000){ priId=id; break; } }
-  if(!priId){ let best=null; for(const id of PRI){ const st=S.src[id];
-    if(st.hist&&st.hist.length>1&&(best===null||st.t>S.src[best].t)) best=id; } priId=best; }
+  const e=(now-R.tStart)/60000;
+  const tp=S.tape;
   const acts=activeStrikes(R);
-  const activeSk=acts.length?acts[acts.length-1]:null;
-  let mn=Infinity, mx=-Infinity;
-  const line=[];
-  if(priId){ for(const q of S.src[priId].hist){
-    const m=rel(q.t); if(m<xMin-0.5) continue;
-    line.push({m:Math.min(m,xMax),p:q.p,t:q.t});
-    if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; } }
-  for(const id of Object.keys(R.opens)){ const p=R.opens[id]; if(p<mn)mn=p; if(p>mx)mx=p; }
-  if(!isFinite(mn)){ const fb=S.lastPx!==null?S.lastPx:(activeSk?activeSk.strike:0); mn=fb; mx=fb; }
-  const cT=(mn+mx)/2;
-  const sT=Math.max((mx-mn)/2*1.18, cT*0.0006);
-  const kE=RM?1:0.12;
-  if(yr.c===null){ yr.c=cT; yr.s=sT; } else { yr.c+=(cT-yr.c)*kE; yr.s+=(sT-yr.s)*kE; }
-  const lo=yr.c-yr.s, hi=yr.c+yr.s;
-  const Y=p=>F.padT+(1-(p-lo)/(hi-lo))*F.ih;
-
-  yGrid(F,lo,hi,Y);
-
-  /* 5-5-5 phases: majors at 0/5/10/15 mapped to clock, minute minors */
+  const sk=acts.length?acts[acts.length-1]:null;
+  const dataStartM=tp.length?((tp[0].t-R.tStart)/60000):-5;
+  const xMin=Math.max(-5, Math.min(0, dataStartM-0.3));
+  const xMax=15.6;
+  const X=q=>F.padL+(((q.t-R.tStart)/60000)-xMin)/(xMax-xMin)*F.iw;
+  const Xm=m=>F.padL+(m-xMin)/(xMax-xMin)*F.iw;
+  const pts=[]; let pmn=Infinity,pmx=-Infinity;
+  for(const q of tp){
+    const m=(q.t-R.tStart)/60000;
+    if(m<xMin-0.5) continue;
+    pts.push(q);
+    if(q.p<pmn)pmn=q.p; if(q.p>pmx)pmx=q.p;
+  }
+  const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:0));
+  if(!isFinite(pmn)){ pmn=lastP; pmx=lastP; }
+  const inDom=sk?Math.abs(1e4*Math.log(sk.strike/lastP))<=60:false;
+  let needLo=pmn, needHi=pmx;
+  if(sk&&inDom){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
+  const floorS=lastP*0.00035;
+  const baseHalf=Math.max((needHi-needLo)/2*1.18, floorS);
+  let cT=(needLo+needHi)/2, sT=baseHalf;
+  if(sk&&inDom){
+    const g=Math.pow(clamp((e-6)/8,0,1),1.4);
+    const duelHalf=Math.max(Math.abs(lastP-sk.strike)*1.6, floorS);
+    sT=baseHalf*(1-g)+Math.max(duelHalf,(needHi-needLo)/2*1.03)*g;
+    cT=(1-g)*cT+g*((lastP+sk.strike)/2);
+  }
+  const D=easeDomain(yr,cT,sT,needLo,needHi);
+  const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
+  yGrid(F,D.lo,D.hi,Y);
+  /* 5-5-5 marks + minute minors */
   cx.font="11px "+FONT();
   for(let m=0;m<=15;m+=5){
-    const x=X(m);
+    const x=Xm(m);
     cx.strokeStyle=m===0?"rgba(0,135,168,.45)":"rgba(0,135,168,.22)";
     cx.setLineDash(m===0?[]:[2,5]); cx.lineWidth=1;
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
@@ -1322,151 +1036,131 @@ function renderRound(){
   }
   cx.strokeStyle="rgba(15,46,63,.16)";
   for(let m=Math.ceil(xMin);m<=15;m++){
-    const x=X(m);
+    const x=Xm(m);
     cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
   }
   cx.font="9px "+FONT();
-
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-
-  /* strikes — dashed guests; price owns the scale */
-  for(const sk of acts){
-    if(sk.strike<lo||sk.strike>hi) continue;
-    const isA=sk===activeSk, yS=Y(sk.strike);
-    cx.strokeStyle=isA?"#0087A8":"rgba(0,135,168,.55)";
-    cx.lineWidth=isA?1.6:1.1;
-    cx.setLineDash(isA?[7,5]:[3,4]);
-    cx.beginPath();cx.moveTo(F.padL,yS);cx.lineTo(F.padL+F.iw,yS);cx.stroke();
+  /* ghost territories */
+  if(sk&&inDom){
+    const yS=Y(sk.strike);
+    cx.fillStyle="rgba(14,148,100,.055)";
+    cx.fillRect(F.padL,F.padT,F.iw,Math.max(0,yS-F.padT));
+    cx.fillStyle="rgba(214,73,61,.055)";
+    cx.fillRect(F.padL,yS,F.iw,Math.max(0,F.padT+F.ih-yS));
+  }
+  /* strike dashed */
+  if(sk&&inDom){
+    cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([7,5]);
+    cx.beginPath();cx.moveTo(F.padL,Y(sk.strike));cx.lineTo(F.padL+F.iw,Y(sk.strike));cx.stroke();
     cx.setLineDash([]);
   }
-
-  /* the line, trend-colored */
-  if(line.length>1){
-    cx.lineWidth=1.8;
-    let li=0, runCol=null;
-    cx.beginPath();
-    for(let j=1;j<line.length;j++){
-      const q=line[j];
-      while(li<j&&line[li].t<q.t-45000) li++;
-      const col=q.p>=line[li].p?UPC:DNC;
-      if(runCol===null){ runCol=col; cx.moveTo(X(line[j-1].m),Y(line[j-1].p)); }
-      if(col!==runCol){
-        cx.strokeStyle=runCol; cx.stroke();
-        cx.beginPath(); cx.moveTo(X(line[j-1].m),Y(line[j-1].p)); runCol=col;
-      }
-      cx.lineTo(X(q.m),Y(q.p));
-    }
-    if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
-    const hd=line[line.length-1];
-    cx.fillStyle="#0087A8";
-    cx.beginPath();cx.arc(X(hd.m),Y(hd.p),3,0,7);cx.fill();
+  /* tape: side-keyed vs strike, else trend */
+  if(sk&&inDom){
+    drawKeyedLine(pts,X,Y,(P,j)=>P[j].p>=sk.strike?UPC:DNC);
+  } else {
+    let li=0;
+    drawKeyedLine(pts,X,Y,(P,j)=>{
+      while(li<j&&P[li].t<P[j].t-45000) li++;
+      if(li>j)li=j;
+      return P[j].p>=P[li].p?UPC:DNC;
+    });
   }
-
-  /* open / settle prints as per-source dots at the boundaries */
+  if(pts.length){
+    const hd=pts[pts.length-1];
+    cx.fillStyle=(sk&&inDom)?(hd.p>=sk.strike?UPC:DNC):"#0087A8";
+    cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill();
+  }
+  /* open prints */
   for(const id of Object.keys(R.opens)){
     const i=EXCH.indexOf(id); if(i<0) continue;
     cx.fillStyle=BRAID[i];
-    cx.beginPath();cx.arc(X(0),Y(R.opens[id]),2.2,0,7);cx.fill();
+    cx.beginPath();cx.arc(Xm(0),Y(R.opens[id]),2.2,0,7);cx.fill();
   }
   for(const id of Object.keys(R.settles)){
     const i=EXCH.indexOf(id); if(i<0) continue;
     cx.fillStyle=BRAID[i];
-    cx.beginPath();cx.arc(X(15),Y(R.settles[id]),2.6,0,7);cx.fill();
+    cx.beginPath();cx.arc(Xm(15),Y(R.settles[id]),2.6,0,7);cx.fill();
   }
-
-  /* live: active strike gauge + pair, spread */
-  if(R.state==="live"){
+  /* live gauge + pair + spread */
+  if(R.state==="live"&&sk){
     const fr=freshExch(now,10000);
-    let fmn=Infinity,fmx=-Infinity;
-    for(const f of fr){ fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
-    if(activeSk&&activeSk.prob){
-      const P=activeSk.prob, yS=Y(activeSk.strike);
-      let up=0,dn=0; for(const f of fr){ if(f.p>activeSk.strike)up++; else if(f.p<activeSk.strike)dn++; }
+    let up=0,dn=0,fmn=Infinity,fmx=-Infinity;
+    for(const f of fr){ if(f.p>sk.strike)up++; else if(f.p<sk.strike)dn++;
+      fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
+    const P=sk.prob;
+    if(P){
       const gx=F.padL+F.iw-7, gw=5;
       const split=F.padT+(1-P.over)*F.ih;
       cx.fillStyle="rgba(14,148,100,.45)";
       cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
       cx.fillStyle="rgba(214,73,61,.45)";
       cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
+      const yS=inDom?Y(sk.strike):(F.padT+F.ih/2);
       cx.textAlign="right"; cx.font="15px "+FONT();
-      cx.fillStyle=UPC; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+26,yS-12));
+      cx.fillStyle=UPC; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
       cx.fillStyle=DNC; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
       cx.font="9px "+FONT();
-      cx.fillStyle=UPC; cx.fillText("OVER \u00b7 "+up+"\u2191",F.padL+F.iw-14,Math.max(F.padT+38,yS-28));
+      cx.fillStyle=UPC; cx.fillText("OVER \u00b7 "+up+"\u2191",F.padL+F.iw-14,Math.max(F.padT+48,yS-28));
       cx.fillStyle=DNC; cx.fillText("UNDER \u00b7 "+dn+"\u2193",F.padL+F.iw-14,Math.min(F.padT+F.ih-22,yS+38));
       cx.textAlign="left";
     }
     if(fr.length>=2&&fmn<Infinity){
-      cx.textAlign="right";
-      cx.fillStyle="rgba(15,46,63,.55)";
+      cx.textAlign="right"; cx.fillStyle="rgba(15,46,63,.55)";
       cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" feeds",F.padL+F.iw-4,F.padT+21);
       cx.textAlign="left";
     }
   }
-
-  /* settled overlay: multi-strike summary + per-strike rings at expiry */
-  if(R.state==="settled"){
-    const u=acts.filter(s=>s.outcome==="UP").length, d=acts.filter(s=>s.outcome==="DOWN").length;
-    const scored=acts.filter(s=>s.outcome==="UP"||s.outcome==="DOWN");
-    const hits=scored.filter(s=>s.hit).length;
-    const col=(u&&!d)?"rgba(14,148,100,":(d&&!u)?"rgba(214,73,61,":"rgba(0,135,168,";
+  /* settled overlay */
+  if(R.state==="settled"&&sk){
+    const oc=sk.outcome;
+    const col=oc==="UP"?"rgba(14,148,100,":oc==="DOWN"?"rgba(214,73,61,":"rgba(0,135,168,";
     cx.fillStyle=col+"0.06)"; cx.fillRect(F.padL,F.padT,F.iw,F.ih);
-    for(const sk of acts){
-      if(sk.strike<lo||sk.strike>hi) continue;
-      const oc=sk.outcome;
+    if(inDom){
       cx.strokeStyle=oc==="UP"?UPC:oc==="DOWN"?DNC:"#0087A8"; cx.lineWidth=1.6;
-      cx.beginPath();cx.arc(X(15),Y(sk.strike),4.5,0,7);cx.stroke();
+      cx.beginPath();cx.arc(Xm(15),Y(sk.strike),4.5,0,7);cx.stroke();
     }
-    cx.fillStyle=col+"0.95)"; cx.font="16px "+FONT(); cx.textAlign="center";
-    cx.fillText(u+" UP \u00b7 "+d+" DOWN",F.padL+F.iw/2,F.padT+F.ih/2-6);
+    cx.fillStyle=col+"0.95)"; cx.font="18px "+FONT(); cx.textAlign="center";
+    cx.fillText(oc,F.padL+F.iw/2,F.padT+F.ih/2-6);
     cx.font="10px "+FONT();
-    if(scored.length) cx.fillText("calls "+hits+"/"+scored.length,F.padL+F.iw/2,F.padT+F.ih/2+12);
+    if(oc==="UP"||oc==="DOWN")
+      cx.fillText((sk.up!==undefined?(sk.up+"\u2191 "+sk.dn+"\u2193 "):"")+"vs "+fmtUSD.format(sk.strike)
+        +" \u00b7 CALL "+sk.call+" "+(sk.hit?"HIT":"MISS"),F.padL+F.iw/2,F.padT+F.ih/2+12);
     cx.font="9px "+FONT(); cx.textAlign="left";
   }
   cx.restore();
-
-  /* axis denotation: level + odds at placement; off-scale strikes as edge markers */
-  {
-    let topN=0,botN=0;
-    for(const sk of acts){
-      const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
-      const tpm="+"+Math.max(0,Math.round((sk.tArm-R.tStart)/60000))+"m";
-      const isA=sk===activeSk;
-      if(sk.strike>=lo&&sk.strike<=hi){
-        const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
-        cx.fillStyle=isA?"#0087A8":"rgba(0,135,168,.14)";
-        cx.fillRect(x0,yS-11,w,22);
-        cx.textAlign="left"; cx.font="10px "+FONT();
-        cx.fillStyle=isA?"#FFFFFF":"#006E8A";
-        cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1);
-        cx.font="9px "+FONT();
-        cx.fillStyle=isA?"rgba(255,255,255,.85)":"#3E6274";
-        cx.fillText(pa+" \u00b7"+tpm,x0+4,yS+9);
-      } else {
-        const above=sk.strike>hi;
-        const y=above?(F.padT+10+12*(topN++)):(F.padT+F.ih-4-12*(botN++));
-        let col="rgba(0,135,168,.85)";
-        if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")) col=sk.outcome==="UP"?UPC:DNC;
-        cx.font="9px "+FONT(); cx.textAlign="left"; cx.fillStyle=col;
-        cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+2,y);
-      }
+  /* axis denotation for the strike */
+  if(sk){
+    const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
+    const tpm="+"+Math.max(0,Math.round((sk.tArm-R.tStart)/60000))+"m";
+    if(inDom){
+      const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
+      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-11,w,22);
+      cx.textAlign="left"; cx.font="10px "+FONT(); cx.fillStyle="#FFFFFF";
+      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1);
+      cx.font="9px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
+      cx.fillText(pa+" \u00b7"+tpm,x0+4,yS+9);
+    } else {
+      const above=sk.strike>D.hi;
+      let col="rgba(0,135,168,.85)";
+      if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")) col=sk.outcome==="UP"?UPC:DNC;
+      cx.font="9px "+FONT(); cx.textAlign="left"; cx.fillStyle=col;
+      cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,
+        F.padL+F.iw+2, above?(F.padT+10):(F.padT+F.ih-4));
     }
-    cx.textAlign="left";
   }
-
   /* sweep cursor */
   if(e>=xMin){
-    const xC=X(Math.min(e,xMax));
+    const xC=Xm(Math.min(e,xMax));
     cx.strokeStyle="rgba(15,46,63,.4)"; cx.lineWidth=1;
     cx.beginPath();cx.moveTo(xC,F.padT);cx.lineTo(xC,F.padT+F.ih);cx.stroke();
   }
-
-  /* frame label */
-  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right";
-  cx.fillText("ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd),F.padL+F.iw-4,F.padT+9);
-  cx.textAlign="left";
-  cx.fillStyle="#7D97A6";
-  cx.fillText(R.state.toUpperCase()+" \u00b7 "+acts.length+" strike"+(acts.length===1?"":"s")+(priId?(" \u00b7 line: "+priId.toUpperCase()):""),F.padL+2,F.padT+9);
+  /* header */
+  const nWS=EXCH.filter(id=>S.src[id].ws).length;
+  const left=R.state.toUpperCase()
+    +(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call):" \u00b7 no strike")
+    +" \u00b7 tape "+nWS+"ws";
+  headerRow(F,left,"ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd));
 }
 function render(){
   const R=S.round;
@@ -1502,28 +1196,23 @@ $("callAbove").addEventListener("click",()=>{ S.callSel="ABOVE";
   $("callAbove").classList.add("sel"); $("callBelow").classList.remove("sel"); });
 $("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
   $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel"); });
-function onBarClose(){ recomputeForecast(true); }
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
-  epochTick(Date.now());
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
     if(st.ws&&st.sock&&_wn-(st.wsAlive||0)>15000){ try{ st.sock.close(); }catch(e){} st.ws=false; } }
-  renderSources(); renderCommit();
+  renderSources();
 },1000);
-setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
 requestAnimationFrame(loop);
 
 (async function init(){
-  renderSources(); renderMatrix(); renderScore(); renderCommit(); renderEpochLog();
-  renderArmBar(); renderRounds(); renderIntervals();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals();
   await seed();
   startPolling();
   startWS();
-  setTimeout(()=>recomputeForecast(true),2500);
 })();
 </script>
 </body>
-<!-- build-20260829193202 -->
+<!-- build-20260829230810 -->
 </html>
