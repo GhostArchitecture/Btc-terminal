@@ -6,122 +6,150 @@
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
   :root{
-    --ink0:#0C111B; --ink1:#131B29; --ink2:#182238; --rule:#233048;
-    --meas:#D9E4EE; --dim:#8298AC; --faint:#50647E;
-    --model:#E5A13C; --model-dim:#9A742F;
-    --up:#66B18D; --down:#CD6E5C; --err:#CD6E5C;
+    --bg-hi:#F6FAFC; --bg-lo:#D9E8F2;
+    --glass:rgba(255,255,255,.58); --glass-hi:rgba(255,255,255,.80);
+    --edge:rgba(255,255,255,.9);
+    --shadow:0 12px 32px rgba(15,46,63,.12),0 2px 8px rgba(15,46,63,.06);
+    --ink:#0F2E3F; --meas:#0F2E3F; --dim:#4A6B7E; --faint:#7D97A6;
+    --bondi:#0087A8; --bondi-deep:#006E8A;
+    --model:#0087A8; --model-dim:#5FB4C6;
+    --up:#0E9464; --down:#D6493D; --err:#D6493D; --warn:#C77F1F;
+    --rule:rgba(15,46,63,.14); --ink2:rgba(15,46,63,.08);
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:var(--ink0);color:var(--meas);font-family:var(--mono)}
-  body{font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px}
-  .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
-  .num{font-variant-numeric:tabular-nums}
-  .amber{color:var(--model)}
+  html,body{background:linear-gradient(180deg,var(--bg-hi) 0%,var(--bg-lo) 100%);
+    background-attachment:fixed;color:var(--ink);font-family:var(--sans)}
+  body{font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(60% 38% at 50% -6%,rgba(255,255,255,.9),rgba(255,255,255,0) 70%)}
+  .wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px;position:relative}
+  .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);font-family:var(--sans)}
+  .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+  .amber{color:var(--bondi)}
   .up{color:var(--up)} .down{color:var(--down)}
   a{color:var(--dim)}
-  button{font:inherit;color:var(--dim);background:var(--ink1);border:1px solid var(--rule);
-    border-radius:3px;padding:4px 10px;cursor:pointer;letter-spacing:.08em}
-  button:hover{color:var(--meas)}
-  button:focus-visible{outline:2px solid var(--model);outline-offset:1px}
+
+  .tile{background:var(--glass);border:1px solid rgba(255,255,255,.65);
+    border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+    -webkit-backdrop-filter:blur(16px) saturate(1.35);backdrop-filter:blur(16px) saturate(1.35)}
+  .tile::before{content:"";position:absolute;left:10px;right:10px;top:0;height:1px;
+    background:linear-gradient(90deg,transparent,var(--edge),transparent);pointer-events:none}
+  @supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
+    .tile{background:rgba(255,255,255,.88)}
+  }
+
+  button{font:inherit;color:var(--bondi-deep);background:var(--glass-hi);
+    border:1px solid rgba(15,46,63,.12);border-radius:999px;padding:5px 14px;cursor:pointer;
+    letter-spacing:.08em;font-size:11.5px}
+  button:hover{background:#fff}
+  button:focus-visible{outline:2px solid var(--bondi);outline-offset:2px}
 
   /* header */
-  header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
-    padding-bottom:10px;border-bottom:1px solid var(--rule);flex-wrap:wrap}
-  .mark{font-weight:700;letter-spacing:.06em}
-  .mark small{color:var(--faint);font-weight:400;letter-spacing:.18em;font-size:9.5px;margin-left:8px}
-  .hright{display:flex;align-items:center;gap:10px}
-  .pill{font-size:9.5px;letter-spacing:.16em;padding:3px 8px;border-radius:2px;border:1px solid var(--rule)}
-  .pill.live{color:var(--up);border-color:rgba(102,177,141,.45)}
-  .pill.warn{color:var(--model);border-color:rgba(229,161,60,.45)}
-  .pill.dead{color:var(--err);border-color:rgba(205,110,92,.5)}
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:10px 16px;margin-bottom:14px;flex-wrap:wrap}
+  header.tile{border-radius:18px}
+  .mark{font-weight:700;letter-spacing:.02em;font-size:15px}
+  .mark small{color:var(--faint);font-weight:500;letter-spacing:.18em;font-size:9px;margin-left:8px;text-transform:uppercase}
+  .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pill{font-size:9.5px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;
+    border:1px solid var(--rule);background:rgba(255,255,255,.5)}
+  .pill.live{color:var(--up);border-color:rgba(14,148,100,.4)}
+  .pill.warn{color:var(--warn);border-color:rgba(199,127,31,.4)}
+  .pill.dead{color:var(--err);border-color:rgba(214,73,61,.45)}
 
   /* spot */
-  #spot{padding:18px 0 8px}
-  #px{font-size:clamp(38px,9vw,64px);font-weight:700;letter-spacing:-.01em;transition:color .5s}
+  #spot{padding:16px 18px;margin-bottom:14px}
+  #px{font-size:clamp(38px,9vw,64px);font-weight:700;letter-spacing:-.02em;transition:color .5s}
   @media (prefers-reduced-motion:no-preference){
     #px.flash-up{color:var(--up);transition:none}
     #px.flash-down{color:var(--down);transition:none}
   }
-  .chips{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .chip{background:rgba(255,255,255,.55);border:1px solid rgba(15,46,63,.08);
+    border-radius:999px;padding:3px 10px;font-size:11.5px}
   .chip .lbl{margin-right:6px}
 
-  section{margin-top:22px}
-  .shead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--rule);
-    padding-bottom:5px;margin-bottom:8px}
+  section{margin-top:18px}
+  #viewChart section{margin-top:0}
+  .shead{display:flex;justify-content:space-between;align-items:baseline;
+    padding:0 4px 7px;margin-bottom:10px;border-bottom:1px solid var(--rule)}
   .shead .note{font-size:10.5px;color:var(--faint)}
+  #viewData section{padding:14px 16px;border-radius:20px}
+  #viewData .shead{padding-top:0}
 
   /* sources */
-  #srcrows .row{display:grid;grid-template-columns:16px 6.2em 1fr 5.2em 4.6em 4.2em;
-    gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--ink2);font-size:12.5px}
+  #srcrows .row{display:grid;grid-template-columns:16px 7.4em 1fr 5.2em 4.6em 4.2em;
+    gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--ink2);font-size:12.5px}
   #srcrows .row:last-child{border-bottom:0}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);align-self:center}
-  .dot.ok{background:var(--up)} .dot.stale{background:var(--model)} .dot.err{background:var(--err)}
-  .srcname{color:var(--dim)} .srcname em{font-style:normal;color:var(--faint);font-size:9px;letter-spacing:.12em;margin-left:5px}
+  .dot.ok{background:var(--up)} .dot.stale{background:var(--warn)} .dot.err{background:var(--err)}
+  .srcname{color:var(--dim)} .srcname em{font-style:normal;color:var(--faint);font-size:8.5px;letter-spacing:.12em;margin-left:5px}
   .r{text-align:right}
 
-  /* chart */
-  #chartbox{position:relative;border:1px solid var(--rule);border-radius:3px;background:var(--ink1);
-    padding:6px 6px 2px}
-  canvas{display:block;width:100%;height:340px}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;padding:6px 4px 4px;font-size:9.5px;
-    letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
-  .sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px;border-radius:1px}
+  /* chart tray */
+  #chartbox{border-radius:22px;padding:10px 10px 4px}
+  canvas{display:block;width:100%}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;padding:8px 6px 6px;font-size:9px;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-family:var(--sans)}
+  .sw{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+  /* arming tray */
+  #armbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    border-radius:18px;padding:12px 14px;margin-bottom:12px}
+  #armbar input{font-family:var(--mono);font-size:13px;color:var(--ink);
+    background:rgba(255,255,255,.75);border:1px solid rgba(15,46,63,.14);
+    border-radius:12px;padding:7px 12px;width:10em}
+  #armbar input::placeholder{color:var(--faint)}
+  #armbar input:focus-visible{outline:2px solid var(--bondi);outline-offset:1px}
+  #armbar input:disabled{opacity:.45}
+  .tgl{display:inline-flex;background:rgba(15,46,63,.06);border-radius:999px;padding:2px;gap:2px}
+  .tgl button{border:0;background:transparent;color:var(--dim);border-radius:999px;
+    padding:5px 12px;font-size:10.5px;letter-spacing:.1em}
+  .tgl button.sel{background:#fff;color:var(--bondi-deep);box-shadow:0 1px 4px rgba(15,46,63,.18)}
+  #armBtn{background:var(--bondi);border-color:var(--bondi-deep);color:#fff;font-weight:600}
+  #armBtn:hover{background:var(--bondi-deep)}
+  #armBtn:disabled{opacity:.4;cursor:default}
+  #armMsg{font-size:10.5px;color:var(--faint)}
+  #armStatus{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
+  #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
+    font-size:12px;letter-spacing:.05em;background:var(--glass)}
+  #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
+  #verdict.down{border:1px solid rgba(214,73,61,.4);color:var(--down)}
+  #verdict.flat{border:1px solid rgba(0,135,168,.4);color:var(--bondi-deep)}
 
   /* tables */
   .tblwrap{overflow-x:auto}
-  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px}
-  th{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
-    font-weight:400;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule)}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;font-family:var(--mono)}
+  th{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+    font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule);font-family:var(--sans)}
   th:first-child,td:first-child{text-align:left;padding-left:2px}
   td{padding:6px 8px;text-align:right;border-bottom:1px dashed var(--ink2);white-space:nowrap}
   tr:last-child td{border-bottom:0}
   td .sub{display:block;font-size:10px;color:var(--faint)}
-  td.model,th.model{color:var(--model)}
+  td.model,th.model{color:var(--bondi)}
   td.model .sub{color:var(--model-dim)}
 
-  #method{margin-top:26px;border-top:1px solid var(--rule);padding-top:10px;
-    color:var(--faint);font-size:11px;max-width:70em}
-  #method p{margin-bottom:7px}
-  #method b{color:var(--dim);font-weight:400}
-  #banner{display:none;margin-top:14px;border:1px solid rgba(205,110,92,.5);border-radius:3px;
-    padding:10px 12px;color:var(--err);font-size:12px}
+  #method{margin-top:20px;padding:14px 16px;border-radius:20px;
+    color:var(--dim);font-size:11px;max-width:none}
+  #method p{margin-bottom:8px}
+  #method b{color:var(--ink);font-weight:600}
+  #banner{display:none;margin-bottom:14px;border:1px solid rgba(214,73,61,.45);border-radius:16px;
+    padding:10px 14px;color:var(--err);font-size:12px;background:var(--glass)}
 
   /* page views */
   #viewData{display:none}
   body.showData #viewData{display:block}
   body.showData #viewChart{display:none}
-  #viewChart canvas{height:calc(100dvh - 400px);min-height:320px}
-  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 400px)} }
-
-  /* round arming bar */
-  #armbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
-    border:1px solid var(--rule);border-radius:3px;background:var(--ink1);
-    padding:8px 10px;margin-bottom:10px}
-  #armbar .lbl{letter-spacing:.14em}
-  #armbar input{font:inherit;color:var(--meas);background:var(--ink0);
-    border:1px solid var(--rule);border-radius:3px;padding:5px 8px;width:9.5em}
-  #armbar input:focus-visible{outline:2px solid var(--model);outline-offset:1px}
-  #armbar input:disabled{opacity:.45}
-  .tgl{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
-  .tgl button{border:0;border-radius:0;background:var(--ink0);padding:5px 9px;font-size:11px}
-  .tgl button.sel{background:var(--ink2);color:var(--model)}
-  #armBtn{color:var(--model);border-color:rgba(229,161,60,.5)}
-  #armBtn:disabled{opacity:.4;cursor:default}
-  #armMsg{font-size:10.5px;color:var(--faint)}
-  #armStatus{font-size:11px;color:var(--dim);letter-spacing:.06em}
-  #verdict{display:none;border:1px solid var(--rule);border-radius:3px;
-    padding:7px 10px;margin-bottom:10px;font-size:12px;letter-spacing:.06em}
-  #verdict.up{border-color:rgba(102,177,141,.5);color:var(--up)}
-  #verdict.down{border-color:rgba(205,110,92,.5);color:var(--down)}
-  #verdict.flat{border-color:rgba(229,161,60,.5);color:var(--model)}
+  #viewChart canvas{height:calc(100dvh - 420px);min-height:320px}
+  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 420px)} }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <header>
+  <header class="tile">
     <div class="mark">BTC/USD<small>CONSENSUS SPOT · PROJECTION CONSOLE</small></div>
     <div class="hright">
       <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
@@ -133,7 +161,7 @@
 
   <div id="banner"></div>
 
-  <div id="spot">
+  <div id="spot" class="tile">
     <div class="lbl">Median of live sources</div>
     <div id="px" class="num">—</div>
     <div class="chips num" id="chips"></div>
@@ -141,9 +169,9 @@
 
   <div id="viewChart">
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Live period &amp; projection</span>
-      <span class="note num" id="conenote"></span></div>
-    <div id="armbar">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Round instrument</span>
+</div>
+    <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
       <input id="strikeIn" inputmode="decimal" placeholder="BTC USD strike" aria-label="strike price">
       <span class="tgl" role="group" aria-label="call direction">
@@ -153,28 +181,27 @@
       <span id="armMsg"></span>
     </div>
     <div id="verdict" class="num"></div>
-    <div id="chartbox">
+    <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--meas)"></span>control — actual price</span>
-        <span><span class="sw" style="background:var(--model)"></span>projection median</span>
-        <span><span class="sw" style="background:rgba(102,177,141,.4)"></span>actual above projection</span>
-        <span><span class="sw" style="background:rgba(205,110,92,.4)"></span>actual below</span>
-        <span><span class="sw" style="background:rgba(229,161,60,.16)"></span>P5–P95</span>
-        <span>○ projected · ● realized — ring green inside the 90% band</span>
+        <span><span class="sw" style="background:var(--up)"></span>price above strike</span>
+        <span><span class="sw" style="background:var(--down)"></span>below strike</span>
+        <span><span class="sw" style="background:var(--model)"></span>strike</span>
+        <span>source key &amp; feed status on the DATA page</span>
       </div>
     </div>
   </section>
   </div>
 
   <div id="viewData">
-  <section id="sources">
+  <section class="tile" id="sources">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
       <span class="note num" id="srcnote">0 live</span></div>
     <div id="srcrows"></div>
+    <div id="seednote" class="lbl" style="margin-top:6px;letter-spacing:.08em"></div>
   </section>
 
-  <section>
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Forecast matrix</span>
       <span class="note num" id="fnote">warming up</span></div>
     <div class="tblwrap"><table id="matrix">
@@ -186,7 +213,7 @@
     </table></div>
   </section>
 
-  <section>
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Interval commitments — pinned to wall clock</span>
       <span class="note num" id="cnote"></span></div>
     <div class="tblwrap"><table id="commit">
@@ -197,7 +224,7 @@
     </table></div>
   </section>
 
-  <section>
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Scorecard — accuracy per interval</span>
       <span class="note num" id="snote">0 resolved</span></div>
     <div class="tblwrap"><table id="score">
@@ -209,7 +236,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = MAE bp · direction hit · n — green beats the martingale at that interval, red trails it</div>
   </section>
 
-  <section>
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
@@ -219,7 +246,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">outcome = ≥⅔ of fresh sources on one side of the strike at expiry · disputed = strike inside the inter-source spread · void = under two fresh voters</div>
   </section>
 
-  <section>
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Period log — 60-minute epochs</span>
       <span class="note num" id="enote">0 completed</span></div>
     <div class="tblwrap"><table id="epochlog">
@@ -229,7 +256,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">cell = ensemble error at resolution (bp) — green landed inside the 90% band, red outside</div>
   </section>
 
-  <div id="method">
+  <div id="method" class="tile">
     <p><b>Aggregation.</b> Spot = median of sources fresher than 20 s. Sources polled every 5 s
       (CoinGecko 60 s; it is itself a composite index). Binance.com excluded: HTTP 451 geo-block for US clients.</p>
     <p><b>Seeding.</b> Return statistics are initialized from Kraken 1-minute OHLC (last ~180 bars),
@@ -240,8 +267,20 @@
       <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
       reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
       <b>Ensemble</b>: median of available point forecasts.</p>
-    <p><b>Rounds.</b> A round is a 15-minute window aligned to quarter-hour wall-clock boundaries, subdivided
-      by 3-minute marks. Arming requires a USD strike (and a call, above/below) entered before the boundary —
+    <p><b>Chart.</b> Two states only. Armed or live, the frame is the round: −5 minutes of context, the
+      15-minute window phased 5-5-5 with majors at +5/+10/+15 mapped to actual clock times and minute minors
+      beneath, price gridlines snapped to round dollar steps that rescale with the zoom. The braid — one line
+      per exchange, no aggregate — is color-keyed to the strike: green above, red below, so every crossing of
+      the committed line reads instantly; per-source dots print at open and expiry, the adjudication instants.
+      Idle, the frame is a rolling 15-minute live view, trend-colored, with the next armable window named.
+      The 60-minute projection frame is retired from display; its engine runs unseen and reports to this page.</p>
+    <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange — sub-second prints, throttled to
+      ~0.4 s history density — with automatic reconnect and backoff and a 15 s silence watchdog. REST polling
+      continues as cross-verification: full 3 s cadence when a socket is down, relaxed to ~12 s while it is
+      healthy; a REST print disputing its own socket by more than 25 bp flags the source as drift rather than
+      overwriting it. No socket, no problem — the source degrades to REST transparently, and settlement votes
+      only ever use prints fresh within 10 s regardless of transport.</p>
+    <p><b>Rounds.</b> A round is a 15-minute window aligned to quarter-hour wall-clock boundaries, phased 5-5-5 with clock-mapped marks. Arming requires a USD strike (and a call, above/below) entered before the boundary —
       arming inside the final 5 s rolls to the following window, and no entry can join a window already running.
       Armed rounds lock 5 s before open and cannot be edited after; one round may be staged while another runs.
       At open, fresh per-source prints are recorded (open marker = midrange of those prints, a marker only).
@@ -258,18 +297,6 @@
       the five horizons are never blended. Sets are spaced 60 s apart so consecutive resolutions are not
       pseudo-replicated autocorrelated samples; the matrix above refreshes faster (≤20 s) for display,
       but accountability runs on the pinned sets.</p>
-    <p><b>Chart.</b> The frame originates ~30 minutes before projection onset and runs to +60: context on the
-      left of the ONSET line, the pinned period on the right, x-marks at +5/10/15/30/60 labeled with actual
-      clock times, cursor sweeping left to right. Two lines duel: the <b>control</b> — actual consensus price at
-      tick resolution — against the pinned <b>projection median</b>. The area between them over the elapsed
-      region is tinted by sign (green where actual runs above projection, red below), so divergence is read
-      spatially; a live Δ readout in bp rides the head. Marks resolve in place (ring at the projection, dot at
-      the print, green inside that set's 90% band); at the hour the five results commit to the period log, the
-      frame wipes, and clock labels remap. A tab suspended past a boundary re-anchors at wake rather than
-      fabricating a retroactive set. The y-axis holds current price at center and zooms adaptively — tightening
-      while the control tracks the band, widening on excursions; the zoom is presentation only and the dollar
-      gridlines are always true. Band coverage against its 90% target remains the calibration verdict;
-      point-forecast confidence is martingale-capped, and dispersion is the claim under audit.</p>
     <p><b>Benchmark.</b> The martingale MAE equals the realized move magnitude — the floor every other model must beat.
       At 5–60 min horizons BTC log-price is empirically near-martingale: expected drift is ~1–3 bp against a typical
       σ of 30–100 bp, so point forecasts cluster at spot and direction hit rates oscillate around 50%.
@@ -322,7 +349,7 @@ const SOURCES=[
 ];
 const FRESH_MS=20000, HORIZONS=[5,10,15,30,60];
 const EXCH=["coinbase","kraken","gemini","binanceus","bitstamp","bitfinex"];
-const BRAID=["#D9E4EE","#A9C1D6","#8FB0C9","#7A9EBB","#6C8FAF","#5E80A2"];
+const BRAID=["#0B4F6C","#0E6E8C","#1489A6","#22A3BC","#45B7CC","#6FCADB"];
 
 /* ---------------------------------------------------------------- state */
 const S={
@@ -331,7 +358,6 @@ const S={
   bars:new Map(),       // minuteKey -> close (median)
   candles:new Map(),    // minuteKey -> {o,h,l,c} (median OHLC)
   barKeys:[],           // sorted minute keys
-  pinnedCone:null,      // {t0,P0,cone} — snapshot at each logged set, holds for the minute
   epoch:null,           // {t0,P0,cone,F:{h:{ENS,glo,ghi}},res:{h:{R,inB,err}}} — the fixed 60-min frame
   epochLog:[],          // completed periods
   round:null,           // {state,tStart,tEnd,strike,call,opens,openRef,settles,outcome,hit,settledAt}
@@ -349,16 +375,80 @@ const S={
 };
 SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0});
 
+
+/* ---------------------------------------------------------------- websocket feeds (primary) */
+const WSFEEDS=[
+ {id:"coinbase", url:"wss://ws-feed.exchange.coinbase.com",
+  sub:ws=>ws.send(JSON.stringify({type:"subscribe",product_ids:["BTC-USD"],channels:["ticker"]})),
+  parse:d=>{const m=JSON.parse(d); return m.type==="ticker"&&m.price?+m.price:null;}},
+ {id:"kraken", url:"wss://ws.kraken.com",
+  sub:ws=>ws.send(JSON.stringify({event:"subscribe",pair:["XBT/USD"],subscription:{name:"ticker"}})),
+  parse:d=>{const m=JSON.parse(d); return (Array.isArray(m)&&m[1]&&m[1].c)?+m[1].c[0]:null;}},
+ {id:"gemini", url:"wss://api.gemini.com/v1/marketdata/BTCUSD?trades=true&top_of_book=false&auction_indicative=false",
+  sub:null,
+  parse:d=>{const m=JSON.parse(d); if(m.type!=="update"||!m.events) return null;
+    for(const ev of m.events){ if(ev.type==="trade"&&ev.price) return +ev.price; } return null;}},
+ {id:"binanceus", url:"wss://stream.binance.us:9443/ws/btcusd@trade",
+  sub:null,
+  parse:d=>{const m=JSON.parse(d); return m.p?+m.p:null;}},
+ {id:"bitstamp", url:"wss://ws.bitstamp.net",
+  sub:ws=>ws.send(JSON.stringify({event:"bts:subscribe",data:{channel:"live_trades_btcusd"}})),
+  parse:d=>{const m=JSON.parse(d); return (m.event==="trade"&&m.data&&m.data.price)?+m.data.price:null;}},
+ {id:"bitfinex", url:"wss://api-pub.bitfinex.com/ws/2",
+  sub:ws=>ws.send(JSON.stringify({event:"subscribe",channel:"ticker",symbol:"tBTCUSD"})),
+  parse:d=>{const m=JSON.parse(d); return (Array.isArray(m)&&Array.isArray(m[1])&&m[1].length>6)?+m[1][6]:null;}},
+];
+function ingest(id,p){
+  if(!isFinite(p)||p<=0) return;
+  const st=S.src[id], now=Date.now();
+  st.price=p; st.t=now; st.status="ok"; st.errN=0; st.ws=true; st.wsAlive=now;
+  if(st.lastHistT&&now-st.lastHistT<400) return;      /* throttle history density, keep spot hot */
+  st.lastHistT=now;
+  st.hist=st.hist||[]; st.hist.push({t:now,p});
+  if(st.hist.length>900) st.hist.splice(0,200);
+  onPrice();
+}
+function connectWS(f,attempt){
+  if(S.paused) return;
+  let ws;
+  try{ ws=new WebSocket(f.url); }catch(e){ scheduleWS(f,attempt+1); return; }
+  const st=S.src[f.id]; st.sock=ws;
+  ws.onopen=()=>{ try{ if(f.sub) f.sub(ws); }catch(e){} };
+  ws.onmessage=ev=>{
+    let p=null; try{ p=f.parse(ev.data); }catch(e){}
+    if(p!==null) ingest(f.id,p); else { const q=S.src[f.id]; q.wsAlive=Date.now(); }
+  };
+  ws.onclose=()=>{ st.ws=false; if(!S.paused) scheduleWS(f,attempt+1); };
+  ws.onerror=()=>{ try{ ws.close(); }catch(e){} };
+}
+function scheduleWS(f,attempt){
+  setTimeout(()=>connectWS(f,attempt),Math.min(30000,2000*Math.pow(1.6,Math.min(attempt,8))));
+}
+function startWS(){ if(typeof WebSocket==="undefined") return;
+  for(const f of WSFEEDS) connectWS(f,0); }
+function stopWS(){
+  for(const id of EXCH){ const st=S.src[id];
+    if(st.sock){ try{ st.sock.close(); }catch(e){} } st.ws=false; }
+}
+
 /* ---------------------------------------------------------------- fetch loop */
 async function poll(src){
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
   const t0=performance.now();
+  const pre=S.src[src.id];
+  if(pre.ws && Date.now()-(pre.wsAlive||0)<8000){
+    pre._skip=((pre._skip||0)+1)%4;
+    if(pre._skip!==0){ clearTimeout(to); return; }
+  }
   try{
     const r=await fetch(src.url,{signal:ctl.signal,cache:"no-store"});
     if(!r.ok) throw new Error("HTTP "+r.status);
     const j=await r.json(); const p=src.parse(j);
     if(!isFinite(p)||p<=0) throw new Error("bad payload");
     const st=S.src[src.id];
+    if(st.ws && Date.now()-(st.wsAlive||0)<8000 && st.price && Math.abs(1e4*Math.log(p/st.price))>25){
+      st.status="drift"; clearTimeout(to); return;   /* REST disputes the socket — flag, keep socket data visible */
+    }
     st.price=p; st.t=Date.now(); st.latency=Math.round(performance.now()-t0);
     st.status="ok"; st.errN=0;
     st.hist=st.hist||[]; st.hist.push({t:st.t,p});
@@ -441,7 +531,7 @@ async function seed(){
       S.seedInfo="seeded: Bitstamp 1-min OHLC ×"+rows.length;
     }catch(e2){ S.seedInfo="no seed — cold start (needs ~15 live bars)"; }
   }
-  $("conenote").textContent=S.seedInfo;
+  $("seednote").textContent=S.seedInfo;
 }
 
 /* ---------------------------------------------------------------- statistics */
@@ -720,7 +810,6 @@ function maybeLogLedger(){
     f[h]={MART:r.mart.f,GBM:r.gbm.f,OU:r.ou,MOM:r.mom,ENS:r.ens,glo:r.gbm.lo,ghi:r.gbm.hi};
   }
   S.ledger.pending.push({t0:S.fc.t0,P0:S.fc.P0,f});
-  S.pinnedCone={t0:S.fc.t0,P0:S.fc.P0,cone:S.fc.cone};
   if(S.ledger.pending.length>300) S.ledger.pending.shift();
 }
 function priceAtTime(ts){
@@ -801,11 +890,14 @@ function renderSources(){
       if(a<FRESH_MS){ live++; if(med) dev=fmtBp(bp(st.price,med)); }
     }
     const status=(st.status!=="ok"&&st.status!=="…")?st.status:"";
+    const bi=EXCH.indexOf(s.id);
+    const sw=bi>=0?'<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+BRAID[bi]+';margin-right:5px;vertical-align:middle"></span>':'';
+    const trans=st.ws?'<em style="color:var(--model-dim)">WS</em>':'';
     return '<div class="row"><span class="dot '+dot+'"></span>'
-      +'<span class="srcname">'+s.name+(s.tag?'<em>'+s.tag.toUpperCase()+'</em>':'')+'</span>'
+      +'<span class="srcname">'+sw+s.name+trans+(s.tag?'<em>'+s.tag.toUpperCase()+'</em>':'')+'</span>'
       +'<span class="r num">'+ptxt+(status?' <span style="color:var(--err);font-size:10px">'+status+'</span>':'')+'</span>'
       +'<span class="r num" style="color:var(--dim)">'+dev+'</span>'
-      +'<span class="r num" style="color:var(--faint)">'+lat+'</span>'
+      +'<span class="r num" style="color:var(--faint)">'+(st.ws?"ws":lat)+'</span>'
       +'<span class="r num" style="color:var(--faint)">'+age+'</span></div>';
   }).join("");
   $("srcnote").textContent=live+" live / "+SOURCES.length;
@@ -900,208 +992,112 @@ function renderCommit(){
 const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
-const yv={c:null,s:null};
-function renderEpoch(){
-  const now=Date.now();
+const UPC="#0E9464", DNC="#D6493D";
+function niceTicks(lo,hi){
+  const span=Math.max(hi-lo,1e-6);
+  const steps=[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000];
+  const st=steps.find(s=>span/s<=5)||20000;
+  const out=[];
+  for(let v=Math.ceil(lo/st)*st; v<=hi; v+=st) out.push(v);
+  return out;
+}
+function frame(){
   const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
-  const padL=8, padR=56, padT=16, padB=22;
-  const iw=W-padL-padR, ih=H-padT-padB;
-  const spot=S.lastPx, E=S.epoch;
+  const padL=8,padR=64,padT=16,padB=24;
+  return {W,H,padL,padR,padT,padB,iw:W-padL-padR,ih:H-padT-padB};
+}
+function yGrid(F,lo,hi,Y){
+  cx.strokeStyle="rgba(15,46,63,.08)"; cx.lineWidth=1; cx.textAlign="left"; cx.font="11px "+FONT();
+  for(const v of niceTicks(lo,hi)){
+    const y=Y(v);
+    cx.beginPath();cx.moveTo(F.padL,y);cx.lineTo(F.padL+F.iw,y);cx.stroke();
+    cx.fillStyle="#3E6274";
+    cx.fillText("$"+Math.round(v).toLocaleString(),F.padL+F.iw+5,y+4);
+  }
   cx.font="9px "+FONT();
-  if(spot===null||!E){ cx.fillStyle="#50647E"; cx.fillText("awaiting first projection set…",padL+8,H/2); return; }
-  const xMin=-32, xMax=62;
-  const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
-  const e=(now-E.t0)/60000;
-
-  /* cone percentiles at elapsed time */
-  const rowAt=i=>E.cone[Math.min(59,Math.max(0,i))];
-  const coneAt=s=>{
-    if(s<=0) return [E.P0,E.P0,E.P0,E.P0,E.P0];
-    if(s<1){ const B=rowAt(0); return B.map(v=>E.P0+(v-E.P0)*s); }
-    const a=Math.floor(s-1), f=Math.min(1,s-1-a);
-    const A=rowAt(a), B=rowAt(a+1);
-    return A.map((v,i)=>v+(B[i]-v)*f);
-  };
-  const cNow=coneAt(Math.min(e,60));
-
-  /* control-line points: seeded 1-min closes before tick coverage, ticks after */
-  const pts=[];
-  const tickStart=S.ticks.length?S.ticks[0].t:Infinity;
-  for(const k of S.barKeys){
-    const tEnd=(k+1)*60000;
-    if(tEnd>=tickStart) continue;
-    const m=(tEnd-E.t0)/60000; if(m<xMin) continue;
-    pts.push({m,p:S.bars.get(k)});
-  }
-  for(const tk of S.ticks){
-    const m=(tk.t-E.t0)/60000; if(m<xMin) continue;
-    pts.push({m,p:tk.p});
-  }
-  pts.sort((a,b)=>a.m-b.m);
-  let minP=spot, maxP=spot;
-  for(const q of pts){ if(q.p<minP)minP=q.p; if(q.p>maxP)maxP=q.p; }
-
-  /* y-domain: spot at center; pinch on tracking, spread on excursion */
-  const dev=Math.abs(spot-cNow[2]);
-  const edge=Math.max(cNow[4]-cNow[2],1e-9);
-  const track=Math.min(dev/edge,1.3)/1.3;
-  const tail=E.cone[59];
-  const tight=Math.max(1.5*(cNow[4]-cNow[2]),spot*0.0008);
-  const wide=Math.max(Math.abs(tail[4]-spot),Math.abs(tail[0]-spot),tight);
-  const mustC=Math.max(Math.abs(E.P0-spot),maxP-spot,spot-minP);
-  const target=Math.max(mustC*1.06, tight+(wide-tight)*track);
-  const kE=RM?1:0.06;
-  if(yv.c===null){ yv.c=spot; yv.s=target; }
-  else { yv.c+=(spot-yv.c)*kE; yv.s+=(target-yv.s)*kE; }
+}
+const yv={c:null,s:null};
+function renderIdle(){
+  const now=Date.now(), F=frame();
+  cx.font="9px "+FONT();
+  const t0=now-15*60000;
+  const X=t=>F.padL+((t-t0)/(now-t0))*F.iw;
+  /* braid extents */
+  let mn=Infinity,mx=-Infinity; const braid=[];
+  EXCH.forEach((id,i)=>{
+    const st=S.src[id]; if(!st.hist||st.hist.length<2) return;
+    const pts=[];
+    for(const q of st.hist){ if(q.t<t0-30000) continue;
+      pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+    if(pts.length>1) braid.push({i,pts});
+  });
+  if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
+    cx.fillText("awaiting live feeds\u2026",F.padL+8,F.H/2); return; }
+  const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.2,cT*0.0004);
+  const kE=RM?1:0.1;
+  if(yv.c===null){yv.c=cT;yv.s=sT;} else {yv.c+=(cT-yv.c)*kE; yv.s+=(sT-yv.s)*kE;}
   const lo=yv.c-yv.s, hi=yv.c+yv.s;
-  const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
-
-  /* horizontal grid + true price labels */
-  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.textAlign="left";
-  for(let i=0;i<=5;i++){ const p=lo+(hi-lo)*i/5, y=Y(p);
-    cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
-    cx.fillStyle="#50647E";
-    cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
+  const Y=p=>F.padT+(1-(p-lo)/(hi-lo))*F.ih;
+  yGrid(F,lo,hi,Y);
+  /* dynamic clock ticks: 5-min majors, minute minors */
+  cx.font="11px "+FONT();
+  for(let t=Math.ceil(t0/300000)*300000; t<=now; t+=300000){
+    const x=X(t);
+    cx.strokeStyle="rgba(15,46,63,.16)";
+    cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke();
+    cx.fillStyle="#3E6274"; cx.textAlign="center";
+    cx.fillText(timeStr(t),x,F.H-8); cx.textAlign="left";
   }
-  cx.strokeStyle="rgba(217,228,238,.18)"; cx.setLineDash([1,3]);
-  cx.beginPath();cx.moveTo(padL,Y(spot));cx.lineTo(padL+iw,Y(spot));cx.stroke();
-  cx.setLineDash([]);
-
-  /* pre-onset context tint + onset line */
-  cx.fillStyle="rgba(217,228,238,.03)";
-  cx.fillRect(padL,padT,Math.max(0,X(0)-padL),ih);
-  cx.strokeStyle="rgba(229,161,60,.4)"; cx.lineWidth=1;
-  cx.beginPath();cx.moveTo(X(0),padT);cx.lineTo(X(0),padT+ih);cx.stroke();
-  cx.fillStyle="rgba(229,161,60,.6)";
-  cx.fillText("ONSET "+timeStr(E.t0),X(0)+4,padT+20);
-
-  /* time labels + interval marks (pulse in final 30 s) */
-  cx.fillStyle="#50647E"; cx.fillText(timeStr(E.t0-1800000),padL+2,H-8);
-  const tickGap=X(10)-X(5);
-  for(const h of HORIZONS){
-    const due=E.t0+h*60000, x=X(h), tto=due-now;
-    let a=0.22;
-    if(!E.res[h]&&tto>0&&tto<=30000) a=RM?0.5:(0.3+0.3*(0.5+0.5*Math.sin(now/170)));
-    cx.strokeStyle="rgba(229,161,60,"+a+")"; cx.setLineDash([2,5]); cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke(); cx.setLineDash([]);
-    if(tickGap>=34||h>=15){
-      cx.fillStyle="rgba(229,161,60,.75)"; cx.textAlign="center";
-      cx.fillText(timeStr(due),x,H-8); cx.textAlign="left";
-    }
+  cx.strokeStyle="rgba(15,46,63,.16)";
+  for(let t=Math.ceil(t0/60000)*60000; t<=now; t+=60000){
+    const x=X(t);
+    cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
   }
-
-  cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
-
-  /* projection band + median spine */
-  const band=(li,hiI,fill)=>{
-    cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
-    for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][hiI]));
-    for(let s=E.cone.length-1;s>=0;s--) cx.lineTo(X(s+1),Y(E.cone[s][li]));
-    cx.closePath(); cx.fillStyle=fill; cx.fill();
-  };
-  band(0,4,"rgba(229,161,60,.11)");
-  band(1,3,"rgba(229,161,60,.16)");
-
-  /* divergence tint between control and projection over the elapsed region */
-  if(e>0.2&&pts.length>1){
-    const eEnd=Math.min(e,60);
-    let pi=0;
-    const actualAt=m=>{
-      while(pi<pts.length-1&&pts[pi+1].m<=m) pi++;
-      const A=pts[pi], B=pts[Math.min(pi+1,pts.length-1)];
-      if(B.m===A.m) return A.p;
-      const f=Math.min(1,Math.max(0,(m-A.m)/(B.m-A.m)));
-      return A.p+(B.p-A.p)*f;
-    };
-    const step=0.25;
-    for(let m=0;m<eEnd;m+=step){
-      const m2=Math.min(m+step,eEnd);
-      const a1=actualAt(m), a2=actualAt(m2);
-      const p1=coneAt(m)[2], p2=coneAt(m2)[2];
-      cx.fillStyle=(a1+a2)>=(p1+p2)?"rgba(102,177,141,.12)":"rgba(205,110,92,.12)";
-      cx.beginPath();
-      cx.moveTo(X(m),Y(a1)); cx.lineTo(X(m2),Y(a2));
-      cx.lineTo(X(m2),Y(p2)); cx.lineTo(X(m),Y(p1));
-      cx.closePath(); cx.fill();
-    }
-  }
-
-  /* projection median line */
-  cx.beginPath(); cx.moveTo(X(0),Y(E.P0));
-  for(let s=0;s<E.cone.length;s++) cx.lineTo(X(s+1),Y(E.cone[s][2]));
-  cx.strokeStyle="#E5A13C"; cx.setLineDash([4,4]); cx.lineWidth=1.6; cx.stroke(); cx.setLineDash([]);
-
-  /* control line */
-  if(pts.length>1){
+  cx.font="9px "+FONT();
+  /* trend-colored braid */
+  cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
+  cx.globalAlpha=0.85; cx.lineWidth=1.2;
+  for(const b of braid){
+    let li=0, runCol=null;
     cx.beginPath();
-    pts.forEach((q,i)=>{ const x=X(q.m), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); });
-    cx.strokeStyle="#D9E4EE"; cx.lineWidth=1.5; cx.stroke();
-  }
-
-  /* head + live gap readout */
-  const xH=X(Math.min(e,xMax));
-  const pulse=RM?1:(0.85+0.15*Math.sin(now/300));
-  cx.fillStyle="#D9E4EE";
-  cx.beginPath();cx.arc(xH,Y(spot),3*pulse,0,7);cx.fill();
-  if(e>0){
-    const gap=bp(spot,cNow[2]);
-    cx.fillStyle=gap>=0?"#66B18D":"#CD6E5C";
-    const gy=Math.max(padT+14,Y(spot)-8);
-    cx.textAlign=xH>padL+iw-90?"right":"left";
-    cx.fillText("\u0394 "+fmtBp(gap),xH+(xH>padL+iw-90?-8:8),gy);
-    cx.textAlign="left";
-  }
-
-  /* verdict nodes at the period's marks */
-  for(const h of HORIZONS){
-    const rr=E.res[h]; if(!rr||rr.void) continue;
-    const f=E.F[h], x=X(h);
-    const g=RM?1:Math.min(1,(now-rr.born)/400), ez=1-(1-g)*(1-g);
-    if(f.ENS!==null&&isFinite(f.ENS)){
-      cx.strokeStyle="rgba(120,138,158,.5)"; cx.lineWidth=1;
-      cx.beginPath();cx.moveTo(x,Y(f.ENS));cx.lineTo(x,Y(rr.R));cx.stroke();
-      cx.strokeStyle=rr.inB?"#66B18D":"#CD6E5C"; cx.lineWidth=1.4;
-      cx.beginPath();cx.arc(x,Y(f.ENS),4*ez,0,7);cx.stroke();
+    for(let j=1;j<b.pts.length;j++){
+      const q=b.pts[j];
+      while(li<j&&b.pts[li].t<q.t-45000) li++;
+      const col=q.p>=b.pts[li].p?UPC:DNC;
+      if(runCol===null){ runCol=col; cx.moveTo(X(b.pts[j-1].t),Y(b.pts[j-1].p)); }
+      if(col!==runCol){
+        cx.strokeStyle=runCol; cx.stroke();
+        cx.beginPath(); cx.moveTo(X(b.pts[j-1].t),Y(b.pts[j-1].p)); runCol=col;
+      }
+      cx.lineTo(X(q.t),Y(q.p));
     }
-    cx.fillStyle="#D9E4EE";
-    cx.beginPath();cx.arc(x,Y(rr.R),2.4*ez,0,7);cx.fill();
+    if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
+  }
+  cx.globalAlpha=1;
+  /* heads */
+  for(const b of braid){
+    const q=b.pts[b.pts.length-1];
+    cx.fillStyle=BRAID[b.i];
+    cx.beginPath();cx.arc(X(q.t),Y(q.p),2.4,0,7);cx.fill();
   }
   cx.restore();
-
-  /* sweep cursor + top labels */
-  const xC=X(Math.min(e,xMax));
-  cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
-  cx.beginPath();cx.moveTo(xC,padT);cx.lineTo(xC,padT+ih);cx.stroke();
-  if(xC<padL+iw-250){
-    cx.fillStyle="#50647E"; cx.textAlign="right"; cx.fillText("MEASURED",Math.max(xC-5,padL+58),padT+9);
-    cx.textAlign="left"; cx.fillStyle="#9A742F"; cx.fillText("PROJECTED",xC+5,padT+9);
-  }
-  const cov=S.ledger.coverage;
-  cx.fillStyle="rgba(229,161,60,.8)"; cx.textAlign="right";
-  cx.fillText("PERIOD "+timeStr(E.t0)+"\u2013"+timeStr(E.t0+3600000)
-    +(cov.total>0?("  \u00b7  band coverage "+cov.inBand+"/"+cov.total+" \u00b7 "+Math.round(100*cov.inBand/cov.total)+"% (target 90%)"):""),
-    padL+iw-4,padT+9);
-  cx.textAlign="left";
+  cx.fillStyle="rgba(0,135,168,.55)"; cx.font="11px "+FONT(); cx.textAlign="center";
+  cx.fillText("SET A STRIKE TO ARM "+timeStr(nextBoundary(now)),F.padL+F.iw/2,F.padT+16);
+  cx.textAlign="left"; cx.font="9px "+FONT();
 }
 const yr={c:null,s:null};
 function renderRound(){
-  const now=Date.now(), R=S.round;
-  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
-  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
-  cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
-  const padL=8, padR=56, padT=16, padB=22;
-  const iw=W-padL-padR, ih=H-padT-padB;
+  const now=Date.now(), R=S.round, F=frame();
   cx.font="9px "+FONT();
   const xMin=-5, xMax=15.6;
-  const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
+  const X=m=>F.padL+(m-xMin)/(xMax-xMin)*F.iw;
   const rel=t=>(t-R.tStart)/60000;
   const e=rel(now);
 
   /* braid + extents */
   let mn=R.strike, mx=R.strike;
-  if(R.openRef!==null){ mn=Math.min(mn,R.openRef); mx=Math.max(mx,R.openRef); }
   const braid=[];
   EXCH.forEach((id,i)=>{
     const st=S.src[id]; if(!st.hist||st.hist.length<2) return;
@@ -1109,65 +1105,62 @@ function renderRound(){
     for(const q of st.hist){
       const m=rel(q.t); if(m<xMin-0.5) continue;
       pts.push({m:Math.min(m,xMax),p:q.p});
-      mn=Math.min(mn,q.p); mx=Math.max(mx,q.p);
+      if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p;
     }
     if(pts.length>1) braid.push({i,pts});
   });
 
-  /* y-domain: contain strike + braid, eased */
   const cT=(mn+mx)/2;
   const sT=Math.max((mx-mn)/2*1.18, R.strike*0.0006);
   const kE=RM?1:0.12;
   if(yr.c===null){ yr.c=cT; yr.s=sT; } else { yr.c+=(cT-yr.c)*kE; yr.s+=(sT-yr.s)*kE; }
   const lo=yr.c-yr.s, hi=yr.c+yr.s;
-  const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
+  const Y=p=>F.padT+(1-(p-lo)/(hi-lo))*F.ih;
 
-  /* horizontal grid + price labels */
-  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.textAlign="left";
-  for(let i=0;i<=5;i++){ const p=lo+(hi-lo)*i/5, y=Y(p);
-    cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
-    cx.fillStyle="#50647E";
-    cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
-  }
+  yGrid(F,lo,hi,Y);
 
-  /* sub-period bands + marks at 0/3/6/9/12/15 mapped to clock */
-  cx.fillStyle="rgba(217,228,238,.02)";
-  for(let i=0;i<5;i++){ if(i%2) cx.fillRect(X(i*3),padT,X(i*3+3)-X(i*3),ih); }
-  const tickGap=X(3)-X(0);
-  for(let m=0;m<=15;m+=3){
+  /* 5-5-5 phases: majors at 0/5/10/15 mapped to clock, minute minors */
+  cx.font="11px "+FONT();
+  for(let m=0;m<=15;m+=5){
     const x=X(m);
-    cx.strokeStyle=m===0?"rgba(229,161,60,.4)":"rgba(229,161,60,.2)";
+    cx.strokeStyle=m===0?"rgba(0,135,168,.45)":"rgba(0,135,168,.22)";
     cx.setLineDash(m===0?[]:[2,5]); cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke(); cx.setLineDash([]);
-    if(tickGap>=34||m===0||m===15||m===9){
-      cx.fillStyle="rgba(229,161,60,.7)"; cx.textAlign="center";
-      cx.fillText(timeStr(R.tStart+m*60000),x,H-8); cx.textAlign="left";
-    }
+    cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
+    cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="center";
+    cx.fillText(timeStr(R.tStart+m*60000),x,F.H-8); cx.textAlign="left";
   }
-
-  cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
-
-  /* open reference */
-  if(R.openRef!==null){
-    cx.strokeStyle="rgba(217,228,238,.35)"; cx.setLineDash([1,3]);
-    cx.beginPath();cx.moveTo(padL,Y(R.openRef));cx.lineTo(padL+iw,Y(R.openRef));cx.stroke();
-    cx.setLineDash([]);
-    cx.fillStyle="rgba(217,228,238,.5)";
-    cx.fillText("open "+fmtUSD.format(R.openRef),padL+4,Y(R.openRef)-4);
+  cx.strokeStyle="rgba(15,46,63,.16)";
+  for(let m=Math.ceil(xMin);m<=15;m++){
+    const x=X(m);
+    cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
   }
+  cx.font="9px "+FONT();
 
-  /* strike line — the committed object */
-  cx.strokeStyle="#E5A13C"; cx.lineWidth=1.6;
-  cx.beginPath();cx.moveTo(padL,Y(R.strike));cx.lineTo(padL+iw,Y(R.strike));cx.stroke();
-  cx.fillStyle="#E5A13C";
-  cx.fillText("strike "+fmtUSD.format(R.strike)+" · "+R.call,padL+4,Y(R.strike)+11);
+  cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
 
-  /* braid — one line per source, no aggregate */
+  /* strike — the committed object */
+  cx.strokeStyle="#0087A8"; cx.lineWidth=1.6;
+  cx.beginPath();cx.moveTo(F.padL,Y(R.strike));cx.lineTo(F.padL+F.iw,Y(R.strike));cx.stroke();
+  cx.fillStyle="#0087A8"; cx.font="11px "+FONT();
+  cx.fillText("strike "+fmtUSD.format(R.strike)+" \u00b7 "+R.call,F.padL+4,Y(R.strike)+13);
+  cx.font="9px "+FONT();
+
+  /* braid, color-keyed by side of strike */
+  cx.globalAlpha=0.85; cx.lineWidth=1.2;
   for(const b of braid){
-    cx.strokeStyle=BRAID[b.i]; cx.lineWidth=1; cx.globalAlpha=0.9;
+    let runCol=null;
     cx.beginPath();
-    b.pts.forEach((q,j)=>{ const x=X(q.m), y=Y(q.p); j?cx.lineTo(x,y):cx.moveTo(x,y); });
-    cx.stroke();
+    for(let j=1;j<b.pts.length;j++){
+      const q=b.pts[j];
+      const col=q.p>=R.strike?UPC:DNC;
+      if(runCol===null){ runCol=col; cx.moveTo(X(b.pts[j-1].m),Y(b.pts[j-1].p)); }
+      if(col!==runCol){
+        cx.strokeStyle=runCol; cx.stroke();
+        cx.beginPath(); cx.moveTo(X(b.pts[j-1].m),Y(b.pts[j-1].p)); runCol=col;
+      }
+      cx.lineTo(X(q.m),Y(q.p));
+    }
+    if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
   }
   cx.globalAlpha=1;
 
@@ -1189,33 +1182,34 @@ function renderRound(){
     let up=0,dn=0,fmn=Infinity,fmx=-Infinity;
     for(const f of fr){ if(f.p>R.strike)up++; else if(f.p<R.strike)dn++;
       fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
-    cx.textAlign="right";
-    cx.fillStyle="#66B18D"; cx.fillText(up+"\u2191",padL+iw-26,Y(R.strike)-6);
-    cx.fillStyle="#CD6E5C"; cx.fillText(dn+"\u2193",padL+iw-6,Y(R.strike)-6);
+    cx.textAlign="right"; cx.font="11px "+FONT();
+    cx.fillStyle=UPC; cx.fillText(up+"\u2191",F.padL+F.iw-30,Y(R.strike)-8);
+    cx.fillStyle=DNC; cx.fillText(dn+"\u2193",F.padL+F.iw-8,Y(R.strike)-8);
+    cx.font="9px "+FONT();
     if(fr.length>=2&&fmn<Infinity){
-      cx.fillStyle="rgba(217,228,238,.55)";
-      cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" sources",padL+iw-4,padT+21);
+      cx.fillStyle="rgba(15,46,63,.55)";
+      cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" feeds",F.padL+F.iw-4,F.padT+21);
     }
     cx.textAlign="left";
   }
 
   /* pre-open countdown */
   if(now<R.tStart){
-    cx.fillStyle="rgba(229,161,60,.85)"; cx.font="13px "+FONT(); cx.textAlign="center";
-    cx.fillText((R.state==="locked"?"LOCKED \u00b7 ":"ARMED \u00b7 ")+"OPENS "+timeStr(R.tStart)+" \u00b7 T\u2212"+mmss(R.tStart-now),padL+iw/2,padT+ih/2);
+    cx.fillStyle="rgba(0,135,168,.85)"; cx.font="13px "+FONT(); cx.textAlign="center";
+    cx.fillText((R.state==="locked"?"LOCKED \u00b7 ":"ARMED \u00b7 ")+"OPENS "+timeStr(R.tStart)+" \u00b7 T\u2212"+mmss(R.tStart-now),F.padL+F.iw/2,F.padT+F.ih/2);
     cx.font="9px "+FONT(); cx.textAlign="left";
   }
 
   /* settled overlay */
   if(R.state==="settled"){
     const oc=R.outcome;
-    const col=oc==="UP"?"rgba(102,177,141,":oc==="DOWN"?"rgba(205,110,92,":"rgba(229,161,60,";
-    cx.fillStyle=col+"0.06)"; cx.fillRect(padL,padT,iw,ih);
+    const col=oc==="UP"?"rgba(14,148,100,":oc==="DOWN"?"rgba(214,73,61,":"rgba(0,135,168,";
+    cx.fillStyle=col+"0.06)"; cx.fillRect(F.padL,F.padT,F.iw,F.ih);
     cx.fillStyle=col+"0.95)"; cx.font="18px "+FONT(); cx.textAlign="center";
-    cx.fillText(oc,padL+iw/2,padT+ih/2-6);
+    cx.fillText(oc,F.padL+F.iw/2,F.padT+F.ih/2-6);
     cx.font="10px "+FONT();
     if(oc==="UP"||oc==="DOWN")
-      cx.fillText(R.up+"\u2191 "+R.dn+"\u2193 vs "+fmtUSD.format(R.strike)+" \u00b7 CALL "+R.call+" "+(R.hit?"HIT":"MISS"),padL+iw/2,padT+ih/2+12);
+      cx.fillText(R.up+"\u2191 "+R.dn+"\u2193 vs "+fmtUSD.format(R.strike)+" \u00b7 CALL "+R.call+" "+(R.hit?"HIT":"MISS"),F.padL+F.iw/2,F.padT+F.ih/2+12);
     cx.font="9px "+FONT(); cx.textAlign="left";
   }
   cx.restore();
@@ -1223,21 +1217,21 @@ function renderRound(){
   /* sweep cursor */
   if(e>=xMin){
     const xC=X(Math.min(e,xMax));
-    cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(xC,padT);cx.lineTo(xC,padT+ih);cx.stroke();
+    cx.strokeStyle="rgba(15,46,63,.4)"; cx.lineWidth=1;
+    cx.beginPath();cx.moveTo(xC,F.padT);cx.lineTo(xC,F.padT+F.ih);cx.stroke();
   }
 
   /* frame label */
-  cx.fillStyle="rgba(229,161,60,.8)"; cx.textAlign="right";
-  cx.fillText("ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd),padL+iw-4,padT+9);
+  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right";
+  cx.fillText("ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd),F.padL+F.iw-4,F.padT+9);
   cx.textAlign="left";
-  cx.fillStyle="#50647E";
-  cx.fillText(R.state.toUpperCase(),padL+2,padT+9);
+  cx.fillStyle="#7D97A6";
+  cx.fillText(R.state.toUpperCase(),F.padL+2,F.padT+9);
 }
 function render(){
   const R=S.round;
   if(R&&(R.state!=="settled"||Date.now()-R.settledAt<=20000)) renderRound();
-  else renderEpoch();
+  else renderIdle();
 }
 let _lastFrame=0;
 function loop(ts){
@@ -1250,7 +1244,7 @@ $("pauseBtn").addEventListener("click",()=>{
   S.paused=!S.paused;
   $("pauseBtn").textContent=S.paused?"RESUME":"PAUSE";
   $("pauseBtn").setAttribute("aria-pressed",String(S.paused));
-  if(S.paused) stopPolling(); else startPolling();
+  if(S.paused){ stopPolling(); stopWS(); } else { startPolling(); startWS(); }
   renderSources();
 });
 $("viewBtn").addEventListener("click",()=>{
@@ -1271,6 +1265,9 @@ setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   epochTick(Date.now());
   roundTick(Date.now());
+  const _wn=Date.now();
+  for(const id of EXCH){ const st=S.src[id];
+    if(st.ws&&st.sock&&_wn-(st.wsAlive||0)>15000){ try{ st.sock.close(); }catch(e){} st.ws=false; } }
   renderSources(); renderCommit();
 },1000);
 setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
@@ -1281,6 +1278,7 @@ requestAnimationFrame(loop);
   renderArmBar(); renderRounds();
   await seed();
   startPolling();
+  startWS();
   setTimeout(()=>recomputeForecast(true),2500);
 })();
 </script>
