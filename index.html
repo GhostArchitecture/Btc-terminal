@@ -173,7 +173,7 @@
 </div>
     <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
-      <input id="strikeIn" inputmode="decimal" placeholder="BTC USD strike" aria-label="strike price">
+      <input id="strikeIn" inputmode="decimal" placeholder="strike — revealed at open" aria-label="strike price">
       <span class="tgl" role="group" aria-label="call direction">
         <button id="callAbove" class="sel">ABOVE</button><button id="callBelow">BELOW</button>
       </span>
@@ -187,7 +187,7 @@
         <span><span class="sw" style="background:var(--up)"></span>price above strike</span>
         <span><span class="sw" style="background:var(--down)"></span>below strike</span>
         <span><span class="sw" style="background:var(--model)"></span>strike</span>
-        <span>source key &amp; feed status on the DATA page</span>
+        <span>single feed line · settlement verified across all feeds (DATA)</span>
       </div>
     </div>
   </section>
@@ -267,29 +267,29 @@
       <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
       reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
       <b>Ensemble</b>: median of available point forecasts.</p>
-    <p><b>Chart.</b> Two states only. Armed or live, the frame is the round: −5 minutes of context, the
-      15-minute window phased 5-5-5 with majors at +5/+10/+15 mapped to actual clock times and minute minors
-      beneath, price gridlines snapped to round dollar steps that rescale with the zoom. The braid — one line
-      per exchange, no aggregate — is color-keyed to the strike: green above, red below, so every crossing of
-      the committed line reads instantly; per-source dots print at open and expiry, the adjudication instants.
-      Idle, the frame is a rolling 15-minute live view, trend-colored, with the next armable window named.
-      The 60-minute projection frame is retired from display; its engine runs unseen and reports to this page.</p>
+    <p><b>Chart.</b> Two states. Armed or live, the frame is the round: −5 minutes of context, the window
+      phased 5-5-5 with clock-mapped majors and minute minors, price gridlines snapped to round dollar steps
+      that rescale with the zoom. The plot is a single designated feed — Coinbase primary, failing over down
+      the source order if it stales — color-keyed to the strike (green above, red below), with the active feed
+      named on the frame. Multi-source verification lives where it adjudicates: per-source dots at the open and
+      expiry marks, the live side-count and spread, and the settlement vote. Idle, the frame is a rolling
+      15-minute trend-colored view with the entry window's state and countdown named. The projection engine
+      runs unseen and reports to this page.</p>
     <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange — sub-second prints, throttled to
       ~0.4 s history density — with automatic reconnect and backoff and a 15 s silence watchdog. REST polling
       continues as cross-verification: full 3 s cadence when a socket is down, relaxed to ~12 s while it is
       healthy; a REST print disputing its own socket by more than 25 bp flags the source as drift rather than
       overwriting it. No socket, no problem — the source degrades to REST transparently, and settlement votes
       only ever use prints fresh within 10 s regardless of transport.</p>
-    <p><b>Rounds.</b> A round is a 15-minute window aligned to quarter-hour wall-clock boundaries, phased 5-5-5 with clock-mapped marks. Arming requires a USD strike (and a call, above/below) entered before the boundary —
-      arming inside the final 5 s rolls to the following window, and no entry can join a window already running.
-      Armed rounds lock 5 s before open and cannot be edited after; one round may be staged while another runs.
-      At open, fresh per-source prints are recorded (open marker = midrange of those prints, a marker only).
-      At expiry each exchange feed fresh within 10 s votes above or below the strike: ≥⅔ on one side settles
-      UP or DOWN, a split settles DISPUTED (strike inside the inter-source spread), fewer than two voters
-      settles VOID. Calls tally against the 50% coin. The round frame plots one line per exchange — no
-      aggregate; agreement is the braid's tightness, and the live spread is printed. The statistical engine
-      elsewhere retains its internal consensus series, which models require. Exchange feeds poll every 3 s;
-      the round log is session-scoped.</p>
+    <p><b>Rounds.</b> A round is a 15-minute window on quarter-hour wall-clock boundaries, phased 5-5-5.
+      Because the strike is third-party information revealed only after the interval opens, entry happens inside
+      a 90-second buffer beginning at the boundary: arm within it and the round attaches to the running window;
+      miss it and the window is gated — no late entry, no exceptions. The open reference is reconstructed from
+      the recorded per-source prints at the exact boundary instant (the feeds stream regardless of arming), so a
+      late arm never shifts the mark; settlement is pinned to the quarter-hour sharp regardless of entry time.
+      Disarm is possible only while the buffer remains. At expiry each feed fresh within 10 s votes above or
+      below the strike: ≥⅔ settles UP or DOWN, a split settles DISPUTED, under two voters settles VOID.
+      Calls tally against the 50% coin; the round log is session-scoped.</p>
     <p><b>Interval discipline.</b> Every minute one forecast set is pinned to five wall-clock due times.
       Realized price at each due instant is linearly interpolated from the tick series (never a late sample;
       residual resolution lag is reported in the scorecard header). If no tick exists within 45 s of a due
@@ -349,6 +349,7 @@ const SOURCES=[
 ];
 const FRESH_MS=20000, HORIZONS=[5,10,15,30,60];
 const EXCH=["coinbase","kraken","gemini","binanceus","bitstamp","bitfinex"];
+const ENTRY_BUFFER=90000;
 const BRAID=["#0B4F6C","#0E6E8C","#1489A6","#22A3BC","#45B7CC","#6FCADB"];
 
 /* ---------------------------------------------------------------- state */
@@ -361,7 +362,6 @@ const S={
   epoch:null,           // {t0,P0,cone,F:{h:{ENS,glo,ghi}},res:{h:{R,inB,err}}} — the fixed 60-min frame
   epochLog:[],          // completed periods
   round:null,           // {state,tStart,tEnd,strike,call,opens,openRef,settles,outcome,hit,settledAt}
-  nextRound:null,       // queued arm while a round is locked/live
   roundLog:[],          // settled rounds
   tally:{calls:0,hits:0},
   callSel:"ABOVE",
@@ -580,39 +580,49 @@ function freshExch(now,maxAge){
   return out;
 }
 function armMsg(s){ $("armMsg").textContent=s; }
+function priceAtSrc(hist,ts){
+  if(!hist||!hist.length||hist[hist.length-1].t<ts) return null;
+  let j=hist.length-1; while(j>0&&hist[j-1].t>=ts) j--;
+  if(j===0){ const lag=hist[0].t-ts; return lag<=10000?{p:hist[0].p,lag}:null; }
+  const a=hist[j-1], b=hist[j];
+  if(b.t-a.t<=30000){ const f=(ts-a.t)/(b.t-a.t); return {p:a.p+f*(b.p-a.p),lag:0}; }
+  const lag=b.t-ts; return lag<=10000?{p:b.p,lag}:null;
+}
+function captureOpensAt(R){
+  let mn=Infinity,mx=-Infinity,n=0;
+  for(const id of EXCH){
+    const q=priceAtSrc(S.src[id].hist,R.tStart);
+    if(!q) continue;
+    R.opens[id]=q.p; mn=Math.min(mn,q.p); mx=Math.max(mx,q.p); n++;
+  }
+  if(n<2){ R.outcome="VOID"; R.state="settled"; R.settledAt=Date.now(); logRound(R); return false; }
+  R.openRef=(mn+mx)/2;
+  return true;
+}
 function armRound(){
   const raw=($("strikeIn").value||"").replace(/[,$\s]/g,"");
   const v=parseFloat(raw);
   if(!isFinite(v)||v<1000||v>2000000){ armMsg("enter a plausible USD strike"); return; }
   const now=Date.now();
-  let tS=nextBoundary(now);
-  let rolled=false;
-  if(tS-now<5000){ tS+=900000; rolled=true; }
-  const r={state:"armed",tStart:tS,tEnd:tS+900000,strike:v,call:S.callSel,
+  const nb=nextBoundary(now), lastB=nb-900000;
+  if(now-lastB>ENTRY_BUFFER){
+    armMsg("entry closed for "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u2014 next entry opens "+timeStr(nb));
+    return;
+  }
+  if(S.round&&S.round.state==="live"&&S.round.tStart===lastB){ armMsg("already armed for this window"); return; }
+  const r={state:"live",tStart:lastB,tEnd:lastB+900000,strike:v,call:S.callSel,
     armedAt:now,opens:{},openRef:null,settles:{},outcome:null,hit:null,settledAt:0};
-  const cur=S.round;
-  if(cur&&(cur.state==="locked"||cur.state==="live")){
-    if(S.nextRound){ armMsg("queue full — one round may be staged"); return; }
-    S.nextRound=r;
-  } else if(cur&&cur.state==="armed"){ armMsg("disarm the staged round first"); return; }
-  else S.round=r;
-  armMsg(rolled?("boundary <5s away — rolled to "+timeStr(tS)):"");
+  if(!captureOpensAt(r)){ S.round=r; armMsg("void \u2014 under two feeds covered the open mark"); renderArmBar(); return; }
+  S.round=r;
+  armMsg("armed at T+"+Math.round((now-lastB)/1000)+"s \u2014 open mark reconstructed at "+timeStr(lastB));
   renderArmBar();
 }
 function disarmRound(){
-  if(S.round&&S.round.state==="armed"){ S.round=S.nextRound||null; S.nextRound=null; }
-  else if(S.nextRound&&S.nextRound.state==="armed"){ S.nextRound=null; }
-  armMsg("disarmed");
+  const now=Date.now(), R=S.round;
+  if(R&&R.state==="live"&&now-R.tStart<=ENTRY_BUFFER){
+    S.round=null; armMsg("disarmed \u2014 entry still open "+mmss(R.tStart+ENTRY_BUFFER-now));
+  } else armMsg("locked \u2014 entry buffer elapsed");
   renderArmBar();
-}
-function captureOpens(R,now){
-  const fr=freshExch(now,10000);
-  if(fr.length<2){ R.outcome="VOID"; R.state="settled"; R.settledAt=now;
-    logRound(R); return; }
-  let mn=Infinity,mx=-Infinity;
-  for(const f of fr){ R.opens[f.id]=f.p; mn=Math.min(mn,f.p); mx=Math.max(mx,f.p); }
-  R.openRef=(mn+mx)/2;
-  R.state="live";
 }
 function settleRound(R,now){
   const fr=freshExch(now,10000);
@@ -652,45 +662,48 @@ function showVerdict(R){
   v.className="num "+cls; v.textContent=txt; v.style.display="block";
 }
 function roundTick(now){
-  const R=S.round; if(!R){ renderArmBar(); return; }
-  if(R.state==="armed"&&now>=R.tStart-5000) R.state="locked";
-  if(R.state==="locked"&&now>=R.tStart) captureOpens(R,now);
-  if(R.state==="live"&&now>=R.tEnd) settleRound(R,now);
-  if(R.state==="settled"&&now-R.settledAt>20000){
-    S.round=S.nextRound||null; S.nextRound=null;
+  const R=S.round;
+  if(R){
+    if(R.state==="live"&&now>=R.tEnd) settleRound(R,now);
+    if(R.state==="settled"&&now-R.settledAt>20000) S.round=null;
   }
   renderArmBar();
 }
 function mmss(ms){ ms=Math.max(0,ms);
   return Math.floor(ms/60000)+":"+String(Math.floor(ms%60000/1000)).padStart(2,"0"); }
 function renderArmBar(){
-  const now=Date.now(), R=S.round, N=S.nextRound;
+  const now=Date.now(), R=S.round;
+  const nb=nextBoundary(now), lastB=nb-900000;
+  const inBuf=now-lastB<=ENTRY_BUFFER;
   const st=$("armStatus"), btn=$("armBtn"), inp=$("strikeIn");
-  let s="", canArm=true, btnLabel="ARM";
-  if(!R){ s="IDLE — set a strike to arm "+timeStr(nextBoundary(now))+"–"+timeStr(nextBoundary(now)+900000); }
-  else if(R.state==="armed"){
-    s="ARMED "+timeStr(R.tStart)+"–"+timeStr(R.tEnd)+" · "+fmtUSD.format(R.strike)+" "+R.call
-      +" · opens in "+mmss(R.tStart-now);
-    btnLabel="DISARM";
-  }
-  else if(R.state==="locked"){ s="LOCKED — opens in "+mmss(R.tStart-now); canArm=false; }
-  else if(R.state==="live"){
+  let s="", btnLabel="ARM", canArm=false;
+  const liveNow=R&&R.state==="live"&&R.tStart===lastB;
+  if(liveNow){
     const fr=freshExch(now,10000);
     let up=0,dn=0; for(const f of fr){ if(f.p>R.strike)up++; else if(f.p<R.strike)dn++; }
-    s="LIVE "+timeStr(R.tStart)+"–"+timeStr(R.tEnd)+" · "+fmtUSD.format(R.strike)+" "+R.call
-      +" · "+up+"↑ "+dn+"↓ · settles in "+mmss(R.tEnd-now)
-      +(N?(" · next staged "+timeStr(N.tStart)):"");
-    btnLabel=N?"DISARM NEXT":"ARM NEXT";
-  }
-  else if(R.state==="settled"){
-    s="SETTLED — "+(N?("next staged "+timeStr(N.tStart)):("arm "+timeStr(nextBoundary(now))));
-    btnLabel=N?"DISARM NEXT":"ARM";
+    s="LIVE "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd)+" \u00b7 "+fmtUSD.format(R.strike)+" "+R.call
+      +" \u00b7 "+up+"\u2191 "+dn+"\u2193 \u00b7 settles "+timeStr(R.tEnd)+" in "+mmss(R.tEnd-now);
+    if(inBuf){ btnLabel="DISARM"; canArm=true; s+=" \u00b7 edit closes in "+mmss(lastB+ENTRY_BUFFER-now); }
+    else btnLabel="LOCKED";
+  } else if(R&&R.state==="live"){
+    s="LIVE "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd)+" \u00b7 "+fmtUSD.format(R.strike)+" "+R.call
+      +" \u00b7 settles in "+mmss(R.tEnd-now);
+    btnLabel="LOCKED";
+  } else {
+    const pre=(R&&R.state==="settled")?"SETTLED \u00b7 ":"";
+    if(inBuf){
+      s=pre+"ENTRY OPEN "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 strike entry closes in "+mmss(lastB+ENTRY_BUFFER-now);
+      canArm=true;
+    } else {
+      s=pre+"WAITING \u2014 entry opens "+timeStr(nb)+" \u00b7 T\u2212"+mmss(nb-now);
+    }
   }
   st.textContent=s;
   btn.textContent=btnLabel;
   btn.disabled=!canArm;
-  inp.disabled=!canArm||(btnLabel.indexOf("DISARM")===0);
-  $("callAbove").disabled=inp.disabled; $("callBelow").disabled=inp.disabled;
+  const editable=canArm&&btnLabel==="ARM";
+  inp.disabled=!editable;
+  $("callAbove").disabled=!editable; $("callBelow").disabled=!editable;
 }
 function renderRounds(){
   const tb=$("rounds").querySelector("tbody");
@@ -1024,15 +1037,15 @@ function renderIdle(){
   cx.font="9px "+FONT();
   const t0=now-15*60000;
   const X=t=>F.padL+((t-t0)/(now-t0))*F.iw;
-  /* braid extents */
-  let mn=Infinity,mx=-Infinity; const braid=[];
-  EXCH.forEach((id,i)=>{
-    const st=S.src[id]; if(!st.hist||st.hist.length<2) return;
-    const pts=[];
-    for(const q of st.hist){ if(q.t<t0-30000) continue;
-      pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
-    if(pts.length>1) braid.push({i,pts});
-  });
+  /* single feed extents */
+  let priId=null;
+  for(const id of EXCH){ const st=S.src[id];
+    if(st.hist&&st.hist.length>1&&now-st.t<=10000){ priId=id; break; } }
+  if(!priId){ let best=null; for(const id of EXCH){ const st=S.src[id];
+    if(st.hist&&st.hist.length>1&&(best===null||st.t>S.src[best].t)) best=id; } priId=best; }
+  let mn=Infinity,mx=-Infinity; const line=[];
+  if(priId){ for(const q of S.src[priId].hist){ if(q.t<t0-30000) continue;
+    line.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; } }
   if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
     cx.fillText("awaiting live feeds\u2026",F.padL+8,F.H/2); return; }
   const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.2,cT*0.0004);
@@ -1056,35 +1069,37 @@ function renderIdle(){
     cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
   }
   cx.font="9px "+FONT();
-  /* trend-colored braid */
+  /* trend-colored feed line */
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-  cx.globalAlpha=0.85; cx.lineWidth=1.2;
-  for(const b of braid){
+  if(line.length>1){
+    cx.lineWidth=1.8;
     let li=0, runCol=null;
     cx.beginPath();
-    for(let j=1;j<b.pts.length;j++){
-      const q=b.pts[j];
-      while(li<j&&b.pts[li].t<q.t-45000) li++;
-      const col=q.p>=b.pts[li].p?UPC:DNC;
-      if(runCol===null){ runCol=col; cx.moveTo(X(b.pts[j-1].t),Y(b.pts[j-1].p)); }
+    for(let j=1;j<line.length;j++){
+      const q=line[j];
+      while(li<j&&line[li].t<q.t-45000) li++;
+      const col=q.p>=line[li].p?UPC:DNC;
+      if(runCol===null){ runCol=col; cx.moveTo(X(line[j-1].t),Y(line[j-1].p)); }
       if(col!==runCol){
         cx.strokeStyle=runCol; cx.stroke();
-        cx.beginPath(); cx.moveTo(X(b.pts[j-1].t),Y(b.pts[j-1].p)); runCol=col;
+        cx.beginPath(); cx.moveTo(X(line[j-1].t),Y(line[j-1].p)); runCol=col;
       }
       cx.lineTo(X(q.t),Y(q.p));
     }
     if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
-  }
-  cx.globalAlpha=1;
-  /* heads */
-  for(const b of braid){
-    const q=b.pts[b.pts.length-1];
-    cx.fillStyle=BRAID[b.i];
-    cx.beginPath();cx.arc(X(q.t),Y(q.p),2.4,0,7);cx.fill();
+    const hd=line[line.length-1];
+    cx.fillStyle=BRAID[Math.max(0,EXCH.indexOf(priId))];
+    cx.beginPath();cx.arc(X(hd.t),Y(hd.p),3,0,7);cx.fill();
   }
   cx.restore();
-  cx.fillStyle="rgba(0,135,168,.55)"; cx.font="11px "+FONT(); cx.textAlign="center";
-  cx.fillText("SET A STRIKE TO ARM "+timeStr(nextBoundary(now)),F.padL+F.iw/2,F.padT+16);
+  const nb=nextBoundary(now), lastB=nb-900000, inBuf=now-lastB<=ENTRY_BUFFER;
+  cx.fillStyle=inBuf?"rgba(0,135,168,.85)":"rgba(0,135,168,.5)"; cx.font="11px "+FONT(); cx.textAlign="center";
+  cx.fillText(inBuf
+    ?("ENTRY OPEN "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 CLOSES "+mmss(lastB+ENTRY_BUFFER-now))
+    :("ENTRY OPENS "+timeStr(nb)+" \u00b7 T\u2212"+mmss(nb-now)),
+    F.padL+F.iw/2,F.padT+16);
+  if(priId){ cx.fillStyle="#7D97A6"; cx.font="9px "+FONT(); cx.textAlign="left";
+    cx.fillText("line: "+priId.toUpperCase(),F.padL+2,F.padT+9); cx.textAlign="center"; }
   cx.textAlign="left"; cx.font="9px "+FONT();
 }
 const yr={c:null,s:null};
@@ -1096,20 +1111,20 @@ function renderRound(){
   const rel=t=>(t-R.tStart)/60000;
   const e=rel(now);
 
-  /* braid + extents */
+  /* single designated feed line */
+  const PRI=EXCH;
+  let priId=null;
+  for(const id of PRI){ const st=S.src[id];
+    if(st.hist&&st.hist.length>1&&now-st.t<=10000){ priId=id; break; } }
+  if(!priId){ let best=null; for(const id of PRI){ const st=S.src[id];
+    if(st.hist&&st.hist.length>1&&(best===null||st.t>S.src[best].t)) best=id; } priId=best; }
   let mn=R.strike, mx=R.strike;
-  const braid=[];
-  EXCH.forEach((id,i)=>{
-    const st=S.src[id]; if(!st.hist||st.hist.length<2) return;
-    const pts=[];
-    for(const q of st.hist){
-      const m=rel(q.t); if(m<xMin-0.5) continue;
-      pts.push({m:Math.min(m,xMax),p:q.p});
-      if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p;
-    }
-    if(pts.length>1) braid.push({i,pts});
-  });
-
+  const line=[];
+  if(priId){ for(const q of S.src[priId].hist){
+    const m=rel(q.t); if(m<xMin-0.5) continue;
+    line.push({m:Math.min(m,xMax),p:q.p});
+    if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; } }
+  for(const id of Object.keys(R.opens)){ const p=R.opens[id]; if(p<mn)mn=p; if(p>mx)mx=p; }
   const cT=(mn+mx)/2;
   const sT=Math.max((mx-mn)/2*1.18, R.strike*0.0006);
   const kE=RM?1:0.12;
@@ -1145,24 +1160,26 @@ function renderRound(){
   cx.fillText("strike "+fmtUSD.format(R.strike)+" \u00b7 "+R.call,F.padL+4,Y(R.strike)+13);
   cx.font="9px "+FONT();
 
-  /* braid, color-keyed by side of strike */
-  cx.globalAlpha=0.85; cx.lineWidth=1.2;
-  for(const b of braid){
+  /* the line, color-keyed by side of strike */
+  if(line.length>1){
+    cx.lineWidth=1.8;
     let runCol=null;
     cx.beginPath();
-    for(let j=1;j<b.pts.length;j++){
-      const q=b.pts[j];
+    for(let j=1;j<line.length;j++){
+      const q=line[j];
       const col=q.p>=R.strike?UPC:DNC;
-      if(runCol===null){ runCol=col; cx.moveTo(X(b.pts[j-1].m),Y(b.pts[j-1].p)); }
+      if(runCol===null){ runCol=col; cx.moveTo(X(line[j-1].m),Y(line[j-1].p)); }
       if(col!==runCol){
         cx.strokeStyle=runCol; cx.stroke();
-        cx.beginPath(); cx.moveTo(X(b.pts[j-1].m),Y(b.pts[j-1].p)); runCol=col;
+        cx.beginPath(); cx.moveTo(X(line[j-1].m),Y(line[j-1].p)); runCol=col;
       }
       cx.lineTo(X(q.m),Y(q.p));
     }
     if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
+    const hd=line[line.length-1];
+    cx.fillStyle=hd.p>=R.strike?UPC:DNC;
+    cx.beginPath();cx.arc(X(hd.m),Y(hd.p),3,0,7);cx.fill();
   }
-  cx.globalAlpha=1;
 
   /* open / settle prints as per-source dots at the boundaries */
   for(const id of Object.keys(R.opens)){
@@ -1193,13 +1210,6 @@ function renderRound(){
     cx.textAlign="left";
   }
 
-  /* pre-open countdown */
-  if(now<R.tStart){
-    cx.fillStyle="rgba(0,135,168,.85)"; cx.font="13px "+FONT(); cx.textAlign="center";
-    cx.fillText((R.state==="locked"?"LOCKED \u00b7 ":"ARMED \u00b7 ")+"OPENS "+timeStr(R.tStart)+" \u00b7 T\u2212"+mmss(R.tStart-now),F.padL+F.iw/2,F.padT+F.ih/2);
-    cx.font="9px "+FONT(); cx.textAlign="left";
-  }
-
   /* settled overlay */
   if(R.state==="settled"){
     const oc=R.outcome;
@@ -1226,7 +1236,7 @@ function renderRound(){
   cx.fillText("ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd),F.padL+F.iw-4,F.padT+9);
   cx.textAlign="left";
   cx.fillStyle="#7D97A6";
-  cx.fillText(R.state.toUpperCase(),F.padL+2,F.padT+9);
+  cx.fillText(R.state.toUpperCase()+(priId?(" \u00b7 line: "+priId.toUpperCase()):""),F.padL+2,F.padT+9);
 }
 function render(){
   const R=S.round;
