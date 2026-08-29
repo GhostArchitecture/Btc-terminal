@@ -191,7 +191,7 @@
       <div class="legend">
         <span><span class="sw" style="background:var(--up)"></span>price above strike</span>
         <span><span class="sw" style="background:var(--down)"></span>below strike</span>
-        <span><span class="sw" style="background:var(--model)"></span>strike</span>
+        <span><span class="sw" style="background:var(--model)"></span>strike (dashed) · axis tag = level + odds at set time</span>
         <span>right gauge · live over/under split</span>
         <span>single feed line · settlement verified across all feeds (DATA)</span>
       </div>
@@ -287,9 +287,11 @@
     <p><b>Chart.</b> Two states. With strikes armed, the frame is the round: \u22125 minutes of context, the
       window phased 5-5-5 with clock-mapped majors and minute minors, dollar gridlines that rescale with the
       zoom. The plot is a single designated feed \u2014 Coinbase primary, failing over down the source order \u2014
-      trend-colored (rising green, falling red over a 45 s lookback). Each armed strike draws as its own Bondi
-      line with a live over-probability tag; the most recent is the active strike, drawn heavier and carrying
-      the large OVER/UNDER pair and the right-edge gauge. At settlement each strike line ends in a verdict ring
+      trend-colored (rising green, falling red over a 45 s lookback). The y-scale belongs to the price line alone. Each armed strike draws as a dashed Bondi line inside it,
+      denoted on the price axis by a tag carrying its level and the probability frozen at placement with the
+      arm offset; strikes outside the price range appear as edge markers in the gutter and never stretch the
+      scale. The most recent strike is active — drawn heavier, carrying the live OVER/UNDER pair and the
+      right-edge gauge. At settlement each strike line ends in a verdict ring
       and per-source dots print at the expiry mark. Idle, the frame is a rolling 15-minute trend view with the
       current window named. The projection engine runs unseen and reports to this page.</p>
     <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange — sub-second prints, throttled to
@@ -1257,17 +1259,16 @@ function renderRound(){
     if(st.hist&&st.hist.length>1&&(best===null||st.t>S.src[best].t)) best=id; } priId=best; }
   const acts=activeStrikes(R);
   const activeSk=acts.length?acts[acts.length-1]:null;
-  let mn=activeSk?activeSk.strike:Infinity, mx=activeSk?activeSk.strike:-Infinity;
-  for(const sk of acts){ if(sk.strike<mn)mn=sk.strike; if(sk.strike>mx)mx=sk.strike; }
-  if(!isFinite(mn)){ mn=S.lastPx||0; mx=mn; }
+  let mn=Infinity, mx=-Infinity;
   const line=[];
   if(priId){ for(const q of S.src[priId].hist){
     const m=rel(q.t); if(m<xMin-0.5) continue;
     line.push({m:Math.min(m,xMax),p:q.p,t:q.t});
     if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; } }
   for(const id of Object.keys(R.opens)){ const p=R.opens[id]; if(p<mn)mn=p; if(p>mx)mx=p; }
+  if(!isFinite(mn)){ const fb=S.lastPx!==null?S.lastPx:(activeSk?activeSk.strike:0); mn=fb; mx=fb; }
   const cT=(mn+mx)/2;
-  const sT=Math.max((mx-mn)/2*1.18, R.strike*0.0006);
+  const sT=Math.max((mx-mn)/2*1.18, cT*0.0006);
   const kE=RM?1:0.12;
   if(yr.c===null){ yr.c=cT; yr.s=sT; } else { yr.c+=(cT-yr.c)*kE; yr.s+=(sT-yr.s)*kE; }
   const lo=yr.c-yr.s, hi=yr.c+yr.s;
@@ -1294,23 +1295,16 @@ function renderRound(){
 
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
 
-  /* strikes — the committed objects */
+  /* strikes — dashed guests; price owns the scale */
   for(const sk of acts){
-    const yS=Y(sk.strike), isA=sk===activeSk;
-    cx.strokeStyle=isA?"#0087A8":"rgba(0,135,168,.55)"; cx.lineWidth=isA?1.8:1.1;
+    if(sk.strike<lo||sk.strike>hi) continue;
+    const isA=sk===activeSk, yS=Y(sk.strike);
+    cx.strokeStyle=isA?"#0087A8":"rgba(0,135,168,.55)";
+    cx.lineWidth=isA?1.6:1.1;
+    cx.setLineDash(isA?[7,5]:[3,4]);
     cx.beginPath();cx.moveTo(F.padL,yS);cx.lineTo(F.padL+F.iw,yS);cx.stroke();
-    cx.font=(isA?"11px ":"10px ")+FONT();
-    cx.fillStyle=isA?"#0087A8":"rgba(0,135,168,.75)";
-    cx.fillText(fmtUSD.format(sk.strike)+" "+sk.call[0],F.padL+4,yS-4);
-    if(sk.prob){
-      const pc=Math.round(sk.prob.over*100);
-      cx.textAlign="right";
-      cx.fillStyle=sk.prob.over>=0.5?UPC:DNC;
-      cx.fillText(pc+"%\u2191",F.padL+F.iw-16,yS-4);
-      cx.textAlign="left";
-    }
+    cx.setLineDash([]);
   }
-  cx.font="9px "+FONT();
 
   /* the line, trend-colored */
   if(line.length>1){
@@ -1384,6 +1378,7 @@ function renderRound(){
     const col=(u&&!d)?"rgba(14,148,100,":(d&&!u)?"rgba(214,73,61,":"rgba(0,135,168,";
     cx.fillStyle=col+"0.06)"; cx.fillRect(F.padL,F.padT,F.iw,F.ih);
     for(const sk of acts){
+      if(sk.strike<lo||sk.strike>hi) continue;
       const oc=sk.outcome;
       cx.strokeStyle=oc==="UP"?UPC:oc==="DOWN"?DNC:"#0087A8"; cx.lineWidth=1.6;
       cx.beginPath();cx.arc(X(15),Y(sk.strike),4.5,0,7);cx.stroke();
@@ -1395,6 +1390,35 @@ function renderRound(){
     cx.font="9px "+FONT(); cx.textAlign="left";
   }
   cx.restore();
+
+  /* axis denotation: level + odds at placement; off-scale strikes as edge markers */
+  {
+    let topN=0,botN=0;
+    for(const sk of acts){
+      const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
+      const tpm="+"+Math.max(0,Math.round((sk.tArm-R.tStart)/60000))+"m";
+      const isA=sk===activeSk;
+      if(sk.strike>=lo&&sk.strike<=hi){
+        const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
+        cx.fillStyle=isA?"#0087A8":"rgba(0,135,168,.14)";
+        cx.fillRect(x0,yS-11,w,22);
+        cx.textAlign="left"; cx.font="10px "+FONT();
+        cx.fillStyle=isA?"#FFFFFF":"#006E8A";
+        cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1);
+        cx.font="9px "+FONT();
+        cx.fillStyle=isA?"rgba(255,255,255,.85)":"#3E6274";
+        cx.fillText(pa+" \u00b7"+tpm,x0+4,yS+9);
+      } else {
+        const above=sk.strike>hi;
+        const y=above?(F.padT+10+12*(topN++)):(F.padT+F.ih-4-12*(botN++));
+        let col="rgba(0,135,168,.85)";
+        if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")) col=sk.outcome==="UP"?UPC:DNC;
+        cx.font="9px "+FONT(); cx.textAlign="left"; cx.fillStyle=col;
+        cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+2,y);
+      }
+    }
+    cx.textAlign="left";
+  }
 
   /* sweep cursor */
   if(e>=xMin){
