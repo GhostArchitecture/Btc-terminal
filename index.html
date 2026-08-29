@@ -187,6 +187,7 @@
         <span><span class="sw" style="background:var(--up)"></span>price above strike</span>
         <span><span class="sw" style="background:var(--down)"></span>below strike</span>
         <span><span class="sw" style="background:var(--model)"></span>strike</span>
+        <span>right gauge · live over/under split</span>
         <span>single feed line · settlement verified across all feeds (DATA)</span>
       </div>
     </div>
@@ -240,9 +241,10 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
-      <thead><tr><th>Window</th><th>Strike</th><th>Call</th><th>Open</th><th>Vote</th><th>Spread</th><th>Outcome</th><th>Hit</th></tr></thead>
+      <thead><tr><th>Window</th><th>Strike</th><th>Call</th><th>Open</th><th>Vote</th><th>Spread</th><th class="model">P↑ fin</th><th>Outcome</th><th>Hit</th></tr></thead>
       <tbody></tbody>
     </table></div>
+    <div id="probnote" class="lbl" style="margin-top:6px;letter-spacing:.08em;color:var(--bondi)"></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">outcome = ≥⅔ of fresh sources on one side of the strike at expiry · disputed = strike inside the inter-source spread · void = under two fresh voters</div>
   </section>
 
@@ -281,6 +283,17 @@
       healthy; a REST print disputing its own socket by more than 25 bp flags the source as drift rather than
       overwriting it. No socket, no problem — the source degrades to REST transparently, and settlement votes
       only ever use prints fresh within 10 s regardless of transport.</p>
+    <p><b>Strike probabilities.</b> While a round is live, three classical estimators read the chance the
+      settlement lands above the armed strike, recomputed each second as time-to-expiry decays: the analytic
+      lognormal (the Black-Scholes digital probability under the EWMA volatility, martingale drift), a
+      drift-adjusted variant tilted by the capped momentum estimate, and an empirical read — the historical
+      frequency of τ-minute moves exceeding the required distance, taken from the recorded bar series with no
+      distributional assumption (overlapping samples; effective n is smaller than it looks). The headline OVER
+      and UNDER figures are the median of the three; the per-model breakdown reports below the rounds table.
+      These are distribution reads under stated assumptions, not signals: drift moves the number by a few
+      hundredths at these horizons, and saturation toward 0/100 near expiry with price pinned is the correct
+      shape, not confidence. The final pre-settle read is logged per round and colored by whether it sided with
+      the outcome — the probability engine is audited like everything else.</p>
     <p><b>Rounds.</b> A round is a 15-minute window on quarter-hour wall-clock boundaries, phased 5-5-5.
       Because the strike is third-party information revealed only after the interval opens, entry happens inside
       a 90-second buffer beginning at the boundary: arm within it and the round attaches to the running window;
@@ -579,6 +592,37 @@ function freshExch(now,maxAge){
     if(st.price!==null&&now-st.t<=maxAge) out.push({id,p:st.price}); }
   return out;
 }
+function normCdf(x){
+  const t=1/(1+0.2316419*Math.abs(x));
+  const d=0.3989423*Math.exp(-x*x/2);
+  const p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));
+  return x>0?1-p:p;
+}
+function strikeProbs(R,now){
+  const st=computeStats(), S0=S.lastPx;
+  if(!st||S0===null) return null;
+  const tau=Math.max((R.tEnd-now)/60000, 1/60);
+  const x=Math.log(R.strike/S0);
+  const sd=st.sig*Math.sqrt(tau);
+  if(!(sd>0)) return null;
+  const anl=1-normCdf((x-(0-0.5*st.sig*st.sig)*tau)/sd);
+  const muD=clamp(st.muFast,-2.5*st.sig,2.5*st.sig);
+  const drf=1-normCdf((x-(muD-0.5*st.sig*st.sig)*tau)/sd);
+  let emp=null;
+  if(tau>=1){
+    const closes=closesExcludingCurrent();
+    const k=Math.max(1,Math.round(tau));
+    if(closes.length>k+20){
+      let above=0,n=0;
+      for(let i=0;i+k<closes.length;i++){ n++; if(Math.log(closes[i+k]/closes[i])>x) above++; }
+      emp=above/n;
+    }
+  }
+  const arr=[anl,drf].concat(emp!==null?[emp]:[]);
+  arr.sort((a,b)=>a-b);
+  const over=arr.length===3?arr[1]:(arr[0]+arr[1])/2;
+  return {over,under:1-over,anl,drf,emp,tau,t:now};
+}
 function armMsg(s){ $("armMsg").textContent=s; }
 function priceAtSrc(hist,ts){
   if(!hist||!hist.length||hist[hist.length-1].t<ts) return null;
@@ -664,10 +708,25 @@ function showVerdict(R){
 function roundTick(now){
   const R=S.round;
   if(R){
-    if(R.state==="live"&&now>=R.tEnd) settleRound(R,now);
+    if(R.state==="live"){
+      R.prob=strikeProbs(R,now);
+      if(R.prob){ if(R.probAtArm===undefined) R.probAtArm=R.prob.over; R.probFinal=R.prob.over; }
+      if(now>=R.tEnd) settleRound(R,now);
+    }
     if(R.state==="settled"&&now-R.settledAt>20000) S.round=null;
   }
+  renderProbNote();
   renderArmBar();
+}
+function renderProbNote(){
+  const el=$("probnote"), R=S.round;
+  if(!el) return;
+  if(R&&R.state==="live"&&R.prob){
+    const P=R.prob, f=v=>v===null?"—":Math.round(v*100)+"%";
+    el.textContent="P(over "+fmtUSD.format(R.strike)+") — analytic "+f(P.anl)
+      +" · drift "+f(P.drf)+" · empirical "+f(P.emp)
+      +" · headline "+Math.round(P.over*100)+"% · τ "+mmss(P.tau*60000);
+  } else el.textContent="";
 }
 function mmss(ms){ ms=Math.max(0,ms);
   return Math.floor(ms/60000)+":"+String(Math.floor(ms%60000/1000)).padStart(2,"0"); }
@@ -718,6 +777,13 @@ function renderRounds(){
       +'<td class="num">'+(R.openRef?fmtUSD.format(R.openRef):"—")+'</td>'
       +'<td class="num">'+(R.up!==undefined?(R.up+"↑ "+R.dn+"↓"):"—")+'</td>'
       +'<td class="num" style="color:var(--faint)">'+(R.spreadBp!==null&&R.spreadBp!==undefined?R.spreadBp.toFixed(1)+"bp":"—")+'</td>'
+      +(function(){ if(R.probFinal===undefined||R.probFinal===null) return '<td style="color:var(--faint)">—</td>';
+         const pct=Math.round(R.probFinal*100);
+         let c="var(--faint)";
+         if(R.outcome==="UP"||R.outcome==="DOWN"){
+           const agreed=(R.probFinal>0.5)===(R.outcome==="UP");
+           c=agreed?"var(--up)":"var(--down)"; }
+         return '<td class="num" style="color:'+c+'">'+pct+'%</td>'; })()
       +'<td class="num '+col+'">'+oc+'</td>'
       +'<td class="num">'+hit+'</td></tr>';
   }).join("");
@@ -1193,17 +1259,37 @@ function renderRound(){
     cx.beginPath();cx.arc(X(15),Y(R.settles[id]),2.6,0,7);cx.fill();
   }
 
-  /* live side count + spread */
+  /* live probabilities, side count, spread */
   if(R.state==="live"){
     const fr=freshExch(now,10000);
     let up=0,dn=0,fmn=Infinity,fmx=-Infinity;
     for(const f of fr){ if(f.p>R.strike)up++; else if(f.p<R.strike)dn++;
       fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
-    cx.textAlign="right"; cx.font="11px "+FONT();
-    cx.fillStyle=UPC; cx.fillText(up+"\u2191",F.padL+F.iw-30,Y(R.strike)-8);
-    cx.fillStyle=DNC; cx.fillText(dn+"\u2193",F.padL+F.iw-8,Y(R.strike)-8);
-    cx.font="9px "+FONT();
+    const P=R.prob;
+    if(P){
+      /* right-edge gauge split at the over/under ratio */
+      const gx=F.padL+F.iw-7, gw=5;
+      const split=F.padT+(1-P.over)*F.ih;
+      cx.fillStyle="rgba(14,148,100,.45)";
+      cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
+      cx.fillStyle="rgba(214,73,61,.45)";
+      cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
+      /* independent percentages anchored to their territories at the strike */
+      const yS=Y(R.strike);
+      cx.textAlign="right"; cx.font="15px "+FONT();
+      cx.fillStyle=UPC; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+26,yS-10));
+      cx.fillStyle=DNC; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+20));
+      cx.font="9px "+FONT();
+      cx.fillStyle=UPC; cx.fillText("OVER · "+up+"\u2191",F.padL+F.iw-14,Math.max(F.padT+36,yS-26));
+      cx.fillStyle=DNC; cx.fillText("UNDER · "+dn+"\u2193",F.padL+F.iw-14,Math.min(F.padT+F.ih-20,yS+34));
+    } else {
+      cx.textAlign="right"; cx.font="11px "+FONT();
+      cx.fillStyle=UPC; cx.fillText(up+"\u2191",F.padL+F.iw-30,Y(R.strike)-8);
+      cx.fillStyle=DNC; cx.fillText(dn+"\u2193",F.padL+F.iw-8,Y(R.strike)-8);
+      cx.font="9px "+FONT();
+    }
     if(fr.length>=2&&fmn<Infinity){
+      cx.textAlign="right";
       cx.fillStyle="rgba(15,46,63,.55)";
       cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" feeds",F.padL+F.iw-4,F.padT+21);
     }
