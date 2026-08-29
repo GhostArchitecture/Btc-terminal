@@ -92,8 +92,30 @@
   #viewData{display:none}
   body.showData #viewData{display:block}
   body.showData #viewChart{display:none}
-  #viewChart canvas{height:calc(100dvh - 320px);min-height:340px}
-  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 320px)} }
+  #viewChart canvas{height:calc(100dvh - 400px);min-height:320px}
+  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 400px)} }
+
+  /* round arming bar */
+  #armbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    border:1px solid var(--rule);border-radius:3px;background:var(--ink1);
+    padding:8px 10px;margin-bottom:10px}
+  #armbar .lbl{letter-spacing:.14em}
+  #armbar input{font:inherit;color:var(--meas);background:var(--ink0);
+    border:1px solid var(--rule);border-radius:3px;padding:5px 8px;width:9.5em}
+  #armbar input:focus-visible{outline:2px solid var(--model);outline-offset:1px}
+  #armbar input:disabled{opacity:.45}
+  .tgl{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+  .tgl button{border:0;border-radius:0;background:var(--ink0);padding:5px 9px;font-size:11px}
+  .tgl button.sel{background:var(--ink2);color:var(--model)}
+  #armBtn{color:var(--model);border-color:rgba(229,161,60,.5)}
+  #armBtn:disabled{opacity:.4;cursor:default}
+  #armMsg{font-size:10.5px;color:var(--faint)}
+  #armStatus{font-size:11px;color:var(--dim);letter-spacing:.06em}
+  #verdict{display:none;border:1px solid var(--rule);border-radius:3px;
+    padding:7px 10px;margin-bottom:10px;font-size:12px;letter-spacing:.06em}
+  #verdict.up{border-color:rgba(102,177,141,.5);color:var(--up)}
+  #verdict.down{border-color:rgba(205,110,92,.5);color:var(--down)}
+  #verdict.flat{border-color:rgba(229,161,60,.5);color:var(--model)}
 </style>
 </head>
 <body>
@@ -121,6 +143,16 @@
   <section>
     <div class="shead"><span class="lbl" style="color:var(--dim)">Live period &amp; projection</span>
       <span class="note num" id="conenote"></span></div>
+    <div id="armbar">
+      <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
+      <input id="strikeIn" inputmode="decimal" placeholder="BTC USD strike" aria-label="strike price">
+      <span class="tgl" role="group" aria-label="call direction">
+        <button id="callAbove" class="sel">ABOVE</button><button id="callBelow">BELOW</button>
+      </span>
+      <button id="armBtn">ARM</button>
+      <span id="armMsg"></span>
+    </div>
+    <div id="verdict" class="num"></div>
     <div id="chartbox">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
@@ -178,6 +210,16 @@
   </section>
 
   <section>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
+      <span class="note num" id="rnote">no calls yet</span></div>
+    <div class="tblwrap"><table id="rounds">
+      <thead><tr><th>Window</th><th>Strike</th><th>Call</th><th>Open</th><th>Vote</th><th>Spread</th><th>Outcome</th><th>Hit</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">outcome = ≥⅔ of fresh sources on one side of the strike at expiry · disputed = strike inside the inter-source spread · void = under two fresh voters</div>
+  </section>
+
+  <section>
     <div class="shead"><span class="lbl" style="color:var(--dim)">Period log — 60-minute epochs</span>
       <span class="note num" id="enote">0 completed</span></div>
     <div class="tblwrap"><table id="epochlog">
@@ -198,6 +240,17 @@
       <b>OU</b>: AR(1) on log-price deviation from a 30-min mean; deviation decays as bʰ; suppressed when no
       reversion is detected (b ≥ 0.999). <b>Momentum</b>: EWMA drift (10-min half-life) extrapolated, clamped to ±2.5·σ√h.
       <b>Ensemble</b>: median of available point forecasts.</p>
+    <p><b>Rounds.</b> A round is a 15-minute window aligned to quarter-hour wall-clock boundaries, subdivided
+      by 3-minute marks. Arming requires a USD strike (and a call, above/below) entered before the boundary —
+      arming inside the final 5 s rolls to the following window, and no entry can join a window already running.
+      Armed rounds lock 5 s before open and cannot be edited after; one round may be staged while another runs.
+      At open, fresh per-source prints are recorded (open marker = midrange of those prints, a marker only).
+      At expiry each exchange feed fresh within 10 s votes above or below the strike: ≥⅔ on one side settles
+      UP or DOWN, a split settles DISPUTED (strike inside the inter-source spread), fewer than two voters
+      settles VOID. Calls tally against the 50% coin. The round frame plots one line per exchange — no
+      aggregate; agreement is the braid's tightness, and the live spread is printed. The statistical engine
+      elsewhere retains its internal consensus series, which models require. Exchange feeds poll every 3 s;
+      the round log is session-scoped.</p>
     <p><b>Interval discipline.</b> Every minute one forecast set is pinned to five wall-clock due times.
       Realized price at each due instant is linearly interpolated from the tick series (never a late sample;
       residual resolution lag is reported in the scorecard header). If no tick exists within 45 s of a due
@@ -245,22 +298,22 @@ function quantile(sorted,p){ const i=(sorted.length-1)*p, lo=Math.floor(i), hi=M
 
 /* ---------------------------------------------------------------- sources */
 const SOURCES=[
- {id:"coinbase", name:"Coinbase",  tag:"",      every:5000,
+ {id:"coinbase", name:"Coinbase",  tag:"",      every:3000,
   url:"https://api.coinbase.com/v2/prices/BTC-USD/spot",
   parse:j=>+j.data.amount},
- {id:"kraken",   name:"Kraken",    tag:"",      every:5000,
+ {id:"kraken",   name:"Kraken",    tag:"",      every:3000,
   url:"https://api.kraken.com/0/public/Ticker?pair=XBTUSD",
   parse:j=>{const k=Object.keys(j.result).find(x=>x!=="last");return +j.result[k].c[0];}},
- {id:"gemini",   name:"Gemini",    tag:"",      every:5000,
+ {id:"gemini",   name:"Gemini",    tag:"",      every:3000,
   url:"https://api.gemini.com/v1/pubticker/btcusd",
   parse:j=>+j.last},
- {id:"binanceus",name:"Binance.US",tag:"",      every:5000,
+ {id:"binanceus",name:"Binance.US",tag:"",      every:3000,
   url:"https://api.binance.us/api/v3/ticker/price?symbol=BTCUSD",
   parse:j=>+j.price},
- {id:"bitstamp", name:"Bitstamp",  tag:"",      every:5000,
+ {id:"bitstamp", name:"Bitstamp",  tag:"",      every:3000,
   url:"https://www.bitstamp.net/api/v2/ticker/btcusd/",
   parse:j=>+j.last},
- {id:"bitfinex", name:"Bitfinex",  tag:"",      every:5000,
+ {id:"bitfinex", name:"Bitfinex",  tag:"",      every:3000,
   url:"https://api-pub.bitfinex.com/v2/ticker/tBTCUSD",
   parse:j=>+j[6]},
  {id:"coingecko",name:"CoinGecko", tag:"index", every:60000,
@@ -268,6 +321,8 @@ const SOURCES=[
   parse:j=>+j.bitcoin.usd},
 ];
 const FRESH_MS=20000, HORIZONS=[5,10,15,30,60];
+const EXCH=["coinbase","kraken","gemini","binanceus","bitstamp","bitfinex"];
+const BRAID=["#D9E4EE","#A9C1D6","#8FB0C9","#7A9EBB","#6C8FAF","#5E80A2"];
 
 /* ---------------------------------------------------------------- state */
 const S={
@@ -279,6 +334,11 @@ const S={
   pinnedCone:null,      // {t0,P0,cone} — snapshot at each logged set, holds for the minute
   epoch:null,           // {t0,P0,cone,F:{h:{ENS,glo,ghi}},res:{h:{R,inB,err}}} — the fixed 60-min frame
   epochLog:[],          // completed periods
+  round:null,           // {state,tStart,tEnd,strike,call,opens,openRef,settles,outcome,hit,settledAt}
+  nextRound:null,       // queued arm while a round is locked/live
+  roundLog:[],          // settled rounds
+  tally:{calls:0,hits:0},
+  callSel:"ABOVE",
   seedInfo:"",
   paused:false,
   timers:[],
@@ -301,6 +361,8 @@ async function poll(src){
     const st=S.src[src.id];
     st.price=p; st.t=Date.now(); st.latency=Math.round(performance.now()-t0);
     st.status="ok"; st.errN=0;
+    st.hist=st.hist||[]; st.hist.push({t:st.t,p});
+    if(st.hist.length>600) st.hist.splice(0,150);
     onPrice();
   }catch(e){
     const st=S.src[src.id]; st.errN++;
@@ -413,6 +475,149 @@ function computeStats(){
       } }
   }
   return {sig,muSlow,muFast,ou,nBars:closes.length};
+}
+
+/* ---------------------------------------------------------------- rounds (15-min strike windows) */
+function nextBoundary(t){
+  const d=new Date(t);
+  const rem=(15-(d.getMinutes()%15))*60000 - d.getSeconds()*1000 - d.getMilliseconds();
+  return t+(rem<=0?rem+900000:rem);
+}
+function freshExch(now,maxAge){
+  const out=[];
+  for(const id of EXCH){ const st=S.src[id];
+    if(st.price!==null&&now-st.t<=maxAge) out.push({id,p:st.price}); }
+  return out;
+}
+function armMsg(s){ $("armMsg").textContent=s; }
+function armRound(){
+  const raw=($("strikeIn").value||"").replace(/[,$\s]/g,"");
+  const v=parseFloat(raw);
+  if(!isFinite(v)||v<1000||v>2000000){ armMsg("enter a plausible USD strike"); return; }
+  const now=Date.now();
+  let tS=nextBoundary(now);
+  let rolled=false;
+  if(tS-now<5000){ tS+=900000; rolled=true; }
+  const r={state:"armed",tStart:tS,tEnd:tS+900000,strike:v,call:S.callSel,
+    armedAt:now,opens:{},openRef:null,settles:{},outcome:null,hit:null,settledAt:0};
+  const cur=S.round;
+  if(cur&&(cur.state==="locked"||cur.state==="live")){
+    if(S.nextRound){ armMsg("queue full — one round may be staged"); return; }
+    S.nextRound=r;
+  } else if(cur&&cur.state==="armed"){ armMsg("disarm the staged round first"); return; }
+  else S.round=r;
+  armMsg(rolled?("boundary <5s away — rolled to "+timeStr(tS)):"");
+  renderArmBar();
+}
+function disarmRound(){
+  if(S.round&&S.round.state==="armed"){ S.round=S.nextRound||null; S.nextRound=null; }
+  else if(S.nextRound&&S.nextRound.state==="armed"){ S.nextRound=null; }
+  armMsg("disarmed");
+  renderArmBar();
+}
+function captureOpens(R,now){
+  const fr=freshExch(now,10000);
+  if(fr.length<2){ R.outcome="VOID"; R.state="settled"; R.settledAt=now;
+    logRound(R); return; }
+  let mn=Infinity,mx=-Infinity;
+  for(const f of fr){ R.opens[f.id]=f.p; mn=Math.min(mn,f.p); mx=Math.max(mx,f.p); }
+  R.openRef=(mn+mx)/2;
+  R.state="live";
+}
+function settleRound(R,now){
+  const fr=freshExch(now,10000);
+  let up=0,dn=0,mn=Infinity,mx=-Infinity;
+  for(const f of fr){ R.settles[f.id]=f.p;
+    if(f.p>R.strike) up++; else if(f.p<R.strike) dn++;
+    mn=Math.min(mn,f.p); mx=Math.max(mx,f.p); }
+  const voters=up+dn;
+  if(voters<2) R.outcome="VOID";
+  else if(up>=Math.ceil(voters*2/3)) R.outcome="UP";
+  else if(dn>=Math.ceil(voters*2/3)) R.outcome="DOWN";
+  else R.outcome="DISPUTED";
+  R.up=up; R.dn=dn; R.spreadBp=(voters>0&&mn<Infinity)?1e4*Math.log(mx/mn):null;
+  if(R.outcome==="UP"||R.outcome==="DOWN"){
+    R.hit=(R.outcome==="UP"&&R.call==="ABOVE")||(R.outcome==="DOWN"&&R.call==="BELOW");
+    S.tally.calls++; if(R.hit) S.tally.hits++;
+  }
+  R.state="settled"; R.settledAt=now;
+  logRound(R); showVerdict(R);
+}
+function logRound(R){
+  S.roundLog.unshift(R);
+  if(S.roundLog.length>50) S.roundLog.pop();
+  renderRounds();
+}
+function showVerdict(R){
+  const v=$("verdict");
+  let cls="flat", txt="";
+  if(R.outcome==="UP"||R.outcome==="DOWN"){
+    cls=R.outcome==="UP"?"up":"down";
+    txt="SETTLED "+timeStr(R.tEnd)+" — "+R.outcome+" · "+R.up+"↑ "+R.dn+"↓ vs "
+      +fmtUSD.format(R.strike)+" · CALL "+R.call+" "+(R.hit?"HIT":"MISS");
+  } else {
+    txt="SETTLED "+timeStr(R.tEnd)+" — "+R.outcome
+      +(R.outcome==="DISPUTED"?(" · "+R.up+"↑ "+R.dn+"↓ — strike inside the source spread"):" · under two fresh voters");
+  }
+  v.className="num "+cls; v.textContent=txt; v.style.display="block";
+}
+function roundTick(now){
+  const R=S.round; if(!R){ renderArmBar(); return; }
+  if(R.state==="armed"&&now>=R.tStart-5000) R.state="locked";
+  if(R.state==="locked"&&now>=R.tStart) captureOpens(R,now);
+  if(R.state==="live"&&now>=R.tEnd) settleRound(R,now);
+  if(R.state==="settled"&&now-R.settledAt>20000){
+    S.round=S.nextRound||null; S.nextRound=null;
+  }
+  renderArmBar();
+}
+function mmss(ms){ ms=Math.max(0,ms);
+  return Math.floor(ms/60000)+":"+String(Math.floor(ms%60000/1000)).padStart(2,"0"); }
+function renderArmBar(){
+  const now=Date.now(), R=S.round, N=S.nextRound;
+  const st=$("armStatus"), btn=$("armBtn"), inp=$("strikeIn");
+  let s="", canArm=true, btnLabel="ARM";
+  if(!R){ s="IDLE — set a strike to arm "+timeStr(nextBoundary(now))+"–"+timeStr(nextBoundary(now)+900000); }
+  else if(R.state==="armed"){
+    s="ARMED "+timeStr(R.tStart)+"–"+timeStr(R.tEnd)+" · "+fmtUSD.format(R.strike)+" "+R.call
+      +" · opens in "+mmss(R.tStart-now);
+    btnLabel="DISARM";
+  }
+  else if(R.state==="locked"){ s="LOCKED — opens in "+mmss(R.tStart-now); canArm=false; }
+  else if(R.state==="live"){
+    const fr=freshExch(now,10000);
+    let up=0,dn=0; for(const f of fr){ if(f.p>R.strike)up++; else if(f.p<R.strike)dn++; }
+    s="LIVE "+timeStr(R.tStart)+"–"+timeStr(R.tEnd)+" · "+fmtUSD.format(R.strike)+" "+R.call
+      +" · "+up+"↑ "+dn+"↓ · settles in "+mmss(R.tEnd-now)
+      +(N?(" · next staged "+timeStr(N.tStart)):"");
+    btnLabel=N?"DISARM NEXT":"ARM NEXT";
+  }
+  else if(R.state==="settled"){
+    s="SETTLED — "+(N?("next staged "+timeStr(N.tStart)):("arm "+timeStr(nextBoundary(now))));
+    btnLabel=N?"DISARM NEXT":"ARM";
+  }
+  st.textContent=s;
+  btn.textContent=btnLabel;
+  btn.disabled=!canArm;
+  inp.disabled=!canArm||(btnLabel.indexOf("DISARM")===0);
+  $("callAbove").disabled=inp.disabled; $("callBelow").disabled=inp.disabled;
+}
+function renderRounds(){
+  const tb=$("rounds").querySelector("tbody");
+  const T=S.tally;
+  $("rnote").textContent=T.calls?("calls "+T.calls+" · hits "+T.hits+" ("+Math.round(100*T.hits/T.calls)+"%) · coin 50%"):"no calls yet";
+  tb.innerHTML=S.roundLog.map(R=>{
+    const oc=R.outcome, col=oc==="UP"?"up":oc==="DOWN"?"down":"";
+    const hit=R.hit===null?"—":(R.hit?'<span class="up">HIT</span>':'<span class="down">MISS</span>');
+    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(R.tStart)+'–'+timeStr(R.tEnd)+'</td>'
+      +'<td class="num">'+fmtUSD.format(R.strike)+'</td>'
+      +'<td class="num" style="color:var(--dim)">'+R.call+'</td>'
+      +'<td class="num">'+(R.openRef?fmtUSD.format(R.openRef):"—")+'</td>'
+      +'<td class="num">'+(R.up!==undefined?(R.up+"↑ "+R.dn+"↓"):"—")+'</td>'
+      +'<td class="num" style="color:var(--faint)">'+(R.spreadBp!==null&&R.spreadBp!==undefined?R.spreadBp.toFixed(1)+"bp":"—")+'</td>'
+      +'<td class="num '+col+'">'+oc+'</td>'
+      +'<td class="num">'+hit+'</td></tr>';
+  }).join("");
 }
 
 /* ---------------------------------------------------------------- epoch (fixed 60-min frame) */
@@ -696,7 +901,7 @@ const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
 const yv={c:null,s:null};
-function render(){
+function renderEpoch(){
   const now=Date.now();
   const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
@@ -880,6 +1085,160 @@ function render(){
     padL+iw-4,padT+9);
   cx.textAlign="left";
 }
+const yr={c:null,s:null};
+function renderRound(){
+  const now=Date.now(), R=S.round;
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
+  const padL=8, padR=56, padT=16, padB=22;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  cx.font="9px "+FONT();
+  const xMin=-5, xMax=15.6;
+  const X=m=>padL+(m-xMin)/(xMax-xMin)*iw;
+  const rel=t=>(t-R.tStart)/60000;
+  const e=rel(now);
+
+  /* braid + extents */
+  let mn=R.strike, mx=R.strike;
+  if(R.openRef!==null){ mn=Math.min(mn,R.openRef); mx=Math.max(mx,R.openRef); }
+  const braid=[];
+  EXCH.forEach((id,i)=>{
+    const st=S.src[id]; if(!st.hist||st.hist.length<2) return;
+    const pts=[];
+    for(const q of st.hist){
+      const m=rel(q.t); if(m<xMin-0.5) continue;
+      pts.push({m:Math.min(m,xMax),p:q.p});
+      mn=Math.min(mn,q.p); mx=Math.max(mx,q.p);
+    }
+    if(pts.length>1) braid.push({i,pts});
+  });
+
+  /* y-domain: contain strike + braid, eased */
+  const cT=(mn+mx)/2;
+  const sT=Math.max((mx-mn)/2*1.18, R.strike*0.0006);
+  const kE=RM?1:0.12;
+  if(yr.c===null){ yr.c=cT; yr.s=sT; } else { yr.c+=(cT-yr.c)*kE; yr.s+=(sT-yr.s)*kE; }
+  const lo=yr.c-yr.s, hi=yr.c+yr.s;
+  const Y=p=>padT+(1-(p-lo)/(hi-lo))*ih;
+
+  /* horizontal grid + price labels */
+  cx.strokeStyle="#1B2438"; cx.lineWidth=1; cx.textAlign="left";
+  for(let i=0;i<=5;i++){ const p=lo+(hi-lo)*i/5, y=Y(p);
+    cx.beginPath();cx.moveTo(padL,y);cx.lineTo(padL+iw,y);cx.stroke();
+    cx.fillStyle="#50647E";
+    cx.fillText("$"+Math.round(p).toLocaleString(),padL+iw+4,y+3);
+  }
+
+  /* sub-period bands + marks at 0/3/6/9/12/15 mapped to clock */
+  cx.fillStyle="rgba(217,228,238,.02)";
+  for(let i=0;i<5;i++){ if(i%2) cx.fillRect(X(i*3),padT,X(i*3+3)-X(i*3),ih); }
+  const tickGap=X(3)-X(0);
+  for(let m=0;m<=15;m+=3){
+    const x=X(m);
+    cx.strokeStyle=m===0?"rgba(229,161,60,.4)":"rgba(229,161,60,.2)";
+    cx.setLineDash(m===0?[]:[2,5]); cx.lineWidth=1;
+    cx.beginPath();cx.moveTo(x,padT);cx.lineTo(x,padT+ih);cx.stroke(); cx.setLineDash([]);
+    if(tickGap>=34||m===0||m===15||m===9){
+      cx.fillStyle="rgba(229,161,60,.7)"; cx.textAlign="center";
+      cx.fillText(timeStr(R.tStart+m*60000),x,H-8); cx.textAlign="left";
+    }
+  }
+
+  cx.save(); cx.beginPath(); cx.rect(padL,padT,iw,ih); cx.clip();
+
+  /* open reference */
+  if(R.openRef!==null){
+    cx.strokeStyle="rgba(217,228,238,.35)"; cx.setLineDash([1,3]);
+    cx.beginPath();cx.moveTo(padL,Y(R.openRef));cx.lineTo(padL+iw,Y(R.openRef));cx.stroke();
+    cx.setLineDash([]);
+    cx.fillStyle="rgba(217,228,238,.5)";
+    cx.fillText("open "+fmtUSD.format(R.openRef),padL+4,Y(R.openRef)-4);
+  }
+
+  /* strike line — the committed object */
+  cx.strokeStyle="#E5A13C"; cx.lineWidth=1.6;
+  cx.beginPath();cx.moveTo(padL,Y(R.strike));cx.lineTo(padL+iw,Y(R.strike));cx.stroke();
+  cx.fillStyle="#E5A13C";
+  cx.fillText("strike "+fmtUSD.format(R.strike)+" · "+R.call,padL+4,Y(R.strike)+11);
+
+  /* braid — one line per source, no aggregate */
+  for(const b of braid){
+    cx.strokeStyle=BRAID[b.i]; cx.lineWidth=1; cx.globalAlpha=0.9;
+    cx.beginPath();
+    b.pts.forEach((q,j)=>{ const x=X(q.m), y=Y(q.p); j?cx.lineTo(x,y):cx.moveTo(x,y); });
+    cx.stroke();
+  }
+  cx.globalAlpha=1;
+
+  /* open / settle prints as per-source dots at the boundaries */
+  for(const id of Object.keys(R.opens)){
+    const i=EXCH.indexOf(id); if(i<0) continue;
+    cx.fillStyle=BRAID[i];
+    cx.beginPath();cx.arc(X(0),Y(R.opens[id]),2.2,0,7);cx.fill();
+  }
+  for(const id of Object.keys(R.settles)){
+    const i=EXCH.indexOf(id); if(i<0) continue;
+    cx.fillStyle=BRAID[i];
+    cx.beginPath();cx.arc(X(15),Y(R.settles[id]),2.6,0,7);cx.fill();
+  }
+
+  /* live side count + spread */
+  if(R.state==="live"){
+    const fr=freshExch(now,10000);
+    let up=0,dn=0,fmn=Infinity,fmx=-Infinity;
+    for(const f of fr){ if(f.p>R.strike)up++; else if(f.p<R.strike)dn++;
+      fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
+    cx.textAlign="right";
+    cx.fillStyle="#66B18D"; cx.fillText(up+"\u2191",padL+iw-26,Y(R.strike)-6);
+    cx.fillStyle="#CD6E5C"; cx.fillText(dn+"\u2193",padL+iw-6,Y(R.strike)-6);
+    if(fr.length>=2&&fmn<Infinity){
+      cx.fillStyle="rgba(217,228,238,.55)";
+      cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" sources",padL+iw-4,padT+21);
+    }
+    cx.textAlign="left";
+  }
+
+  /* pre-open countdown */
+  if(now<R.tStart){
+    cx.fillStyle="rgba(229,161,60,.85)"; cx.font="13px "+FONT(); cx.textAlign="center";
+    cx.fillText((R.state==="locked"?"LOCKED \u00b7 ":"ARMED \u00b7 ")+"OPENS "+timeStr(R.tStart)+" \u00b7 T\u2212"+mmss(R.tStart-now),padL+iw/2,padT+ih/2);
+    cx.font="9px "+FONT(); cx.textAlign="left";
+  }
+
+  /* settled overlay */
+  if(R.state==="settled"){
+    const oc=R.outcome;
+    const col=oc==="UP"?"rgba(102,177,141,":oc==="DOWN"?"rgba(205,110,92,":"rgba(229,161,60,";
+    cx.fillStyle=col+"0.06)"; cx.fillRect(padL,padT,iw,ih);
+    cx.fillStyle=col+"0.95)"; cx.font="18px "+FONT(); cx.textAlign="center";
+    cx.fillText(oc,padL+iw/2,padT+ih/2-6);
+    cx.font="10px "+FONT();
+    if(oc==="UP"||oc==="DOWN")
+      cx.fillText(R.up+"\u2191 "+R.dn+"\u2193 vs "+fmtUSD.format(R.strike)+" \u00b7 CALL "+R.call+" "+(R.hit?"HIT":"MISS"),padL+iw/2,padT+ih/2+12);
+    cx.font="9px "+FONT(); cx.textAlign="left";
+  }
+  cx.restore();
+
+  /* sweep cursor */
+  if(e>=xMin){
+    const xC=X(Math.min(e,xMax));
+    cx.strokeStyle="#3A4B6B"; cx.lineWidth=1;
+    cx.beginPath();cx.moveTo(xC,padT);cx.lineTo(xC,padT+ih);cx.stroke();
+  }
+
+  /* frame label */
+  cx.fillStyle="rgba(229,161,60,.8)"; cx.textAlign="right";
+  cx.fillText("ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd),padL+iw-4,padT+9);
+  cx.textAlign="left";
+  cx.fillStyle="#50647E";
+  cx.fillText(R.state.toUpperCase(),padL+2,padT+9);
+}
+function render(){
+  const R=S.round;
+  if(R&&(R.state!=="settled"||Date.now()-R.settledAt<=20000)) renderRound();
+  else renderEpoch();
+}
 let _lastFrame=0;
 function loop(ts){
   if(ts-_lastFrame>33){ _lastFrame=ts; render(); }
@@ -899,10 +1258,19 @@ $("viewBtn").addEventListener("click",()=>{
   $("viewBtn").textContent=on?"CHART":"DATA";
   $("viewBtn").setAttribute("aria-pressed",String(on));
 });
+$("armBtn").addEventListener("click",()=>{
+  if($("armBtn").textContent.indexOf("DISARM")===0) disarmRound(); else { $("verdict").style.display="none"; armRound(); }
+});
+$("strikeIn").addEventListener("keydown",ev=>{ if(ev.key==="Enter") $("armBtn").click(); });
+$("callAbove").addEventListener("click",()=>{ S.callSel="ABOVE";
+  $("callAbove").classList.add("sel"); $("callBelow").classList.remove("sel"); });
+$("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
+  $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel"); });
 function onBarClose(){ recomputeForecast(true); }
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   epochTick(Date.now());
+  roundTick(Date.now());
   renderSources(); renderCommit();
 },1000);
 setInterval(()=>{ if(!S.paused) recomputeForecast(false); },5000);
@@ -910,6 +1278,7 @@ requestAnimationFrame(loop);
 
 (async function init(){
   renderSources(); renderMatrix(); renderScore(); renderCommit(); renderEpochLog();
+  renderArmBar(); renderRounds();
   await seed();
   startPolling();
   setTimeout(()=>recomputeForecast(true),2500);
