@@ -166,7 +166,7 @@
   <div id="banner"></div>
 
   <div id="spot" class="tile">
-    <div class="lbl">Median of live sources</div>
+    <div class="lbl">Validated tape — peer-confirmed · lowest latency</div>
     <div id="px" class="num">—</div>
     <div class="chips num" id="chips"></div>
   </div>
@@ -193,7 +193,7 @@
         <span><span class="sw" style="background:var(--down)"></span>below strike / falling</span>
         <span><span class="sw" style="background:var(--model)"></span>strike (dashed) · axis tag = level + odds at set time</span>
         <span>ghost fields = strike territories · right gauge = live over/under</span>
-        <span>line = validated tape (lowest-latency, peer-confirmed — no aggregation)</span>
+        <span>line = leader book · peer-verified · latency failover — no aggregation</span>
       </div>
     </div>
   </section>
@@ -233,11 +233,13 @@
 
 
   <div id="method" class="tile">
-    <p><b>Tape.</b> The plotted price is a lowest-latency validated tape: every arriving print — WebSocket or
-      REST, whichever lands newest — must be confirmed by at least one other fresh source within 25 bp before
-      joining; unconfirmed prints are quarantined and the source flagged <i>outlier</i>. No median, no
-      aggregation: the sources validate each other and the freshest confirmed print is the price. The internal
-      volatility series builds from the same tape at 1-minute resolution, seeded from Kraken OHLC at load.</p>
+    <p><b>Tape.</b> The plotted price is a sticky-leader tape: one exchange book plots at a time — the
+      leader, chosen by latency priority — streaming its prints at full socket speed, while the other feeds run
+      verification. Every leader print must be confirmed by a peer within 25 bp; a leader that goes silent for
+      3 s or prints an unconfirmed outlier is demoted immediately and the next fresh confirmed book takes the
+      line (the header names the live leader). No median, no aggregation, no cross-book interleave: the line is
+      one book’s true tape, and the sources exist to police it. The internal volatility series builds from the
+      same tape at 1-minute resolution, seeded from Kraken OHLC at load.</p>
     <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange with reconnect, backoff, and a 15 s
       silence watchdog; REST cross-verifies at 3 s (relaxed to ~12 s while a socket is healthy) and a REST print
       disputing its own socket by &gt;25 bp flags <i>drift</i>. Settlement uses only prints fresh within 10 s.</p>
@@ -317,7 +319,8 @@ const BRAID=["#0B4F6C","#0E6E8C","#1489A6","#22A3BC","#45B7CC","#6FCADB"];
 /* ---------------------------------------------------------------- state */
 const S={
   src:{},               // id -> {price,t,latency,status,errN}
-  tape:[],              // validated lowest-latency prints {t,p,src}
+  tape:[],              // validated leader-book prints {t,p,src}
+  leader:null,          // current tape leader (sticky, latency-ordered failover)
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
@@ -441,7 +444,19 @@ function acceptPrint(id,p,t){
       if(Math.abs(1e4*Math.log(p/st.price))<=25) ok=true;
     }
   }
-  if(peers>0&&!ok){ S.src[id].status="outlier"; return; }
+  if(peers>0&&!ok){
+    S.src[id].status="outlier";
+    if(S.leader===id) S.leader=null;          /* demote a lying leader */
+    return;
+  }
+  /* sticky leadership: one book plots; others verify */
+  if(S.leader===null) S.leader=id;
+  else if(id!==S.leader){
+    const L=S.src[S.leader];
+    const stale=(L.price===null)||(t-L.t>3000)||L.status==="outlier";
+    if(!stale) return;                        /* verified & recorded, not plotted */
+    S.leader=id;
+  }
   const last=S.tape[S.tape.length-1];
   if(!last||t-last.t>=250){
     S.tape.push({t,p,src:id});
@@ -982,7 +997,7 @@ function renderIdle(){
   /* header + centered prompt */
   const nb=nextBoundary(now), lastB=nb-900000;
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
-  headerRow(F,"IDLE \u00b7 tape "+nWS+"ws \u00b7 last "+(hd.src||"").toUpperCase(),
+  headerRow(F,"IDLE \u00b7 line "+(S.leader||hd.src||"").toUpperCase()+" \u00b7 tape "+nWS+"ws",
     "WINDOW "+timeStr(lastB)+"\u2013"+timeStr(nb));
   cx.fillStyle="rgba(0,135,168,.6)"; cx.font="10px "+FONT(); cx.textAlign="center";
   cx.fillText("ARM ANYTIME \u00b7 SETTLES IN "+mmss(nb-now),F.padL+F.iw/2,F.padT+22);
@@ -1159,7 +1174,7 @@ function renderRound(){
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
   const left=R.state.toUpperCase()
     +(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call):" \u00b7 no strike")
-    +" \u00b7 tape "+nWS+"ws";
+    +" \u00b7 line "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws";
   headerRow(F,left,"ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd));
 }
 function render(){
@@ -1214,5 +1229,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260829230810 -->
+<!-- build-20260829233044 -->
 </html>
