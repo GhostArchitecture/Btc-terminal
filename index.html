@@ -117,6 +117,9 @@
     border:1px solid rgba(0,135,168,.3);color:var(--bondi-deep)}
   .schip:hover{background:rgba(214,73,61,.12);border-color:rgba(214,73,61,.4);color:var(--down)}
   #armStatus{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
+  #sigstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11.5px;
+    color:var(--dim);letter-spacing:.03em;min-height:34px}
+  #sigstrip b{font-weight:600}
   #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
     font-size:12px;letter-spacing:.05em;background:var(--glass)}
   #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
@@ -154,7 +157,7 @@
 <div class="wrap">
 
   <header class="tile">
-    <div class="mark">BTC/USD<small>CONSENSUS SPOT · PROJECTION CONSOLE</small></div>
+    <div class="mark">BTC/USD<small>VALIDATED TAPE · ROUND INSTRUMENT</small></div>
     <div class="hright">
       <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
       <span id="status" class="pill dead">INIT</span>
@@ -186,6 +189,7 @@
       <span id="armMsg"></span>
     </div>
     <div id="verdict" class="num"></div>
+    <div id="sigstrip" class="tile num"></div>
     <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
@@ -209,6 +213,16 @@
 
 
 
+
+  <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Signals — microstructure read</span>
+      <span class="note num" id="signote"></span></div>
+    <div class="tblwrap"><table id="signals">
+      <thead><tr><th>Component</th><th>Read</th><th>Detail</th><th>Predictive weight</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">weights are disclosed, not asserted — at 15-minute horizons every component is small; the read describes the present, the odds price the future</div>
+  </section>
 
   <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Interval analysis — completed 15-min windows</span>
@@ -250,15 +264,28 @@
       the strike at the quarter-hour sharp (split → DISPUTED, under two voters → VOID). Calls tally against the
       50% coin. Each settled window writes an interval-analysis row (open, close, Δ, realized range, strikes,
       hits) and the trend map reads the recent sequence. Logs are session-scoped.</p>
-    <p><b>Strike probabilities.</b> Three classical estimators read P(settle above strike) each second: the
+    <p><b>Strike probabilities.</b> Four estimators read P(settle above strike) each second: the
       analytic lognormal digital under EWMA volatility with martingale drift, a drift-adjusted variant, and an
       empirical read from historical τ-minute moves (trailing pool, overlapping samples). The analytic and
       drift estimators are hour-anchored — the series back-traces to the start of the containing hour, blending
       the hour's own realized volatility and trend with shrinkage weight n/(n+15), resetting clean at :00 so all
       four phases share one analytical origin; anchor state reports live below the rounds table. Headline OVER
-      and UNDER are the median of the three; the odds at placement are frozen into each strike's record.
+      and UNDER are the median of the four; the odds at placement are frozen into each strike's record.
       Saturation toward 0/100 near expiry with price pinned is correct shape, not confidence. Nothing here is
       trading advice.</p>
+    <p><b>Signals.</b> A microstructure read, recomputed each second, with every component labeled by what it
+      can claim. <i>Velocity</i> is drift in bp/min over 60 s and 5 min with acceleration — descriptive; at these
+      horizons momentum barely predicts. <i>Regime</i> is the AR(1) coefficient of 15-second returns over ten
+      minutes, and its magnitude is shown as the directional read’s predictive weight, because that is what it
+      is. <i>Order-flow imbalance</i> is net aggressor buy minus sell volume from the side-bearing trade streams
+      — the legitimate form of “polling transactions” (price forms on exchange books; the chain settles ownership
+      afterward, and transaction hashes carry no information), and the best-documented short-horizon predictor:
+      real, signed, small. <i>Dislocation</i> compares the leader book to the peer cluster — an isolated gap is
+      liquidity-driven and tends to revert under arbitrage (the honest form of an “artificial trough”); a
+      cluster-wide move is information and tends to persist. <i>Reaction levels</i> map round numbers, hour open,
+      60-minute extremes and the strike by proximity — documented order clustering makes them zones, never
+      calls. A fourth probability estimator, <i>flow</i>, tilts drift by imbalance and pulls the start price toward
+      the peer cluster under isolated dislocation; the headline is the median of all four.</p>
     <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
       the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
       dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
@@ -321,6 +348,8 @@ const S={
   src:{},               // id -> {price,t,latency,status,errN}
   tape:[],              // validated leader-book prints {t,p,src}
   leader:null,          // current tape leader (sticky, latency-ordered failover)
+  flow:[],              // signed trade volume {t,v,src} from side-bearing streams
+  sig:null,             // latest signals read
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
@@ -341,20 +370,25 @@ SOURCES.forEach(s=>S.src[s.id]={price:null,t:0,latency:null,status:"…",errN:0}
 const WSFEEDS=[
  {id:"coinbase", url:"wss://ws-feed.exchange.coinbase.com",
   sub:ws=>ws.send(JSON.stringify({type:"subscribe",product_ids:["BTC-USD"],channels:["ticker"]})),
-  parse:d=>{const m=JSON.parse(d); return m.type==="ticker"&&m.price?+m.price:null;}},
+  parse:d=>{const m=JSON.parse(d); if(m.type!=="ticker"||!m.price) return null;
+    return {p:+m.price,side:m.side==="buy"?1:m.side==="sell"?-1:0,size:+m.last_size||0};}},
  {id:"kraken", url:"wss://ws.kraken.com",
   sub:ws=>ws.send(JSON.stringify({event:"subscribe",pair:["XBT/USD"],subscription:{name:"ticker"}})),
   parse:d=>{const m=JSON.parse(d); return (Array.isArray(m)&&m[1]&&m[1].c)?+m[1].c[0]:null;}},
  {id:"gemini", url:"wss://api.gemini.com/v1/marketdata/BTCUSD?trades=true&top_of_book=false&auction_indicative=false",
   sub:null,
   parse:d=>{const m=JSON.parse(d); if(m.type!=="update"||!m.events) return null;
-    for(const ev of m.events){ if(ev.type==="trade"&&ev.price) return +ev.price; } return null;}},
+    for(const ev of m.events){ if(ev.type==="trade"&&ev.price)
+      return {p:+ev.price,side:ev.makerSide==="bid"?-1:ev.makerSide==="ask"?1:0,size:+ev.amount||0}; }
+    return null;}},
  {id:"binanceus", url:"wss://stream.binance.us:9443/ws/btcusd@trade",
   sub:null,
-  parse:d=>{const m=JSON.parse(d); return m.p?+m.p:null;}},
+  parse:d=>{const m=JSON.parse(d); if(!m.p) return null;
+    return {p:+m.p,side:m.m===true?-1:m.m===false?1:0,size:+m.q||0};}},
  {id:"bitstamp", url:"wss://ws.bitstamp.net",
   sub:ws=>ws.send(JSON.stringify({event:"bts:subscribe",data:{channel:"live_trades_btcusd"}})),
-  parse:d=>{const m=JSON.parse(d); return (m.event==="trade"&&m.data&&m.data.price)?+m.data.price:null;}},
+  parse:d=>{const m=JSON.parse(d); if(!(m.event==="trade"&&m.data&&m.data.price)) return null;
+    return {p:+m.data.price,side:m.data.type===0?1:m.data.type===1?-1:0,size:+m.data.amount||0};}},
  {id:"bitfinex", url:"wss://api-pub.bitfinex.com/ws/2",
   sub:ws=>ws.send(JSON.stringify({event:"subscribe",channel:"ticker",symbol:"tBTCUSD"})),
   parse:d=>{const m=JSON.parse(d); return (Array.isArray(m)&&Array.isArray(m[1])&&m[1].length>6)?+m[1][6]:null;}},
@@ -376,8 +410,14 @@ function connectWS(f,attempt){
   const st=S.src[f.id]; st.sock=ws;
   ws.onopen=()=>{ try{ if(f.sub) f.sub(ws); }catch(e){} };
   ws.onmessage=ev=>{
-    let p=null; try{ p=f.parse(ev.data); }catch(e){}
-    if(p!==null) ingest(f.id,p); else { const q=S.src[f.id]; q.wsAlive=Date.now(); }
+    let r=null; try{ r=f.parse(ev.data); }catch(e){}
+    if(r===null){ const q=S.src[f.id]; q.wsAlive=Date.now(); return; }
+    const p=(typeof r==="number")?r:r.p;
+    if(typeof r==="object"&&r.side&&r.size>0){
+      S.flow.push({t:Date.now(),v:r.side*r.size,src:f.id});
+      if(S.flow.length>6000) S.flow.splice(0,1000);
+    }
+    ingest(f.id,p);
   };
   ws.onclose=()=>{ st.ws=false; if(!S.paused) scheduleWS(f,attempt+1); };
   ws.onerror=()=>{ try{ ws.close(); }catch(e){} };
@@ -529,6 +569,70 @@ function freshExch(now,maxAge){
     if(st.price!==null&&now-st.t<=maxAge) out.push({id,p:st.price}); }
   return out;
 }
+/* ---------------------------------------------------------------- signals (microstructure read) */
+function tapeAt(ts){
+  const T=S.tape; if(!T.length||T[0].t>ts) return null;
+  let j=T.length-1; while(j>0&&T[j].t>ts) j--;
+  return T[j].p;
+}
+function computeSignals(now){
+  const T=S.tape; if(T.length<10||S.lastPx===null) return null;
+  const P=S.lastPx;
+  const bpv=(t0)=>{ const q=tapeAt(now-t0); return q?1e4*Math.log(P/q)/(t0/60000):null; };
+  const v60=bpv(60000), v300=bpv(300000);
+  const accel=(v60!==null&&v300!==null)?v60-v300:null;
+  /* regime: AR(1) on 15s-bucketed log returns over the last 10 min */
+  let phi=null;
+  { const rs=[]; let prev=null;
+    for(let t=now-600000;t<=now;t+=15000){ const q=tapeAt(t); if(q===null) continue;
+      if(prev!==null) rs.push(Math.log(q/prev)); prev=q; }
+    if(rs.length>=20){ let num=0,den=0;
+      for(let i=1;i<rs.length;i++){ num+=rs[i]*rs[i-1]; den+=rs[i-1]*rs[i-1]; }
+      if(den>0) phi=num/den; }
+  }
+  /* order-flow imbalance */
+  const ofi=(win)=>{ let b=0,s=0; for(let i=S.flow.length-1;i>=0;i--){ const f=S.flow[i];
+      if(f.t<now-win) break; if(f.v>0) b+=f.v; else s+=-f.v; }
+    return (b+s>0)?{x:(b-s)/(b+s),vol:b+s}:null; };
+  const ofi60=ofi(60000), ofi300=ofi(300000);
+  /* cross-venue dislocation: leader vs peer cluster */
+  let disl=null;
+  if(S.leader){
+    const Lp=S.src[S.leader].price; let mn=Infinity,mx=-Infinity,n=0;
+    for(const id of EXCH){ if(id===S.leader) continue; const st=S.src[id];
+      if(st.price!==null&&now-st.t<=10000){ n++; mn=Math.min(mn,st.price); mx=Math.max(mx,st.price); } }
+    if(n>=2&&Lp){
+      const mid=(mn+mx)/2, dev=1e4*Math.log(Lp/mid), spread=1e4*Math.log(mx/mn);
+      /* cluster co-movement over 60s */
+      let agree=0,tot=0; const Lm=(()=>{const q=S.src[S.leader].hist; if(!q||q.length<2) return 0;
+        let j=q.length-1; while(j>0&&q[j].t>now-60000) j--; return Math.sign(Lp-q[j].p);})();
+      for(const id of EXCH){ if(id===S.leader) continue; const h=S.src[id].hist; if(!h||h.length<2) continue;
+        let j=h.length-1; while(j>0&&h[j].t>now-60000) j--;
+        const s=Math.sign(S.src[id].price-h[j].p); if(s!==0&&Lm!==0){ tot++; if(s===Lm) agree++; } }
+      const isolated=Math.abs(dev)>Math.max(8,2.5*spread);
+      disl={dev,spread,mid,isolated,cluster:tot?agree/tot:null,peers:n};
+    }
+  }
+  /* reaction levels */
+  const lv=[]; const h0=hourStart(now); const ob=S.bars.get(Math.floor(h0/60000)-1);
+  if(ob) lv.push({name:"hour open",p:ob});
+  for(const step of [100,500,1000]){ lv.push({name:"$"+step+" level",p:Math.floor(P/step)*step}); lv.push({name:"$"+step+" level",p:Math.ceil(P/step)*step}); }
+  { let hi=-Infinity,lo=Infinity; const k0=Math.floor(now/60000)-60;
+    for(const k of S.barKeys){ if(k<k0) continue; const c=S.bars.get(k); if(c===undefined) continue; if(c>hi)hi=c; if(c<lo)lo=c; }
+    if(isFinite(hi)){ lv.push({name:"60m high",p:hi}); lv.push({name:"60m low",p:lo}); } }
+  if(S.round&&S.round.state==="live"){ const a=activeStrikes(S.round); if(a.length) lv.push({name:"strike",p:a[a.length-1].strike}); }
+  const seen=new Set(); const levels=[];
+  for(const l of lv){ const key=l.name+"|"+Math.round(l.p); if(seen.has(key)||l.p<=0) continue; seen.add(key);
+    levels.push({name:l.name,p:l.p,bp:1e4*Math.log(l.p/P)}); }
+  levels.sort((a,b)=>Math.abs(a.bp)-Math.abs(b.bp));
+  /* directional read */
+  let score=0;
+  if(v60!==null) score+=Math.max(-1,Math.min(1,v60/6));
+  if(ofi60) score+=ofi60.x;
+  const dir=score>0.35?"UP":score<-0.35?"DOWN":"FLAT";
+  const weight=(phi===null)?null:Math.max(0,Math.min(1,Math.abs(phi)));
+  return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
+}
 function normCdf(x){
   const t=1/(1+0.2316419*Math.abs(x));
   const d=0.3989423*Math.exp(-x*x/2);
@@ -578,10 +682,21 @@ function strikeProbs(R,now){
       emp=above/n;
     }
   }
-  const arr=[anl,drf].concat(emp!==null?[emp]:[]);
+  /* flow estimator: OFI tilts the drift; an isolated dislocation pulls the start toward the peer cluster */
+  let flo=null;
+  const G=S.sig;
+  if(G&&(G.ofi60||(G.disl&&G.disl.isolated))){
+    let S0f=S0;
+    if(G.disl&&G.disl.isolated&&G.disl.mid>0) S0f=S0+(G.disl.mid-S0)*0.6;
+    const muF=clamp((G.ofi60?0.3*G.ofi60.x*sig:0),-2.5*sig,2.5*sig);
+    const xf=Math.log(R.strike/S0f);
+    flo=1-normCdf((xf-(muF-0.5*sig*sig)*tau)/sd);
+  }
+  const arr=[anl,drf].concat(emp!==null?[emp]:[]).concat(flo!==null?[flo]:[]);
   arr.sort((a,b)=>a-b);
-  const over=arr.length===3?arr[1]:(arr[0]+arr[1])/2;
-  return {over,under:1-over,anl,drf,emp,tau,t:now,
+  const n=arr.length;
+  const over=(n%2)?arr[(n-1)/2]:(arr[n/2-1]+arr[n/2])/2;
+  return {over,under:1-over,anl,drf,emp,flo,tau,t:now,
           sigU:sig,w,anch:A?{h0:A.h0,n:A.n,dispBp:A.dispBp}:null};
 }
 function armMsg(s){ $("armMsg").textContent=s; }
@@ -718,6 +833,34 @@ function roundTick(now){
   renderProbNote();
   renderArmBar();
 }
+function renderSignals(){
+  const G=S.sig, strip=$("sigstrip"), tb=$("signals")&&$("signals").querySelector("tbody");
+  const f1=v=>v===null||v===undefined?"\u2014":(v>=0?"+":"")+v.toFixed(1);
+  if(!G){ if(strip) strip.textContent="signals warming \u2014 tape depth building"; if(tb) tb.innerHTML=""; return; }
+  const dc=G.dir==="UP"?"var(--up)":G.dir==="DOWN"?"var(--down)":"var(--dim)";
+  const wt=G.weight===null?"\u2014":Math.round(G.weight*100)+"%";
+  const ofiTxt=G.ofi60?((G.ofi60.x>=0?"+":"")+G.ofi60.x.toFixed(2)+(G.ofi60.x>0.15?" buy-heavy":G.ofi60.x<-0.15?" sell-heavy":" balanced")):"\u2014";
+  const dTxt=G.disl?(G.disl.isolated?("ISOLATED "+f1(G.disl.dev)+"bp \u2192 reversion likely"):("cluster "+(G.disl.cluster===null?"\u2014":Math.round(G.disl.cluster*100)+"% agree"))):"\u2014";
+  const lv=G.levels[0];
+  if(strip){
+    strip.innerHTML='<b style="color:'+dc+'">READ '+G.dir+'</b> \u00b7 weight '+wt
+      +' \u00b7 v '+f1(G.v60)+'bp/m'+(G.accel!==null?(' \u00b7 accel '+f1(G.accel)):'')
+      +' \u00b7 OFI '+ofiTxt+' \u00b7 disl '+dTxt
+      +(lv?(' \u00b7 near '+lv.name+' '+fmtUSD.format(lv.p)+' ('+f1(lv.bp)+'bp)'):'');
+  }
+  if(tb){
+    const rows=[
+      ["Direction",'<span style="color:'+dc+'">'+G.dir+'</span>',"composite of velocity + flow (score "+f1(G.score)+")",wt+" (|AR1| of 15s returns)"],
+      ["Velocity",f1(G.v60)+" bp/min","5m "+f1(G.v300)+" bp/min \u00b7 accel "+f1(G.accel),"near zero at 15m \u2014 descriptive"],
+      ["Regime",G.phi===null?"\u2014":(G.phi>0.1?"trending":G.phi<-0.1?"mean-reverting":"random walk"),"AR(1) \u03c6 = "+(G.phi===null?"\u2014":G.phi.toFixed(2)),"\u03c6 itself"],
+      ["Order-flow imbalance",ofiTxt,G.ofi60?("60s vol "+G.ofi60.vol.toFixed(2)+" BTC"+(G.ofi300?(" \u00b7 5m "+(G.ofi300.x>=0?"+":"")+G.ofi300.x.toFixed(2)):"")):"no side-bearing prints yet","small, signed \u2014 the real transaction signal"],
+      ["Dislocation",dTxt,G.disl?("leader vs peer mid "+f1(G.disl.dev)+"bp \u00b7 spread "+G.disl.spread.toFixed(1)+"bp \u00b7 "+G.disl.peers+" peers"):"\u2014","isolated \u2192 arbitrage reversion; cluster \u2192 persistence"],
+      ["Reaction levels",lv?(lv.name+" "+fmtUSD.format(lv.p)):"\u2014",G.levels.map(l=>l.name+" "+f1(l.bp)+"bp").join(" \u00b7 "),"round-number clustering \u2014 zones, not calls"]
+    ];
+    tb.innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num" style="color:var(--faint)">'+r[2]+'</td><td style="color:var(--faint)">'+r[3]+'</td></tr>').join("");
+    $("signote").textContent="flow prints "+S.flow.length+" \u00b7 tape "+S.tape.length;
+  }
+}
 function renderProbNote(){
   const el=$("probnote"), R=S.round;
   if(!el) return;
@@ -729,7 +872,7 @@ function renderProbNote(){
       +" w"+Math.round(P.w*100)+"% \u03c3"+(1e4*P.sigU).toFixed(1)+"bp"
       +(P.anch.dispBp!==null?(" disp"+fmtBp(P.anch.dispBp)):"")):"";
     el.textContent=P?("active "+fmtUSD.format(sk.strike)+" \u2014 analytic "+f(P.anl)
-      +" \u00b7 drift "+f(P.drf)+" \u00b7 empirical "+f(P.emp)
+      +" \u00b7 drift "+f(P.drf)+" \u00b7 empirical "+f(P.emp)+" \u00b7 flow "+f(P.flo)
       +" \u00b7 headline "+Math.round(P.over*100)+"%"+anchor
       ):"";
   } else el.textContent="";
@@ -1213,6 +1356,8 @@ $("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
   $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel"); });
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
+  try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
+  renderSignals();
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -1222,12 +1367,12 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260829233044 -->
+<!-- build-20260902151331 -->
 </html>
