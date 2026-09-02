@@ -90,6 +90,8 @@
 
   /* chart tray */
   #chartbox{border-radius:22px;padding:10px 10px 4px}
+  #xtbox{border-radius:18px;padding:8px 10px 6px;margin-top:10px}
+  #xtchart{height:170px!important;min-height:0!important}
   canvas{display:block;width:100%}
   .legend{display:flex;gap:14px;flex-wrap:wrap;padding:8px 6px 6px;font-size:9px;
     letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-family:var(--sans)}
@@ -200,6 +202,9 @@
         <span>line = leader book · peer-verified · latency failover — no aggregation</span>
       </div>
     </div>
+    <div id="xtbox" class="tile">
+      <canvas id="xtchart" height="170"></canvas>
+    </div>
   </section>
   </div>
 
@@ -222,6 +227,22 @@
       <tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">weights are disclosed, not asserted — at 15-minute horizons every component is small; the read describes the present, the odds price the future</div>
+  </section>
+
+  <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Tape extrapolation — +5 min dataset</span>
+      <span class="note num" id="xtnote"></span></div>
+    <div id="xtcomp" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px"></div>
+    <div class="tblwrap"><table id="xtcur">
+      <thead><tr><th>Step</th><th>Time</th><th class="model">Projected</th><th class="model">Δ</th><th>P5</th><th>P95</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin:10px 0 4px;letter-spacing:.14em">Ledger — pinned each minute, graded at each step</div>
+    <div class="tblwrap"><table id="xtled">
+      <thead><tr><th>Step</th><th>n</th><th class="model">MAE bp</th><th>Flat MAE</th><th>vs flat</th><th>Band cover</th><th>Dir hit</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">flat = the do-nothing path (price stays); the read earns its place only where MAE runs below flat</div>
   </section>
 
   <section class="tile">
@@ -286,6 +307,14 @@
       60-minute extremes and the strike by proximity — documented order clustering makes them zones, never
       calls. A fourth probability estimator, <i>flow</i>, tilts drift by imbalance and pulls the start price toward
       the peer cluster under isolated dislocation; the headline is the median of all four.</p>
+    <p><b>Tape extrapolation.</b> The signals read is extended five minutes ahead at one-minute steps on its own
+      stage. Velocity carries forward with persistence set by the regime coefficient (positive φ persists,
+      compounded per minute; non-positive φ contributes nothing — no momentum is extrapolated into a random walk),
+      order-flow tilt decays on a ~2-minute half-life, mean-reversion toward the 5-minute tape mean applies when
+      the regime says so, and an isolated dislocation pulls toward the peer cluster. Every step is clamped inside
+      2.5σ√k and carried with its P5–P95 band. The path is pinned each minute and graded at each step as the
+      tape arrives — error, band coverage, direction — against the flat do-nothing path, which is the only test
+      that matters for a read: it earns its place where its error runs below flat, and the ledger says where.</p>
     <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
       the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
       dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
@@ -350,6 +379,7 @@ const S={
   leader:null,          // current tape leader (sticky, latency-ordered failover)
   flow:[],              // signed trade volume {t,v,src} from side-bearing streams
   sig:null,             // latest signals read
+  xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
@@ -632,6 +662,65 @@ function computeSignals(now){
   const dir=score>0.35?"UP":score<-0.35?"DOWN":"FLAT";
   const weight=(phi===null)?null:Math.max(0,Math.min(1,Math.abs(phi)));
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
+}
+/* ---------------------------------------------------------------- tape extrapolation (+5 min) */
+function extrapolate(now){
+  const G=S.sig, st=computeStats(), P=S.lastPx;
+  if(!G||!st||P===null) return null;
+  const sig=st.sig;
+  const vlog=(G.v60!==null)?G.v60/1e4:0;
+  const phi=G.phi===null?0:G.phi;
+  const rho=phi>0?Math.pow(Math.min(phi,0.95),4):0;          /* per-minute persistence, only if positive */
+  const kap=phi<-0.1?Math.min(0.6,-phi):0;                     /* per-minute reversion rate */
+  const f=G.ofi60?0.3*G.ofi60.x*sig:0;
+  /* 5-min tape mean (log) for reversion */
+  let m5=0,n5=0; for(let i=S.tape.length-1;i>=0;i--){ const q=S.tape[i]; if(q.t<now-300000) break; m5+=Math.log(q.p); n5++; }
+  const lnM5=n5?m5/n5:Math.log(P);
+  const d=(G.disl&&G.disl.isolated&&G.disl.mid>0)?Math.log(G.disl.mid/P):0;
+  const steps=[]; const comp={mom:0,flow:0,rev:0,disl:0};
+  let sr=0, sf=0;
+  for(let k=1;k<=5;k++){
+    sr+=Math.pow(rho,k); sf+=Math.pow(0.7,k);
+    const mom=vlog*sr;
+    const flow=f*sf;
+    const rev=kap?(lnM5-Math.log(P))*(1-Math.pow(1-kap,k)):0;
+    const dl=d*0.6*(1-Math.pow(0.5,k));
+    let x=mom+flow+rev+dl;
+    const cap=2.5*sig*Math.sqrt(k);
+    x=clamp(x,-cap,cap);
+    const band=1.645*sig*Math.sqrt(k);
+    steps.push({k,t:now+k*60000,p:P*Math.exp(x),lo:P*Math.exp(x-band),hi:P*Math.exp(x+band),x});
+    if(k===5){ comp.mom=1e4*mom; comp.flow=1e4*flow; comp.rev=1e4*rev; comp.disl=1e4*dl; }
+  }
+  return {t0:now,P0:P,steps,comp,sig};
+}
+function xtPin(now){
+  const X=S.xt; if(!X.cur) return;
+  const mk=Math.floor(now/60000);
+  if(mk===X.lastPin) return;
+  X.lastPin=mk;
+  X.pinned.push({t0:X.cur.t0,P0:X.cur.P0,steps:X.cur.steps.map(s=>({k:s.k,t:s.t,p:s.p,lo:s.lo,hi:s.hi,res:null}))});
+  if(X.pinned.length>40) X.pinned.shift();
+}
+function xtResolve(now){
+  const X=S.xt;
+  for(const pn of X.pinned){
+    for(const s of pn.steps){
+      if(s.res!==null||now<s.t) continue;
+      const T=S.tape; if(!T.length||T[T.length-1].t<s.t) continue;
+      const q=tapeAt(s.t);
+      /* void if the tape has a gap around the due instant */
+      let j=T.length-1; while(j>0&&T[j].t>s.t) j--;
+      if(q===null||s.t-T[j].t>30000){ s.res={void:true}; continue; }
+      const err=1e4*Math.log(q/s.p), flat=1e4*Math.log(q/pn.P0);
+      const inB=q>=s.lo&&q<=s.hi;
+      const call=1e4*Math.log(s.p/pn.P0), real=flat;
+      s.res={R:q,err,inB};
+      const st=X.stats[s.k]||(X.stats[s.k]={n:0,sumAbs:0,sumFlat:0,inB:0,dn:0,dh:0});
+      st.n++; st.sumAbs+=Math.abs(err); st.sumFlat+=Math.abs(flat); if(inB) st.inB++;
+      if(Math.abs(call)>=0.5&&Math.abs(real)>=0.01){ st.dn++; if(Math.sign(call)===Math.sign(real)) st.dh++; }
+    }
+  }
 }
 function normCdf(x){
   const t=1/(1+0.2316419*Math.abs(x));
@@ -1320,6 +1409,101 @@ function renderRound(){
     +" \u00b7 line "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws";
   headerRow(F,left,"ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd));
 }
+const xv={c:null,s:null};
+const xcv=$("xtchart"), xcx=xcv?xcv.getContext("2d"):null;
+function renderXT(){
+  if(!xcx) return;
+  const now=Date.now();
+  const dpr=window.devicePixelRatio||1, W=xcv.clientWidth, H=xcv.clientHeight||170;
+  if(xcv.width!==Math.round(W*dpr)||xcv.height!==Math.round(H*dpr)){xcv.width=Math.round(W*dpr);xcv.height=Math.round(H*dpr);}
+  xcx.setTransform(dpr,0,0,dpr,0,0); xcx.clearRect(0,0,W,H);
+  const padL=8,padR=64,padT=14,padB=18, iw=W-padL-padR, ih=H-padT-padB;
+  const c=xcx; c.font="9px "+FONT();
+  const cur=S.xt.cur;
+  const X=t=>padL+(((t-now)/60000)+5)/10*iw;
+  const pts=[]; let mn=Infinity,mx=-Infinity;
+  for(let i=S.tape.length-1;i>=0;i--){ const q=S.tape[i]; if(q.t<now-300000) break; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+  pts.reverse();
+  if(cur){ for(const s of cur.steps){ if(s.lo<mn)mn=s.lo; if(s.hi>mx)mx=s.hi; } }
+  if(!isFinite(mn)){ c.fillStyle="#7D97A6"; c.font="10px "+FONT(); c.fillText("tape extrapolation \u2014 warming",padL+6,H/2); return; }
+  const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.12, cT*0.0002);
+  const D=easeDomain(xv,cT,sT,mn,mx);
+  const Y=p=>padT+(1-(p-D.lo)/(D.hi-D.lo))*ih;
+  /* grid */
+  c.strokeStyle="rgba(15,46,63,.08)"; c.lineWidth=1; c.textAlign="left"; c.font="9px "+FONT();
+  for(const v of niceTicks(D.lo,D.hi)){ const y=Y(v);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(padL+iw,y);c.stroke();
+    c.fillStyle="#7D97A6"; c.fillText("$"+Math.round(v).toLocaleString(),padL+iw+5,y+3); }
+  for(let m=-5;m<=5;m++){ const x=padL+(m+5)/10*iw;
+    c.strokeStyle=m===0?"rgba(15,46,63,.4)":"rgba(15,46,63,.12)";
+    c.beginPath();c.moveTo(x,padT);c.lineTo(x,padT+ih);c.stroke();
+    if(m===-5||m===0||m===5){ c.fillStyle="#7D97A6"; c.textAlign="center";
+      c.fillText(m===0?"NOW":timeStr(now+m*60000),x,H-6); c.textAlign="left"; }
+    else if(m>0){ c.fillStyle="rgba(0,135,168,.6)"; c.textAlign="center"; c.fillText("+"+m,x,H-6); c.textAlign="left"; }
+  }
+  c.save(); c.beginPath(); c.rect(padL,padT,iw,ih); c.clip();
+  /* band + path */
+  if(cur){
+    c.beginPath(); c.moveTo(X(cur.t0),Y(cur.P0));
+    for(const s of cur.steps) c.lineTo(X(s.t),Y(s.hi));
+    for(let i=cur.steps.length-1;i>=0;i--) c.lineTo(X(cur.steps[i].t),Y(cur.steps[i].lo));
+    c.closePath(); c.fillStyle="rgba(0,135,168,.10)"; c.fill();
+    c.beginPath(); c.moveTo(X(cur.t0),Y(cur.P0));
+    for(const s of cur.steps) c.lineTo(X(s.t),Y(s.p));
+    c.strokeStyle="#0087A8"; c.setLineDash([3,4]); c.lineWidth=1.5; c.stroke(); c.setLineDash([]);
+    for(const s of cur.steps){ c.fillStyle="#0087A8"; c.beginPath();c.arc(X(s.t),Y(s.p),2,0,7);c.fill(); }
+  }
+  /* measured tape */
+  if(pts.length>1){
+    c.beginPath(); pts.forEach((q,i)=>{ const x=X(q.t),y=Y(q.p); i?c.lineTo(x,y):c.moveTo(x,y); });
+    c.strokeStyle="#0F2E3F"; c.lineWidth=1.4; c.stroke();
+    const hd=pts[pts.length-1]; c.fillStyle="#0087A8"; c.beginPath();c.arc(X(hd.t),Y(hd.p),2.6,0,7);c.fill();
+  }
+  /* resolved projections overlay */
+  for(const pn of S.xt.pinned){
+    for(const s of pn.steps){
+      if(!s.res||s.res.void||s.t<now-300000) continue;
+      const x=X(s.t);
+      c.strokeStyle="rgba(15,46,63,.35)"; c.lineWidth=1;
+      c.beginPath();c.moveTo(x,Y(s.p));c.lineTo(x,Y(s.res.R));c.stroke();
+      c.strokeStyle=s.res.inB?UPC:DNC; c.lineWidth=1.2;
+      c.beginPath();c.arc(x,Y(s.p),3,0,7);c.stroke();
+    }
+  }
+  c.restore();
+  /* header */
+  c.fillStyle="#7D97A6"; c.textAlign="left";
+  const st5=S.xt.stats[5];
+  let hdr="TAPE READ \u2192 +5m";
+  if(cur){ const s5=cur.steps[4]; hdr+=" \u00b7 path "+fmtBp(1e4*Math.log(s5.p/cur.P0))+" \u00b7 band \u00b1"+(1e4*1.645*cur.sig*Math.sqrt(5)).toFixed(0)+"bp"; }
+  if(st5&&st5.n){ const d=st5.sumAbs/st5.n-st5.sumFlat/st5.n; hdr+=" \u00b7 vs flat "+(d<=0?"":"+")+d.toFixed(1)+"bp (n"+st5.n+")"; }
+  c.fillText(hdr,padL+2,padT-4);
+}
+function renderXTData(){
+  const cur=S.xt.cur, tb=$("xtcur")&&$("xtcur").querySelector("tbody"), tl=$("xtled")&&$("xtled").querySelector("tbody");
+  if(!tb||!tl) return;
+  const comp=$("xtcomp");
+  if(cur){
+    const cp=cur.comp, f=v=>(v>=0?"+":"")+v.toFixed(1);
+    if(comp) comp.textContent="contributions at +5 (bp): momentum "+f(cp.mom)+" \u00b7 flow "+f(cp.flow)+" \u00b7 reversion "+f(cp.rev)+" \u00b7 dislocation "+f(cp.disl)+" \u00b7 \u03c3\u2081\u2098 "+(1e4*cur.sig).toFixed(1)+"bp";
+    tb.innerHTML=cur.steps.map(s=>'<tr><td class="num" style="color:var(--dim)">+'+s.k+'m</td><td class="num">'+timeStr(s.t)+'</td>'
+      +'<td class="num model">'+fmtUSD.format(s.p)+'</td><td class="num model">'+fmtBp(1e4*Math.log(s.p/cur.P0))+'</td>'
+      +'<td class="num" style="color:var(--faint)">'+fmtUSD.format(s.lo)+'</td><td class="num" style="color:var(--faint)">'+fmtUSD.format(s.hi)+'</td></tr>').join("");
+  } else { tb.innerHTML=""; if(comp) comp.textContent="warming"; }
+  const rows=[];
+  for(let k=1;k<=5;k++){
+    const st=S.xt.stats[k];
+    if(!st||!st.n){ rows.push('<tr><td class="num" style="color:var(--dim)">+'+k+'m</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>'); continue; }
+    const mae=st.sumAbs/st.n, flat=st.sumFlat/st.n, d=mae-flat;
+    rows.push('<tr><td class="num" style="color:var(--dim)">+'+k+'m</td><td class="num">'+st.n+'</td>'
+      +'<td class="num model">'+mae.toFixed(1)+'</td><td class="num">'+flat.toFixed(1)+'</td>'
+      +'<td class="num" style="color:var(--'+(d<=0?"up":"down")+')">'+(d<=0?"":"+")+d.toFixed(1)+'</td>'
+      +'<td class="num">'+Math.round(100*st.inB/st.n)+'%</td>'
+      +'<td class="num">'+(st.dn?Math.round(100*st.dh/st.dn)+"%":"\u2014")+'</td></tr>');
+  }
+  tl.innerHTML=rows.join("");
+  $("xtnote").textContent="pinned "+S.xt.pinned.length+" \u00b7 target coverage 90%";
+}
 function render(){
   const R=S.round;
   if(R&&(R.state!=="settled"||Date.now()-R.settledAt<=20000)) renderRound();
@@ -1327,7 +1511,7 @@ function render(){
 }
 let _lastFrame=0;
 function loop(ts){
-  if(ts-_lastFrame>33){ _lastFrame=ts; render(); }
+  if(ts-_lastFrame>33){ _lastFrame=ts; render(); renderXT(); }
   requestAnimationFrame(loop);
 }
 
@@ -1358,6 +1542,7 @@ setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
+  try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -1367,12 +1552,12 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260902151331 -->
+<!-- build-20260902160252 -->
 </html>
