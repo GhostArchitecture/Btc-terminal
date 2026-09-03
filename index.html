@@ -222,8 +222,10 @@
         <button id="cfgReset">RESET</button>
       </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
-        <label>relay URL <input type="text" id="c_kproxy" placeholder="https://your-worker.workers.dev" style="width:240px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(15,46,63,.14);background:rgba(255,255,255,.75)"></label>
-        <span style="color:var(--faint);font-size:10px">leave blank when serving from localhost</span>
+        <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(15,46,63,.14);background:rgba(255,255,255,.75)"></label>
+        <button id="ktestBtn">TEST</button>
+        <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages" target="_blank" rel="noopener"><button type="button">CLOUDFLARE PAGES SETUP ↗</button></a>
+        <span id="ktest" class="num" style="color:var(--faint);font-size:10.5px"></span>
       </div>
     </div>
     <div id="sigstrip" class="tile num"></div>
@@ -388,14 +390,13 @@
       remains yours. Kalshi settles on a 60-second average of the CF Benchmarks real-time index while this
       instrument votes six books at the instant, so the two can disagree at the margin — settled windows attach
       their official result beside our outcome in the rounds log with a ✓/✗ when the strike matched.
-      Kalshi’s edge allows browser requests only from kalshi.com and localhost origins, so from GitHub Pages
-      a relay is required: deploy this as a Cloudflare Worker (free, keyless) and paste its URL into TUNE —
-      <code style="font-size:10px;display:block;white-space:pre;margin:6px 0;color:var(--ink)">export default { async fetch(req){
-  const u=new URL(req.url);
-  const r=await fetch("https://api.elections.kalshi.com/trade-api/v2"+u.pathname+u.search,{headers:{accept:"application/json"}});
-  const h=new Headers(r.headers); h.set("access-control-allow-origin","*");
-  return new Response(r.body,{status:r.status,headers:h}); } }</code>
-      — or serve this file from localhost (<code>python3 -m http.server 8080</code>) and it connects directly.</p>
+      Kalshi’s edge allows browser requests only from kalshi.com and localhost origins, so the page needs a
+      path. <b>Preferred — zero configuration:</b> this repository carries a Pages Function at
+      <code>functions/api/[[path]].js</code>; host the same repo on Cloudflare Pages (TUNE → CLOUDFLARE PAGES SETUP
+      → Connect to Git → this repo → no build command, output directory <code>/</code> → Deploy) and the page
+      finds <code>/api</code> on its own origin automatically — no URL to paste, and Cloudflare redeploys on every
+      push. Alternatives: a Worker relay URL pasted into TUNE, or serving the file from localhost
+      (<code>python3 -m http.server 8080</code>). TEST probes whichever path is active.</p>
     <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
       the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
       dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
@@ -462,7 +463,7 @@ const S={
   sig:null,             // latest signals read
   xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
   cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""},
-  k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,err:null,loadedTicker:null,quoteManual:false,busy:false},
+  k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false},
   map:null,             // strike map ladder
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
@@ -762,9 +763,36 @@ const K_DIRECT="https://api.elections.kalshi.com/trade-api/v2";
 function kalshiBase(){
   const p=(S.cfg.kproxy||"").trim().replace(/\/+$/,"");
   if(p) return p;
+  if(S.k.sameOrigin) return "/api";
   const h=(typeof location!=="undefined")?location.hostname:"";
   if(h==="localhost"||h==="127.0.0.1") return K_DIRECT;
   return null;
+}
+async function kProbeSameOrigin(){
+  /* detect a same-origin /api relay (Cloudflare Pages Function) — zero configuration when present */
+  const h=(typeof location!=="undefined")?location.hostname:"";
+  if(!h||h==="localhost"||h==="127.0.0.1") return;
+  try{
+    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),5000);
+    const r=await fetch("/api/markets?series_ticker=KXBTC15M&status=open&limit=1",{signal:ctl.signal,cache:"no-store"});
+    clearTimeout(to);
+    if(r.ok){ const j=await r.json(); if(j&&Array.isArray(j.markets)){ S.k.sameOrigin=true; renderKalshi(); } }
+  }catch(e){}
+}
+async function kTest(urlOverride){
+  const out=$("ktest"); if(!out) return;
+  const base=(urlOverride&&urlOverride.trim())?urlOverride.trim().replace(/\/+$/,""):kalshiBase();
+  if(!base){ out.textContent="\u2717 no path \u2014 relay URL, same-origin /api, or localhost"; return; }
+  out.textContent="testing "+base+" \u2026";
+  const t0=performance.now();
+  try{
+    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
+    const r=await fetch(base+"/markets?series_ticker=KXBTC15M&status=open&limit=1",{signal:ctl.signal,cache:"no-store"});
+    clearTimeout(to);
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const j=await r.json(); const m=(j.markets||[])[0];
+    out.textContent="\u2713 "+Math.round(performance.now()-t0)+"ms"+(m?(" \u00b7 window "+timeStr(Date.parse(m.close_time))+" \u00b7 strike "+(isFinite(+m.floor_strike)?fmtUSD.format(+m.floor_strike):"TBD")):" \u00b7 no open window");
+  }catch(e){ out.textContent="\u2717 "+String(e.message||e)+" (browser console has detail)"; }
 }
 function kParseMarket(m){
   const d=k=>{ const v=parseFloat(m[k]); return isFinite(v)?v*100:null; };
@@ -848,7 +876,7 @@ function renderKalshi(){
   if(!strip) return;
   const base=kalshiBase();
   if(!base){
-    strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 not connected \u2014 set a relay URL in TUNE, or serve this file from localhost (see method note)</span>';
+    strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 not connected \u2014 open TUNE: host on Cloudflare Pages (zero-config /api), set a relay URL, or serve from localhost</span>';
     if(tb) tb.innerHTML=""; return;
   }
   const c=K.cur, ob=K.ob;
@@ -1841,6 +1869,7 @@ for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
 }
 $("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveCfg(); syncCfgUI(); });
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
+$("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
 $("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
@@ -1877,7 +1906,7 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI();
+  loadCfg(); syncCfgUI(); kProbeSameOrigin();
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi();
   await seed();
   startPolling();
@@ -1885,5 +1914,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260903123840 -->
+<!-- build-20260903125717 -->
 </html>
