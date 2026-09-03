@@ -269,6 +269,24 @@
   </section>
 
   <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Edge ledger — model vs market, every window</span>
+      <span class="note"><button id="csvBtn" type="button">EXPORT CSV</button></span></div>
+    <div id="edgesum" class="num" style="font-size:11.5px;color:var(--dim);margin-bottom:8px"></div>
+    <div class="tblwrap"><table id="edgeskill">
+      <thead><tr><th>Skill</th><th class="model">Model</th><th>Market</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin:10px 0 4px;letter-spacing:.14em">Edge bands — entry read, one paper position per window on the model-favored side</div>
+    <div class="tblwrap"><table id="edgebands">
+      <thead><tr><th>|edge|</th><th>n</th><th>Realized win</th><th>Market implied</th><th class="model">Model claimed</th><th>Paper P&amp;L / $1</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin:10px 0 4px;letter-spacing:.14em">Calibration — realized YES rate by stated probability</div>
+    <div class="tblwrap"><table id="edgecal">
+      <thead><tr><th>Bucket</th><th class="model">Model</th><th>Market</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">edge is real only where realized tracks the model above the market · paper P&amp;L assumes buying the favored side at the ask, $1 payout · no execution anywhere in this tool · persisted in this browser</div>
+  </section>
+
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Kalshi KXBTC15M — today’s windows</span>
       <span class="note num" id="knote"></span></div>
     <div class="tblwrap"><table id="klad">
@@ -318,7 +336,7 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
-      <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th>Vote</th><th>Outcome</th><th>Hit</th><th>Kalshi</th></tr></thead>
+      <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th class="model">Edge@arm</th><th>Vote</th><th>Outcome</th><th>Hit</th><th>Kalshi</th></tr></thead>
       <tbody></tbody>
     </table></div>
     <div id="probnote" class="lbl" style="margin-top:6px;letter-spacing:.08em;color:var(--bondi)"></div>
@@ -397,6 +415,16 @@
       finds <code>/api</code> on its own origin automatically — no URL to paste, and Cloudflare redeploys on every
       push. Alternatives: a Worker relay URL pasted into TUNE, or serving the file from localhost
       (<code>python3 -m http.server 8080</code>). TEST probes whichever path is active.</p>
+    <p><b>Edge ledger.</b> With Kalshi connected, every window is graded whether or not you arm: each minute a
+      snapshot records the model’s P(YES) beside the market’s YES mid and both asks; at settlement the window is
+      scored. <i>Skill</i> is Brier score and log-loss for model and market side by side — the direct test of
+      whether the model knows anything the price doesn’t. <i>Edge bands</i> take one entry read per window, bucket
+      it by |model − market|, and show the realized win rate of the model-favored side against what the market
+      implied and what the model claimed: edge is real only where realized tracks the model above the market.
+      <i>Calibration</i> deciles show realized YES rates by stated probability for both. Paper P&amp;L assumes buying
+      the favored side at the ask with a $1 payout — an analysis figure; nothing in this tool executes. Armed
+      strikes additionally record the quote and edge at the moment of commitment. All ledgers persist in this
+      browser and export to CSV.</p>
     <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
       the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
       dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
@@ -464,7 +492,10 @@ const S={
   xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
   cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""},
   k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false},
+  edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   map:null,             // strike map ladder
+  edge:[],              // edge ledger records
+  edgeSeq:0,
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
@@ -758,6 +789,107 @@ function invNorm(p){
   for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(normCdf(m)<p) lo=m; else hi=m; }
   return (lo+hi)/2;
 }
+/* ---------------------------------------------------------------- edge ledger (paper only) */
+function quoteForSide(side){
+  const K=S.k;
+  const manual=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
+  if(K.ob&&!K.quoteManual){ const q=(side==="ABOVE")?K.ob.yesAsk:K.ob.noAsk; if(q!==null&&isFinite(q)) return {q:q/100,src:"kalshi"}; }
+  if(isFinite(manual)&&manual>0&&manual<100) return {q:manual/100,src:"manual"};
+  return {q:null,src:"none"};
+}
+function edgeOpen(R,sk){
+  const mp=sk.prob?(sk.call==="ABOVE"?sk.prob.over:sk.prob.under):null;
+  const qq=quoteForSide(sk.call);
+  const kt=(S.k.cur&&S.k.cur.strike!==null&&Math.abs(S.k.cur.strike-sk.strike)<0.01)?S.k.cur.ticker:null;
+  const rec={id:++S.edgeSeq,tStart:R.tStart,tEnd:R.tEnd,tArm:sk.tArm,strike:sk.strike,call:sk.call,
+    mp,q:qq.q,qSrc:qq.src,edge:(mp!==null&&qq.q!==null)?(mp-qq.q)*100:null,kTicker:kt,
+    mpFinal:mp,qFinal:qq.q,outcome:null,hit:null,kResult:null};
+  S.edge.unshift(rec); if(S.edge.length>400) S.edge.pop();
+  sk.edgeId=rec.id;
+  return rec;
+}
+function edgeUpdate(sk){
+  const rec=S.edge.find(r=>r.id===sk.edgeId); if(!rec) return;
+  if(sk.prob) rec.mpFinal=(sk.call==="ABOVE")?sk.prob.over:sk.prob.under;
+  const qq=quoteForSide(sk.call); if(qq.q!==null) rec.qFinal=qq.q;
+}
+function edgeClose(sk){
+  const rec=S.edge.find(r=>r.id===sk.edgeId); if(!rec) return;
+  rec.outcome=sk.outcome; rec.hit=sk.hit;
+  persistLedgers(); renderEdge();
+}
+function edgeStats(){
+  const rows=S.edge.filter(r=>(r.outcome==="UP"||r.outcome==="DOWN")&&r.mp!==null);
+  const paired=rows.filter(r=>r.q!==null);
+  const bands=[["<0",-Infinity,0],["0\u20133",0,3],["3\u20136",3,6],["6\u201310",6,10],[">10",10,Infinity]];
+  const B=bands.map(b=>{
+    const rs=paired.filter(r=>r.edge>=b[1]&&r.edge<b[2]);
+    const n=rs.length; if(!n) return {name:b[0],n:0};
+    const wins=rs.filter(r=>r.hit).length;
+    const paper=rs.reduce((a,r)=>a+(r.hit?(1-r.q):(-r.q)),0);
+    const stake=rs.reduce((a,r)=>a+r.q,0);
+    return {name:b[0],n,win:wins/n,mkt:rs.reduce((a,r)=>a+r.q,0)/n,mdl:rs.reduce((a,r)=>a+r.mp,0)/n,paper,roi:stake?paper/stake:0};
+  });
+  let bm=null,bk=null;
+  if(paired.length){
+    bm=paired.reduce((a,r)=>a+Math.pow(r.mp-(r.hit?1:0),2),0)/paired.length;
+    bk=paired.reduce((a,r)=>a+Math.pow(r.q-(r.hit?1:0),2),0)/paired.length;
+  }
+  const paperAll=paired.reduce((a,r)=>a+(r.hit?(1-r.q):(-r.q)),0);
+  const stakeAll=paired.reduce((a,r)=>a+r.q,0);
+  return {n:rows.length,nPaired:paired.length,bands:B,brierModel:bm,brierMarket:bk,paper:paperAll,roi:stakeAll?paperAll/stakeAll:0};
+}
+function persistLedgers(){
+  try{ localStorage.setItem("btc.ledgers",JSON.stringify({v:1,edge:S.edge,roundLog:S.roundLog,intervalLog:S.intervalLog,tally:S.tally,xtStats:S.xt.stats,edgeSeq:S.edgeSeq})); }catch(e){}
+}
+function loadLedgers(){
+  try{ const j=JSON.parse(localStorage.getItem("btc.ledgers")||"null"); if(!j||j.v!==1) return;
+    S.edge=j.edge||[]; S.roundLog=j.roundLog||[]; S.intervalLog=j.intervalLog||[];
+    S.tally=j.tally||{calls:0,hits:0}; S.xt.stats=j.xtStats||{}; S.edgeSeq=j.edgeSeq||S.edge.length; }catch(e){}
+}
+function exportCSV(){
+  const H=["id","window_start","window_end","armed_at","strike","call","model_p_arm","quote_arm","quote_src","edge_pts","model_p_final","quote_final","outcome","hit","kalshi_result","kalshi_ticker","paper_pnl"];
+  const rows=S.edge.slice().reverse().map(r=>[r.id,new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),
+    r.strike,r.call,r.mp,r.q,r.qSrc,r.edge,r.mpFinal,r.qFinal,r.outcome,r.hit,r.kResult,r.kTicker,
+    (r.q!==null&&(r.outcome==="UP"||r.outcome==="DOWN"))?(r.hit?(1-r.q):(-r.q)):""]);
+  const csv=[H].concat(rows).map(a=>a.map(v=>v===null||v===undefined?"":String(v)).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="btc-edge-ledger.csv"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function renderEdge(){
+  const tb=$("edgetab")&&$("edgetab").querySelector("tbody"), bt=$("edgebands")&&$("edgebands").querySelector("tbody");
+  if(!tb||!bt) return;
+  const st=edgeStats();
+  const pct=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%";
+  const pts=v=>v===null||v===undefined?"\u2014":((v>=0?"+":"")+v.toFixed(1));
+  $("edgenote").textContent=st.nPaired?("paired "+st.nPaired+" \u00b7 paper "+(st.paper>=0?"+":"")+"$"+st.paper.toFixed(2)+" per $1 contracts \u00b7 ROI "+(st.roi>=0?"+":"")+(100*st.roi).toFixed(1)+"%"):"no settled paired records yet";
+  const bl=$("edgebrier");
+  if(bl){
+    if(st.brierModel!==null){
+      const sM=1-st.brierModel/0.25, sK=1-st.brierMarket/0.25;
+      const verdict=st.nPaired<50?"n<50 \u2014 not readable yet":(st.brierModel<st.brierMarket?"model forecasting better than market":"market forecasting better than model \u2014 no edge");
+      bl.innerHTML="Brier \u2014 model <b>"+st.brierModel.toFixed(4)+"</b> (skill "+(100*sM).toFixed(0)+"%) \u00b7 market <b>"+st.brierMarket.toFixed(4)+"</b> (skill "+(100*sK).toFixed(0)+"%) \u00b7 coin 0.2500 \u00b7 <span style=\"color:"+(st.nPaired<50?"var(--faint)":(st.brierModel<st.brierMarket?"var(--up)":"var(--down)"))+"\">"+verdict+"</span>";
+    } else bl.textContent="Brier comparison appears with paired, settled records";
+  }
+  bt.innerHTML=st.bands.map(b=>b.n?('<tr><td class="num">'+b.name+'</td><td class="num">'+b.n+'</td><td class="num">'+pct(b.win)+'</td><td class="num">'+pct(b.mkt)+'</td><td class="num model">'+pct(b.mdl)+'</td>'
+    +'<td class="num" style="color:var(--'+(b.paper>=0?"up":"down")+')">'+(b.paper>=0?"+":"")+"$"+b.paper.toFixed(2)+'</td><td class="num">'+(100*b.roi>=0?"+":"")+(100*b.roi).toFixed(1)+'%</td></tr>')
+    :('<tr><td class="num">'+b.name+'</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>')).join("");
+  tb.innerHTML=S.edge.slice(0,60).map(r=>{
+    const oc=r.outcome||"open", col=oc==="UP"?"up":oc==="DOWN"?"down":"";
+    const hit=r.hit===null||r.hit===undefined?"\u2014":(r.hit?'<span class="up">HIT</span>':'<span class="down">MISS</span>');
+    const paper=(r.q!==null&&(r.outcome==="UP"||r.outcome==="DOWN"))?((r.hit?(1-r.q):(-r.q))):null;
+    const ec=r.edge===null?"var(--faint)":(r.edge>=3?"var(--up)":r.edge<=-3?"var(--down)":"var(--dim)");
+    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(r.tStart)+"\u2013"+timeStr(r.tEnd)+'</td>'
+      +'<td class="num">'+fmtUSD.format(r.strike)+'<span class="sub">'+r.call+(r.kTicker?" \u00b7 kalshi":"")+'</span></td>'
+      +'<td class="num model">'+pct(r.mp)+'<span class="sub">fin '+pct(r.mpFinal)+'</span></td>'
+      +'<td class="num">'+pct(r.q)+'<span class="sub">'+r.qSrc+(r.qFinal!==null&&r.qFinal!==undefined?(" \u00b7 fin "+pct(r.qFinal)):"")+'</span></td>'
+      +'<td class="num" style="color:'+ec+'">'+pts(r.edge)+'</td>'
+      +'<td class="num '+col+'">'+oc+'</td><td class="num">'+hit+'</td>'
+      +'<td class="num" style="color:var(--faint)">'+(r.kResult?r.kResult.toUpperCase():"\u2014")+'</td>'
+      +'<td class="num" style="color:'+(paper===null?"var(--faint)":(paper>=0?"var(--up)":"var(--down)"))+'">'+(paper===null?"\u2014":((paper>=0?"+":"")+"$"+paper.toFixed(2)))+'</td></tr>';
+  }).join("");
+}
 /* ---------------------------------------------------------------- kalshi (KXBTC15M) */
 const K_DIRECT="https://api.elections.kalshi.com/trade-api/v2";
 function kalshiBase(){
@@ -869,7 +1001,12 @@ function kReconcile(){
     const m=S.k.sched.find(x=>x.status==="settled"&&Math.abs(x.close-r.tEnd)<60000&&x.result);
     if(m) r.kalshi={result:m.result,strike:m.strike,expVal:m.expVal};
   }
-  renderRounds();
+  for(const e of S.edge){
+    if(e.kResult) continue;
+    const m=S.k.sched.find(x=>x.status==="settled"&&Math.abs(x.close-e.tEnd)<60000&&x.result);
+    if(m) e.kResult=m.result;
+  }
+  persistLedgers(); renderRounds(); renderEdge();
 }
 function renderKalshi(){
   const K=S.k, strip=$("kstrip"), tb=$("klad")&&$("klad").querySelector("tbody");
@@ -916,6 +1053,118 @@ function renderKalshi(){
     const ups=settled.filter(m=>m.result==="yes").length;
     $("knote").textContent=settled.length?("today "+settled.length+" settled \u00b7 YES "+ups+"/"+settled.length):"schedule loading";
   }
+}
+/* ---------------------------------------------------------------- edge ledger (model vs market, persisted) */
+function ledgerSave(){
+  try{
+    const W=Object.values(S.edge.windows).sort((a,b)=>a.close-b.close).slice(-300);
+    const wins={}; for(const w of W) wins[w.ticker]=w;
+    localStorage.setItem("btc.edge",JSON.stringify(wins));
+    localStorage.setItem("btc.rounds",JSON.stringify(S.roundLog.slice(0,200)));
+    localStorage.setItem("btc.intervals",JSON.stringify(S.intervalLog.slice(0,64)));
+  }catch(e){}
+}
+function ledgerLoad(){
+  try{
+    const w=JSON.parse(localStorage.getItem("btc.edge")||"{}"); if(w&&typeof w==="object") S.edge.windows=w;
+    const r=JSON.parse(localStorage.getItem("btc.rounds")||"[]"); if(Array.isArray(r)) S.roundLog=r;
+    const iv=JSON.parse(localStorage.getItem("btc.intervals")||"[]"); if(Array.isArray(iv)) S.intervalLog=iv;
+    S.tally={calls:0,hits:0};
+    for(const x of S.roundLog){ if(x.outcome==="UP"||x.outcome==="DOWN"){ S.tally.calls++; if(x.hit) S.tally.hits++; } }
+  }catch(e){}
+}
+function edgeSnap(now){
+  const K=S.k, c=K.cur; if(!c||c.strike===null||S.lastPx===null) return;
+  if(now-S.edge.lastSnap<60000) return;
+  const P=strikeProbs({strike:c.strike,tEnd:c.close},now); if(!P) return;
+  const ob=K.ob;
+  const yb=ob&&ob.yesBid!==null?ob.yesBid:c.yesBid, ya=ob&&ob.yesAsk!==null?ob.yesAsk:c.yesAsk;
+  const na=ob&&ob.noAsk!==null?ob.noAsk:c.noAsk;
+  if(yb===null||ya===null) return;
+  const w=S.edge.windows[c.ticker]||(S.edge.windows[c.ticker]={ticker:c.ticker,strike:c.strike,open:c.open,close:c.close,snaps:[],result:null,expVal:null});
+  w.snaps.push({t:now,tau:+((c.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1)});
+  if(w.snaps.length>16) w.snaps.shift();
+  S.edge.lastSnap=now;
+  ledgerSave();
+}
+function edgeGrade(){
+  let changed=false;
+  for(const m of S.k.sched){
+    if(m.status!=="settled"||!m.result) continue;
+    const w=S.edge.windows[m.ticker]; if(!w||w.result) continue;
+    w.result=m.result; w.expVal=m.expVal; changed=true;
+  }
+  if(changed){ ledgerSave(); renderEdge(); }
+}
+function edgeStats(){
+  const W=Object.values(S.edge.windows).filter(w=>w.result&&w.snaps.length);
+  if(!W.length) return null;
+  const clip=p=>Math.min(0.99,Math.max(0.01,p));
+  let n=0,bm=0,bq=0,lm=0,lq=0;
+  const bands=[{lo:0,hi:3},{lo:3,hi:6},{lo:6,hi:10},{lo:10,hi:101}].map(b=>Object.assign(b,{n:0,win:0,mkt:0,mod:0,pnl:0}));
+  const dec=()=>Array.from({length:10},(_,i)=>({lo:i*10,n:0,y:0}));
+  const calM=dec(), calQ=dec();
+  for(const w of W){
+    const y=w.result==="yes"?1:0;
+    for(const s of w.snaps){
+      const pm=s.pm, pq=s.qm/100; n++;
+      bm+=(pm-y)*(pm-y); bq+=(pq-y)*(pq-y);
+      lm+=-(y*Math.log(clip(pm))+(1-y)*Math.log(1-clip(pm)));
+      lq+=-(y*Math.log(clip(pq))+(1-y)*Math.log(1-clip(pq)));
+      calM[Math.min(9,Math.floor(pm*10))].n++; calM[Math.min(9,Math.floor(pm*10))].y+=y;
+      calQ[Math.min(9,Math.floor(pq*10))].n++; calQ[Math.min(9,Math.floor(pq*10))].y+=y;
+    }
+    /* entry read = first snapshot: one paper position per window */
+    const s0=w.snaps[0]; const e=(s0.pm-s0.qm/100)*100; const fav=e>0?1:0;
+    const b=bands.find(b=>Math.abs(e)>=b.lo&&Math.abs(e)<b.hi);
+    if(b){ b.n++; const won=(fav===y)?1:0; b.win+=won;
+      b.mkt+=fav?s0.qm/100:1-s0.qm/100; b.mod+=fav?s0.pm:1-s0.pm;
+      const ask=fav?s0.ya:s0.na; b.pnl+=won?(100-ask)/100:-ask/100; }
+  }
+  return {nWin:W.length,nSnap:n,brierM:bm/n,brierQ:bq/n,llM:lm/n,llQ:lq/n,bands,calM,calQ};
+}
+function renderEdge(){
+  const E=edgeStats(), sm=$("edgesum"), tbS=$("edgeskill")&&$("edgeskill").querySelector("tbody"),
+        tbB=$("edgebands")&&$("edgebands").querySelector("tbody"), tbC=$("edgecal")&&$("edgecal").querySelector("tbody");
+  if(!sm) return;
+  const live=Object.keys(S.edge.windows).length;
+  if(!E){ sm.textContent=live?("collecting \u2014 "+live+" window(s) snapshotting, none settled yet"):"no windows yet \u2014 connect Kalshi to begin";
+    if(tbS) tbS.innerHTML=""; if(tbB) tbB.innerHTML=""; if(tbC) tbC.innerHTML=""; return; }
+  const f3=v=>v.toFixed(3), pct=v=>Math.round(v*100)+"%";
+  const dB=E.brierQ-E.brierM, dL=E.llQ-E.llM;
+  sm.innerHTML=E.nWin+" settled windows \u00b7 "+E.nSnap+" snapshots \u00b7 model beats market where \u0394 is positive: Brier "
+    +'<span style="color:var(--'+(dB>0?"up":"down")+')">'+(dB>=0?"+":"")+f3(dB)+'</span>'+" \u00b7 log-loss "
+    +'<span style="color:var(--'+(dL>0?"up":"down")+')">'+(dL>=0?"+":"")+f3(dL)+'</span>';
+  if(tbS) tbS.innerHTML='<tr><td>Brier (lower is better)</td><td class="num model">'+f3(E.brierM)+'</td><td class="num">'+f3(E.brierQ)+'</td></tr>'
+    +'<tr><td>Log-loss (lower is better)</td><td class="num model">'+f3(E.llM)+'</td><td class="num">'+f3(E.llQ)+'</td></tr>';
+  if(tbB) tbB.innerHTML=E.bands.map(b=>{
+    if(!b.n) return '<tr><td class="num" style="color:var(--dim)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>';
+    const real=b.win/b.n, mk=b.mkt/b.n, md=b.mod/b.n;
+    const c=real>mk+0.02?"var(--up)":real<mk-0.02?"var(--down)":"var(--dim)";
+    return '<tr><td class="num" style="color:var(--dim)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">'+b.n+'</td>'
+      +'<td class="num" style="color:'+c+'">'+pct(real)+'</td><td class="num">'+pct(mk)+'</td><td class="num model">'+pct(md)+'</td>'
+      +'<td class="num" style="color:var(--'+(b.pnl>=0?"up":"down")+')">'+(b.pnl>=0?"+":"")+b.pnl.toFixed(2)+'</td></tr>';
+  }).join("");
+  if(tbC) tbC.innerHTML=E.calM.map((m,i)=>{
+    const q=E.calQ[i];
+    const cell=(x)=>x.n?('<td class="num">'+pct(x.y/x.n)+' <span class="sub">n'+x.n+'</span></td>'):'<td style="color:var(--faint)">\u2014</td>';
+    return '<tr><td class="num" style="color:var(--dim)">'+m.lo+"\u2013"+(m.lo+10)+'%</td>'+cell(m)+cell(q)+'</tr>';
+  }).join("");
+}
+function exportCSV(){
+  const rows=[["ticker","strike","open","close","result","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask"]];
+  for(const w of Object.values(S.edge.windows)) for(const s of w.snaps)
+    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.expVal===null?"":w.expVal,
+      new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na]);
+  const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
+  for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
+    r.pCallAtArm===undefined?"":r.pCallAtArm,r.quoteAtArm===undefined||r.quoteAtArm===null?"":r.quoteAtArm,r.edgeAtArm===undefined||r.edgeAtArm===null?"":r.edgeAtArm,
+    r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
+  const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
+  const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# rounds\n"+csv(rr)],{type:"text/csv"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 /* ---------------------------------------------------------------- strike map (model odds by level) */
 function strikeMap(now){
@@ -1128,7 +1377,13 @@ function armRound(){
     probAtArm:null,prob:null,probFinal:null,outcome:null,hit:null,up:undefined,dn:undefined,withdrawn:false};
   const P=strikeProbs({strike:v,tEnd:R.tEnd},now);
   if(P){ sk.probAtArm=P.over; sk.prob=P; sk.probFinal=P.over; }
+  const qraw=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
+  sk.quoteAtArm=(isFinite(qraw)&&qraw>0&&qraw<100)?qraw:null;
+  sk.pCallAtArm=P?(sk.call==="ABOVE"?P.over:1-P.over):null;
+  sk.edgeAtArm=(sk.quoteAtArm!==null&&sk.pCallAtArm!==null)?+((sk.pCallAtArm-sk.quoteAtArm/100)*100).toFixed(2):null;
+  sk.kalshiTicker=(S.k.cur&&S.k.cur.strike!==null&&Math.abs(S.k.cur.strike-v)<0.01)?S.k.cur.ticker:null;
   R.strikes.push(sk);
+  edgeOpen(R,sk);
   armMsg((prev.length?"replaced \u2014 prior logged WITHDRAWN \u00b7 ":"")+"armed "+fmtUSD.format(v)+" "+sk.call+" at T+"+mmss(now-lastB));
   renderArmBar();
 }
@@ -1136,7 +1391,7 @@ function withdrawStrike(id){
   const R=S.round; if(!R||R.state!=="live") return;
   const sk=R.strikes.find(s=>s.id===id&&!s.withdrawn); if(!sk) return;
   sk.withdrawn=true; sk.outcome="WITHDRAWN"; sk.tW=Date.now();
-  logStrike(R,sk);
+  logStrike(R,sk); edgeClose(sk);
   armMsg("withdrew "+fmtUSD.format(sk.strike)+" \u2014 logged");
   renderArmBar();
 }
@@ -1160,6 +1415,7 @@ function settleRound(R,now){
       S.tally.calls++; if(sk.hit) S.tally.hits++;
     }
     logStrike(R,sk);
+    edgeClose(sk);
   }
   R.spreadBp=(voters>=2&&mn<Infinity)?1e4*Math.log(mx/mn):null;
   R.closeRef=(voters>=2&&mn<Infinity)?(mn+mx)/2:null;
@@ -1170,8 +1426,10 @@ function settleRound(R,now){
 }
 function logStrike(R,sk){
   S.roundLog.unshift({tStart:R.tStart,tEnd:R.tEnd,tArm:sk.tArm,strike:sk.strike,call:sk.call,
-    probAtArm:sk.probAtArm,probFinal:sk.probFinal,up:sk.up,dn:sk.dn,outcome:sk.outcome,hit:sk.hit});
-  if(S.roundLog.length>80) S.roundLog.pop();
+    probAtArm:sk.probAtArm,probFinal:sk.probFinal,up:sk.up,dn:sk.dn,outcome:sk.outcome,hit:sk.hit,
+    quoteAtArm:sk.quoteAtArm,pCallAtArm:sk.pCallAtArm,edgeAtArm:sk.edgeAtArm,kalshiTicker:sk.kalshiTicker});
+  if(S.roundLog.length>200) S.roundLog.pop();
+  ledgerSave();
   renderRounds();
 }
 function logInterval(R){
@@ -1191,7 +1449,7 @@ function logInterval(R){
     nCalls:scored.length,nHits:scored.filter(s=>s.hit).length
   });
   if(S.intervalLog.length>32) S.intervalLog.pop();
-  renderIntervals();
+  persistLedgers(); renderIntervals();
 }
 function showVerdict(R){
   const v=$("verdict");
@@ -1216,6 +1474,7 @@ function roundTick(now){
         if(sk.withdrawn) continue;
         const P=strikeProbs({strike:sk.strike,tEnd:R.tEnd},now);
         if(P){ sk.prob=P; if(sk.probAtArm===null) sk.probAtArm=P.over; sk.probFinal=P.over; }
+        edgeUpdate(sk);
       }
       if(now>=R.tEnd) settleRound(R,now);
     }
@@ -1303,7 +1562,10 @@ function renderArmBar(){
 function renderRounds(){
   const tb=$("rounds").querySelector("tbody");
   const T=S.tally;
-  $("rnote").textContent=T.calls?("calls "+T.calls+" \u00b7 hits "+T.hits+" ("+Math.round(100*T.hits/T.calls)+"%) \u00b7 coin 50%"):"no calls yet";
+  let pnl=0,pn=0;
+  for(const r of S.roundLog){ if((r.outcome==="UP"||r.outcome==="DOWN")&&r.quoteAtArm!==null&&r.quoteAtArm!==undefined){ pn++; pnl+=r.hit?(100-r.quoteAtArm)/100:-r.quoteAtArm/100; } }
+  $("rnote").textContent=(T.calls?("calls "+T.calls+" \u00b7 hits "+T.hits+" ("+Math.round(100*T.hits/T.calls)+"%) \u00b7 coin 50%"):"no calls yet")
+    +(pn?(" \u00b7 paper P&L "+(pnl>=0?"+":"")+pnl.toFixed(2)+" per $1 over "+pn+" quoted"):"");
   tb.innerHTML=S.roundLog.map(R=>{
     const oc=R.outcome, col=oc==="UP"?"up":oc==="DOWN"?"down":"";
     const hit=(R.hit===null||R.hit===undefined)?"\u2014":(R.hit?'<span class="up">HIT</span>':'<span class="down">MISS</span>');
@@ -1319,6 +1581,8 @@ function renderRounds(){
       +'<td class="num" style="color:var(--dim)">'+R.call+'</td>'
       +'<td class="num" style="color:var(--faint)">'+pa+'</td>'
       +'<td class="num" style="color:'+pc+'">'+pf+'</td>'
+      +(function(){ if(R.edgeAtArm===null||R.edgeAtArm===undefined) return '<td style="color:var(--faint)">\u2014</td>';
+          const e=R.edgeAtArm; return '<td class="num" style="color:var(--'+(e>=3?"up":e<=-3?"down":"dim")+')">'+(e>=0?"+":"")+e.toFixed(1)+'pt<span class="sub">q '+R.quoteAtArm+'\u00a2</span></td>'; })()
       +'<td class="num">'+(R.up!==undefined?(R.up+"\u2191 "+R.dn+"\u2193"):"\u2014")+'</td>'
       +'<td class="num '+col+'">'+oc+'</td>'
       +'<td class="num">'+hit+'</td>'
@@ -1870,6 +2134,7 @@ for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
 $("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveCfg(); syncCfgUI(); });
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
+$("csvBtn").addEventListener("click",exportCSV);
 $("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
 $("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
@@ -1897,6 +2162,7 @@ setInterval(()=>{
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
   if((Math.floor(Date.now()/1000)%5)===0){ try{ S.map=strikeMap(Date.now()); renderMap(); }catch(e){} }
   kalshiTick(Date.now());
+  try{ edgeSnap(Date.now()); }catch(e){}
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -1906,13 +2172,13 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); kProbeSameOrigin();
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi();
+  loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderEdge();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260903125717 -->
+<!-- build-20260903173221 -->
 </html>
