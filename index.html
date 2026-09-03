@@ -119,6 +119,20 @@
     border:1px solid rgba(0,135,168,.3);color:var(--bondi-deep)}
   .schip:hover{background:rgba(214,73,61,.12);border-color:rgba(214,73,61,.4);color:var(--down)}
   #armStatus{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
+  #tunebar{display:none;border-radius:16px;padding:10px 14px;margin-bottom:12px;font-size:11px}
+  body.showTune #tunebar{display:block}
+  .tgrp{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:4px 0}
+  .tgrp .lbl{width:100%;margin-bottom:2px}
+  .tgrp label{display:inline-flex;align-items:center;gap:6px;color:var(--dim);font-size:10.5px;letter-spacing:.04em}
+  .tgrp input[type=range]{width:110px;accent-color:var(--bondi)}
+  .tgrp .num{min-width:3.4em;color:var(--ink);font-size:11px}
+  #kstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px}
+  #kstrip b{color:var(--ink);font-weight:600}
+  #mapstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .mchip{font-family:var(--mono);font-size:10.5px;padding:3px 9px;background:rgba(0,135,168,.1);
+    border:1px solid rgba(0,135,168,.3);color:var(--bondi-deep)}
+  .mchip:hover{background:rgba(0,135,168,.2)}
   #sigstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11.5px;
     color:var(--dim);letter-spacing:.03em;min-height:34px}
   #sigstrip b{font-weight:600}
@@ -163,6 +177,7 @@
     <div class="hright">
       <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
       <span id="status" class="pill dead">INIT</span>
+      <button id="tuneBtn" aria-pressed="false">TUNE</button>
       <button id="viewBtn" aria-pressed="false">DATA</button>
       <button id="pauseBtn" aria-pressed="false">PAUSE</button>
     </div>
@@ -186,12 +201,34 @@
       <span class="tgl" role="group" aria-label="call direction">
         <button id="callAbove" class="sel">ABOVE</button><button id="callBelow">BELOW</button>
       </span>
+      <input id="quoteIn" inputmode="numeric" placeholder="quoted ¢" aria-label="quoted yes price in cents" style="width:6.2em">
       <button id="armBtn">ARM</button>
       <span id="strikeChips"></span>
       <span id="armMsg"></span>
     </div>
     <div id="verdict" class="num"></div>
+    <div id="tunebar" class="tile">
+      <div class="tgrp"><span class="lbl">Axis</span>
+        <label>zoom <input type="range" id="c_pad" min="1.0" max="2.0" step="0.02"><span class="num" id="v_pad"></span></label>
+        <label>dilate <input type="range" id="c_dilate" min="0.1" max="1.0" step="0.05"><span class="num" id="v_dilate"></span></label>
+        <label>contract <input type="range" id="c_contract" min="0.01" max="0.25" step="0.005"><span class="num" id="v_contract"></span></label>
+        <label>close-weight from <input type="range" id="c_closeStart" min="0" max="12" step="1"><span class="num" id="v_closeStart"></span></label>
+        <label>close strength <input type="range" id="c_closeStr" min="0" max="1" step="0.05"><span class="num" id="v_closeStr"></span></label>
+        <label>lookback <input type="range" id="c_lookback" min="1" max="10" step="1"><span class="num" id="v_lookback"></span></label>
+      </div>
+      <div class="tgrp"><span class="lbl">Tape read</span>
+        <label>confidence <input type="range" id="c_conf" min="0.50" max="0.99" step="0.01"><span class="num" id="v_conf"></span></label>
+        <label>adherence <input type="range" id="c_adh" min="0.5" max="2.0" step="0.05"><span class="num" id="v_adh"></span></label>
+        <button id="cfgReset">RESET</button>
+      </div>
+      <div class="tgrp"><span class="lbl">Kalshi</span>
+        <label>relay URL <input type="text" id="c_kproxy" placeholder="https://your-worker.workers.dev" style="width:240px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(15,46,63,.14);background:rgba(255,255,255,.75)"></label>
+        <span style="color:var(--faint);font-size:10px">leave blank when serving from localhost</span>
+      </div>
+    </div>
     <div id="sigstrip" class="tile num"></div>
+    <div id="mapstrip" class="tile num"></div>
+    <div id="kstrip" class="tile num"></div>
     <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
@@ -230,6 +267,26 @@
   </section>
 
   <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Kalshi KXBTC15M — today’s windows</span>
+      <span class="note num" id="knote"></span></div>
+    <div class="tblwrap"><table id="klad">
+      <thead><tr><th>Window</th><th>Strike</th><th>YES last</th><th>Volume</th><th>Settle value</th><th>Result</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">settled windows carry Kalshi’s official result and expiration value · the live window is marked ● · refreshes every 5 min</div>
+  </section>
+
+  <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Strike map — model odds by level</span>
+      <span class="note num" id="mapnote"></span></div>
+    <div class="tblwrap"><table id="smap">
+      <thead><tr><th>Level</th><th>Δ from spot</th><th class="model">P▲ phase</th><th>P▲ hour</th><th>Implied call</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">odds are the model’s side of the trade — profit needs a counterparty quoting differently; enter their ¢ beside ARM to see edge</div>
+  </section>
+
+  <section class="tile">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Tape extrapolation — +5 min dataset</span>
       <span class="note num" id="xtnote"></span></div>
     <div id="xtcomp" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px"></div>
@@ -259,7 +316,7 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
-      <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th>Vote</th><th>Outcome</th><th>Hit</th></tr></thead>
+      <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th>Vote</th><th>Outcome</th><th>Hit</th><th>Kalshi</th></tr></thead>
       <tbody></tbody>
     </table></div>
     <div id="probnote" class="lbl" style="margin-top:6px;letter-spacing:.08em;color:var(--bondi)"></div>
@@ -315,6 +372,30 @@
       2.5σ√k and carried with its P5–P95 band. The path is pinned each minute and graded at each step as the
       tape arrives — error, band coverage, direction — against the flat do-nothing path, which is the only test
       that matters for a read: it earns its place where its error runs below flat, and the ledger says where.</p>
+    <p><b>Interact.</b> TUNE opens the adjusters, persisted in this browser. <i>Axis</i>: zoom pad, dilation and
+      contraction rates, the minute the close-weight begins and its strength, and context lookback — all
+      presentation. <i>Confidence</i> is the extrapolation band’s nominal coverage — 90% is 1.645σ, 70% tightens to
+      1.04σ, 99% opens to 2.58σ — and the ledger grades the claim: coverage falling below your setting is the
+      slider overreaching. <i>Adherence</i> stretches or shortens how long the signals persist across the five
+      minutes, graded the same way. The <i>strike map</i> lays a ladder of levels around spot with model odds at
+      the phase expiry and at the hour’s end; the chips load a level into the arming tray, ARM commits it.
+      Odds are the model’s side of a trade, not profit: enter the counterparty’s quoted ¢ and the tray prints
+      edge (model minus market, in points) and EV per stake assuming the model is right and the contract pays $1.</p>
+    <p><b>Kalshi.</b> The KXBTC15M window is polled from Kalshi’s public API — the market record every 15 s
+      (its <i>floor_strike</i> is the third-party strike, TBD until the window opens), the orderbook every 3 s,
+      and the day’s ladder every 5 min. At each open the strike auto-loads into the arming tray (ABOVE = YES,
+      BELOW = NO) and the quoted ¢ tracks the best ask on your chosen side, so the edge readout runs live; ARM
+      remains yours. Kalshi settles on a 60-second average of the CF Benchmarks real-time index while this
+      instrument votes six books at the instant, so the two can disagree at the margin — settled windows attach
+      their official result beside our outcome in the rounds log with a ✓/✗ when the strike matched.
+      Kalshi’s edge allows browser requests only from kalshi.com and localhost origins, so from GitHub Pages
+      a relay is required: deploy this as a Cloudflare Worker (free, keyless) and paste its URL into TUNE —
+      <code style="font-size:10px;display:block;white-space:pre;margin:6px 0;color:var(--ink)">export default { async fetch(req){
+  const u=new URL(req.url);
+  const r=await fetch("https://api.elections.kalshi.com/trade-api/v2"+u.pathname+u.search,{headers:{accept:"application/json"}});
+  const h=new Headers(r.headers); h.set("access-control-allow-origin","*");
+  return new Response(r.body,{status:r.status,headers:h}); } }</code>
+      — or serve this file from localhost (<code>python3 -m http.server 8080</code>) and it connects directly.</p>
     <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
       the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
       dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
@@ -380,6 +461,9 @@ const S={
   flow:[],              // signed trade volume {t,v,src} from side-bearing streams
   sig:null,             // latest signals read
   xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
+  cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""},
+  k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,err:null,loadedTicker:null,quoteManual:false,busy:false},
+  map:null,             // strike map ladder
   bars:new Map(),       // minuteKey -> close (median)
   barKeys:[],           // sorted minute keys
   round:null,           // {state,tStart,tEnd,opens,openRef,settles,strikes:[],settledAt}
@@ -663,6 +747,194 @@ function computeSignals(now){
   const weight=(phi===null)?null:Math.max(0,Math.min(1,Math.abs(phi)));
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
 }
+/* ---------------------------------------------------------------- interact: config + inverse normal */
+const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""};
+function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); } }
+function saveCfg(){ try{ localStorage.setItem("btc.cfg",JSON.stringify(S.cfg)); }catch(e){} }
+function invNorm(p){
+  p=Math.min(0.999999,Math.max(0.000001,p));
+  let lo=-8,hi=8;
+  for(let i=0;i<60;i++){ const m=(lo+hi)/2; if(normCdf(m)<p) lo=m; else hi=m; }
+  return (lo+hi)/2;
+}
+/* ---------------------------------------------------------------- kalshi (KXBTC15M) */
+const K_DIRECT="https://api.elections.kalshi.com/trade-api/v2";
+function kalshiBase(){
+  const p=(S.cfg.kproxy||"").trim().replace(/\/+$/,"");
+  if(p) return p;
+  const h=(typeof location!=="undefined")?location.hostname:"";
+  if(h==="localhost"||h==="127.0.0.1") return K_DIRECT;
+  return null;
+}
+function kParseMarket(m){
+  const d=k=>{ const v=parseFloat(m[k]); return isFinite(v)?v*100:null; };
+  return { ticker:m.ticker, event:m.event_ticker, status:m.status, strike:isFinite(+m.floor_strike)?+m.floor_strike:null,
+    open:Date.parse(m.open_time), close:Date.parse(m.close_time), expire:Date.parse(m.expected_expiration_time||m.close_time),
+    yesBid:d("yes_bid_dollars"), yesAsk:d("yes_ask_dollars"), noBid:d("no_bid_dollars"), noAsk:d("no_ask_dollars"),
+    last:d("last_price_dollars"), vol:parseFloat(m.volume_fp)||0, oi:parseFloat(m.open_interest_fp)||0,
+    result:m.result||"", expVal:isFinite(parseFloat(m.expiration_value))?parseFloat(m.expiration_value):null,
+    strikeType:m.strike_type||"" };
+}
+function kParseBook(ob){
+  const fp=ob.orderbook_fp||ob.orderbook||{};
+  const ys=(fp.yes_dollars||[]).map(r=>[+r[0]*100,+r[1]]), ns=(fp.no_dollars||[]).map(r=>[+r[0]*100,+r[1]]);
+  const bestYesBid=ys.length?ys[ys.length-1]:null, bestNoBid=ns.length?ns[ns.length-1]:null;
+  return { yesBid:bestYesBid?bestYesBid[0]:null, yesBidSz:bestYesBid?bestYesBid[1]:null,
+           noBid:bestNoBid?bestNoBid[0]:null, noBidSz:bestNoBid?bestNoBid[1]:null,
+           yesAsk:bestNoBid?100-bestNoBid[0]:null, noAsk:bestYesBid?100-bestYesBid[0]:null,
+           depthYes:ys.reduce((a,r)=>a+r[1],0), depthNo:ns.reduce((a,r)=>a+r[1],0) };
+}
+async function kGet(path){
+  const base=kalshiBase(); if(!base) throw new Error("no base");
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
+  try{ const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
+  finally{ clearTimeout(to); }
+}
+async function kalshiTick(now){
+  const K=S.k; if(K.busy||!kalshiBase()) return; K.busy=true;
+  try{
+    const stale=!K.cur||now>K.cur.close||now-K.lastMkt>15000;
+    if(stale){
+      const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
+      const m=(j.markets||[])[0];
+      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; K.lastMkt=now;
+        if(isNew) kOnNewMarket(pm); }
+      else K.cur=null;
+    }
+    if(K.cur&&now-K.lastOb>3000){
+      const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
+      K.ob=kParseBook(j); K.lastOb=now;
+    }
+    if(now-K.lastSched>300000){
+      const dayStart=new Date(now); dayStart.setHours(0,0,0,0);
+      const ts=Math.floor(dayStart.getTime()/1000);
+      const [a,b]=await Promise.all([
+        kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+ts+"&limit=100"),
+        kGet("/markets?series_ticker=KXBTC15M&status=unopened&limit=12")]);
+      K.sched=((a.markets||[]).map(kParseMarket)).concat((b.markets||[]).map(kParseMarket)).sort((x,y)=>x.close-y.close);
+      K.lastSched=now; kReconcile();
+    }
+    K.err=null;
+  }catch(e){ K.err=String(e.message||e); }
+  finally{ K.busy=false; kSyncQuote(); renderKalshi(); }
+}
+function kOnNewMarket(pm){
+  const K=S.k;
+  if(pm.strike===null) return;
+  const R=S.round, now=Date.now(), nb=nextBoundary(now), lastB=nb-900000;
+  const armedThisWindow=R&&R.state==="live"&&R.tStart===lastB&&activeStrikes(R).length;
+  if(!armedThisWindow&&K.loadedTicker!==pm.ticker){
+    $("strikeIn").value=pm.strike.toFixed(2); K.loadedTicker=pm.ticker;
+    armMsg("Kalshi "+timeStr(pm.close)+" strike loaded "+fmtUSD.format(pm.strike)+" \u2014 ABOVE = YES, BELOW = NO \u00b7 ARM to commit");
+  }
+}
+function kSyncQuote(){
+  const K=S.k, ob=K.ob; if(!ob||K.quoteManual) return;
+  const q=(S.callSel==="ABOVE")?ob.yesAsk:ob.noAsk;
+  if(q!==null&&isFinite(q)) $("quoteIn").value=q.toFixed(1);
+}
+function kReconcile(){
+  /* attach Kalshi's official result to our rounds that were armed on the same window */
+  for(const r of S.roundLog){
+    if(r.kalshi!==undefined) continue;
+    const m=S.k.sched.find(x=>x.status==="settled"&&Math.abs(x.close-r.tEnd)<60000&&x.result);
+    if(m) r.kalshi={result:m.result,strike:m.strike,expVal:m.expVal};
+  }
+  renderRounds();
+}
+function renderKalshi(){
+  const K=S.k, strip=$("kstrip"), tb=$("klad")&&$("klad").querySelector("tbody");
+  if(!strip) return;
+  const base=kalshiBase();
+  if(!base){
+    strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 not connected \u2014 set a relay URL in TUNE, or serve this file from localhost (see method note)</span>';
+    if(tb) tb.innerHTML=""; return;
+  }
+  const c=K.cur, ob=K.ob;
+  if(!c){ strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 '+(K.err?("error "+K.err):"fetching current window\u2026")+'</span>'; return; }
+  const cents=v=>v===null?"\u2014":v.toFixed(1)+"\u00a2";
+  let model=null, edgeY=null, edgeN=null;
+  if(c.strike&&S.lastPx!==null){
+    const P=strikeProbs({strike:c.strike,tEnd:c.close},Date.now());
+    if(P){ model=P.over;
+      if(ob&&ob.yesAsk!==null) edgeY=(model-ob.yesAsk/100)*100;
+      if(ob&&ob.noAsk!==null) edgeN=((1-model)-ob.noAsk/100)*100; }
+  }
+  const eTxt=(v)=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"pt");
+  const eCol=(v)=>v===null?"var(--faint)":(v>=3?"var(--up)":v<=-3?"var(--down)":"var(--dim)");
+  strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">KALSHI '+timeStr(c.open)+"\u2013"+timeStr(c.close)+'</span> '
+    +'strike <b>'+(c.strike?fmtUSD.format(c.strike):"TBD")+'</b>'
+    +' \u00b7 YES '+(ob?cents(ob.yesBid)+"/"+cents(ob.yesAsk):cents(c.yesBid)+"/"+cents(c.yesAsk))
+    +' \u00b7 NO '+(ob?cents(ob.noBid)+"/"+cents(ob.noAsk):cents(c.noBid)+"/"+cents(c.noAsk))
+    +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
+    +' \u00b7 edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
+    +' \u00b7 vol '+Math.round(c.vol).toLocaleString()+(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
+  if(tb){
+    const rows=K.sched.slice();
+    if(c&&!rows.some(x=>x.ticker===c.ticker)) rows.push(c);
+    rows.sort((x,y)=>x.close-y.close);
+    tb.innerHTML=rows.map(m=>{
+      const cur=c&&m.ticker===c.ticker;
+      const rc=m.result==="yes"?"var(--up)":m.result==="no"?"var(--down)":"var(--faint)";
+      return '<tr'+(cur?' style="background:rgba(0,135,168,.06)"':'')+'><td class="num" style="color:var(--dim)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span style="color:var(--bondi)">\u25cf</span>':'')+'</td>'
+        +'<td class="num">'+(m.strike?fmtUSD.format(m.strike):"TBD")+'</td>'
+        +'<td class="num">'+(m.last!==null?m.last.toFixed(1)+"\u00a2":"\u2014")+'</td>'
+        +'<td class="num" style="color:var(--faint)">'+Math.round(m.vol).toLocaleString()+'</td>'
+        +'<td class="num">'+(m.expVal!==null?fmtUSD.format(m.expVal):"\u2014")+'</td>'
+        +'<td class="num" style="color:'+rc+'">'+(m.result?m.result.toUpperCase():m.status)+'</td></tr>';
+    }).join("");
+    const settled=rows.filter(m=>m.result);
+    const ups=settled.filter(m=>m.result==="yes").length;
+    $("knote").textContent=settled.length?("today "+settled.length+" settled \u00b7 YES "+ups+"/"+settled.length):"schedule loading";
+  }
+}
+/* ---------------------------------------------------------------- strike map (model odds by level) */
+function strikeMap(now){
+  const P=S.lastPx; if(P===null) return null;
+  const tPhase=nextBoundary(now), tHour=hourStart(now)+3600000;
+  const grid=[-60,-40,-30,-20,-15,-10,-5,5,10,15,20,30,40,60];
+  const levels=grid.map(b=>({p:P*Math.exp(b/1e4),bp:b,name:(b>0?"+":"")+b+"bp"}));
+  for(const step of [100,500]){
+    for(const lv of [Math.floor(P/step)*step,Math.ceil(P/step)*step]){
+      const b=1e4*Math.log(lv/P); if(Math.abs(b)<=60&&Math.abs(b)>=2) levels.push({p:lv,bp:b,name:"$"+lv.toLocaleString()+" round"});
+    }
+  }
+  levels.sort((a,b)=>a.bp-b.bp);
+  const out=[];
+  for(const l of levels){
+    const A=strikeProbs({strike:l.p,tEnd:tPhase},now);
+    const H=(tHour>tPhase+30000)?strikeProbs({strike:l.p,tEnd:tHour},now):null;
+    if(!A) continue;
+    const call=A.over>=0.5?"ABOVE":"BELOW", pc=Math.max(A.over,1-A.over);
+    out.push({p:l.p,bp:l.bp,name:l.name,pPhase:A.over,pHour:H?H.over:null,call,pc,
+      tag:pc>=0.65?"likely":(pc<=0.55?"coin":"lean")});
+  }
+  return {t:now,tPhase,tHour,levels:out};
+}
+function renderMap(){
+  const M=S.map, strip=$("mapstrip"), tb=$("smap")&&$("smap").querySelector("tbody");
+  if(!M||!M.levels.length){ if(strip) strip.textContent="strike map warming"; if(tb) tb.innerHTML=""; return; }
+  const pct=v=>Math.round(v*100)+"%";
+  const rank=M.levels.slice().sort((a,b)=>b.pc-a.pc).slice(0,4).sort((a,b)=>a.bp-b.bp);
+  if(strip){
+    strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">MAP \u00b7 phase '+timeStr(M.tPhase)+'</span> '
+      +rank.map(l=>'<button class="mchip" data-p="'+l.p.toFixed(2)+'" data-call="'+l.call+'">'
+        +fmtUSD.format(l.p)+' '+(l.call==="ABOVE"?"\u25b2":"\u25bc")+' '+pct(l.pc)+'</button>').join(" ")
+      +' <span style="color:var(--faint);font-size:9.5px">tap to load</span>';
+  }
+  if(tb){
+    tb.innerHTML=M.levels.map(l=>{
+      const c=l.tag==="likely"?"var(--up)":l.tag==="coin"?"var(--dim)":"var(--faint)";
+      return '<tr><td class="num">'+fmtUSD.format(l.p)+'<span class="sub">'+l.name+'</span></td>'
+        +'<td class="num" style="color:var(--dim)">'+fmtBp(l.bp)+'</td>'
+        +'<td class="num model">'+pct(l.pPhase)+'</td>'
+        +'<td class="num">'+(l.pHour===null?"\u2014":pct(l.pHour))+'</td>'
+        +'<td class="num" style="color:'+c+'">'+l.call+' '+pct(l.pc)+' \u00b7 '+l.tag+'</td></tr>';
+    }).join("");
+    $("mapnote").textContent="phase "+timeStr(M.tPhase)+" \u00b7 hour "+timeStr(M.tHour)+" \u00b7 "+M.levels.length+" levels";
+  }
+}
 /* ---------------------------------------------------------------- tape extrapolation (+5 min) */
 function extrapolate(now){
   const G=S.sig, st=computeStats(), P=S.lastPx;
@@ -670,7 +942,9 @@ function extrapolate(now){
   const sig=st.sig;
   const vlog=(G.v60!==null)?G.v60/1e4:0;
   const phi=G.phi===null?0:G.phi;
-  const rho=phi>0?Math.pow(Math.min(phi,0.95),4):0;          /* per-minute persistence, only if positive */
+  const adh=S.cfg.adh||1;
+  const rho=phi>0?Math.pow(Math.min(phi,0.95),4/adh):0;      /* per-minute persistence, only if positive; adherence stretches it */
+  const z=invNorm((1+S.cfg.conf)/2);                           /* confidence slider = nominal band coverage */
   const kap=phi<-0.1?Math.min(0.6,-phi):0;                     /* per-minute reversion rate */
   const f=G.ofi60?0.3*G.ofi60.x*sig:0;
   /* 5-min tape mean (log) for reversion */
@@ -680,7 +954,7 @@ function extrapolate(now){
   const steps=[]; const comp={mom:0,flow:0,rev:0,disl:0};
   let sr=0, sf=0;
   for(let k=1;k<=5;k++){
-    sr+=Math.pow(rho,k); sf+=Math.pow(0.7,k);
+    sr+=Math.pow(rho,k); sf+=Math.pow(0.7,k/adh);
     const mom=vlog*sr;
     const flow=f*sf;
     const rev=kap?(lnM5-Math.log(P))*(1-Math.pow(1-kap,k)):0;
@@ -688,11 +962,11 @@ function extrapolate(now){
     let x=mom+flow+rev+dl;
     const cap=2.5*sig*Math.sqrt(k);
     x=clamp(x,-cap,cap);
-    const band=1.645*sig*Math.sqrt(k);
+    const band=z*sig*Math.sqrt(k);
     steps.push({k,t:now+k*60000,p:P*Math.exp(x),lo:P*Math.exp(x-band),hi:P*Math.exp(x+band),x});
     if(k===5){ comp.mom=1e4*mom; comp.flow=1e4*flow; comp.rev=1e4*rev; comp.disl=1e4*dl; }
   }
-  return {t0:now,P0:P,steps,comp,sig};
+  return {t0:now,P0:P,steps,comp,sig,z,conf:S.cfg.conf};
 }
 function xtPin(now){
   const X=S.xt; if(!X.cur) return;
@@ -976,6 +1250,14 @@ function renderArmBar(){
   const act=(R&&R.state==="live"&&R.tStart===lastB)?activeStrikes(R):[];
   let s="OPEN "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 settles in "+mmss(nb-now)
     +(act.length?(" \u00b7 strike "+fmtUSD.format(act[0].strike)+" "+act[0].call):" \u00b7 strike \u2014");
+  if(act.length&&act[0].prob){
+    const q=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
+    if(isFinite(q)&&q>0&&q<100){
+      const mp=act[0].call==="ABOVE"?act[0].prob.over:act[0].prob.under;
+      const edge=(mp-q/100)*100, ev=(mp-q/100)/(q/100)*100;
+      s+=" \u00b7 quote "+q+"\u00a2 vs model "+Math.round(mp*100)+"% \u2192 edge "+(edge>=0?"+":"")+edge.toFixed(1)+"pt \u00b7 EV "+(ev>=0?"+":"")+ev.toFixed(1)+"%/stake";
+    }
+  }
   if(R&&R.state==="settled") s="SETTLED \u00b7 "+s;
   if(tail) s="SETTLING \u00b7 window "+timeStr(nb)+" opens next";
   st.textContent=s;
@@ -1011,7 +1293,15 @@ function renderRounds(){
       +'<td class="num" style="color:'+pc+'">'+pf+'</td>'
       +'<td class="num">'+(R.up!==undefined?(R.up+"\u2191 "+R.dn+"\u2193"):"\u2014")+'</td>'
       +'<td class="num '+col+'">'+oc+'</td>'
-      +'<td class="num">'+hit+'</td></tr>';
+      +'<td class="num">'+hit+'</td>'
+      +(function(){ if(!R.kalshi) return '<td style="color:var(--faint)">\u2014</td>';
+          const kr=R.kalshi.result.toUpperCase();
+          const same=(R.strike!==null&&R.kalshi.strike!==null&&Math.abs(R.strike-R.kalshi.strike)<0.01);
+          const ours=oc==="UP"?"YES":oc==="DOWN"?"NO":null;
+          const agree=(same&&ours)?(ours===kr):null;
+          const c=agree===null?"var(--faint)":(agree?"var(--up)":"var(--down)");
+          return '<td class="num" style="color:'+c+'">'+kr+(agree===null?"":(agree?" \u2713":" \u2717"))+'</td>'; })()
+      +'</tr>';
   }).join("");
 }
 function renderIntervals(){
@@ -1158,7 +1448,7 @@ function easeDomain(st,cT,sT,needLo,needHi){
   else{
     st.c+=(cT-st.c)*(RM?1:0.15);
     const d=sT-st.s;
-    st.s+=d*(RM?1:(d>0?0.5:0.045));
+    st.s+=d*(RM?1:(d>0?S.cfg.dilate:S.cfg.contract));
   }
   if(needLo<st.c-st.s||needHi>st.c+st.s){
     const lo=Math.min(needLo,st.c-st.s), hi=Math.max(needHi,st.c+st.s);
@@ -1243,7 +1533,7 @@ function renderRound(){
   const acts=activeStrikes(R);
   const sk=acts.length?acts[acts.length-1]:null;
   const dataStartM=tp.length?((tp[0].t-R.tStart)/60000):-5;
-  const xMin=Math.max(-5, Math.min(0, dataStartM-0.3));
+  const xMin=Math.max(-S.cfg.lookback, Math.min(0, dataStartM-0.3));
   const xMax=15.6;
   const X=q=>F.padL+(((q.t-R.tStart)/60000)-xMin)/(xMax-xMin)*F.iw;
   const Xm=m=>F.padL+(m-xMin)/(xMax-xMin)*F.iw;
@@ -1260,10 +1550,10 @@ function renderRound(){
   let needLo=pmn, needHi=pmx;
   if(sk&&inDom){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
   const floorS=lastP*0.00035;
-  const baseHalf=Math.max((needHi-needLo)/2*1.18, floorS);
+  const baseHalf=Math.max((needHi-needLo)/2*S.cfg.pad, floorS);
   let cT=(needLo+needHi)/2, sT=baseHalf;
   if(sk&&inDom){
-    const g=Math.pow(clamp((e-6)/8,0,1),1.4);
+    const g=Math.pow(clamp((e-S.cfg.closeStart)/Math.max(1,14-S.cfg.closeStart),0,1),1.4)*S.cfg.closeStr;
     const duelHalf=Math.max(Math.abs(lastP-sk.strike)*1.6, floorS);
     sT=baseHalf*(1-g)+Math.max(duelHalf,(needHi-needLo)/2*1.03)*g;
     cT=(1-g)*cT+g*((lastP+sk.strike)/2);
@@ -1529,6 +1819,39 @@ $("viewBtn").addEventListener("click",()=>{
   $("viewBtn").setAttribute("aria-pressed",String(on));
 });
 $("armBtn").addEventListener("click",()=>{ $("verdict").style.display="none"; armRound(); });
+$("tuneBtn").addEventListener("click",()=>{
+  const on=document.body.classList.toggle("showTune");
+  $("tuneBtn").setAttribute("aria-pressed",String(on));
+});
+const CFG_KEYS=["pad","dilate","contract","closeStart","closeStr","lookback","conf","adh"];
+function cfgFmt(k,v){
+  if(k==="conf") return Math.round(v*100)+"% \u00b7 z"+invNorm((1+v)/2).toFixed(2);
+  if(k==="adh") return v.toFixed(2)+"\u00d7";
+  if(k==="closeStart") return "+"+v+"m";
+  if(k==="lookback") return v+"m";
+  return (+v).toFixed(k==="contract"?3:2);
+}
+function syncCfgUI(){
+  if($("c_kproxy")) $("c_kproxy").value=S.cfg.kproxy||"";
+  for(const k of CFG_KEYS){ const el=$("c_"+k), vv=$("v_"+k); if(!el) continue;
+    el.value=String(S.cfg[k]); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); }
+}
+for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
+  el.addEventListener("input",()=>{ S.cfg[k]=+el.value; const vv=$("v_"+k); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); saveCfg(); });
+}
+$("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveCfg(); syncCfgUI(); });
+$("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
+$("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
+$("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
+$("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
+$("mapstrip").addEventListener("click",ev=>{
+  const b=ev.target.closest(".mchip"); if(!b) return;
+  $("strikeIn").value=b.getAttribute("data-p");
+  const call=b.getAttribute("data-call");
+  S.callSel=call;
+  $("callAbove").classList.toggle("sel",call==="ABOVE"); $("callBelow").classList.toggle("sel",call==="BELOW");
+  armMsg("loaded "+fmtUSD.format(+b.getAttribute("data-p"))+" "+call+" \u2014 ARM to commit");
+});
 $("strikeChips").addEventListener("click",ev=>{
   const b=ev.target.closest(".schip"); if(!b) return;
   withdrawStrike(+b.getAttribute("data-sid"));
@@ -1543,6 +1866,8 @@ setInterval(()=>{
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
+  if((Math.floor(Date.now()/1000)%5)===0){ try{ S.map=strikeMap(Date.now()); renderMap(); }catch(e){} }
+  kalshiTick(Date.now());
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -1552,12 +1877,13 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData();
+  loadCfg(); syncCfgUI();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260902160252 -->
+<!-- build-20260903123840 -->
 </html>
