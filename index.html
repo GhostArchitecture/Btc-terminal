@@ -440,6 +440,13 @@
       each minute and graded at settlement, so the hourly ladder multiplies the ledger’s sample count. Kalshi
       polling honors 429s with exponential backoff; the Worker memoizes responses briefly so reloads and extra
       tabs do not multiply upstream requests. Nothing executes.</p>
+    <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
+      shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
+      <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
+      against the strike — and overwritten when the official record lands; the ledger reports how often tape and
+      official agreed, which doubles as a validation of the tape against the CF Benchmarks index. The CSV marks
+      each window’s result source. A relay on a different provider’s IP pool can be pasted into TUNE if official
+      timeliness matters.</p>
     <p><b>Edge ledger.</b> With Kalshi connected, every window is graded whether or not you arm: each minute a
       snapshot records the model’s P(YES) beside the market’s YES mid and both asks; at settlement the window is
       scored. <i>Skill</i> is Brier score and log-loss for model and market side by side — the direct test of
@@ -1148,12 +1155,32 @@ function edgeSnap(now){
   for(const m of K.hour){ if(Math.abs(1e4*Math.log(m.strike/S.lastPx))<=150) any=edgeSnapOne(m,now,null)||any; }
   if(any){ S.edge.lastSnap=now; ledgerSave(); }
 }
+function tapeSettleAvg(close){
+  /* Kalshi settles on a 60-second average at close; mirror it from the tape */
+  let s=0,n=0;
+  for(let i=S.tape.length-1;i>=0;i--){ const q=S.tape[i];
+    if(q.t>close) continue; if(q.t<close-60000) break; s+=q.p; n++; }
+  return n>=8?s/n:null;
+}
+function edgeProvisional(now){
+  let changed=false;
+  for(const w of Object.values(S.edge.windows)){
+    if(w.result||w.provTried) continue;
+    if(now<w.close+65000) continue;
+    w.provTried=true;
+    const avg=tapeSettleAvg(w.close); if(avg===null) continue;
+    w.result=avg>=w.strike?"yes":"no"; w.provisional=true; w.settleAvg=+avg.toFixed(2); changed=true;
+  }
+  if(changed){ ledgerSave(); renderEdge(); }
+}
 function edgeGrade(){
   let changed=false;
   for(const m of S.k.sched){
     if(!m.result) continue;
-    const w=S.edge.windows[m.ticker]; if(!w||w.result) continue;
-    w.result=m.result; w.expVal=m.expVal; changed=true;
+    const w=S.edge.windows[m.ticker]; if(!w) continue;
+    if(w.result&&!w.provisional) continue;
+    if(w.provisional){ w.provResult=w.result; w.agree=(w.result===m.result); }
+    w.result=m.result; w.expVal=m.expVal; w.provisional=false; changed=true;
   }
   if(changed){ ledgerSave(); renderEdge(); }
 }
@@ -1193,7 +1220,11 @@ function renderEdge(){
     if(tbS) tbS.innerHTML=""; if(tbB) tbB.innerHTML=""; if(tbC) tbC.innerHTML=""; return; }
   const f3=v=>v.toFixed(3), pct=v=>Math.round(v*100)+"%";
   const dB=E.brierQ-E.brierM, dL=E.llQ-E.llM;
-  sm.innerHTML=E.nWin+" settled windows \u00b7 "+E.nSnap+" snapshots \u00b7 model beats market where \u0394 is positive: Brier "
+  const allW=Object.values(S.edge.windows).filter(w=>w.result);
+  const nProv=allW.filter(w=>w.provisional).length, nOff=allW.length-nProv;
+  const cmp=allW.filter(w=>w.agree!==undefined); const agree=cmp.filter(w=>w.agree).length;
+  sm.innerHTML=E.nWin+" settled windows ("+nOff+" official \u00b7 "+nProv+" provisional from tape"
+    +(cmp.length?(" \u00b7 tape/official agree "+agree+"/"+cmp.length):"")+") \u00b7 "+E.nSnap+" snapshots \u00b7 model beats market where \u0394 is positive: Brier "
     +'<span style="color:var(--'+(dB>0?"up":"down")+')">'+(dB>=0?"+":"")+f3(dB)+'</span>'+" \u00b7 log-loss "
     +'<span style="color:var(--'+(dL>0?"up":"down")+')">'+(dL>=0?"+":"")+f3(dL)+'</span>';
   if(tbS) tbS.innerHTML='<tr><td>Brier (lower is better)</td><td class="num model">'+f3(E.brierM)+'</td><td class="num">'+f3(E.brierQ)+'</td></tr>'
@@ -1213,9 +1244,9 @@ function renderEdge(){
   }).join("");
 }
 function exportCSV(){
-  const rows=[["ticker","strike","open","close","result","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask"]];
+  const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask"]];
   for(const w of Object.values(S.edge.windows)) for(const s of w.snaps)
-    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.expVal===null?"":w.expVal,
+    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?"tape":"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
       new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na]);
   const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
   for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
@@ -2285,7 +2316,7 @@ setInterval(()=>{
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
   if((Math.floor(Date.now()/1000)%5)===0){ try{ S.map=strikeMap(Date.now()); renderMap(); renderOrders(); }catch(e){} }
   kalshiTick(Date.now());
-  try{ edgeSnap(Date.now()); }catch(e){}
+  try{ edgeSnap(Date.now()); edgeProvisional(Date.now()); }catch(e){}
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -2303,5 +2334,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260904134130 -->
+<!-- build-20260904140652 -->
 </html>
