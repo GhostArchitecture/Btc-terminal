@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BTC Terminal">
+<meta name="theme-color" content="#F6FAFC">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
   :root{
@@ -265,6 +271,19 @@
   </div>
 
   <div id="viewData">
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:10px">
+    <button id="secExpand" type="button" style="font-size:10px;padding:3px 10px">EXPAND ALL</button>
+    <button id="secCollapse" type="button" style="font-size:10px;padding:3px 10px">COLLAPSE ALL</button>
+  </div>
+  <section class="tile" data-key="verdict">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Verdict — pre-registered decision rule</span>
+      <span class="note num" id="verdictbox"></span></div>
+    <div class="tblwrap"><table id="vcrit">
+      <thead><tr><th>Criterion</th><th>Have</th><th>Pass</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">thresholds fixed before the data arrived · Δ Brier interval by percentile bootstrap (600 resamples) · READY is necessary, never sufficient · no execution anywhere in this tool</div>
+  </section>
+
   <section class="tile" id="sources" data-key="sources">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
       <span class="note num" id="srcnote">0 live</span></div>
@@ -461,6 +480,12 @@
       official agreed, which doubles as a validation of the tape against the CF Benchmarks index. The CSV marks
       each window’s result source. A relay on a different provider’s IP pool can be pasted into TUNE if official
       timeliness matters.</p>
+    <p><b>Verdict.</b> A pre-registered decision rule, computed live from the ledgers and written before the data
+      arrived: at least 200 graded windows; Δ Brier (market minus model) positive with a 90% percentile-bootstrap
+      interval excluding zero; at least one edge band with n ≥ 30 where the realized win rate beats the
+      market-implied rate by ≥ 3 points; paper P&amp;L positive over ≥ 100 entries and positive on each of the last
+      two days separately. READY means every criterion passes. It is necessary, not sufficient, and it is the only
+      condition under which this tool’s numbers should be trusted with size.</p>
     <p><b>Edge ledger.</b> With Kalshi connected, every window is graded whether or not you arm: each minute a
       snapshot records the model’s P(YES) beside the market’s YES mid and both asks; at settlement the window is
       scored. <i>Skill</i> is Brier score and log-loss for model and market side by side — the direct test of
@@ -784,9 +809,10 @@ function computeSignals(now){
       if(den>0) phi=num/den; }
   }
   /* order-flow imbalance */
-  const ofi=(win)=>{ let b=0,s=0; for(let i=S.flow.length-1;i>=0;i--){ const f=S.flow[i];
-      if(f.t<now-win) break; if(f.v>0) b+=f.v; else s+=-f.v; }
-    return (b+s>0)?{x:(b-s)/(b+s),vol:b+s}:null; };
+  const ofi=(win)=>{ let b=0,s=0,n=0; for(let i=S.flow.length-1;i>=0;i--){ const f=S.flow[i];
+      if(f.t<now-win) break; n++; if(f.v>0) b+=f.v; else s+=-f.v; }
+    /* thin-sample guard: fewer than 6 prints or under 0.25 BTC is noise, not imbalance */
+    return (n>=6&&b+s>=0.25)?{x:(b-s)/(b+s),vol:b+s,n}:null; };
   const ofi60=ofi(60000), ofi300=ofi(300000);
   /* cross-venue dislocation: leader vs peer cluster */
   let disl=null;
@@ -999,6 +1025,7 @@ async function kGet(path){
   /* pacer: never two Kalshi requests within 1.6 s of each other */
   const wait=(K.nextSlot||0)-Date.now(); if(wait>0) await sleep(wait);
   K.nextSlot=Date.now()+1600;
+  K.reqLog=(K.reqLog||[]).filter(t=>t>Date.now()-60000); K.reqLog.push(Date.now());
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
   try{
     const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
@@ -1006,7 +1033,7 @@ async function kGet(path){
       const ra=parseFloat(r.headers.get("retry-after")||"");
       K.fails=(K.fails||0)+1;
       const wait=isFinite(ra)&&ra>0?ra*1000:Math.min(120000,5000*Math.pow(2,Math.min(K.fails,5)));
-      K.backoffUntil=Date.now()+wait;
+      K.backoffUntil=Date.now()+wait; K.last429=Date.now();
       throw new Error("429 rate-limited \u2014 backing off "+Math.round(wait/1000)+"s");
     }
     if(!r.ok){ K.fails=(K.fails||0)+1; K.backoffUntil=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status); }
@@ -1029,7 +1056,7 @@ async function kalshiTick(now){
       else K.cur=null;
       K.err=null; return;
     }
-    if(K.cur&&now-K.lastOb>5000){
+    if(K.cur&&now-K.lastOb>8000){
       K.lastOb=now;
       const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
       K.ob=kParseBook(j); K.err=null; return;
@@ -1124,7 +1151,9 @@ function renderKalshi(){
     +' \u00b7 NO '+(ob?cents(ob.noBid)+"/"+cents(ob.noAsk):cents(c.noBid)+"/"+cents(c.noAsk))
     +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
     +' \u00b7 edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
-    +' \u00b7 vol '+Math.round(c.vol).toLocaleString()+(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
+    +' \u00b7 vol '+Math.round(c.vol).toLocaleString()
+    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)):'')+'</span>'
+    +(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
   if(tb){
     const rows=K.sched.filter(x=>x.ticker.startsWith("KXBTC15M"));
     if(c&&!rows.some(x=>x.ticker===c.ticker)) rows.push(c);
@@ -1147,11 +1176,11 @@ function renderKalshi(){
 /* ---------------------------------------------------------------- edge ledger (model vs market, persisted) */
 function ledgerSave(){
   try{
-    const W=Object.values(S.edge.windows).sort((a,b)=>a.close-b.close).slice(-300);
+    const W=Object.values(S.edge.windows).sort((a,b)=>a.close-b.close).slice(-1500);
     const wins={}; for(const w of W) wins[w.ticker]=w;
     localStorage.setItem("btc.edge",JSON.stringify(wins));
-    localStorage.setItem("btc.rounds",JSON.stringify(S.roundLog.slice(0,200)));
-    localStorage.setItem("btc.intervals",JSON.stringify(S.intervalLog.slice(0,64)));
+    localStorage.setItem("btc.rounds",JSON.stringify(S.roundLog.slice(0,600)));
+    localStorage.setItem("btc.intervals",JSON.stringify(S.intervalLog.slice(0,400)));
   }catch(e){}
 }
 function ledgerLoad(){
@@ -1200,7 +1229,7 @@ function edgeProvisional(now){
     const r=tapeSettleAvg(w.close); if(r===null) continue;
     w.result=r.avg>=w.strike?"yes":"no"; w.provisional=true; w.provSrc=r.src; w.settleAvg=+r.avg.toFixed(2); changed=true;
   }
-  if(changed){ ledgerSave(); renderEdge(); }
+  if(changed){ ledgerSave(); renderEdge(); renderVerdict(); }
 }
 function edgeGrade(){
   let changed=false;
@@ -1338,6 +1367,56 @@ function renderOrders(){
     }).join("");
     $("onote").textContent=rows.length?(rows.length+" rungs \u00b7 "+sug.length+" clear "+S.cfg.minEdge+"pt"+(S.k.hourClose?(" \u00b7 hour closes "+timeStr(S.k.hourClose)):"")):"waiting for Kalshi ladder";
   }
+}
+/* ---------------------------------------------------------------- verdict (pre-registered decision rule) */
+const VERDICT_RULE={minWindows:200,brierCI:0.90,bandMinN:30,bandMargin:3,pnlMinN:100,pnlDays:2};
+function bootstrapCI(vals,fn,level,B){
+  /* percentile bootstrap of a statistic fn(sampleArray) */
+  if(!vals.length) return null;
+  const n=vals.length, out=[];
+  for(let b=0;b<B;b++){ const s=new Array(n); for(let i=0;i<n;i++) s[i]=vals[(Math.random()*n)|0]; out.push(fn(s)); }
+  out.sort((a,b)=>a-b);
+  const a=(1-level)/2;
+  return {lo:out[Math.floor(a*(B-1))],hi:out[Math.ceil((1-a)*(B-1))],point:fn(vals)};
+}
+function computeVerdict(){
+  const R=VERDICT_RULE;
+  const W=Object.values(S.edge.windows).filter(w=>w.result&&w.snaps.length);
+  const crit=[];
+  /* 1. sample size */
+  crit.push({name:"Graded windows",need:"\u2265 "+R.minWindows,have:String(W.length),pass:W.length>=R.minWindows});
+  /* 2. skill: \u0394 Brier (market \u2212 model) per window, bootstrap CI excludes zero */
+  const dB=W.map(w=>{ const y=w.result==="yes"?1:0; let m=0,q=0;
+    for(const s of w.snaps){ m+=(s.pm-y)*(s.pm-y); q+=(s.qm/100-y)*(s.qm/100-y); } return (q-m)/w.snaps.length; });
+  const ci=W.length>=20?bootstrapCI(dB,a=>a.reduce((x,y)=>x+y,0)/a.length,R.brierCI,600):null;
+  crit.push({name:"\u0394 Brier > 0 (model beats market)",need:Math.round(R.brierCI*100)+"% CI excludes 0",
+    have:ci?(ci.point.toFixed(4)+" ["+ci.lo.toFixed(4)+", "+ci.hi.toFixed(4)+"]"):"n < 20",pass:!!(ci&&ci.lo>0)});
+  /* 3. edge bands: realized beats market-implied by margin where n >= bandMinN */
+  const E=edgeStats();
+  let bandOk=false, bandTxt="no band with n \u2265 "+R.bandMinN;
+  if(E){ const good=E.bands.filter(b=>b.n>=R.bandMinN&&(b.win/b.n-b.mkt/b.n)*100>=R.bandMargin);
+    const eligible=E.bands.filter(b=>b.n>=R.bandMinN);
+    bandOk=good.length>0; bandTxt=eligible.length?(eligible.map(b=>b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+"pt: "+Math.round(100*b.win/b.n)+"% vs "+Math.round(100*b.mkt/b.n)+"% (n"+b.n+")").join(" \u00b7 ")):bandTxt; }
+  crit.push({name:"Edge band beats market by \u2265 "+R.bandMargin+"pt",need:"n \u2265 "+R.bandMinN+" in band",have:bandTxt,pass:bandOk});
+  /* 4. paper P&L: positive overall over pnlMinN entries, and positive on each of the last pnlDays days */
+  const entries=W.map(w=>{ const s0=w.snaps[0]; const e=(s0.pm-s0.qm/100); const fav=e>0?1:0; const y=w.result==="yes"?1:0;
+    const ask=fav?s0.ya:s0.na; const won=(fav===y); return {t:w.close,pnl:won?(100-ask)/100:-ask/100}; });
+  const total=entries.reduce((a,e)=>a+e.pnl,0);
+  const days={}; for(const e of entries){ const d=new Date(e.t); const k=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); days[k]=(days[k]||0)+e.pnl; }
+  const dayKeys=Object.keys(days).sort(); const last=dayKeys.slice(-R.pnlDays);
+  const lastOk=last.length>=R.pnlDays&&last.every(k=>days[k]>0);
+  crit.push({name:"Paper P&L > 0 over \u2265 "+R.pnlMinN+" entries",need:"and > 0 on each of last "+R.pnlDays+" days",
+    have:(total>=0?"+":"")+total.toFixed(2)+" over "+entries.length+(last.length?(" \u00b7 last days: "+last.map(k=>(days[k]>=0?"+":"")+days[k].toFixed(2)).join(", ")):""),
+    pass:entries.length>=R.pnlMinN&&total>0&&lastOk});
+  const ready=crit.every(c=>c.pass);
+  return {ready,crit,n:W.length};
+}
+function renderVerdict(){
+  const el=$("verdictbox"), tb=$("vcrit")&&$("vcrit").querySelector("tbody"); if(!el||!tb) return;
+  const V=computeVerdict();
+  el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '+V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria';
+  tb.innerHTML=V.crit.map(c=>'<tr><td>'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--dim)">'+c.have+'</td>'
+    +'<td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713 pass":"\u2717")+'</td></tr>').join("");
 }
 /* ---------------------------------------------------------------- strike map (model odds by level) */
 function strikeMap(now){
@@ -1662,7 +1741,7 @@ function renderSignals(){
   if(!G){ if(strip) strip.textContent="signals warming \u2014 tape depth building"; if(tb) tb.innerHTML=""; return; }
   const dc=G.dir==="UP"?"var(--up)":G.dir==="DOWN"?"var(--down)":"var(--dim)";
   const wt=G.weight===null?"\u2014":Math.round(G.weight*100)+"%";
-  const ofiTxt=G.ofi60?((G.ofi60.x>=0?"+":"")+G.ofi60.x.toFixed(2)+(G.ofi60.x>0.15?" buy-heavy":G.ofi60.x<-0.15?" sell-heavy":" balanced")):"\u2014";
+  const ofiTxt=G.ofi60?((G.ofi60.x>=0?"+":"")+G.ofi60.x.toFixed(2)+(G.ofi60.x>0.15?" buy-heavy":G.ofi60.x<-0.15?" sell-heavy":" balanced")):"thin";
   const dTxt=G.disl?(G.disl.isolated?("ISOLATED "+f1(G.disl.dev)+"bp \u2192 reversion likely"):("cluster "+(G.disl.cluster===null?"\u2014":Math.round(G.disl.cluster*100)+"% agree"))):"\u2014";
   const lv=G.levels[0];
   if(strip){
@@ -2221,7 +2300,7 @@ function renderXT(){
     c.beginPath();c.moveTo(x,padT);c.lineTo(x,padT+ih);c.stroke();
     if(m===-5||m===0||m===5){ c.fillStyle="#7D97A6"; c.textAlign=m===-5?"left":m===5?"right":"center";
       c.fillText(m===0?"NOW":timeStr(now+m*60000),x+(m===-5?2:m===5?-2:0),H-6); c.textAlign="left"; }
-    else if(m>0){ c.fillStyle="rgba(0,135,168,.6)"; c.textAlign="center"; c.fillText("+"+m,x,H-6); c.textAlign="left"; }
+    else if(m>0&&m<4){ c.fillStyle="rgba(0,135,168,.6)"; c.textAlign="center"; c.fillText("+"+m,x,H-6); c.textAlign="left"; }
   }
   c.save(); c.beginPath(); c.rect(padL,padT,iw,ih); c.clip();
   /* band + path */
@@ -2336,21 +2415,32 @@ $("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveC
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
+$("secExpand").addEventListener("click",()=>setAllSections(false));
+$("secCollapse").addEventListener("click",()=>setAllSections(true));
 const SEC_DEFAULT_CLOSED={signals:1,ladder:1,xt:1,method:1};
+const SEC_KEY="btc.sections.v2";
+function setSec(sec,closed){ sec.classList.remove("collapsed"); if(closed) sec.classList.add("collapsed"); }
 function initSections(){
-  let st={}; try{ st=JSON.parse(localStorage.getItem("btc.sections")||"{}"); }catch(e){}
-  document.querySelectorAll("[data-key]").forEach(sec=>{
+  let st={}; try{ const j=JSON.parse(localStorage.getItem(SEC_KEY)||"{}"); if(j&&typeof j==="object"&&!Array.isArray(j)) st=j; }catch(e){}
+  document.querySelectorAll("section[data-key],div[data-key]").forEach(sec=>{
     const key=sec.getAttribute("data-key");
-    const closed=(key in st)?!!st[key]:!!SEC_DEFAULT_CLOSED[key];
-    sec.classList.toggle("collapsed",closed);
+    const closed=(Object.prototype.hasOwnProperty.call(st,key))?(st[key]===1):(SEC_DEFAULT_CLOSED[key]===1);
+    setSec(sec,closed);
     const head=sec.querySelector(".shead"); if(!head) return;
     head.addEventListener("click",ev=>{
       if(ev.target.closest("button")) return;
-      const now=sec.classList.toggle("collapsed");
-      st[key]=now?1:0; try{ localStorage.setItem("btc.sections",JSON.stringify(st)); }catch(e){}
+      const now=!sec.classList.contains("collapsed");
+      setSec(sec,now);
+      st[key]=now?1:0; try{ localStorage.setItem(SEC_KEY,JSON.stringify(st)); }catch(e){}
       markOverflow();
     });
   });
+}
+function setAllSections(closed){
+  const st={};
+  document.querySelectorAll("section[data-key],div[data-key]").forEach(sec=>{ setSec(sec,closed); st[sec.getAttribute("data-key")]=closed?1:0; });
+  try{ localStorage.setItem(SEC_KEY,JSON.stringify(st)); }catch(e){}
+  markOverflow();
 }
 function markOverflow(){
   document.querySelectorAll(".tblwrap").forEach(w=>{ w.classList.toggle("ovf",w.scrollWidth>w.clientWidth+4); });
@@ -2397,17 +2487,18 @@ setInterval(()=>{
     if(st.ws&&st.sock&&_wn-(st.wsAlive||0)>15000){ try{ st.sock.close(); }catch(e){} st.ws=false; } }
   renderSources();
   if((Math.floor(Date.now()/1000)%3)===0) markOverflow();
+  if((Math.floor(Date.now()/1000)%30)===0){ try{ renderVerdict(); }catch(e){} }
 },1000);
 requestAnimationFrame(loop);
 
 (async function init(){
   loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin(); initSections();
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderOrders(); renderEdge();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderOrders(); renderEdge(); renderVerdict();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260904152449 -->
+<!-- build-20260904185442 -->
 </html>
