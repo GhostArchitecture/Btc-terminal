@@ -1019,8 +1019,19 @@ function kParseBook(ob){
            depthYes:ys.reduce((a,r)=>a+r[1],0), depthNo:ns.reduce((a,r)=>a+r[1],0) };
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function kBases(path){
+  /* query-class routing: history to the alternate relay when configured, live on same-origin; each falls back to the other */
+  const p=(S.cfg.kproxy||"").trim().replace(/\/+$/,"");
+  const same=S.k.sameOrigin?"/api":null;
+  const h=(typeof location!=="undefined")?location.hostname:"";
+  const local=(h==="localhost"||h==="127.0.0.1")?K_DIRECT:null;
+  const hist=/status=(settled|unopened)/.test(path);
+  const primary=hist?(p||same||local):(same||p||local);
+  const secondary=hist?(same||local):(p||local);
+  return [primary,secondary].filter((b,i,a)=>b&&a.indexOf(b)===i);
+}
 async function kGet(path){
-  const base=kalshiBase(); if(!base) throw new Error("no base");
+  const bases=kBases(path); if(!bases.length) throw new Error("no base");
   const K=S.k; const now=Date.now();
   if(K.backoffUntil&&now<K.backoffUntil) throw new Error("backoff "+Math.ceil((K.backoffUntil-now)/1000)+"s");
   /* pacer: never two Kalshi requests within 1.6 s of each other */
@@ -1029,7 +1040,8 @@ async function kGet(path){
   K.reqLog=(K.reqLog||[]).filter(t=>t>Date.now()-60000); K.reqLog.push(Date.now());
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
   try{
-    const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
+    let r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"});
+    if(r.status===429&&bases[1]){ K.failover=(K.failover||0)+1; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
     if(r.status===429){
       const ra=parseFloat(r.headers.get("retry-after")||"");
       K.fails=(K.fails||0)+1;
@@ -2501,5 +2513,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260904191354 -->
+<!-- build-20260904191945 -->
 </html>
