@@ -130,6 +130,10 @@
   #kstrip b{color:var(--ink);font-weight:600}
   #mapstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;
     display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  #ostrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .ochip{font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:999px;background:rgba(14,148,100,.10);border:1px solid rgba(14,148,100,.35);color:var(--up)}
+  .ochip.phase{cursor:pointer}
+  .ochip.phase:hover{background:rgba(14,148,100,.2)}
   .mchip{font-family:var(--mono);font-size:10.5px;padding:3px 9px;background:rgba(0,135,168,.1);
     border:1px solid rgba(0,135,168,.3);color:var(--bondi-deep)}
   .mchip:hover{background:rgba(0,135,168,.2)}
@@ -219,6 +223,7 @@
       <div class="tgrp"><span class="lbl">Tape read</span>
         <label>confidence <input type="range" id="c_conf" min="0.50" max="0.99" step="0.01"><span class="num" id="v_conf"></span></label>
         <label>adherence <input type="range" id="c_adh" min="0.5" max="2.0" step="0.05"><span class="num" id="v_adh"></span></label>
+        <label>min edge <input type="range" id="c_minEdge" min="1" max="10" step="0.5"><span class="num" id="v_minEdge"></span></label>
         <button id="cfgReset">RESET</button>
       </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
@@ -229,8 +234,9 @@
       </div>
     </div>
     <div id="sigstrip" class="tile num"></div>
-    <div id="mapstrip" class="tile num"></div>
     <div id="kstrip" class="tile num"></div>
+    <div id="ostrip" class="tile num"></div>
+    <div id="mapstrip" class="tile num"></div>
     <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
@@ -297,7 +303,17 @@
   </section>
 
   <section class="tile">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Strike map — model odds by level</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Suggested orders — Kalshi-priced, phase &amp; active hour</span>
+      <span class="note num" id="onote"></span></div>
+    <div class="tblwrap"><table id="orders">
+      <thead><tr><th>Window</th><th>Level</th><th class="model">Model P▲</th><th>YES bid/ask</th><th>NO bid/ask</th><th>Edge YES</th><th>Edge NO</th><th>Suggestion</th><th>EV / stake</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">edge = model minus the ask on that side · a rung is suggested only above your min-edge setting · phase chips load into the tray; hour rungs are informational (rounds are 15-minute) · every near-money rung is graded in the edge ledger · nothing executes</div>
+  </section>
+
+  <section class="tile">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Model ladder — synthetic levels (offline fallback)</span>
       <span class="note num" id="mapnote"></span></div>
     <div class="tblwrap"><table id="smap">
       <thead><tr><th>Level</th><th>Δ from spot</th><th class="model">P▲ phase</th><th>P▲ hour</th><th>Implied call</th></tr></thead>
@@ -415,6 +431,15 @@
       finds <code>/api</code> on its own origin automatically — no URL to paste, and Cloudflare redeploys on every
       push. Alternatives: a Worker relay URL pasted into TUNE, or serving the file from localhost
       (<code>python3 -m http.server 8080</code>). TEST probes whichever path is active.</p>
+    <p><b>Suggested orders.</b> The order map is priced against Kalshi’s own books, not a synthetic grid: the
+      15-minute phase market (one strike) and the active hour’s KXBTCD ladder (real strikes at $100 steps, each
+      with its own YES/NO market). For every rung within 150 bp of spot the model prices P(above at that market’s
+      close); edge is model minus the ask on each side, and a rung is suggested only where edge clears your
+      min-edge setting, with EV per stake at the ask. Phase suggestions load into the tray with a tap; hour rungs
+      are informational because rounds are 15-minute. Every near-money rung is snapshotted into the edge ledger
+      each minute and graded at settlement, so the hourly ladder multiplies the ledger’s sample count. Kalshi
+      polling honors 429s with exponential backoff; the Worker memoizes responses briefly so reloads and extra
+      tabs do not multiply upstream requests. Nothing executes.</p>
     <p><b>Edge ledger.</b> With Kalshi connected, every window is graded whether or not you arm: each minute a
       snapshot records the model’s P(YES) beside the market’s YES mid and both asks; at settlement the window is
       scored. <i>Skill</i> is Brier score and log-loss for model and market side by side — the direct test of
@@ -490,8 +515,8 @@ const S={
   flow:[],              // signed trade volume {t,v,src} from side-bearing streams
   sig:null,             // latest signals read
   xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
-  cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""},
-  k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false},
+  cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3},
+  k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,lastHour:0,lastUnopened:0,hour:[],hourClose:null,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false,backoffUntil:0,fails:0},
   edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   map:null,             // strike map ladder
   edge:[],              // edge ledger records
@@ -780,7 +805,7 @@ function computeSignals(now){
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
 }
 /* ---------------------------------------------------------------- interact: config + inverse normal */
-const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:""};
+const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3};
 function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); } }
 function saveCfg(){ try{ localStorage.setItem("btc.cfg",JSON.stringify(S.cfg)); }catch(e){} }
 function invNorm(p){
@@ -946,38 +971,69 @@ function kParseBook(ob){
 }
 async function kGet(path){
   const base=kalshiBase(); if(!base) throw new Error("no base");
-  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
-  try{ const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
-    if(!r.ok) throw new Error("HTTP "+r.status); return await r.json(); }
-  finally{ clearTimeout(to); }
+  const K=S.k; const now=Date.now();
+  if(K.backoffUntil&&now<K.backoffUntil) throw new Error("backoff "+Math.ceil((K.backoffUntil-now)/1000)+"s");
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
+    if(r.status===429){
+      const ra=parseFloat(r.headers.get("retry-after")||"");
+      K.fails=(K.fails||0)+1;
+      const wait=isFinite(ra)&&ra>0?ra*1000:Math.min(120000,5000*Math.pow(2,Math.min(K.fails,5)));
+      K.backoffUntil=Date.now()+wait;
+      throw new Error("429 rate-limited \u2014 backing off "+Math.round(wait/1000)+"s");
+    }
+    if(!r.ok){ K.fails=(K.fails||0)+1; K.backoffUntil=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status); }
+    K.fails=0; K.backoffUntil=0;
+    return await r.json();
+  } finally{ clearTimeout(to); }
 }
 async function kalshiTick(now){
   const K=S.k; if(K.busy||!kalshiBase()) return; K.busy=true;
   try{
-    const stale=!K.cur||now>K.cur.close||now-K.lastMkt>15000;
+    if(K.backoffUntil&&now<K.backoffUntil){ K.err="rate-limited \u2014 resuming in "+Math.ceil((K.backoffUntil-now)/1000)+"s"; return; }
+    const stale=!K.cur||now>K.cur.close||now-K.lastMkt>20000;
     if(stale){
+      K.lastMkt=now;
       const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
       const m=(j.markets||[])[0];
-      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; K.lastMkt=now;
+      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm;
         if(isNew) kOnNewMarket(pm); }
       else K.cur=null;
     }
-    if(K.cur&&now-K.lastOb>3000){
+    if(K.cur&&now-K.lastOb>5000){
+      K.lastOb=now;
       const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
-      K.ob=kParseBook(j); K.lastOb=now;
+      K.ob=kParseBook(j);
     }
-    if(now-K.lastSched>300000){
-      const dayStart=new Date(now); dayStart.setHours(0,0,0,0);
-      const ts=Math.floor(dayStart.getTime()/1000);
-      const [a,b]=await Promise.all([
-        kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+ts+"&limit=100"),
-        kGet("/markets?series_ticker=KXBTC15M&status=unopened&limit=12")]);
-      K.sched=((a.markets||[]).map(kParseMarket)).concat((b.markets||[]).map(kParseMarket)).sort((x,y)=>x.close-y.close);
-      K.lastSched=now; kReconcile();
+    if(now-K.lastHour>60000){
+      K.lastHour=now;
+      const j=await kGet("/markets?series_ticker=KXBTCD&status=open&limit=100");
+      const ms=(j.markets||[]).map(kParseMarket).filter(m=>m.strike!==null);
+      /* the active hour event = earliest close among open hourly markets */
+      if(ms.length){ const first=ms.reduce((b,m)=>(!b||m.close<b.close)?m:b,null);
+        K.hour=ms.filter(m=>m.event===first.event).sort((a,b)=>a.strike-b.strike); K.hourClose=first.close; }
+      else { K.hour=[]; K.hourClose=null; }
+    }
+    if(now-K.lastSched>600000){
+      K.lastSched=now;
+      const since=Math.floor((now-6*3600000)/1000);
+      const a=await kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+since+"&limit=40");
+      const b=await kGet("/markets?series_ticker=KXBTCD&status=settled&min_close_ts="+since+"&limit=200");
+      const keep=K.sched.filter(x=>!x.result);
+      K.sched=keep.concat((a.markets||[]).map(kParseMarket)).concat((b.markets||[]).map(kParseMarket))
+        .filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
+      kReconcile();
+    }
+    if(now-K.lastUnopened>1800000){
+      K.lastUnopened=now;
+      const u=await kGet("/markets?series_ticker=KXBTC15M&status=unopened&limit=8");
+      const up=(u.markets||[]).map(kParseMarket);
+      K.sched=K.sched.filter(x=>x.result||!x.ticker.startsWith("KXBTC15M")).concat(up).sort((x,y)=>x.close-y.close);
     }
     K.err=null;
   }catch(e){ K.err=String(e.message||e); }
-  finally{ K.busy=false; kSyncQuote(); renderKalshi(); }
+  finally{ K.busy=false; kSyncQuote(); renderKalshi(); renderOrders(); }
 }
 function kOnNewMarket(pm){
   const K=S.k;
@@ -998,7 +1054,7 @@ function kReconcile(){
   /* attach Kalshi's official result to our rounds that were armed on the same window */
   for(const r of S.roundLog){
     if(r.kalshi!==undefined) continue;
-    const m=S.k.sched.find(x=>x.status==="settled"&&Math.abs(x.close-r.tEnd)<60000&&x.result);
+    const m=S.k.sched.find(x=>x.result&&x.ticker.startsWith("KXBTC15M")&&Math.abs(x.close-r.tEnd)<60000);
     if(m) r.kalshi={result:m.result,strike:m.strike,expVal:m.expVal};
   }
   for(const e of S.edge){
@@ -1036,7 +1092,7 @@ function renderKalshi(){
     +' \u00b7 edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
     +' \u00b7 vol '+Math.round(c.vol).toLocaleString()+(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
   if(tb){
-    const rows=K.sched.slice();
+    const rows=K.sched.filter(x=>x.ticker.startsWith("KXBTC15M"));
     if(c&&!rows.some(x=>x.ticker===c.ticker)) rows.push(c);
     rows.sort((x,y)=>x.close-y.close);
     tb.innerHTML=rows.map(m=>{
@@ -1073,24 +1129,29 @@ function ledgerLoad(){
     for(const x of S.roundLog){ if(x.outcome==="UP"||x.outcome==="DOWN"){ S.tally.calls++; if(x.hit) S.tally.hits++; } }
   }catch(e){}
 }
+function edgeSnapOne(m,now,ob){
+  if(!m||m.strike===null) return false;
+  const P=strikeProbs({strike:m.strike,tEnd:m.close},now); if(!P) return false;
+  const yb=ob&&ob.yesBid!==null?ob.yesBid:m.yesBid, ya=ob&&ob.yesAsk!==null?ob.yesAsk:m.yesAsk;
+  const na=ob&&ob.noAsk!==null?ob.noAsk:m.noAsk;
+  if(yb===null||ya===null||ya<=0||ya>=100) return false;
+  const w=S.edge.windows[m.ticker]||(S.edge.windows[m.ticker]={ticker:m.ticker,strike:m.strike,open:m.open,close:m.close,snaps:[],result:null,expVal:null});
+  w.snaps.push({t:now,tau:+((m.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1)});
+  if(w.snaps.length>70) w.snaps.shift();
+  return true;
+}
 function edgeSnap(now){
-  const K=S.k, c=K.cur; if(!c||c.strike===null||S.lastPx===null) return;
+  const K=S.k; if(S.lastPx===null) return;
   if(now-S.edge.lastSnap<60000) return;
-  const P=strikeProbs({strike:c.strike,tEnd:c.close},now); if(!P) return;
-  const ob=K.ob;
-  const yb=ob&&ob.yesBid!==null?ob.yesBid:c.yesBid, ya=ob&&ob.yesAsk!==null?ob.yesAsk:c.yesAsk;
-  const na=ob&&ob.noAsk!==null?ob.noAsk:c.noAsk;
-  if(yb===null||ya===null) return;
-  const w=S.edge.windows[c.ticker]||(S.edge.windows[c.ticker]={ticker:c.ticker,strike:c.strike,open:c.open,close:c.close,snaps:[],result:null,expVal:null});
-  w.snaps.push({t:now,tau:+((c.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1)});
-  if(w.snaps.length>16) w.snaps.shift();
-  S.edge.lastSnap=now;
-  ledgerSave();
+  let any=false;
+  if(K.cur) any=edgeSnapOne(K.cur,now,K.ob)||any;
+  for(const m of K.hour){ if(Math.abs(1e4*Math.log(m.strike/S.lastPx))<=150) any=edgeSnapOne(m,now,null)||any; }
+  if(any){ S.edge.lastSnap=now; ledgerSave(); }
 }
 function edgeGrade(){
   let changed=false;
   for(const m of S.k.sched){
-    if(m.status!=="settled"||!m.result) continue;
+    if(!m.result) continue;
     const w=S.edge.windows[m.ticker]; if(!w||w.result) continue;
     w.result=m.result; w.expVal=m.expVal; changed=true;
   }
@@ -1165,6 +1226,59 @@ function exportCSV(){
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+/* ---------------------------------------------------------------- suggested orders (Kalshi-priced, phase + hour) */
+function kOrders(now){
+  const K=S.k, P0=S.lastPx; if(P0===null) return [];
+  const rows=[];
+  const eval_=(m,label)=>{
+    if(m.strike===null) return;
+    const P=strikeProbs({strike:m.strike,tEnd:m.close},now); if(!P) return;
+    const ob=(K.cur&&m.ticker===K.cur.ticker)?K.ob:null;
+    const ya=ob&&ob.yesAsk!==null?ob.yesAsk:m.yesAsk, na=ob&&ob.noAsk!==null?ob.noAsk:m.noAsk;
+    const yb=ob&&ob.yesBid!==null?ob.yesBid:m.yesBid, nb=ob&&ob.noBid!==null?ob.noBid:m.noBid;
+    const okY=ya!==null&&ya>0&&ya<100, okN=na!==null&&na>0&&na<100;
+    const eY=okY?(P.over-ya/100)*100:null, eN=okN?((1-P.over)-na/100)*100:null;
+    let side=null, edge=null, ask=null;
+    if(eY!==null&&(eN===null||eY>=eN)&&eY>=S.cfg.minEdge){ side="BUY YES"; edge=eY; ask=ya; }
+    else if(eN!==null&&eN>=S.cfg.minEdge){ side="BUY NO"; edge=eN; ask=na; }
+    const ev=side?edge/ask*100:null;
+    rows.push({label,ticker:m.ticker,strike:m.strike,bp:1e4*Math.log(m.strike/P0),close:m.close,pm:P.over,yb,ya,nb,na,eY,eN,side,edge,ask,ev,vol:m.vol,phase:label==="phase"});
+  };
+  if(K.cur) eval_(K.cur,"phase");
+  for(const m of K.hour){ if(Math.abs(1e4*Math.log(m.strike/P0))<=150) eval_(m,"hour"); }
+  rows.sort((a,b)=>(b.ev===null?-1e9:b.ev)-(a.ev===null?-1e9:a.ev));
+  return rows;
+}
+function renderOrders(){
+  const tb=$("orders")&&$("orders").querySelector("tbody"), strip=$("ostrip");
+  if(!tb&&!strip) return;
+  if(!kalshiBase()){ if(strip) strip.innerHTML='<span style="color:var(--faint)">ORDERS \u00b7 Kalshi not connected</span>'; if(tb) tb.innerHTML=""; return; }
+  const rows=kOrders(Date.now());
+  const cents=v=>v===null?"\u2014":v.toFixed(1)+"\u00a2";
+  const pt=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"pt");
+  const sug=rows.filter(r=>r.side);
+  if(strip){
+    strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">ORDERS \u00b7 min edge '+S.cfg.minEdge+'pt</span> '
+      +(sug.length?sug.slice(0,3).map(r=>'<span class="ochip'+(r.phase?' phase':'')+'"'+(r.phase?(' data-p="'+r.strike.toFixed(2)+'" data-call="'+(r.side==="BUY YES"?"ABOVE":"BELOW")+'"'):'')+'>'
+        +(r.phase?"PHASE ":"HOUR ")+timeStr(r.close)+' '+fmtUSD.format(r.strike)+' '+r.side+' @'+r.ask.toFixed(1)+'\u00a2 \u00b7 '+pt(r.edge)+' \u00b7 EV '+(r.ev>=0?"+":"")+r.ev.toFixed(0)+'%</span>').join(" ")
+        :'<span style="color:var(--dim)">no rung clears the edge threshold \u2014 nothing suggested</span>');
+  }
+  if(tb){
+    tb.innerHTML=rows.map(r=>{
+      const c=r.side?"var(--up)":"var(--faint)";
+      return '<tr'+(r.side?' style="background:rgba(14,148,100,.05)"':'')+'><td class="num" style="color:var(--dim)">'+(r.phase?"phase ":"hour ")+timeStr(r.close)+'</td>'
+        +'<td class="num">'+fmtUSD.format(r.strike)+'<span class="sub">'+fmtBp(r.bp)+'</span></td>'
+        +'<td class="num model">'+Math.round(r.pm*100)+'%</td>'
+        +'<td class="num" style="color:var(--faint)">'+cents(r.yb)+'/'+cents(r.ya)+'</td>'
+        +'<td class="num" style="color:var(--faint)">'+cents(r.nb)+'/'+cents(r.na)+'</td>'
+        +'<td class="num" style="color:'+(r.eY!==null&&r.eY>=S.cfg.minEdge?"var(--up)":"var(--dim)")+'">'+pt(r.eY)+'</td>'
+        +'<td class="num" style="color:'+(r.eN!==null&&r.eN>=S.cfg.minEdge?"var(--up)":"var(--dim)")+'">'+pt(r.eN)+'</td>'
+        +'<td class="num" style="color:'+c+'">'+(r.side?(r.side+" @"+r.ask.toFixed(1)+"\u00a2"):"\u2014")+'</td>'
+        +'<td class="num" style="color:'+c+'">'+(r.ev===null?"\u2014":((r.ev>=0?"+":"")+r.ev.toFixed(0)+"%"))+'</td></tr>';
+    }).join("");
+    $("onote").textContent=rows.length?(rows.length+" rungs \u00b7 "+sug.length+" clear "+S.cfg.minEdge+"pt"+(S.k.hourClose?(" \u00b7 hour closes "+timeStr(S.k.hourClose)):"")):"waiting for Kalshi ladder";
+  }
 }
 /* ---------------------------------------------------------------- strike map (model odds by level) */
 function strikeMap(now){
@@ -2115,12 +2229,13 @@ $("tuneBtn").addEventListener("click",()=>{
   const on=document.body.classList.toggle("showTune");
   $("tuneBtn").setAttribute("aria-pressed",String(on));
 });
-const CFG_KEYS=["pad","dilate","contract","closeStart","closeStr","lookback","conf","adh"];
+const CFG_KEYS=["pad","dilate","contract","closeStart","closeStr","lookback","conf","adh","minEdge"];
 function cfgFmt(k,v){
   if(k==="conf") return Math.round(v*100)+"% \u00b7 z"+invNorm((1+v)/2).toFixed(2);
   if(k==="adh") return v.toFixed(2)+"\u00d7";
   if(k==="closeStart") return "+"+v+"m";
   if(k==="lookback") return v+"m";
+  if(k==="minEdge") return v+"pt";
   return (+v).toFixed(k==="contract"?3:2);
 }
 function syncCfgUI(){
@@ -2135,6 +2250,14 @@ $("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveC
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
+$("ostrip").addEventListener("click",ev=>{
+  const b=ev.target.closest(".ochip.phase"); if(!b) return;
+  $("strikeIn").value=b.getAttribute("data-p");
+  const call=b.getAttribute("data-call"); S.callSel=call;
+  $("callAbove").classList.toggle("sel",call==="ABOVE"); $("callBelow").classList.toggle("sel",call==="BELOW");
+  S.k.quoteManual=false; kSyncQuote();
+  armMsg("loaded phase order "+fmtUSD.format(+b.getAttribute("data-p"))+" "+call+" \u2014 ARM to commit");
+});
 $("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
 $("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
@@ -2160,7 +2283,7 @@ setInterval(()=>{
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
-  if((Math.floor(Date.now()/1000)%5)===0){ try{ S.map=strikeMap(Date.now()); renderMap(); }catch(e){} }
+  if((Math.floor(Date.now()/1000)%5)===0){ try{ S.map=strikeMap(Date.now()); renderMap(); renderOrders(); }catch(e){} }
   kalshiTick(Date.now());
   try{ edgeSnap(Date.now()); }catch(e){}
   roundTick(Date.now());
@@ -2173,12 +2296,12 @@ requestAnimationFrame(loop);
 
 (async function init(){
   loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin();
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderEdge();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderOrders(); renderEdge();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260903173221 -->
+<!-- build-20260904134130 -->
 </html>
