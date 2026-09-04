@@ -147,7 +147,19 @@
   #verdict.flat{border:1px solid rgba(0,135,168,.4);color:var(--bondi-deep)}
 
   /* tables */
-  .tblwrap{overflow-x:auto}
+  .tblwrap{overflow-x:auto;position:relative;-webkit-overflow-scrolling:touch}
+  .tblwrap.ovf::after{content:"swipe →";position:sticky;left:calc(100% - 64px);bottom:0;display:inline-block;
+    font-family:var(--sans);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--bondi-deep);
+    background:rgba(255,255,255,.85);border:1px solid rgba(0,135,168,.3);border-radius:999px;padding:2px 8px;margin:4px 0;pointer-events:none}
+  table th:first-child,table td:first-child{position:sticky;left:0;z-index:1;background:rgba(255,255,255,.92)}
+  #viewData section.tile .shead{cursor:pointer;user-select:none}
+  #viewData section.tile .shead .lbl::before{content:"▾";display:inline-block;width:12px;color:var(--bondi);transition:transform .15s}
+  #viewData section.tile.collapsed .shead .lbl::before{transform:rotate(-90deg)}
+  #viewData section.tile.collapsed > :not(.shead){display:none}
+  #viewData section.tile.collapsed .shead{margin-bottom:0;border-bottom:0;padding-bottom:2px}
+  #method.collapsed > p{display:none}
+  #method .mhead{cursor:pointer;user-select:none}
+  #probnote{text-transform:none;letter-spacing:.02em;font-size:10.5px;color:var(--dim)}
   table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;font-family:var(--mono)}
   th{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
     font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule);font-family:var(--sans)}
@@ -233,28 +245,27 @@
         <span id="ktest" class="num" style="color:var(--faint);font-size:10.5px"></span>
       </div>
     </div>
-    <div id="sigstrip" class="tile num"></div>
-    <div id="kstrip" class="tile num"></div>
-    <div id="ostrip" class="tile num"></div>
-    <div id="mapstrip" class="tile num"></div>
     <div id="chartbox" class="tile">
       <canvas id="chart" height="340"></canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--up)"></span>above strike / rising</span>
-        <span><span class="sw" style="background:var(--down)"></span>below strike / falling</span>
-        <span><span class="sw" style="background:var(--model)"></span>strike (dashed) · axis tag = level + odds at set time</span>
-        <span>ghost fields = strike territories · right gauge = live over/under</span>
-        <span>line = leader book · peer-verified · latency failover — no aggregation</span>
+        <span><span class="sw" style="background:var(--up)"></span>above / rising</span>
+        <span><span class="sw" style="background:var(--down)"></span>below / falling</span>
+        <span><span class="sw" style="background:var(--model)"></span>strike · axis tag = level + odds at set time</span>
+        <span>gauge = live over/under · line = leader book, peer-verified · dotted = seeded history</span>
       </div>
     </div>
     <div id="xtbox" class="tile">
       <canvas id="xtchart" height="170"></canvas>
     </div>
+    <div id="kstrip" class="tile num"></div>
+    <div id="ostrip" class="tile num"></div>
+    <div id="sigstrip" class="tile num"></div>
+    <div id="mapstrip" class="tile num"></div>
   </section>
   </div>
 
   <div id="viewData">
-  <section class="tile" id="sources">
+  <section class="tile" id="sources" data-key="sources">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
       <span class="note num" id="srcnote">0 live</span></div>
     <div id="srcrows"></div>
@@ -264,7 +275,7 @@
 
 
 
-  <section class="tile">
+  <section class="tile" data-key="signals">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Signals — microstructure read</span>
       <span class="note num" id="signote"></span></div>
     <div class="tblwrap"><table id="signals">
@@ -274,7 +285,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">weights are disclosed, not asserted — at 15-minute horizons every component is small; the read describes the present, the odds price the future</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="edge">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Edge ledger — model vs market, every window</span>
       <span class="note"><button id="csvBtn" type="button">EXPORT CSV</button></span></div>
     <div id="edgesum" class="num" style="font-size:11.5px;color:var(--dim);margin-bottom:8px"></div>
@@ -292,7 +303,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">edge is real only where realized tracks the model above the market · paper P&amp;L assumes buying the favored side at the ask, $1 payout · no execution anywhere in this tool · persisted in this browser</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="kalshi">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Kalshi KXBTC15M — today’s windows</span>
       <span class="note num" id="knote"></span></div>
     <div class="tblwrap"><table id="klad">
@@ -302,17 +313,17 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">settled windows carry Kalshi’s official result and expiration value · the live window is marked ● · refreshes every 5 min</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="orders">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Suggested orders — Kalshi-priced, phase &amp; active hour</span>
       <span class="note num" id="onote"></span></div>
     <div class="tblwrap"><table id="orders">
-      <thead><tr><th>Window</th><th>Level</th><th class="model">Model P▲</th><th>YES bid/ask</th><th>NO bid/ask</th><th>Edge YES</th><th>Edge NO</th><th>Suggestion</th><th>EV / stake</th></tr></thead>
+      <thead><tr><th>Window</th><th>Level</th><th>Suggestion</th><th>Edge</th><th>EV / stake</th><th class="model">Model P▲</th><th>YES bid/ask</th><th>NO bid/ask</th></tr></thead>
       <tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">edge = model minus the ask on that side · a rung is suggested only above your min-edge setting · phase chips load into the tray; hour rungs are informational (rounds are 15-minute) · every near-money rung is graded in the edge ledger · nothing executes</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="ladder">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Model ladder — synthetic levels (offline fallback)</span>
       <span class="note num" id="mapnote"></span></div>
     <div class="tblwrap"><table id="smap">
@@ -322,7 +333,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">odds are the model’s side of the trade — profit needs a counterparty quoting differently; enter their ¢ beside ARM to see edge</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="xt">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Tape extrapolation — +5 min dataset</span>
       <span class="note num" id="xtnote"></span></div>
     <div id="xtcomp" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px"></div>
@@ -338,7 +349,7 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">flat = the do-nothing path (price stays); the read earns its place only where MAE runs below flat</div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="intervals">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Interval analysis — completed 15-min windows</span>
       <span class="note num" id="inote"></span></div>
     <div id="trendmap" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px">no completed intervals yet</div>
@@ -348,7 +359,7 @@
     </table></div>
   </section>
 
-  <section class="tile">
+  <section class="tile" data-key="rounds">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
@@ -360,7 +371,8 @@
   </section>
 
 
-  <div id="method" class="tile">
+  <div id="method" class="tile" data-key="method">
+    <div class="mhead shead"><span class="lbl" style="color:var(--dim)">Method — how every number is made</span></div>
     <p><b>Tape.</b> The plotted price is a sticky-leader tape: one exchange book plots at a time — the
       leader, chosen by latency priority — streaming its prints at full socket speed, while the other feeds run
       verification. Every leader print must be confirmed by a peer within 25 bp; a leader that goes silent for
@@ -438,12 +450,14 @@
       min-edge setting, with EV per stake at the ask. Phase suggestions load into the tray with a tap; hour rungs
       are informational because rounds are 15-minute. Every near-money rung is snapshotted into the edge ledger
       each minute and graded at settlement, so the hourly ladder multiplies the ledger’s sample count. Kalshi
-      polling honors 429s with exponential backoff; the Worker memoizes responses briefly so reloads and extra
-      tabs do not multiply upstream requests. Nothing executes.</p>
+      polling issues at most one request per second, paced 1.6 s apart with a staggered first run, and honors
+      429s with exponential backoff; the Worker memoizes responses briefly so reloads and extra tabs do not
+      multiply upstream requests. Nothing executes.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
       <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
-      against the strike — and overwritten when the official record lands; the ledger reports how often tape and
+      against the strike — or, for windows that predate the live tape, from the seeded 1-minute close (marked
+      <i>seed</i>) — and overwritten when the official record lands; the ledger reports how often tape and
       official agreed, which doubles as a validation of the tape against the CF Benchmarks index. The CSV marks
       each window’s result source. A relay on a different provider’s IP pool can be pasted into TUNE if official
       timeliness matters.</p>
@@ -635,8 +649,9 @@ async function poll(src){
     acceptPrint(src.id,p,Date.now());
   }catch(e){
     const st=S.src[src.id]; st.errN++;
-    st.status=(e.name==="AbortError")?"timeout":
-              (e instanceof TypeError)?"blocked":String(e.message||e);
+    const msg=(e.name==="AbortError")?"timeout":(e instanceof TypeError)?"blocked":String(e.message||e);
+    if(st.ws&&Date.now()-(st.wsAlive||0)<8000) st.restErr=msg;   /* socket carries the source; note REST quietly */
+    else st.status=msg;
   }finally{ clearTimeout(to); }
 }
 function startPolling(){
@@ -976,10 +991,14 @@ function kParseBook(ob){
            yesAsk:bestNoBid?100-bestNoBid[0]:null, noAsk:bestYesBid?100-bestYesBid[0]:null,
            depthYes:ys.reduce((a,r)=>a+r[1],0), depthNo:ns.reduce((a,r)=>a+r[1],0) };
 }
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function kGet(path){
   const base=kalshiBase(); if(!base) throw new Error("no base");
   const K=S.k; const now=Date.now();
   if(K.backoffUntil&&now<K.backoffUntil) throw new Error("backoff "+Math.ceil((K.backoffUntil-now)/1000)+"s");
+  /* pacer: never two Kalshi requests within 1.6 s of each other */
+  const wait=(K.nextSlot||0)-Date.now(); if(wait>0) await sleep(wait);
+  K.nextSlot=Date.now()+1600;
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
   try{
     const r=await fetch(base+path,{signal:ctl.signal,cache:"no-store"});
@@ -998,47 +1017,55 @@ async function kGet(path){
 async function kalshiTick(now){
   const K=S.k; if(K.busy||!kalshiBase()) return; K.busy=true;
   try{
+    if(!K.t0){ /* staggered first run: market now, book +3s, hourly +8s, history +25s, queue +60s */
+      K.t0=now; K.lastMkt=0; K.lastOb=now-5000+3000; K.lastHour=now-60000+8000; K.lastSched=now-600000+25000; K.lastUnopened=now-1800000+60000; }
     if(K.backoffUntil&&now<K.backoffUntil){ K.err="rate-limited \u2014 resuming in "+Math.ceil((K.backoffUntil-now)/1000)+"s"; return; }
-    const stale=!K.cur||now>K.cur.close||now-K.lastMkt>20000;
-    if(stale){
+    /* one request per tick, in priority order */
+    if(!K.cur||now>K.cur.close||now-K.lastMkt>20000){
       K.lastMkt=now;
       const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
       const m=(j.markets||[])[0];
-      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm;
-        if(isNew) kOnNewMarket(pm); }
+      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; if(isNew) kOnNewMarket(pm); }
       else K.cur=null;
+      K.err=null; return;
     }
     if(K.cur&&now-K.lastOb>5000){
       K.lastOb=now;
       const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
-      K.ob=kParseBook(j);
+      K.ob=kParseBook(j); K.err=null; return;
     }
     if(now-K.lastHour>60000){
       K.lastHour=now;
       const j=await kGet("/markets?series_ticker=KXBTCD&status=open&limit=100");
       const ms=(j.markets||[]).map(kParseMarket).filter(m=>m.strike!==null);
-      /* the active hour event = earliest close among open hourly markets */
       if(ms.length){ const first=ms.reduce((b,m)=>(!b||m.close<b.close)?m:b,null);
         K.hour=ms.filter(m=>m.event===first.event).sort((a,b)=>a.strike-b.strike); K.hourClose=first.close; }
       else { K.hour=[]; K.hourClose=null; }
+      K.err=null; return;
     }
     if(now-K.lastSched>600000){
       K.lastSched=now;
       const since=Math.floor((now-6*3600000)/1000);
       const a=await kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+since+"&limit=40");
+      const keep=K.sched.filter(x=>!x.result||!x.ticker.startsWith("KXBTC15M"));
+      K.sched=keep.concat((a.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
+      K.schedHourDue=true; kReconcile(); K.err=null; return;
+    }
+    if(K.schedHourDue){
+      K.schedHourDue=false;
+      const since=Math.floor((now-6*3600000)/1000);
       const b=await kGet("/markets?series_ticker=KXBTCD&status=settled&min_close_ts="+since+"&limit=200");
-      const keep=K.sched.filter(x=>!x.result);
-      K.sched=keep.concat((a.markets||[]).map(kParseMarket)).concat((b.markets||[]).map(kParseMarket))
-        .filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
-      kReconcile();
+      const keep=K.sched.filter(x=>!x.result||!x.ticker.startsWith("KXBTCD"));
+      K.sched=keep.concat((b.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
+      kReconcile(); K.err=null; return;
     }
     if(now-K.lastUnopened>1800000){
       K.lastUnopened=now;
       const u=await kGet("/markets?series_ticker=KXBTC15M&status=unopened&limit=8");
       const up=(u.markets||[]).map(kParseMarket);
       K.sched=K.sched.filter(x=>x.result||!x.ticker.startsWith("KXBTC15M")).concat(up).sort((x,y)=>x.close-y.close);
+      K.err=null; return;
     }
-    K.err=null;
   }catch(e){ K.err=String(e.message||e); }
   finally{ K.busy=false; kSyncQuote(); renderKalshi(); renderOrders(); }
 }
@@ -1156,11 +1183,13 @@ function edgeSnap(now){
   if(any){ S.edge.lastSnap=now; ledgerSave(); }
 }
 function tapeSettleAvg(close){
-  /* Kalshi settles on a 60-second average at close; mirror it from the tape */
+  /* Kalshi settles on a 60-second average at close; mirror it from the tape, else the seeded 1-min close */
   let s=0,n=0;
   for(let i=S.tape.length-1;i>=0;i--){ const q=S.tape[i];
     if(q.t>close) continue; if(q.t<close-60000) break; s+=q.p; n++; }
-  return n>=8?s/n:null;
+  if(n>=8) return {avg:s/n,src:"tape"};
+  const c=S.bars.get(Math.floor(close/60000)-1);
+  return (c!==undefined)?{avg:c,src:"seed"}:null;
 }
 function edgeProvisional(now){
   let changed=false;
@@ -1168,8 +1197,8 @@ function edgeProvisional(now){
     if(w.result||w.provTried) continue;
     if(now<w.close+65000) continue;
     w.provTried=true;
-    const avg=tapeSettleAvg(w.close); if(avg===null) continue;
-    w.result=avg>=w.strike?"yes":"no"; w.provisional=true; w.settleAvg=+avg.toFixed(2); changed=true;
+    const r=tapeSettleAvg(w.close); if(r===null) continue;
+    w.result=r.avg>=w.strike?"yes":"no"; w.provisional=true; w.provSrc=r.src; w.settleAvg=+r.avg.toFixed(2); changed=true;
   }
   if(changed){ ledgerSave(); renderEdge(); }
 }
@@ -1246,7 +1275,7 @@ function renderEdge(){
 function exportCSV(){
   const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask"]];
   for(const w of Object.values(S.edge.windows)) for(const s of w.snaps)
-    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?"tape":"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
+    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?(w.provSrc||"tape"):"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
       new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na]);
   const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
   for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
@@ -1300,13 +1329,12 @@ function renderOrders(){
       const c=r.side?"var(--up)":"var(--faint)";
       return '<tr'+(r.side?' style="background:rgba(14,148,100,.05)"':'')+'><td class="num" style="color:var(--dim)">'+(r.phase?"phase ":"hour ")+timeStr(r.close)+'</td>'
         +'<td class="num">'+fmtUSD.format(r.strike)+'<span class="sub">'+fmtBp(r.bp)+'</span></td>'
+        +'<td class="num" style="color:'+c+'">'+(r.side?(r.side+" @"+r.ask.toFixed(1)+"\u00a2"):"\u2014")+'</td>'
+        +'<td class="num" style="color:'+c+'">'+(r.side?pt(r.edge):("Y "+pt(r.eY)+" / N "+pt(r.eN)))+'</td>'
+        +'<td class="num" style="color:'+c+'">'+(r.ev===null?"\u2014":((r.ev>=0?"+":"")+r.ev.toFixed(0)+"%"))+'</td>'
         +'<td class="num model">'+Math.round(r.pm*100)+'%</td>'
         +'<td class="num" style="color:var(--faint)">'+cents(r.yb)+'/'+cents(r.ya)+'</td>'
-        +'<td class="num" style="color:var(--faint)">'+cents(r.nb)+'/'+cents(r.na)+'</td>'
-        +'<td class="num" style="color:'+(r.eY!==null&&r.eY>=S.cfg.minEdge?"var(--up)":"var(--dim)")+'">'+pt(r.eY)+'</td>'
-        +'<td class="num" style="color:'+(r.eN!==null&&r.eN>=S.cfg.minEdge?"var(--up)":"var(--dim)")+'">'+pt(r.eN)+'</td>'
-        +'<td class="num" style="color:'+c+'">'+(r.side?(r.side+" @"+r.ask.toFixed(1)+"\u00a2"):"\u2014")+'</td>'
-        +'<td class="num" style="color:'+c+'">'+(r.ev===null?"\u2014":((r.ev>=0?"+":"")+r.ev.toFixed(0)+"%"))+'</td></tr>';
+        +'<td class="num" style="color:var(--faint)">'+cents(r.nb)+'/'+cents(r.na)+'</td></tr>';
     }).join("");
     $("onote").textContent=rows.length?(rows.length+" rungs \u00b7 "+sug.length+" clear "+S.cfg.minEdge+"pt"+(S.k.hourClose?(" \u00b7 hour closes "+timeStr(S.k.hourClose)):"")):"waiting for Kalshi ladder";
   }
@@ -1817,7 +1845,7 @@ function renderSources(){
     const status=(st.status!=="ok"&&st.status!=="…")?st.status:"";
     const bi=EXCH.indexOf(s.id);
     const sw=bi>=0?'<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+BRAID[bi]+';margin-right:5px;vertical-align:middle"></span>':'';
-    const trans=st.ws?'<em style="color:var(--model-dim)">WS</em>':'';
+    const trans=st.ws?('<em style="color:var(--model-dim)">WS</em>'+(st.restErr?'<em style="color:var(--faint)">rest \u2717</em>':'')):'';
     return '<div class="row"><span class="dot '+dot+'"></span>'
       +'<span class="srcname">'+sw+s.name+trans+(s.tag?'<em>'+s.tag.toUpperCase()+'</em>':'')+'</span>'
       +'<span class="r num">'+ptxt+(status?' <span style="color:var(--err);font-size:10px">'+status+'</span>':'')+'</span>'
@@ -1909,6 +1937,12 @@ function drawKeyedLine(pts,X,Y,keyFn){
   }
   if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
 }
+function seedPts(tFrom,tTo){
+  /* seeded 1-min closes (minute-end timestamps) covering [tFrom,tTo) — context before the live tape */
+  const out=[]; const k0=Math.floor(tFrom/60000), k1=Math.floor(tTo/60000);
+  for(let k=k0;k<=k1;k++){ const c=S.bars.get(k); if(c===undefined) continue; const t=(k+1)*60000; if(t>=tFrom&&t<tTo) out.push({t,p:c}); }
+  return out;
+}
 const yv={c:null,s:null}, yr={c:null,s:null};
 function renderIdle(){
   const now=Date.now(), F=frame();
@@ -1916,12 +1950,16 @@ function renderIdle(){
   const tp=S.tape;
   if(tp.length<2){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
     cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
-  const t1=now, t0=Math.max(now-15*60000, tp[0].t-20000);
+  const t1=now;
+  const seedsAll=seedPts(now-15*60000,tp[0].t);
+  const t0=Math.max(now-15*60000, (seedsAll.length?seedsAll[0].t:tp[0].t)-20000);
+  const seeds=seedsAll.filter(q=>q.t>=t0);
   const X=q=>F.padL+((q.t-t0)/(t1-t0))*F.iw;
   const Xt=t=>F.padL+((t-t0)/(t1-t0))*F.iw;
   const pts=[]; let mn=Infinity,mx=-Infinity;
   for(const q of tp){ if(q.t<t0-2000) continue;
     pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+  for(const q of seeds){ if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
   if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
   const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.22, cT*0.0004);
   const D=easeDomain(yv,cT,sT,mn,mx);
@@ -1933,7 +1971,9 @@ function renderIdle(){
     const x=Xt(t);
     cx.strokeStyle="rgba(15,46,63,.14)";
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke();
-    cx.fillStyle="#3E6274"; cx.textAlign="center"; cx.fillText(timeStr(t),x,F.H-8); cx.textAlign="left";
+    cx.fillStyle="#3E6274";
+    cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
+    cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8); cx.textAlign="left";
   }
   cx.strokeStyle="rgba(15,46,63,.16)";
   for(let t=Math.ceil(t0/60000)*60000; t<=now; t+=60000){
@@ -1942,6 +1982,11 @@ function renderIdle(){
   }
   cx.font="9px "+FONT();
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
+  if(seeds.length>1){
+    cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
+    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke();
+    cx.setLineDash([]);
+  }
   /* trend-keyed tape */
   let li=0;
   drawKeyedLine(pts,X,Y,(P,j)=>{
@@ -1981,6 +2026,9 @@ function renderRound(){
     pts.push(q);
     if(q.p<pmn)pmn=q.p; if(q.p>pmx)pmx=q.p;
   }
+  const seedFrom=R.tStart+xMin*60000, seedTo=tp.length?tp[0].t:now;
+  const seeds=seedPts(seedFrom,seedTo);
+  for(const q of seeds){ if(q.p<pmn)pmn=q.p; if(q.p>pmx)pmx=q.p; }
   const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:0));
   if(!isFinite(pmn)){ pmn=lastP; pmx=lastP; }
   const inDom=sk?Math.abs(1e4*Math.log(sk.strike/lastP))<=60:false;
@@ -2005,8 +2053,9 @@ function renderRound(){
     cx.strokeStyle=m===0?"rgba(0,135,168,.45)":"rgba(0,135,168,.22)";
     cx.setLineDash(m===0?[]:[2,5]); cx.lineWidth=1;
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
-    cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="center";
-    cx.fillText(timeStr(R.tStart+m*60000),x,F.H-8); cx.textAlign="left";
+    cx.fillStyle="rgba(0,135,168,.8)";
+    cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
+    cx.fillText(timeStr(R.tStart+m*60000),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8); cx.textAlign="left";
   }
   cx.strokeStyle="rgba(15,46,63,.16)";
   for(let m=Math.ceil(xMin);m<=15;m++){
@@ -2027,6 +2076,12 @@ function renderRound(){
   if(sk&&inDom){
     cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([7,5]);
     cx.beginPath();cx.moveTo(F.padL,Y(sk.strike));cx.lineTo(F.padL+F.iw,Y(sk.strike));cx.stroke();
+    cx.setLineDash([]);
+  }
+  /* seeded history (dotted) ahead of the live tape */
+  if(seeds.length>1){
+    cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
+    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke();
     cx.setLineDash([]);
   }
   /* tape: side-keyed vs strike, else trend */
@@ -2164,8 +2219,8 @@ function renderXT(){
   for(let m=-5;m<=5;m++){ const x=padL+(m+5)/10*iw;
     c.strokeStyle=m===0?"rgba(15,46,63,.4)":"rgba(15,46,63,.12)";
     c.beginPath();c.moveTo(x,padT);c.lineTo(x,padT+ih);c.stroke();
-    if(m===-5||m===0||m===5){ c.fillStyle="#7D97A6"; c.textAlign="center";
-      c.fillText(m===0?"NOW":timeStr(now+m*60000),x,H-6); c.textAlign="left"; }
+    if(m===-5||m===0||m===5){ c.fillStyle="#7D97A6"; c.textAlign=m===-5?"left":m===5?"right":"center";
+      c.fillText(m===0?"NOW":timeStr(now+m*60000),x+(m===-5?2:m===5?-2:0),H-6); c.textAlign="left"; }
     else if(m>0){ c.fillStyle="rgba(0,135,168,.6)"; c.textAlign="center"; c.fillText("+"+m,x,H-6); c.textAlign="left"; }
   }
   c.save(); c.beginPath(); c.rect(padL,padT,iw,ih); c.clip();
@@ -2281,6 +2336,25 @@ $("cfgReset").addEventListener("click",()=>{ Object.assign(S.cfg,CFG_DEF); saveC
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
+const SEC_DEFAULT_CLOSED={signals:1,ladder:1,xt:1,method:1};
+function initSections(){
+  let st={}; try{ st=JSON.parse(localStorage.getItem("btc.sections")||"{}"); }catch(e){}
+  document.querySelectorAll("[data-key]").forEach(sec=>{
+    const key=sec.getAttribute("data-key");
+    const closed=(key in st)?!!st[key]:!!SEC_DEFAULT_CLOSED[key];
+    sec.classList.toggle("collapsed",closed);
+    const head=sec.querySelector(".shead"); if(!head) return;
+    head.addEventListener("click",ev=>{
+      if(ev.target.closest("button")) return;
+      const now=sec.classList.toggle("collapsed");
+      st[key]=now?1:0; try{ localStorage.setItem("btc.sections",JSON.stringify(st)); }catch(e){}
+      markOverflow();
+    });
+  });
+}
+function markOverflow(){
+  document.querySelectorAll(".tblwrap").forEach(w=>{ w.classList.toggle("ovf",w.scrollWidth>w.clientWidth+4); });
+}
 $("ostrip").addEventListener("click",ev=>{
   const b=ev.target.closest(".ochip.phase"); if(!b) return;
   $("strikeIn").value=b.getAttribute("data-p");
@@ -2322,11 +2396,12 @@ setInterval(()=>{
   for(const id of EXCH){ const st=S.src[id];
     if(st.ws&&st.sock&&_wn-(st.wsAlive||0)>15000){ try{ st.sock.close(); }catch(e){} st.ws=false; } }
   renderSources();
+  if((Math.floor(Date.now()/1000)%3)===0) markOverflow();
 },1000);
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin();
+  loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin(); initSections();
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderMap(); renderKalshi(); renderOrders(); renderEdge();
   await seed();
   startPolling();
@@ -2334,5 +2409,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260904140652 -->
+<!-- build-20260904152449 -->
 </html>
