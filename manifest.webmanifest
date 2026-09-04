@@ -1,0 +1,3 @@
+{ "name": "BTC Terminal", "short_name": "BTC Terminal", "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#F6FAFC", "theme_color": "#F6FAFC",
+  "icons": [ { "src": "icon.png", "sizes": "512x512", "type": "image/png" } ] }
