@@ -279,7 +279,7 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Verdict — pre-registered decision rule</span>
       <span class="note num" id="verdictbox"></span></div>
     <div class="tblwrap"><table id="vcrit">
-      <thead><tr><th>Criterion</th><th>Have</th><th>Pass</th></tr></thead><tbody></tbody>
+      <thead><tr><th>Pass</th><th>Criterion</th><th>Have</th></tr></thead><tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">thresholds fixed before the data arrived · Δ Brier interval by percentile bootstrap (600 resamples) · READY is necessary, never sufficient · no execution anywhere in this tool</div>
   </section>
@@ -707,6 +707,7 @@ function acceptPrint(id,p,t){
     if(S.leader===id) S.leader=null;          /* demote a lying leader */
     return;
   }
+  if(EXCH.indexOf(id)<0) return;               /* index sources are recorded, never plotted */
   /* sticky leadership: one book plots; others verify */
   if(S.leader===null) S.leader=id;
   else if(id!==S.leader){
@@ -1274,7 +1275,7 @@ function renderEdge(){
         tbB=$("edgebands")&&$("edgebands").querySelector("tbody"), tbC=$("edgecal")&&$("edgecal").querySelector("tbody");
   if(!sm) return;
   const live=Object.keys(S.edge.windows).length;
-  if(!E){ sm.textContent=live?("collecting \u2014 "+live+" window(s) snapshotting, none settled yet"):"no windows yet \u2014 connect Kalshi to begin";
+  if(!E){ sm.textContent=live?("collecting \u2014 "+live+" window(s) snapshotting, none settled yet"):(kalshiBase()?"collecting \u2014 first snapshot within a minute":"no windows yet \u2014 connect Kalshi to begin");
     if(tbS) tbS.innerHTML=""; if(tbB) tbB.innerHTML=""; if(tbC) tbC.innerHTML=""; return; }
   const f3=v=>v.toFixed(3), pct=v=>Math.round(v*100)+"%";
   const dB=E.brierQ-E.brierM, dL=E.llQ-E.llM;
@@ -1415,8 +1416,8 @@ function renderVerdict(){
   const el=$("verdictbox"), tb=$("vcrit")&&$("vcrit").querySelector("tbody"); if(!el||!tb) return;
   const V=computeVerdict();
   el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '+V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria';
-  tb.innerHTML=V.crit.map(c=>'<tr><td>'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--dim)">'+c.have+'</td>'
-    +'<td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713 pass":"\u2717")+'</td></tr>').join("");
+  tb.innerHTML=V.crit.map(c=>'<tr><td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713":"\u2717")+'</td>'
+    +'<td style="white-space:normal;min-width:11em">'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--dim)">'+c.have+'</td></tr>').join("");
 }
 /* ---------------------------------------------------------------- strike map (model odds by level) */
 function strikeMap(now){
@@ -2500,5 +2501,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260904185442 -->
+<!-- build-20260904191354 -->
 </html>
