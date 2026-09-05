@@ -131,7 +131,10 @@
   .tgrp .num{min-width:3.4em;color:var(--ink);font-size:11px}
   #kstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px}
   #kstrip b{color:var(--ink);font-weight:600}
-  #vstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;line-height:1.7}
+  #vstrip,#swstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;line-height:1.7}
+  .swchip{display:inline-block;border:1px solid rgba(0,135,168,.35);border-radius:999px;padding:3px 10px;margin:2px 6px 2px 0;background:rgba(255,255,255,.6)}
+  .swchip.watch{border-color:rgba(214,146,0,.7);background:rgba(214,146,0,.10)}
+  #jform input{width:88px;margin-right:6px} #jform select{margin-right:6px} #jform button{margin-right:6px}
   #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
     font-size:12px;letter-spacing:.05em;background:var(--glass)}
   #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
@@ -225,6 +228,7 @@
     </div>
     <div id="kstrip" class="tile num"></div>
     <div id="vstrip" class="tile num"></div>
+    <div id="swstrip" class="tile num"></div>
   </section>
   </div>
 
@@ -277,6 +281,35 @@
       <thead><tr><th>Series · source</th><th>Fills</th><th>Spread</th><th>Adverse</th><th>Fees</th><th>Net</th><th>Reads</th></tr></thead><tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">history = backtest on 2,000 fifteen-minute windows and 240 hourly rungs (Aug 15–Sep 5) · live = this browser’s recording: a resting bid at the best bid is deemed filled when the bid moves through it within a minute; adverse = mid move in the minute after the fill; fees = maker in and out · flow rows split live fills by order-flow sign at posting time · net &gt; 0 over ≥ 30 fills is the only thing that inverts the verdict</div>
+  </section>
+
+  <section class="tile" data-key="swing">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Swing watch — cheap sides, touch-35¢ ledger</span>
+      <span class="note num" id="swnote"></span></div>
+    <div class="tblwrap"><table id="swtbl">
+      <thead><tr><th>Window · side</th><th>Ask</th><th>P(touch 35¢) model</th><th>Base rate</th><th>Breakeven</th><th>EV / contract</th><th>Flow</th><th>Time left</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="tblwrap" style="margin-top:8px"><table id="swskill">
+      <thead><tr><th>Graded window-sides</th><th>Hit rate</th><th>Brier model</th><th>Brier base</th><th>Δ</th><th>Flow with</th><th>Flow against</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">a side is cheap at ≤ 15¢ · model = first-passage under the calibrated volatility, 600 paths, repriced each minute · base rate = the spine’s history by ask (4,966 reads) · graded at the gate on the best bid seen after each read, one mid-life read per window-side · the sweep highlights a window only when the model beats breakeven and this ledger holds ≥ 30 graded reads where it beats the base rate</div>
+  </section>
+
+  <section class="tile" data-key="journal">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Journal — your trades, graded</span>
+      <span class="note num" id="jnote"></span></div>
+    <div id="jform" class="num" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:8px">
+      <select id="j_side"><option>YES</option><option>NO</option></select>
+      <input id="j_entry" type="number" step="0.5" min="1" max="99" placeholder="entry ¢">
+      <input id="j_size" type="number" step="1" min="1" placeholder="shares">
+      <input id="j_exit" type="number" step="0.5" min="0" max="100" placeholder="exit ¢ (blank = open)">
+      <button id="j_add" type="button">LOG TRADE</button>
+      <span class="lbl" id="j_ctx" style="letter-spacing:.06em"></span>
+    </div>
+    <div class="tblwrap"><table id="jtbl">
+      <thead><tr><th>Window</th><th>Side</th><th>In</th><th>Out</th><th>Shares</th><th>P&amp;L (net)</th><th>Hit 35¢</th><th>Breakeven</th><th>Base</th><th>Model at entry</th><th></th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">log the trades you actually place · the window is the live 15-minute market at the moment you log · a blank exit leaves it open; type the exit later · P&amp;L is per share net of both fees · hit rate is judged against each trade’s own breakeven and the history base rate for its entry price · the answer this page exists to give: after thirty closed trades, whether your selection beats the base rate</div>
   </section>
 
   <section class="tile" data-key="rounds">
@@ -447,6 +480,21 @@
       is the mid move in the minute after, fees are maker in and out — split further by the order-flow sign at posting
       time, the one filter history could not test. It reads NEGATIVE and turns positive only on net &gt; 0 over at
       least thirty live fills. Nothing executes.</p>
+    <p><b>Swing watch.</b> The one shape of intra-window trade the history leaves standing: buy a side priced under
+      15¢ and sell at 35¢ before the gate, never holding to settlement. Its economics are convex and unforgiving
+      — at 10¢ in and 35¢ out the breakeven hit rate is 29% (31% with fees) against a history base rate of 12% for
+      that price, so selection has to roughly triple the base rate. The tool prices the trade honestly every second:
+      P(touch) is a first-passage estimate under the calibrated volatility — 600 simulated paths, the digital repriced
+      each minute so the barrier moves as theta bites — beside the base rate, the breakeven and the net EV. Every
+      cheap side is read once a minute and graded at the gate on the best bid seen after the read; the ledger scores
+      the model against the base rate and splits hits by order-flow sign, the filter history could not test. The
+      sweep tints a window amber only when the model clears breakeven <i>and</i> the ledger holds thirty graded reads
+      where it beats the base rate. Nothing executes.</p>
+    <p><b>Journal.</b> The denominator. Log the trades you actually place — side, entry, size, exit — against the
+      live window; each is graded per share net of both fees, against its own breakeven, the base rate for its entry
+      price, and the model’s read nearest the entry when the tool was watching. After thirty closed trades the header
+      states your hit rate beside breakeven and base, which is the single fact that decides whether the selection is
+      real. Screenshots are the numerator; this is the record.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
       <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
@@ -538,6 +586,7 @@ const S={
   cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,touched:{}},
   auto:{z:1.645,cov:null,n:0},
   via:null,
+  swing:null, journal:null,
   k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,lastHour:0,lastUnopened:0,hour:[],hourClose:null,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false,backoffUntil:0,fails:0},
   edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   bars:new Map(),       // minuteKey -> close (median)
@@ -1322,6 +1371,147 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 /* ---------------------------------------------------------------- suggested orders (Kalshi-priced, phase + hour) */
+/* ---------------------------------------------------------------- swing watch (touch-35c estimator, ledger, journal) */
+const SWING={target:0.36,payout:0.35,cheapMax:0.15,paths:600};
+/* history base rate: P(reach 35c before the gate) by ask, from the spine (4,966 cheap-side reads, Aug 15-Sep 5) */
+const SWING_BASE=[[0.015,0.010],[0.03,0.024],[0.05,0.042],[0.07,0.064],[0.09,0.122],[0.12,0.19],[0.15,0.26]];
+function swingBase(ask){
+  if(ask<=SWING_BASE[0][0]) return SWING_BASE[0][1];
+  for(let i=1;i<SWING_BASE.length;i++){ const [a0,p0]=SWING_BASE[i-1],[a1,p1]=SWING_BASE[i]; if(ask<=a1) return p0+(p1-p0)*(ask-a0)/(a1-a0); }
+  return SWING_BASE[SWING_BASE.length-1][1];
+}
+function swingBreakeven(ask){
+  /* hit rate h at which buying at ask and selling at 35c breaks even, fees on both legs, full loss otherwise */
+  const fin=0.07*ask*(1-ask), fout=0.07*SWING.payout*(1-SWING.payout);
+  const win=SWING.payout-ask-fin-fout, loss=ask+fin;
+  return loss/(win+loss);
+}
+function mulberry(seed){ let a=seed>>>0; return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function touchProb(strike,tEnd,side,now){
+  /* first-passage under the calibrated volatility: P(the side's fair value reaches the target before the gate),
+     Monte Carlo on 1-minute steps with the digital repriced at each step (the barrier moves as theta bites) */
+  const st=computeStats(); const S0=(S.idxPx!==undefined&&S.idxPx!==null)?S.idxPx:S.lastPx;
+  if(!st||S0===null) return null;
+  const tau=(tEnd-now)/60000; if(tau<0.25) return null;
+  const base=(st.rv60!==null&&st.rv60!==undefined)?st.rv60:st.sig;
+  const hN=new Date(now).getUTCHours(), hE=new Date(tEnd).getUTCHours();
+  const sig=base*Math.sqrt(SEAS[hE]/SEAS[hN]);
+  const steps=Math.max(1,Math.ceil(tau)); const dt=tau/steps;
+  const rnd=mulberry(Math.floor(now/1000)); let hits=0;
+  const x0=Math.log(strike/S0);
+  for(let i=0;i<SWING.paths;i++){
+    let lx=-x0;                                   /* log(S/K) */
+    for(let m=1;m<=steps;m++){
+      const u1=Math.max(1e-9,rnd()), u2=rnd(); const z=Math.sqrt(-2*Math.log(u1))*Math.cos(6.283185307*u2);
+      lx+=sig*Math.sqrt(dt)*z-0.5*sig*sig*dt;
+      const rem=tau-m*dt; let pYes;
+      if(rem<=0.05) pYes=lx>=0?1:0; else pYes=1-normCdf((-lx)/(sig*Math.sqrt(rem)));
+      const fair=side==="YES"?pYes:1-pYes;
+      if(fair>=SWING.target){ hits++; break; }
+    }
+  }
+  return hits/SWING.paths;
+}
+function swingSides(now){
+  /* cheap sides of the live 15-minute market (the swing venue): YES if its ask is cheap, NO if its ask is cheap */
+  const K=S.k, c=K.cur; if(!c||c.strike===null) return [];
+  const ob=K.ob; const ya=ob&&ob.yesAsk!==null?ob.yesAsk:c.yesAsk, na=ob&&ob.noAsk!==null?ob.noAsk:c.noAsk;
+  const out=[];
+  if(ya!==null&&ya>0&&ya/100<=SWING.cheapMax) out.push({side:"YES",ask:ya/100});
+  if(na!==null&&na>0&&na/100<=SWING.cheapMax) out.push({side:"NO",ask:na/100});
+  for(const s of out){ s.ticker=c.ticker; s.strike=c.strike; s.close=c.close; s.tau=(c.close-now)/60000;
+    s.p=touchProb(c.strike,c.close,s.side,now); s.base=swingBase(s.ask); s.be=swingBreakeven(s.ask);
+    const fin=0.07*s.ask*(1-s.ask), fout=0.07*SWING.payout*(1-SWING.payout);
+    s.ev=s.p===null?null:(s.p*(SWING.payout-s.ask-fin-fout)-(1-s.p)*(s.ask+fin))*100;
+    const G=S.sig; s.ofi=(G&&G.ofi60)?G.ofi60.x:null; s.v60=G?G.v60:null; s.disl=(G&&G.disl)?(G.disl.isolated?1:0):null; }
+  return out;
+}
+/* ledger: one entry per window-side; reads each minute; graded at the gate on the max bid seen after each read */
+function swingLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.swing")||"null"); if(j&&j.v===1) S.swing=j; }catch(e){} if(!S.swing||S.swing.v!==1) S.swing={v:1,w:{}}; }
+function swingSave(){ try{ const keys=Object.keys(S.swing.w).sort(); while(keys.length>400){ delete S.swing.w[keys.shift()]; } localStorage.setItem("btc.swing",JSON.stringify(S.swing)); }catch(e){} }
+function swingTick(now){
+  const K=S.k, c=K.cur; if(!c||!K.ob) return;
+  /* update running max bids for every open window-side entry (both sides, every poll) */
+  const yb=K.ob.yesBid, na=K.ob.noAsk, nb=K.ob.noBid;
+  for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.ticker!==c.ticker||e.graded) continue;
+    const bid=e.side==="YES"?yb:nb; if(bid===null||bid===undefined) continue;
+    for(const r of e.reads){ if(now>r.t&&bid/100>r.maxAfter) r.maxAfter=bid/100; } }
+  /* a read per minute per cheap side */
+  if(now-(S.swing.lastRead||0)<60000) return;
+  S.swing.lastRead=now;
+  for(const s of swingSides(now)){ if(s.p===null) continue;
+    const key=s.ticker+"|"+s.side; const e=S.swing.w[key]||(S.swing.w[key]={ticker:s.ticker,side:s.side,strike:s.strike,close:s.close,reads:[],graded:false,hit:null});
+    e.reads.push({t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0}); }
+  swingSave();
+}
+function swingGrade(now){
+  let changed=false;
+  for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.graded||now<e.close+5000) continue;
+    e.graded=true; e.hit=e.reads.some(r=>r.maxAfter>=SWING.payout); for(const r of e.reads) r.hit=r.maxAfter>=SWING.payout?1:0; changed=true; }
+  if(changed) swingSave();
+}
+function swingStats(){
+  const E=Object.values(S.swing.w).filter(e=>e.graded&&e.reads.length);
+  const rows=[]; for(const e of E){ const r=e.reads[Math.floor(e.reads.length/2)]; rows.push({p:r.p,base:r.base,hit:r.hit,ask:r.ask,ofi:r.ofi}); }  /* one mid-life read per window-side */
+  const n=rows.length; if(!n) return {n:0};
+  const b=(f)=>rows.reduce((a,r)=>a+(f(r)-r.hit)**2,0)/n;
+  const bm=b(r=>r.p), bb=b(r=>r.base);
+  const hits=rows.filter(r=>r.hit).length;
+  const flow={with:rows.filter(r=>r.ofi!==null&&r.ofi>0.15),against:rows.filter(r=>r.ofi!==null&&r.ofi<-0.15)};
+  return {n,hitRate:hits/n,brierModel:bm,brierBase:bb,delta:bb-bm,verified:n>=30&&bm<bb,
+    flowWith:flow.with.length?{n:flow.with.length,hit:flow.with.filter(r=>r.hit).length/flow.with.length}:null,
+    flowAgainst:flow.against.length?{n:flow.against.length,hit:flow.against.filter(r=>r.hit).length/flow.against.length}:null};
+}
+/* journal: your real trades, graded against implied, model and breakeven */
+function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(Array.isArray(j)) S.journal=j; }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; }
+function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify(S.journal.slice(0,500))); }catch(e){} }
+function jAdd(t){ S.journal.unshift(t); jSave(); renderJournal(); }
+function jGrade(t){
+  const fin=0.07*t.entry*(1-t.entry);
+  if(t.exit===null||t.exit===undefined){ return {open:true}; }
+  const fout=0.07*t.exit*(1-t.exit);
+  const pnl=(t.exit-t.entry-fin-fout)*100, be=swingBreakeven(t.entry), base=swingBase(t.entry);
+  /* model read nearest the entry, if the tool was watching that window-side */
+  let model=null; const e=S.swing.w[t.ticker+"|"+t.side];
+  if(e){ let best=null; for(const r of e.reads){ if(best===null||Math.abs(r.t-t.tIn)<Math.abs(best.t-t.tIn)) best=r; } if(best) model=best.p; }
+  return {open:false,pnl,hit:t.exit>=SWING.payout,be,base,model};
+}
+function journalStats(){
+  const closed=S.journal.map(t=>Object.assign({},t,jGrade(t))).filter(t=>!t.open);
+  const n=closed.length; if(!n) return {n:0};
+  const hits=closed.filter(t=>t.hit).length, pnl=closed.reduce((a,t)=>a+t.pnl*t.size,0);
+  const be=closed.reduce((a,t)=>a+t.be,0)/n, base=closed.reduce((a,t)=>a+t.base,0)/n;
+  const withModel=closed.filter(t=>t.model!==null); const model=withModel.length?withModel.reduce((a,t)=>a+t.model,0)/withModel.length:null;
+  return {n,hitRate:hits/n,pnl,be,base,model,nModel:withModel.length};
+}
+function renderSwing(){
+  const now=Date.now(); const strip=$("swstrip"), tb=$("swtbl")&&$("swtbl").querySelector("tbody"), ts=$("swskill")&&$("swskill").querySelector("tbody"), note=$("swnote");
+  const sides=swingSides(now); const st=swingStats();
+  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%";
+  const chip=s=>{ const ok=s.p!==null&&s.p>s.be&&st.verified;
+    return '<span class="swchip'+(ok?' watch':'')+'">'+(ok?'\u25c6 SWING WATCH \u00b7 ':'')+s.side+' '+Math.round(s.ask*100)+'\u00a2 \u00b7 touch '+pc(s.p)+' \u00b7 base '+pc(s.base)+' \u00b7 breakeven '+pc(s.be)+' \u00b7 EV '+(s.ev===null?"\u2014":((s.ev>=0?"+":"")+s.ev.toFixed(1)+"\u00a2"))+' \u00b7 '+mmss(s.close-now)+' left'+(st.verified?'':' \u00b7 <span style="color:var(--faint)">unverified (n'+(st.n||0)+')</span>')+'</span>'; };
+  if(strip) strip.innerHTML='<span class="lbl">swing watch \u00b7 cheap sides of the live window \u00b7 P(bid reaches 35\u00a2 before the gate)</span> '+(sides.length?sides.map(chip).join(" "):'<span style="color:var(--faint)">no side under 15\u00a2 in the live window</span>');
+  if(tb) tb.innerHTML=sides.map(s=>'<tr><td>'+timeStr(s.close)+' \u00b7 '+s.side+'</td><td class="num">'+Math.round(s.ask*100)+'\u00a2</td><td class="num model">'+pc(s.p)+'</td><td class="num">'+pc(s.base)+'</td><td class="num">'+pc(s.be)+'</td>'
+    +'<td class="num" style="color:var(--'+(s.ev!==null&&s.ev>0?"up":"down")+')">'+(s.ev===null?"\u2014":((s.ev>=0?"+":"")+s.ev.toFixed(1)+"\u00a2"))+'</td><td class="num">'+(s.ofi===null?"thin":((s.ofi>=0?"+":"")+s.ofi.toFixed(2)))+'</td><td class="num">'+mmss(s.close-now)+'</td></tr>').join("")
+    ||'<tr><td colspan="8" style="color:var(--faint)">no side under 15\u00a2 in the live window</td></tr>';
+  if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
+    +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--faint)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
+  if(note) note.textContent=st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting";
+}
+function renderJournal(){
+  const tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"), ctx=$("j_ctx"); if(!tb) return;
+  const c=S.k.cur; if(ctx) ctx.textContent=c?("logs against "+timeStr(c.open)+"\u2013"+timeStr(c.close)+" \u00b7 strike "+fmtUSD.format(c.strike)):"no live window";
+  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%";
+  tb.innerHTML=S.journal.map((t,i)=>{ const g=jGrade(t);
+    return '<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td class="num">'+Math.round(t.entry*100)+'\u00a2</td>'
+      +'<td class="num">'+(g.open?'<input type="number" step="0.5" min="0" max="100" style="width:64px" placeholder="exit \u00a2" data-j="'+i+'">':Math.round(t.exit*100)+'\u00a2')+'</td><td class="num">'+t.size+'</td>'
+      +'<td class="num" style="color:var(--'+(g.open?"faint":(g.pnl>0?"up":"down"))+')">'+(g.open?"open":((g.pnl>=0?"+":"")+g.pnl.toFixed(1)+"\u00a2 \u00b7 $"+(g.pnl*t.size/100).toFixed(2)))+'</td>'
+      +'<td class="num">'+(g.open?"\u2014":(g.hit?"\u2713":"\u2717"))+'</td><td class="num">'+pc(g.open?swingBreakeven(t.entry):g.be)+'</td><td class="num">'+pc(g.open?swingBase(t.entry):g.base)+'</td><td class="num model">'+pc(g.open?null:g.model)+'</td>'
+      +'<td><button type="button" data-jdel="'+i+'" style="font-size:10px;padding:2px 8px">\u00d7</button></td></tr>'; }).join("")
+    ||'<tr><td colspan="11" style="color:var(--faint)">no trades logged</td></tr>';
+  const js=journalStats();
+  if(note) note.textContent=js.n?(js.n+" closed \u00b7 hit "+pc(js.hitRate)+" vs breakeven "+pc(js.be)+" vs base "+pc(js.base)+" \u00b7 P&L $"+js.pnl.toFixed(2)/100*100+(js.model!==null?(" \u00b7 model at entry "+pc(js.model)+" (n"+js.nModel+")"):"")):"no closed trades yet";
+}
 /* ---------------------------------------------------------------- viability (maker economics, live) */
 const MAKER_RATE=0.0175;
 const VIA_HIST={ "15m":{spread:0.92,adv:1.68,fee:0.87,n:18485}, "hourly":{spread:1.03,adv:2.34,fee:0.87,n:1286} };
@@ -2067,8 +2257,11 @@ function renderSweep(){
   cx.font="11px "+FONT();
   yGrid(F,D.lo,D.hi,Y,(sk||anchor!==null)?anchor:null);
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-  /* future field */
+  /* future field; amber when a verified swing watch is on for the live window */
+  const sw=(S.swing&&S.k.cur)?(function(){ try{ const st=swingStats(); if(!st.verified) return null; const sides=swingSides(now).filter(s=>s.p!==null&&s.p>s.be); return sides.length?sides:null; }catch(e){ return null; } })():null;
   cx.fillStyle="rgba(0,135,168,.035)"; cx.fillRect(Xt(now),F.padT,F.padL+F.iw-Xt(now),F.ih);
+  if(sw){ const c=S.k.cur; cx.fillStyle="rgba(214,146,0,.10)"; cx.fillRect(Xt(Math.max(c.open,t0)),F.padT,Xt(Math.min(c.close,t1))-Xt(Math.max(c.open,t0)),F.ih);
+    cx.fillStyle="rgba(214,146,0,.9)"; cx.font="11px "+FONT(); cx.textAlign="left"; cx.fillText("\u25c6 SWING WATCH \u00b7 "+sw.map(s=>s.side+" "+Math.round(s.ask*100)+"\u00a2 touch "+Math.round(s.p*100)+"%").join(" \u00b7 "),Xt(Math.max(c.open,t0))+6,F.padT+F.ih-8); }
   /* gates: quarter-hours light, hours heavy; labels at the foot */
   for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
     const x=Xt(t), hour=(new Date(t).getMinutes()===0);
@@ -2231,6 +2424,16 @@ $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.t
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
 $("secExpand").addEventListener("click",()=>setAllSections(false));
+$("j_add").addEventListener("click",()=>{
+  const c=S.k.cur; if(!c||c.strike===null){ $("j_ctx").textContent="no live window to log against"; return; }
+  const entry=parseFloat($("j_entry").value), size=parseInt($("j_size").value,10), ex=$("j_exit").value.trim();
+  if(!(entry>0&&entry<100)||!(size>0)){ $("j_ctx").textContent="entry in cents and shares are required"; return; }
+  const exit=ex===""?null:parseFloat(ex)/100;
+  jAdd({tIn:Date.now(),ticker:c.ticker,strike:c.strike,close:c.close,side:$("j_side").value,entry:entry/100,size,exit,tOut:exit===null?null:Date.now()});
+  $("j_entry").value=""; $("j_size").value=""; $("j_exit").value="";
+});
+$("jtbl").addEventListener("change",ev=>{ const i=ev.target.getAttribute("data-j"); if(i===null) return; const v=parseFloat(ev.target.value); if(!(v>=0&&v<=100)) return; S.journal[+i].exit=v/100; S.journal[+i].tOut=Date.now(); jSave(); renderJournal(); });
+$("jtbl").addEventListener("click",ev=>{ const i=ev.target.getAttribute("data-jdel"); if(i===null) return; S.journal.splice(+i,1); jSave(); renderJournal(); });
 $("secCollapse").addEventListener("click",()=>setAllSections(true));
 const SEC_DEFAULT_CLOSED={signals:1,xt:1,advanced:1,method:1};
 const SEC_KEY="btc.sections.v2";
@@ -2276,6 +2479,9 @@ setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   try{ idxTick(Date.now()); }catch(e){}
   if((Math.floor(Date.now()/1000)%5)===0){ try{ viaSample(Date.now()); renderViability(); }catch(e){} }
+  try{ swingTick(Date.now()); swingGrade(Date.now()); }catch(e){}
+  if((Math.floor(Date.now()/1000)%2)===0){ try{ renderSwing(); }catch(e){} }
+  if((Math.floor(Date.now()/1000)%10)===0){ try{ renderJournal(); }catch(e){} }
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
@@ -2293,13 +2499,13 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); viaLoad(); kProbeSameOrigin(); initSections();
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability();
+  loadCfg(); syncCfgUI(); ledgerLoad(); viaLoad(); swingLoad(); jLoad(); kProbeSameOrigin(); initSections();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260905194243 -->
+<!-- build-20260905201511 -->
 </html>
