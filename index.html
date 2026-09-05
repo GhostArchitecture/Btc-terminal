@@ -134,7 +134,6 @@
   #vstrip,#swstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;line-height:1.7}
   .swchip{display:inline-block;border:1px solid rgba(0,135,168,.35);border-radius:999px;padding:3px 10px;margin:2px 6px 2px 0;background:rgba(255,255,255,.6)}
   .swchip.watch{border-color:rgba(214,146,0,.7);background:rgba(214,146,0,.10)}
-  #jform input{width:88px;margin-right:6px} #jform select{margin-right:6px} #jform button{margin-right:6px}
   #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
     font-size:12px;letter-spacing:.05em;background:var(--glass)}
   #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
@@ -296,20 +295,16 @@
   </section>
 
   <section class="tile" data-key="journal">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Journal — your trades, graded</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Simulation journal — the tool’s own use of its reads, against controls</span>
       <span class="note num" id="jnote"></span></div>
-    <div id="jform" class="num" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:8px">
-      <select id="j_side"><option>YES</option><option>NO</option></select>
-      <input id="j_entry" type="number" step="0.5" min="1" max="99" placeholder="entry ¢">
-      <input id="j_size" type="number" step="1" min="1" placeholder="shares">
-      <input id="j_exit" type="number" step="0.5" min="0" max="100" placeholder="exit ¢ (blank = open)">
-      <button id="j_add" type="button">LOG TRADE</button>
-      <span class="lbl" id="j_ctx" style="letter-spacing:.06em"></span>
-    </div>
-    <div class="tblwrap"><table id="jtbl">
-      <thead><tr><th>Window</th><th>Side</th><th>In</th><th>Out</th><th>Shares</th><th>P&amp;L (net)</th><th>Hit 35¢</th><th>Breakeven</th><th>Base</th><th>Model at entry</th><th></th></tr></thead><tbody></tbody>
+    <div class="tblwrap"><table id="jarms">
+      <thead><tr><th>Arm · entry rule</th><th>Trades</th><th>Hit 35¢</th><th>Mean breakeven</th><th>Mean base</th><th>P&amp;L / share (net)</th><th>90% CI</th><th>Total at 100 sh</th></tr></thead><tbody></tbody>
     </table></div>
-    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">log the trades you actually place · the window is the live 15-minute market at the moment you log · a blank exit leaves it open; type the exit later · P&amp;L is per share net of both fees · hit rate is judged against each trade’s own breakeven and the history base rate for its entry price · the answer this page exists to give: after thirty closed trades, whether your selection beats the base rate</div>
+    <div class="lbl" style="margin:8px 0 4px;letter-spacing:.08em">recent simulated trades, newest first</div>
+    <div class="tblwrap"><table id="jtbl">
+      <thead><tr><th>Window</th><th>Side</th><th>Arm</th><th>In</th><th>Out</th><th>Hit</th><th>P&amp;L / share</th><th>Model at entry</th><th>Flow</th></tr></thead><tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">every arm trades the same universe — each side of the live window at ≤ 15¢ — with the same exit: sold at 35¢ if the bid gets there after entry, else at the last bid before the gate; 100 paper shares, fees on both legs · only the entry decision differs · the tool arm is the disciplined reader; all and random are the controls · the question this page answers: does the tool arm beat the controls over ≥ 30 trades</div>
   </section>
 
   <section class="tile" data-key="rounds">
@@ -490,11 +485,16 @@
       the model against the base rate and splits hits by order-flow sign, the filter history could not test. The
       sweep tints a window amber only when the model clears breakeven <i>and</i> the ledger holds thirty graded reads
       where it beats the base rate. Nothing executes.</p>
-    <p><b>Journal.</b> The denominator. Log the trades you actually place — side, entry, size, exit — against the
-      live window; each is graded per share net of both fees, against its own breakeven, the base rate for its entry
-      price, and the model’s read nearest the entry when the tool was watching. After thirty closed trades the header
-      states your hit rate beside breakeven and base, which is the single fact that decides whether the selection is
-      real. Screenshots are the numerator; this is the record.</p>
+    <p><b>Simulation journal.</b> The tool trades its own reads on paper, against controls. Five arms share one
+      universe — every side of the live window priced at or under 15¢ — and one exit: sold at 35¢ if the bid gets
+      there after entry, else at the last bid before the gate, 100 paper shares, fees on both legs. Only the entry
+      decision differs: the <i>tool</i> arm enters when P(touch) beats breakeven and order flow leans the side’s way,
+      as a disciplined reader of this instrument would; <i>model only</i> and <i>flow only</i> isolate each read;
+      <i>all</i> takes every cheap side (the longshot base rate, which history prices at about −2.5¢ a share);
+      <i>random</i> is a seeded coin. Each arm reports trades, hit rate against its own breakeven and the history base
+      rate, mean P&amp;L per share with a bootstrap interval, and the total at 100 shares. The reads carried information
+      only if the tool arm beats <i>all</i> and <i>random</i> over at least thirty trades; anything less is noise, and
+      the page will say so.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
       <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
@@ -1365,7 +1365,11 @@ function exportCSV(){
     r.pCallAtArm===undefined?"":r.pCallAtArm,r.quoteAtArm===undefined||r.quoteAtArm===null?"":r.quoteAtArm,r.edgeAtArm===undefined||r.edgeAtArm===null?"":r.edgeAtArm,
     r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
-  const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# rounds\n"+csv(rr)],{type:"text/csv"});
+  const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit"]].concat(
+    Object.values(S.swing.w).flatMap(e=>e.reads.map(r=>[e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??""])));
+  const sj=[["arm","ticker","strike","close","side","t_in","tau_min","entry","exit","pnl_per_share_net","hit_35","breakeven","base_rate","model_at_entry","ofi_at_entry"]].concat(
+    S.journal.map(t=>[t.arm,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),t.tau,t.entry,t.exit,t.pnl.toFixed(2),t.hit?1:0,t.be,t.base,t.p??"",t.ofi??""]));
+  const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
@@ -1435,19 +1439,21 @@ function swingTick(now){
   const yb=K.ob.yesBid, na=K.ob.noAsk, nb=K.ob.noBid;
   for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.ticker!==c.ticker||e.graded) continue;
     const bid=e.side==="YES"?yb:nb; if(bid===null||bid===undefined) continue;
+    e.lastBid=bid/100;
     for(const r of e.reads){ if(now>r.t&&bid/100>r.maxAfter) r.maxAfter=bid/100; } }
   /* a read per minute per cheap side */
   if(now-(S.swing.lastRead||0)<60000) return;
   S.swing.lastRead=now;
   for(const s of swingSides(now)){ if(s.p===null) continue;
     const key=s.ticker+"|"+s.side; const e=S.swing.w[key]||(S.swing.w[key]={ticker:s.ticker,side:s.side,strike:s.strike,close:s.close,reads:[],graded:false,hit:null});
-    e.reads.push({t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0}); }
+    e.reads.push({t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0});
+    simEnter(e,e.reads[e.reads.length-1],key); }
   swingSave();
 }
 function swingGrade(now){
   let changed=false;
   for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.graded||now<e.close+5000) continue;
-    e.graded=true; e.hit=e.reads.some(r=>r.maxAfter>=SWING.payout); for(const r of e.reads) r.hit=r.maxAfter>=SWING.payout?1:0; changed=true; }
+    e.graded=true; e.hit=e.reads.some(r=>r.maxAfter>=SWING.payout); for(const r of e.reads) r.hit=r.maxAfter>=SWING.payout?1:0; simClose(e); changed=true; }
   if(changed) swingSave();
 }
 function swingStats(){
@@ -1462,27 +1468,55 @@ function swingStats(){
     flowWith:flow.with.length?{n:flow.with.length,hit:flow.with.filter(r=>r.hit).length/flow.with.length}:null,
     flowAgainst:flow.against.length?{n:flow.against.length,hit:flow.against.filter(r=>r.hit).length/flow.against.length}:null};
 }
-/* journal: your real trades, graded against implied, model and breakeven */
-function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(Array.isArray(j)) S.journal=j; }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; }
-function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify(S.journal.slice(0,500))); }catch(e){} }
-function jAdd(t){ S.journal.unshift(t); jSave(); renderJournal(); }
-function jGrade(t){
-  const fin=0.07*t.entry*(1-t.entry);
-  if(t.exit===null||t.exit===undefined){ return {open:true}; }
-  const fout=0.07*t.exit*(1-t.exit);
-  const pnl=(t.exit-t.entry-fin-fout)*100, be=swingBreakeven(t.entry), base=swingBase(t.entry);
-  /* model read nearest the entry, if the tool was watching that window-side */
-  let model=null; const e=S.swing.w[t.ticker+"|"+t.side];
-  if(e){ let best=null; for(const r of e.reads){ if(best===null||Math.abs(r.t-t.tIn)<Math.abs(best.t-t.tIn)) best=r; } if(best) model=best.p; }
-  return {open:false,pnl,hit:t.exit>=SWING.payout,be,base,model};
+/* simulation journal: the tool's own use of its reads, paper-traded against control arms */
+const SIM_SHARES=100;
+const SIM_ARMS=[
+  {id:"tool",   label:"tool \u2014 model > breakeven and flow aligned"},
+  {id:"model",  label:"model only \u2014 P(touch) > breakeven"},
+  {id:"flow",   label:"flow only \u2014 order flow leans the side\u2019s way"},
+  {id:"all",    label:"all \u2014 every cheap side at first read"},
+  {id:"random", label:"random \u2014 coin per side (noise floor)"},
+];
+function simFlowAligned(side,ofi){ return ofi!==null&&ofi!==undefined&&((side==="YES"&&ofi>0.15)||(side==="NO"&&ofi<-0.15)); }
+function simDecide(arm,r,side,key){
+  const modelOk=r.p!==null&&r.p>r.be, flowOk=simFlowAligned(side,r.ofi);
+  if(arm==="tool") return modelOk&&flowOk;
+  if(arm==="model") return modelOk;
+  if(arm==="flow") return flowOk;
+  if(arm==="all") return true;
+  if(arm==="random"){ let h=0; for(const ch of key) h=(h*31+ch.charCodeAt(0))>>>0; return (h%2)===0; }
+  return false;
+}
+function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(j&&j.v===2&&Array.isArray(j.t)) S.journal=j.t; }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; }
+function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify({v:2,t:S.journal.slice(0,2000)})); }catch(e){} }
+function simEnter(e,r,key){
+  /* one paper position per arm per window-side, opened at the first read that satisfies the arm; needs >= 2 min left */
+  if(r.tau<2) return;
+  for(const a of SIM_ARMS){
+    if(e.sim&&e.sim[a.id]) continue;
+    if(!simDecide(a.id,r,e.side,key)) continue;
+    e.sim=e.sim||{}; e.sim[a.id]={tIn:r.t,tau:r.tau,entry:r.ask,p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true};
+  }
+}
+function simClose(e){
+  /* at the gate: sold at 35c if the bid got there after entry, else at the last bid seen before the gate */
+  if(!e.sim) return;
+  for(const id of Object.keys(e.sim)){ const t=e.sim[id]; if(!t.open) continue;
+    const r=e.reads[t.readIdx]; const hit=r&&r.maxAfter>=SWING.payout;
+    const exit=hit?SWING.payout:(e.lastBid!==undefined&&e.lastBid!==null?e.lastBid:0);
+    const fin=0.07*t.entry*(1-t.entry), fout=0.07*exit*(1-exit);
+    t.open=false; t.exit=exit; t.hit=!!hit; t.pnl=(exit-t.entry-fin-fout)*100; t.tOut=e.close;
+    S.journal.unshift({arm:id,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tau:t.tau,entry:t.entry,exit,pnl:t.pnl,hit:t.hit,be:t.be,base:t.base,p:t.p,ofi:t.ofi}); }
+  jSave();
 }
 function journalStats(){
-  const closed=S.journal.map(t=>Object.assign({},t,jGrade(t))).filter(t=>!t.open);
-  const n=closed.length; if(!n) return {n:0};
-  const hits=closed.filter(t=>t.hit).length, pnl=closed.reduce((a,t)=>a+t.pnl*t.size,0);
-  const be=closed.reduce((a,t)=>a+t.be,0)/n, base=closed.reduce((a,t)=>a+t.base,0)/n;
-  const withModel=closed.filter(t=>t.model!==null); const model=withModel.length?withModel.reduce((a,t)=>a+t.model,0)/withModel.length:null;
-  return {n,hitRate:hits/n,pnl,be,base,model,nModel:withModel.length};
+  const out={}; 
+  for(const a of SIM_ARMS){ const T=S.journal.filter(t=>t.arm===a.id); const n=T.length;
+    if(!n){ out[a.id]={n:0}; continue; }
+    const hits=T.filter(t=>t.hit).length, pnl=T.reduce((x,t)=>x+t.pnl,0)/n;
+    out[a.id]={n,hitRate:hits/n,pnl,total:pnl*SIM_SHARES/100*n,be:T.reduce((x,t)=>x+t.be,0)/n,base:T.reduce((x,t)=>x+t.base,0)/n,
+      ci:n>=8?bootstrapCI(T.map(t=>t.pnl),v=>v.reduce((x,y)=>x+y,0)/v.length,0.9,300):null}; }
+  return out;
 }
 function renderSwing(){
   const now=Date.now(); const strip=$("swstrip"), tb=$("swtbl")&&$("swtbl").querySelector("tbody"), ts=$("swskill")&&$("swskill").querySelector("tbody"), note=$("swnote");
@@ -1499,18 +1533,18 @@ function renderSwing(){
   if(note) note.textContent=st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting";
 }
 function renderJournal(){
-  const tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"), ctx=$("j_ctx"); if(!tb) return;
-  const c=S.k.cur; if(ctx) ctx.textContent=c?("logs against "+timeStr(c.open)+"\u2013"+timeStr(c.close)+" \u00b7 strike "+fmtUSD.format(c.strike)):"no live window";
-  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%";
-  tb.innerHTML=S.journal.map((t,i)=>{ const g=jGrade(t);
-    return '<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td class="num">'+Math.round(t.entry*100)+'\u00a2</td>'
-      +'<td class="num">'+(g.open?'<input type="number" step="0.5" min="0" max="100" style="width:64px" placeholder="exit \u00a2" data-j="'+i+'">':Math.round(t.exit*100)+'\u00a2')+'</td><td class="num">'+t.size+'</td>'
-      +'<td class="num" style="color:var(--'+(g.open?"faint":(g.pnl>0?"up":"down"))+')">'+(g.open?"open":((g.pnl>=0?"+":"")+g.pnl.toFixed(1)+"\u00a2 \u00b7 $"+(g.pnl*t.size/100).toFixed(2)))+'</td>'
-      +'<td class="num">'+(g.open?"\u2014":(g.hit?"\u2713":"\u2717"))+'</td><td class="num">'+pc(g.open?swingBreakeven(t.entry):g.be)+'</td><td class="num">'+pc(g.open?swingBase(t.entry):g.base)+'</td><td class="num model">'+pc(g.open?null:g.model)+'</td>'
-      +'<td><button type="button" data-jdel="'+i+'" style="font-size:10px;padding:2px 8px">\u00d7</button></td></tr>'; }).join("")
-    ||'<tr><td colspan="11" style="color:var(--faint)">no trades logged</td></tr>';
-  const js=journalStats();
-  if(note) note.textContent=js.n?(js.n+" closed \u00b7 hit "+pc(js.hitRate)+" vs breakeven "+pc(js.be)+" vs base "+pc(js.base)+" \u00b7 P&L $"+js.pnl.toFixed(2)/100*100+(js.model!==null?(" \u00b7 model at entry "+pc(js.model)+" (n"+js.nModel+")"):"")):"no closed trades yet";
+  const ta=$("jarms")&&$("jarms").querySelector("tbody"), tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"); if(!ta||!tb) return;
+  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%"; const c2=v=>(v>=0?"+":"")+v.toFixed(2)+"\u00a2";
+  const st=journalStats();
+  ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id];
+    if(!s.n) return '<tr><td>'+a.label+'</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
+    return '<tr'+(a.id==="tool"?' style="background:rgba(0,135,168,.05)"':'')+'><td>'+a.label+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.hitRate)+'</td><td class="num">'+pc(s.be)+'</td><td class="num">'+pc(s.base)+'</td>'
+      +'<td class="num" style="color:var(--'+(s.pnl>0?"up":"down")+')">'+c2(s.pnl)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--'+(s.total>0?"up":"down")+')">$'+s.total.toFixed(2)+'</td></tr>'; }).join("");
+  tb.innerHTML=S.journal.slice(0,40).map(t=>'<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td>'+t.arm+'</td><td class="num">'+Math.round(t.entry*100)+'\u00a2</td><td class="num">'+Math.round(t.exit*100)+'\u00a2</td>'
+    +'<td class="num">'+(t.hit?"\u2713":"\u2717")+'</td><td class="num" style="color:var(--'+(t.pnl>0?"up":"down")+')">'+c2(t.pnl)+'</td><td class="num model">'+pc(t.p)+'</td><td class="num">'+(t.ofi===null||t.ofi===undefined?"thin":((t.ofi>=0?"+":"")+t.ofi.toFixed(2)))+'</td></tr>').join("")
+    ||'<tr><td colspan="9" style="color:var(--faint)">no simulated trades yet \u2014 arms enter on cheap-side reads and close at the gate</td></tr>';
+  const t=st.tool, al=st.all;
+  if(note) note.textContent=(t&&t.n)?("tool "+t.n+" trades \u00b7 "+c2(t.pnl)+"/share \u00b7 hit "+pc(t.hitRate)+(al&&al.n?(" \u00b7 all-sides control "+c2(al.pnl)):"")+(t.n<30?" \u00b7 "+t.n+" of 30":"")):"collecting";
 }
 /* ---------------------------------------------------------------- viability (maker economics, live) */
 const MAKER_RATE=0.0175;
@@ -2424,16 +2458,6 @@ $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.t
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
 $("secExpand").addEventListener("click",()=>setAllSections(false));
-$("j_add").addEventListener("click",()=>{
-  const c=S.k.cur; if(!c||c.strike===null){ $("j_ctx").textContent="no live window to log against"; return; }
-  const entry=parseFloat($("j_entry").value), size=parseInt($("j_size").value,10), ex=$("j_exit").value.trim();
-  if(!(entry>0&&entry<100)||!(size>0)){ $("j_ctx").textContent="entry in cents and shares are required"; return; }
-  const exit=ex===""?null:parseFloat(ex)/100;
-  jAdd({tIn:Date.now(),ticker:c.ticker,strike:c.strike,close:c.close,side:$("j_side").value,entry:entry/100,size,exit,tOut:exit===null?null:Date.now()});
-  $("j_entry").value=""; $("j_size").value=""; $("j_exit").value="";
-});
-$("jtbl").addEventListener("change",ev=>{ const i=ev.target.getAttribute("data-j"); if(i===null) return; const v=parseFloat(ev.target.value); if(!(v>=0&&v<=100)) return; S.journal[+i].exit=v/100; S.journal[+i].tOut=Date.now(); jSave(); renderJournal(); });
-$("jtbl").addEventListener("click",ev=>{ const i=ev.target.getAttribute("data-jdel"); if(i===null) return; S.journal.splice(+i,1); jSave(); renderJournal(); });
 $("secCollapse").addEventListener("click",()=>setAllSections(true));
 const SEC_DEFAULT_CLOSED={signals:1,xt:1,advanced:1,method:1};
 const SEC_KEY="btc.sections.v2";
@@ -2507,5 +2531,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905201511 -->
+<!-- build-20260905202859 -->
 </html>
