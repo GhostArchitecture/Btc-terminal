@@ -2024,11 +2024,18 @@ function renderSweep(){
   const gates=kalshiGates(t0,t1);
   const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:null));
   if(lastP===null){ cx.fillStyle="#7D97A6"; cx.font="9px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
-  if(!isFinite(mn)){ mn=lastP; mx=lastP; }
-  let needLo=mn, needHi=mx;
-  for(const g of gates){ if(g.close>=now-SPAN/2){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
+  /* scale from the recent tape only (last 12 min) + live strikes; older history may leave the frame */
+  const RECENT=12*60000; let rmn=Infinity,rmx=-Infinity;
+  for(let i=pts.length-1;i>=0;i--){ const q=pts[i]; if(q.t<now-RECENT) break; if(q.p<rmn)rmn=q.p; if(q.p>rmx)rmx=q.p; }
+  if(!isFinite(rmn)){ rmn=isFinite(mn)?mn:lastP; rmx=isFinite(mx)?mx:lastP; }
+  let needLo=rmn, needHi=rmx;
+  for(const g of gates){ if(!g.result&&g.close>now){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
   if(sk){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
-  const half=Math.max((needHi-needLo)/2*S.cfg.pad, lastP*1.2e-4);
+  let half=Math.max((needHi-needLo)/2*S.cfg.pad, lastP*1.0e-4);
+  /* close-weight: lean into the price–strike duel through the final minutes of an armed window */
+  if(sk&&R&&R.state!=="settled"){ const tau=(R.tEnd-now)/60000, start=15-S.cfg.closeStart;
+    if(tau<=start){ const prog=Math.min(1,(start-tau)/Math.max(1,start))*S.cfg.closeStr; const duel=Math.max(Math.abs(lastP-sk.strike)*1.6,lastP*7e-5);
+      half=half+(duel-half)*prog; needLo=Math.min(lastP,sk.strike)-lastP*2e-5; needHi=Math.max(lastP,sk.strike)+lastP*2e-5; } }
   const D=easeDomain(ys,lastP,half,needLo-lastP*2e-5,needHi+lastP*2e-5);
   const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
   cx.font="9px "+FONT();
@@ -2044,13 +2051,16 @@ function renderSweep(){
   }
   /* Kalshi windows: strike segment across each window; settled -> ribbon pip at the gate */
   for(const g of gates){
-    const xa=Xt(Math.max(g.open,t0)), xb=Xt(Math.min(g.close,t1)), y=Y(g.strike);
+    const xa=Xt(Math.max(g.open,t0)), xb=Xt(Math.min(g.close,t1));
+    const off=g.strike<D.lo||g.strike>D.hi; const y=off?(g.strike>D.hi?F.padT+5:F.padT+F.ih-5):Y(g.strike);
     const hour=g.series==="hour";
+    if(off&&!g.result) continue;                      /* a live strike outside the scale is carried by the axis, not drawn */
     const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(0,135,168,.75)":"rgba(0,135,168,.55)");
     cx.strokeStyle=col; cx.lineWidth=hour?1.6:1.1; cx.setLineDash(g.result?[2,3]:(hour?[6,4]:[4,4]));
-    cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); cx.setLineDash([]);
+    if(!off){ cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); } cx.setLineDash([]);
+    if(off&&g.result){ cx.globalAlpha=0.45; }
     if(g.result){ cx.fillStyle=col; cx.beginPath();cx.arc(Xt(g.close),y,hour?4.5:3.5,0,7);cx.fill();
-      cx.fillStyle="#FFFFFF"; cx.font="7px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+2.5); cx.textAlign="left"; cx.font="9px "+FONT(); }
+      cx.fillStyle="#FFFFFF"; cx.font="7px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+2.5); cx.textAlign="left"; cx.font="9px "+FONT(); cx.globalAlpha=1; }
     else if(g.close>now){ cx.fillStyle=col; cx.font="8px "+FONT(); cx.textAlign="left";
       cx.fillText((hour?"HOUR \u2265":"")+"$"+Math.round(g.strike).toLocaleString(),xa+3,y-3); cx.font="9px "+FONT(); }
   }
@@ -2255,5 +2265,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905142229 -->
+<!-- build-20260905143107 -->
 </html>
