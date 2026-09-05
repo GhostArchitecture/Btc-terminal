@@ -297,16 +297,16 @@
   </section>
 
   <section class="tile" data-key="journal">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Simulation journal — the tool’s own use of its reads, against controls</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Simulation journal — ten arms, $1,000 paper bankrolls, 5% risk per trade</span>
       <span class="note num" id="jnote"></span></div>
     <div class="tblwrap"><table id="jarms">
-      <thead><tr><th>Arm · entry rule</th><th>Trades</th><th>Hit 35¢</th><th>Mean breakeven</th><th>Mean base</th><th>P&amp;L / share (net)</th><th>90% CI</th><th>Total at 100 sh</th></tr></thead><tbody></tbody>
+      <thead><tr><th>Entry · exit</th><th>Bankroll</th><th>Max DD</th><th>Trades</th><th>Win</th><th>Hit 35¢</th><th>P&amp;L / share</th><th>90% CI</th><th>Exits</th></tr></thead><tbody></tbody>
     </table></div>
     <div class="lbl" style="margin:8px 0 4px;letter-spacing:.08em">recent simulated trades, newest first</div>
     <div class="tblwrap"><table id="jtbl">
-      <thead><tr><th>Window</th><th>Side</th><th>Arm</th><th>In</th><th>Out</th><th>Hit</th><th>P&amp;L / share</th><th>Model at entry</th><th>Flow</th></tr></thead><tbody></tbody>
+      <thead><tr><th>Window</th><th>Side</th><th>Arm</th><th>In</th><th>Out</th><th>Why</th><th>Shares</th><th>Stake</th><th>P&amp;L</th><th>Peak</th><th>Model at entry</th><th>Flow</th></tr></thead><tbody></tbody>
     </table></div>
-    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">every arm trades the same universe — each side of the live window at ≤ 15¢ — with the same exit: sold at 35¢ if the bid gets there after entry, else at the last bid before the gate; 100 paper shares, fees on both legs · only the entry decision differs · the tool arm is the disciplined reader; all and random are the controls · the question this page answers: does the tool arm beat the controls over ≥ 30 trades</div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">universe = each side of the live window read at ≤ 15¢; the tool and model arms only enter at ≤ 9¢ · sizing = 5% of the arm’s bankroll at the ask, compounding · box exit = 35¢ target else last bid at the gate · trail exit = trail arms at 2.5× entry and sells on a 25% pull-back from the peak, stops at half the entry, time-stops at T−1:30 if under 2× · fees on both legs · the tool arms are the disciplined reader; all and random are the controls · the answer: does a tool arm’s bankroll beat the controls’ over ≥ 30 trades</div>
   </section>
 
   <section class="tile" data-key="rounds">
@@ -487,16 +487,15 @@
       the model against the base rate and splits hits by order-flow sign, the filter history could not test. The
       sweep tints a window amber only when the model clears breakeven <i>and</i> the ledger holds thirty graded reads
       where it beats the base rate. Nothing executes.</p>
-    <p><b>Simulation journal.</b> The tool trades its own reads on paper, against controls. Five arms share one
-      universe — every side of the live window priced at or under 15¢ — and one exit: sold at 35¢ if the bid gets
-      there after entry, else at the last bid before the gate, 100 paper shares, fees on both legs. Only the entry
-      decision differs: the <i>tool</i> arm enters when P(touch) beats breakeven and order flow leans the side’s way,
-      as a disciplined reader of this instrument would; <i>model only</i> and <i>flow only</i> isolate each read;
-      <i>all</i> takes every cheap side (the longshot base rate, which history prices at about −2.5¢ a share);
-      <i>random</i> is a seeded coin. Each arm reports trades, hit rate against its own breakeven and the history base
-      rate, mean P&amp;L per share with a bootstrap interval, and the total at 100 shares. The reads carried information
-      only if the tool arm beats <i>all</i> and <i>random</i> over at least thirty trades; anything less is noise, and
-      the page will say so.</p>
+    <p><b>Simulation journal.</b> The tool trades its own reads on paper, with money at stake and controls beside it.
+      Ten arms — five entry rules by two exit rules — each start with a $1,000 bankroll and risk 5% of it at the ask on
+      every trade, compounding. The universe is every side of the live window read at or under 15¢; the tool and
+      model arms only enter at or under 9¢, where the convexity is. <i>Box</i> sells at 35¢ or at the last bid before
+      the gate — the baseline. <i>Trail</i> is the trader: it arms a trailing exit once the bid reaches 2.5× entry,
+      sells on a 25% pull-back from the peak, stops out at half the entry, and time-stops at T−1:30 if the position
+      is under 2×. Fees on both legs. Each arm reports bankroll, maximum drawdown, trades, win rate, the 35¢ hit
+      rate, mean P&amp;L per share with a bootstrap interval, and a tally of exit reasons. The reads carried information
+      only if a tool arm’s bankroll beats the all and random controls’ over at least thirty trades.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
       <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
@@ -588,7 +587,7 @@ const S={
   cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,touched:{}},
   auto:{z:1.645,cov:null,n:0},
   via:null,
-  swing:null, journal:null,
+  swing:null, journal:null, simBank:null,
   k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,lastHour:0,lastUnopened:0,hour:[],hourClose:null,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false,backoffUntil:0,fails:0},
   edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   bars:new Map(),       // minuteKey -> close (median)
@@ -1369,8 +1368,8 @@ function exportCSV(){
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit"]].concat(
     Object.values(S.swing.w).flatMap(e=>e.reads.map(r=>[e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??""])));
-  const sj=[["arm","ticker","strike","close","side","t_in","tau_min","entry","exit","pnl_per_share_net","hit_35","breakeven","base_rate","model_at_entry","ofi_at_entry"]].concat(
-    S.journal.map(t=>[t.arm,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),t.tau,t.entry,t.exit,t.pnl.toFixed(2),t.hit?1:0,t.be,t.base,t.p??"",t.ofi??""]));
+  const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after"]].concat(
+    S.journal.map(t=>[t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank]));
   const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
@@ -1442,7 +1441,8 @@ function swingTick(now){
   for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.ticker!==c.ticker||e.graded) continue;
     const bid=e.side==="YES"?yb:nb; if(bid===null||bid===undefined) continue;
     e.lastBid=bid/100;
-    for(const r of e.reads){ if(now>r.t&&bid/100>r.maxAfter) r.maxAfter=bid/100; } }
+    for(const r of e.reads){ if(now>r.t&&bid/100>r.maxAfter) r.maxAfter=bid/100; }
+    simUpdate(e,bid/100,now); }
   /* a read per minute per cheap side */
   if(now-(S.swing.lastRead||0)<60000) return;
   S.swing.lastRead=now;
@@ -1470,64 +1470,107 @@ function swingStats(){
     flowWith:flow.with.length?{n:flow.with.length,hit:flow.with.filter(r=>r.hit).length/flow.with.length}:null,
     flowAgainst:flow.against.length?{n:flow.against.length,hit:flow.against.filter(r=>r.hit).length/flow.against.length}:null};
 }
-/* simulation journal: the tool's own use of its reads, paper-traded against control arms */
-const SIM_SHARES=100;
-const SIM_ARMS=[
+/* simulation journal: the tool's own use of its reads, paper-traded with bankrolls against control arms */
+const SIM={bank0:1000,risk:0.05,maxShares:2000,aggressiveMax:0.09,trailArm:2.5,trailPull:0.25,stop:0.5,timeStop:1.5};
+const SIM_ENTRY=[
   {id:"tool",   label:"tool \u2014 model > breakeven and flow aligned"},
   {id:"model",  label:"model only \u2014 P(touch) > breakeven"},
   {id:"flow",   label:"flow only \u2014 order flow leans the side\u2019s way"},
   {id:"all",    label:"all \u2014 every cheap side at first read"},
   {id:"random", label:"random \u2014 coin per side (noise floor)"},
 ];
+const SIM_EXIT=[
+  {id:"box",   label:"box \u2014 sell at 35\u00a2, else last bid"},
+  {id:"trail", label:"trail \u2014 arm at 2.5\u00d7, pull-back 25%, stop 50%, time-stop T\u22121:30"},
+];
+const SIM_ARMS=[]; for(const e of SIM_ENTRY) for(const x of SIM_EXIT) SIM_ARMS.push({id:e.id+"/"+x.id,entry:e.id,exit:x.id,label:e.label,xlabel:x.label,aggressive:(e.id==="tool"||e.id==="model")});
 function simFlowAligned(side,ofi){ return ofi!==null&&ofi!==undefined&&((side==="YES"&&ofi>0.15)||(side==="NO"&&ofi<-0.15)); }
-function simDecide(arm,r,side,key){
+function simDecide(entry,r,side,key){
   const modelOk=r.p!==null&&r.p>r.be, flowOk=simFlowAligned(side,r.ofi);
-  if(arm==="tool") return modelOk&&flowOk;
-  if(arm==="model") return modelOk;
-  if(arm==="flow") return flowOk;
-  if(arm==="all") return true;
-  if(arm==="random"){ let h=0; for(const ch of key) h=(h*31+ch.charCodeAt(0))>>>0; return (h%2)===0; }
+  if(entry==="tool") return modelOk&&flowOk;
+  if(entry==="model") return modelOk;
+  if(entry==="flow") return flowOk;
+  if(entry==="all") return true;
+  if(entry==="random"){ let h=0; for(const ch of key) h=(h*31+ch.charCodeAt(0))>>>0; return (h%2)===0; }
   return false;
 }
-function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(j&&j.v===2&&Array.isArray(j.t)) S.journal=j.t; }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; }
-function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify({v:2,t:S.journal.slice(0,2000)})); }catch(e){} }
+function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(j&&j.v===3){ S.journal=j.t||[]; S.simBank=j.bank||{}; } }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; if(!S.simBank) S.simBank={}; for(const a of SIM_ARMS){ if(!S.simBank[a.id]) S.simBank[a.id]={bank:SIM.bank0,peak:SIM.bank0,dd:0}; } }
+function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify({v:3,t:S.journal.slice(0,3000),bank:S.simBank})); }catch(e){} }
 function simEnter(e,r,key){
-  /* one paper position per arm per window-side, opened at the first read that satisfies the arm; needs >= 2 min left */
   if(r.tau<2) return;
   for(const a of SIM_ARMS){
     if(e.sim&&e.sim[a.id]) continue;
-    if(!simDecide(a.id,r,e.side,key)) continue;
-    e.sim=e.sim||{}; e.sim[a.id]={tIn:r.t,tau:r.tau,entry:r.ask,p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true};
+    if(a.aggressive&&r.ask>SIM.aggressiveMax) continue;
+    if(!simDecide(a.entry,r,e.side,key)) continue;
+    const B=S.simBank[a.id]; const stake=Math.max(1,B.bank*SIM.risk); const shares=Math.max(1,Math.min(SIM.maxShares,Math.floor(stake/r.ask)));
+    e.sim=e.sim||{}; e.sim[a.id]={arm:a.id,exitRule:a.exit,tIn:r.t,tau:r.tau,entry:r.ask,shares,stake:+(shares*r.ask).toFixed(2),p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true,peak:r.ask,armed:false,bidNow:null};
   }
 }
+function simCloseOne(e,t,exit,reason,now){
+  const fin=0.07*t.entry*(1-t.entry), fout=0.07*exit*(1-exit);
+  t.open=false; t.exit=exit; t.reason=reason; t.tOut=now; t.pnlShare=(exit-t.entry-fin-fout)*100; t.pnl=+(t.pnlShare*t.shares/100).toFixed(2); t.hit=t.peak>=SWING.payout;
+  const B=S.simBank[t.arm]; B.bank=+(B.bank+t.pnl).toFixed(2); if(B.bank>B.peak) B.peak=B.bank; const dd=(B.peak-B.bank)/B.peak; if(dd>B.dd) B.dd=dd;
+  S.journal.unshift({arm:t.arm,exitRule:t.exitRule,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tOut:now,tau:t.tau,entry:t.entry,exit,reason,shares:t.shares,stake:t.stake,pnlShare:t.pnlShare,pnl:t.pnl,hit:t.hit,peak:t.peak,be:t.be,base:t.base,p:t.p,ofi:t.ofi,bank:B.bank});
+}
+function simUpdate(e,bid,now){
+  /* every book poll: track peaks and run the exit rules of every open position on this window-side */
+  if(!e.sim||bid===null||bid===undefined) return;
+  const tau=(e.close-now)/60000; let closed=false;
+  for(const id of Object.keys(e.sim)){ const t=e.sim[id]; if(!t.open) continue;
+    t.bidNow=bid; if(bid>t.peak) t.peak=bid;
+    if(t.exitRule==="box"){ if(bid>=SWING.payout){ simCloseOne(e,t,SWING.payout,"target",now); closed=true; } continue; }
+    /* trail */
+    if(!t.armed&&bid>=t.entry*SIM.trailArm) t.armed=true;
+    if(t.armed&&bid<=t.peak*(1-SIM.trailPull)){ simCloseOne(e,t,bid,"trail",now); closed=true; continue; }
+    if(!t.armed&&bid<=t.entry*SIM.stop){ simCloseOne(e,t,bid,"stop",now); closed=true; continue; }
+    if(tau<=SIM.timeStop&&!t.armed&&bid<t.entry*2){ simCloseOne(e,t,bid,"time",now); closed=true; continue; }
+  }
+  if(closed) jSave();
+}
 function simClose(e){
-  /* at the gate: sold at 35c if the bid got there after entry, else at the last bid seen before the gate */
+  /* the gate: whatever is still open sells at the last bid */
   if(!e.sim) return;
   for(const id of Object.keys(e.sim)){ const t=e.sim[id]; if(!t.open) continue;
-    const r=e.reads[t.readIdx]; const hit=r&&r.maxAfter>=SWING.payout;
-    const exit=hit?SWING.payout:(e.lastBid!==undefined&&e.lastBid!==null?e.lastBid:0);
-    const fin=0.07*t.entry*(1-t.entry), fout=0.07*exit*(1-exit);
-    t.open=false; t.exit=exit; t.hit=!!hit; t.pnl=(exit-t.entry-fin-fout)*100; t.tOut=e.close;
-    S.journal.unshift({arm:id,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tau:t.tau,entry:t.entry,exit,pnl:t.pnl,hit:t.hit,be:t.be,base:t.base,p:t.p,ofi:t.ofi}); }
+    simCloseOne(e,t,(e.lastBid!==undefined&&e.lastBid!==null)?e.lastBid:0,"gate",e.close); }
   jSave();
 }
 function journalStats(){
-  const out={}; 
-  for(const a of SIM_ARMS){ const T=S.journal.filter(t=>t.arm===a.id); const n=T.length;
-    if(!n){ out[a.id]={n:0}; continue; }
-    const hits=T.filter(t=>t.hit).length, pnl=T.reduce((x,t)=>x+t.pnl,0)/n;
-    out[a.id]={n,hitRate:hits/n,pnl,total:pnl*SIM_SHARES/100*n,be:T.reduce((x,t)=>x+t.be,0)/n,base:T.reduce((x,t)=>x+t.base,0)/n,
-      ci:n>=8?bootstrapCI(T.map(t=>t.pnl),v=>v.reduce((x,y)=>x+y,0)/v.length,0.9,300):null}; }
+  const out={};
+  for(const a of SIM_ARMS){ const T=S.journal.filter(t=>t.arm===a.id); const n=T.length; const B=S.simBank[a.id]||{bank:SIM.bank0,dd:0};
+    if(!n){ out[a.id]={n:0,bank:B.bank,dd:B.dd}; continue; }
+    const wins=T.filter(t=>t.pnl>0).length, hits=T.filter(t=>t.hit).length;
+    out[a.id]={n,winRate:wins/n,hitRate:hits/n,pnlShare:T.reduce((x,t)=>x+t.pnlShare,0)/n,total:+T.reduce((x,t)=>x+t.pnl,0).toFixed(2),bank:B.bank,dd:B.dd,
+      be:T.reduce((x,t)=>x+t.be,0)/n,base:T.reduce((x,t)=>x+t.base,0)/n,reasons:T.reduce((m,t)=>{ m[t.reason]=(m[t.reason]||0)+1; return m; },{}),
+      ci:n>=8?bootstrapCI(T.map(t=>t.pnlShare),v=>v.reduce((x,y)=>x+y,0)/v.length,0.9,300):null}; }
   return out;
+}
+function watchedSides(now){
+  /* every side of the live window that has been read this window, cheap or not, until the gate */
+  const c=S.k.cur; if(!c) return [];
+  const out=[]; const ob=S.k.ob;
+  for(const key of Object.keys(S.swing.w)){ const e=S.swing.w[key]; if(e.ticker!==c.ticker||!e.reads.length) continue;
+    const r0=e.reads[0], rN=e.reads[e.reads.length-1];
+    const ask=ob?(e.side==="YES"?ob.yesAsk:ob.noAsk):null, bid=ob?(e.side==="YES"?ob.yesBid:ob.noBid):null;
+    const pNow=(now<e.close-15000)?touchProb(e.strike,e.close,e.side,now):null;
+    const fin=0.07*r0.ask*(1-r0.ask);
+    out.push({key,side:e.side,close:e.close,ask0:r0.ask,p0:r0.p,pNow,ask:ask===null?null:ask/100,bid:bid===null?null:bid/100,peak:r0.maxAfter,
+      pnlShare:bid===null?null:((bid/100-r0.ask-fin-0.07*(bid/100)*(1-bid/100))*100),be:r0.be,base:r0.base,tau:(e.close-now)/60000,sim:e.sim||{},graded:e.graded,hit:e.hit}); }
+  return out.sort((a,b)=>a.side<b.side?-1:1);
 }
 function renderSwing(){
   const now=Date.now(); const strip=$("swstrip"), tb=$("swtbl")&&$("swtbl").querySelector("tbody"), ts=$("swskill")&&$("swskill").querySelector("tbody"), note=$("swnote");
-  const sides=swingSides(now); const st=swingStats();
-  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%";
-  const chip=s=>{ const ok=s.p!==null&&s.p>s.be&&st.verified;
-    return '<span class="swchip'+(ok?' watch':'')+'">'+(ok?'\u25c6 SWING WATCH \u00b7 ':'')+s.side+' '+Math.round(s.ask*100)+'\u00a2 \u00b7 touch '+pc(s.p)+' \u00b7 base '+pc(s.base)+' \u00b7 breakeven '+pc(s.be)+' \u00b7 EV '+(s.ev===null?"\u2014":((s.ev>=0?"+":"")+s.ev.toFixed(1)+"\u00a2"))+' \u00b7 '+mmss(s.close-now)+' left'+(st.verified?'':' \u00b7 <span style="color:var(--faint)">unverified (n'+(st.n||0)+')</span>')+'</span>'; };
-  if(strip) strip.innerHTML='<span class="lbl">swing watch \u00b7 cheap sides of the live window \u00b7 P(bid reaches 35\u00a2 before the gate)</span> '+(sides.length?sides.map(chip).join(" "):'<span style="color:var(--faint)">no side under 15\u00a2 in the live window</span>');
-  if(tb) tb.innerHTML=sides.map(s=>'<tr><td>'+timeStr(s.close)+' \u00b7 '+s.side+'</td><td class="num">'+Math.round(s.ask*100)+'\u00a2</td><td class="num model">'+pc(s.p)+'</td><td class="num">'+pc(s.base)+'</td><td class="num">'+pc(s.be)+'</td>'
+  const W=watchedSides(now); const st=swingStats(); const live=swingSides(now);
+  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%"; const c2=v=>v===null||v===undefined?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"\u00a2");
+  const cents=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"\u00a2";
+  const posLine=w=>{ const ids=["tool/box","tool/trail"]; const parts=[]; for(const id of ids){ const t=w.sim[id]; if(!t) continue;
+      parts.push(id.split("/")[1]+": "+(t.open?("open "+t.shares+" sh @"+cents(t.entry)+" \u00b7 peak "+cents(t.peak)+(t.armed?" \u00b7 trailing":"")):("closed "+t.reason+" @"+cents(t.exit)+" "+(t.pnl>=0?"+":"")+"$"+t.pnl.toFixed(2)))); }
+    return parts.length?('<br><span style="color:var(--faint)">tool arm \u00b7 '+parts.join(" \u00b7 ")+'</span>'):""; };
+  const chip=w=>{ const isLive=live.find(s=>s.side===w.side); const watch=isLive&&isLive.p!==null&&isLive.p>isLive.be&&st.verified;
+    const theta=(w.p0!==null&&w.pNow!==null)?(" \u00b7 touch "+pc(w.p0)+"\u2192"+pc(w.pNow)):(w.p0!==null?(" \u00b7 touch at read "+pc(w.p0)):"");
+    return '<span class="swchip'+(watch?' watch':'')+'">'+(watch?'\u25c6 SWING WATCH \u00b7 ':'')+w.side+' read @'+cents(w.ask0)+' \u00b7 now '+cents(w.bid)+'/'+cents(w.ask)+' \u00b7 peak '+cents(w.peak)
+      +' \u00b7 P&L at bid '+c2(w.pnlShare)+'/sh'+theta+' \u00b7 breakeven '+pc(w.be)+' \u00b7 '+(w.tau>0?mmss(w.close-now)+' left':'gate'+(w.graded?(w.hit?" \u00b7 reached 35\u00a2":" \u00b7 never reached 35\u00a2"):""))+(st.verified?'':' \u00b7 <span style="color:var(--faint)">unverified (n'+(st.n||0)+')</span>')+posLine(w)+'</span>'; };
+  if(strip) strip.innerHTML='<span class="lbl">swing watch \u00b7 sides read this window persist to the gate \u00b7 read = first ask seen \u00b7 P(touch) = model at read \u2192 now (theta)</span> '+(W.length?W.map(chip).join(" "):'<span style="color:var(--faint)">no side under 15\u00a2 read yet in the live window</span>');
+  if(tb) tb.innerHTML=live.map(s=>'<tr><td>'+timeStr(s.close)+' \u00b7 '+s.side+'</td><td class="num">'+Math.round(s.ask*100)+'\u00a2</td><td class="num model">'+pc(s.p)+'</td><td class="num">'+pc(s.base)+'</td><td class="num">'+pc(s.be)+'</td>'
     +'<td class="num" style="color:var(--'+(s.ev!==null&&s.ev>0?"up":"down")+')">'+(s.ev===null?"\u2014":((s.ev>=0?"+":"")+s.ev.toFixed(1)+"\u00a2"))+'</td><td class="num">'+(s.ofi===null?"thin":((s.ofi>=0?"+":"")+s.ofi.toFixed(2)))+'</td><td class="num">'+mmss(s.close-now)+'</td></tr>').join("")
     ||'<tr><td colspan="8" style="color:var(--faint)">no side under 15\u00a2 in the live window</td></tr>';
   if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
@@ -1536,17 +1579,19 @@ function renderSwing(){
 }
 function renderJournal(){
   const ta=$("jarms")&&$("jarms").querySelector("tbody"), tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"); if(!ta||!tb) return;
-  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%"; const c2=v=>(v>=0?"+":"")+v.toFixed(2)+"\u00a2";
+  const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%"; const c2=v=>(v>=0?"+":"")+v.toFixed(2)+"\u00a2"; const cents=v=>Math.round(v*100)+"\u00a2";
   const st=journalStats();
-  ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id];
-    if(!s.n) return '<tr><td>'+a.label+'</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
-    return '<tr'+(a.id==="tool"?' style="background:rgba(0,135,168,.05)"':'')+'><td>'+a.label+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.hitRate)+'</td><td class="num">'+pc(s.be)+'</td><td class="num">'+pc(s.base)+'</td>'
-      +'<td class="num" style="color:var(--'+(s.pnl>0?"up":"down")+')">'+c2(s.pnl)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--'+(s.total>0?"up":"down")+')">$'+s.total.toFixed(2)+'</td></tr>'; }).join("");
-  tb.innerHTML=S.journal.slice(0,40).map(t=>'<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td>'+t.arm+'</td><td class="num">'+Math.round(t.entry*100)+'\u00a2</td><td class="num">'+Math.round(t.exit*100)+'\u00a2</td>'
-    +'<td class="num">'+(t.hit?"\u2713":"\u2717")+'</td><td class="num" style="color:var(--'+(t.pnl>0?"up":"down")+')">'+c2(t.pnl)+'</td><td class="num model">'+pc(t.p)+'</td><td class="num">'+(t.ofi===null||t.ofi===undefined?"thin":((t.ofi>=0?"+":"")+t.ofi.toFixed(2)))+'</td></tr>').join("")
-    ||'<tr><td colspan="9" style="color:var(--faint)">no simulated trades yet \u2014 arms enter on cheap-side reads and close at the gate</td></tr>';
-  const t=st.tool, al=st.all;
-  if(note) note.textContent=(t&&t.n)?("tool "+t.n+" trades \u00b7 "+c2(t.pnl)+"/share \u00b7 hit "+pc(t.hitRate)+(al&&al.n?(" \u00b7 all-sides control "+c2(al.pnl)):"")+(t.n<30?" \u00b7 "+t.n+" of 30":"")):"collecting";
+  ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id]; const isTool=a.entry==="tool";
+    const head='<tr'+(isTool?' style="background:rgba(0,135,168,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
+    if(!s.n) return head+'<td class="num">$'+s.bank.toFixed(2)+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
+    return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">$'+s.bank.toFixed(2)+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
+      +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--dim)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
+  tb.innerHTML=S.journal.slice(0,40).map(t=>'<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td>'+t.arm+'</td><td class="num">'+cents(t.entry)+'</td><td class="num">'+cents(t.exit)+'</td><td>'+t.reason+'</td><td class="num">'+t.shares+'</td><td class="num">$'+t.stake.toFixed(2)+'</td>'
+    +'<td class="num" style="color:var(--'+(t.pnl>0?"up":"down")+')">'+(t.pnl>=0?"+":"")+'$'+t.pnl.toFixed(2)+'<span class="sub">'+c2(t.pnlShare)+'/sh</span></td><td class="num">'+cents(t.peak)+'</td><td class="num model">'+pc(t.p)+'</td><td class="num">'+(t.ofi===null||t.ofi===undefined?"thin":((t.ofi>=0?"+":"")+t.ofi.toFixed(2)))+'</td></tr>').join("")
+    ||'<tr><td colspan="12" style="color:var(--faint)">no simulated trades yet \u2014 arms enter on cheap-side reads and close by rule or at the gate</td></tr>';
+  const best=SIM_ARMS.map(a=>({id:a.id,s:st[a.id]})).sort((x,y)=>y.s.bank-x.s.bank)[0];
+  const tt=st["tool/trail"], ab=st["all/box"];
+  if(note) note.textContent=(tt&&tt.n)?("tool/trail $"+tt.bank.toFixed(2)+" \u00b7 "+tt.n+" trades \u00b7 win "+pc(tt.winRate)+(ab&&ab.n?(" \u00b7 all/box control $"+ab.bank.toFixed(2)):"")+" \u00b7 leading: "+best.id+" $"+best.s.bank.toFixed(2)):"collecting";
 }
 /* ---------------------------------------------------------------- viability (maker economics, live) */
 const MAKER_RATE=0.0175;
@@ -2533,5 +2578,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905204204 -->
+<!-- build-20260905223714 -->
 </html>
