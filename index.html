@@ -27,7 +27,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:linear-gradient(180deg,var(--bg-hi) 0%,var(--bg-lo) 100%);
     background-attachment:fixed;color:var(--ink);font-family:var(--sans)}
-  body{font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
+  body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
   body::before{content:"";position:fixed;inset:0;pointer-events:none;
     background:radial-gradient(60% 38% at 50% -6%,rgba(255,255,255,.9),rgba(255,255,255,0) 70%)}
   .wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px;position:relative}
@@ -173,8 +173,8 @@
   #viewData{display:none}
   body.showData #viewData{display:block}
   body.showData #viewChart{display:none}
-  #viewChart canvas{height:calc(100dvh - 330px);min-height:360px}
-  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 330px)} }
+  #viewChart canvas{height:calc(100dvh - 250px);min-height:460px}
+  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 250px)} }
 </style>
 </head>
 <body>
@@ -200,7 +200,7 @@
 
   <div id="viewChart">
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Round instrument</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Arming tray — one strike per 15-minute window</span>
 </div>
     <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
@@ -220,7 +220,7 @@
         <span><span class="sw" style="background:var(--up)"></span>above / rising</span>
         <span><span class="sw" style="background:var(--down)"></span>below / falling</span>
         <span><span class="sw" style="background:var(--model)"></span>Kalshi strikes span their windows · hour heavier · settled = pip Y/N at the gate</span>
-        <span>sweep −30/+15 min, never wipes · line = leader book, constituent-verified · dotted grey = seeded history</span>
+        <span>sweep −30/+15 min, never wipes · line = leader book, constituent-verified</span>
       </div>
     </div>
     <div id="kstrip" class="tile num"></div>
@@ -274,7 +274,7 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Viability — spread captured vs adverse selection vs fees, per series</span>
       <span class="note num" id="vianote"></span></div>
     <div class="tblwrap"><table id="viatbl">
-      <thead><tr><th>Series · source</th><th>Fills</th><th>Spread</th><th>Adverse</th><th>Fees</th><th>Net</th><th>Verdict</th></tr></thead><tbody></tbody>
+      <thead><tr><th>Series · source</th><th>Fills</th><th>Spread</th><th>Adverse</th><th>Fees</th><th>Net</th><th>Reads</th></tr></thead><tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">history = backtest on 2,000 fifteen-minute windows and 240 hourly rungs (Aug 15–Sep 5) · live = this browser’s recording: a resting bid at the best bid is deemed filled when the bid moves through it within a minute; adverse = mid move in the minute after the fill; fees = maker in and out · flow rows split live fills by order-flow sign at posting time · net &gt; 0 over ≥ 30 fills is the only thing that inverts the verdict</div>
   </section>
@@ -338,7 +338,7 @@
   <section class="tile" data-key="advanced">
     <div class="shead"><span class="lbl" style="color:var(--dim)">Advanced — overrides (automatic by default)</span>
       <span class="note num" id="autonote"></span></div>
-    <div class="lbl" style="letter-spacing:.08em;margin-bottom:4px">band width, axis dynamics and the edge threshold are set by the tool from realized coverage, close-weighting and fees; sliders here override only while moved off default · RESET restores automatic</div>
+    <div class="lbl" style="letter-spacing:.08em;margin-bottom:4px">band width and axis dynamics are set by the tool from realized coverage, close-weighting and fees; sliders here override only while moved off default · RESET restores automatic</div>
     <div id="tunebar">
       <div class="tgrp"><span class="lbl">Axis</span>
         <label>zoom <input type="range" id="c_pad" min="1.0" max="2.0" step="0.02"><span class="num" id="v_pad"></span></label>
@@ -348,7 +348,7 @@
         <label>close strength <input type="range" id="c_closeStr" min="0" max="1" step="0.05"><span class="num" id="v_closeStr"></span></label>
         <label>lookback <input type="range" id="c_lookback" min="1" max="10" step="1"><span class="num" id="v_lookback"></span></label>
       </div>
-      <div class="tgrp"><span class="lbl">Tape read</span>
+      <div class="tgrp"><span class="lbl">Projection (measured on DATA, not drawn on the chart)</span>
         <label>confidence <input type="range" id="c_conf" min="0.50" max="0.99" step="0.01"><span class="num" id="v_conf"></span></label>
         <label>adherence <input type="range" id="c_adh" min="0.5" max="2.0" step="0.05"><span class="num" id="v_adh"></span></label>
         <button id="cfgReset">RESET</button>
@@ -445,7 +445,7 @@
       carries those history rows and, beside them, this browser’s live measurement of the same three quantities —
       a resting bid at the best bid is deemed filled when the bid moves through it within a minute, adverse selection
       is the mid move in the minute after, fees are maker in and out — split further by the order-flow sign at posting
-      time, the one filter history could not test. The verdict reads NEGATIVE and inverts only on net &gt; 0 over at
+      time, the one filter history could not test. It reads NEGATIVE and turns positive only on net &gt; 0 over at
       least thirty live fills. Nothing executes.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
@@ -474,7 +474,8 @@
       settled window collapses to a pip at its gate, green YES or red NO, scrolling left as the record. An armed strike
       draws dashed across its own window with the over/under fields confined to it; the live odds gauge sits at the
       right edge and the axis pill carries the level and the odds at arming. The price line is the leader book,
-      constituent-verified; dotted grey ahead of it is seeded history. Nothing is projected on the frame.</p>
+      constituent-verified. The seeded 1-minute history still feeds volatility and settlement, but it is no longer
+      drawn: only prints this session verified are shown as the line. Nothing is projected on the frame.</p>
   </div>
   </div>
 </div>
@@ -1375,7 +1376,7 @@ function renderViability(){
   const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--faint)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
     +' \u00b7 <span style="color:var(--'+((l&&l.n>=30&&l.net>0)?"up":"down")+')">'+((l&&l.n>=30&&l.net>0)?"POSITIVE":"NEGATIVE")+'</span>';
   if(strip) strip.innerHTML='<span class="lbl">viability \u00b7 maker round trip \u00b7 spread \u2212 adverse \u2212 fees</span> '+txt("15m",h15,live15)+' \u00b7 '+txt("hour",hH,liveH);
-  if(note) note.textContent="verdict inverts only on net > 0 over \u2265 30 live fills";
+  if(note) note.textContent="reads positive only on net > 0 over \u2265 30 live fills";
 }
 /* ---------------------------------------------------------------- verdict (pre-registered decision rule) */
 const VERDICT_RULE={minWindows:200,brierCI:0.90,bandMinN:30,bandMargin:3,pnlMinN:100,pnlDays:2};
@@ -1757,7 +1758,7 @@ function renderArmBar(){
     if(isFinite(q)&&q>0&&q<100){
       const mp=act[0].call==="ABOVE"?act[0].prob.over:act[0].prob.under;
       const edge=(mp-q/100)*100-100*kFee(q/100), ev=edge/q*100;
-      s+=" \u00b7 quote "+q+"\u00a2 vs model "+Math.round(mp*100)+"% \u2192 net edge "+(edge>=0?"+":"")+edge.toFixed(1)+"pt \u00b7 EV "+(ev>=0?"+":"")+ev.toFixed(1)+"%/stake";
+      s+=" \u00b7 quote "+q+"\u00a2 vs model "+Math.round(mp*100)+"% \u2192 net edge "+(edge>=0?"+":"")+edge.toFixed(1)+"pt \u00b7 EV "+(ev>=0?"+":"")+ev.toFixed(1)+"% of stake";
     }
   }
   if(R&&R.state==="settled") s="SETTLED \u00b7 "+s;
@@ -1861,12 +1862,12 @@ function verifiableReads(){
   if(K.cur&&K.cur.strike!==null){
     const P=strikeProbs({strike:K.cur.strike,tEnd:K.cur.close,quote:kQuoteFor(K.cur.strike,K.cur.close)},now);
     const q=kQuoteFor(K.cur.strike,K.cur.close);
-    if(P) out+=cell("phase "+timeStr(K.cur.close),"YES "+Math.round(P.over*100)+"%"+(q?(" \u00b7 mkt "+Math.round(q.q*100)+"\u00a2"):""),"amber");
+    if(P) out+=cell("15-min window "+timeStr(K.cur.close),"YES "+Math.round(P.over*100)+"%"+(q?(" \u00b7 mkt "+Math.round(q.q*100)+"\u00a2"):""),"amber");
   }
   if(K.hour&&K.hour.length&&S.idxPx){
     let best=null; for(const m of K.hour){ if(best===null||Math.abs(m.strike-S.idxPx)<Math.abs(best.strike-S.idxPx)) best=m; }
     if(best){ const q=kQuoteFor(best.strike,best.close); const P=strikeProbs({strike:best.strike,tEnd:best.close,quote:q},now);
-      if(P) out+=cell("hour "+timeStr(best.close)+" \u2265"+fmtUSD.format(best.strike),"YES "+Math.round(P.over*100)+"%"+(q?(" \u00b7 mkt "+Math.round(q.q*100)+"\u00a2"):""),"amber"); }
+      if(P) out+=cell("hour window "+timeStr(best.close)+" \u2265"+fmtUSD.format(best.strike),"YES "+Math.round(P.over*100)+"%"+(q?(" \u00b7 mkt "+Math.round(q.q*100)+"\u00a2"):""),"amber"); }
   }
   return out;
 }
@@ -1939,46 +1940,56 @@ const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
 const UPC="#0E9464", DNC="#D6493D";
-function niceTicks(lo,hi){
+function niceTicks(lo,hi,anchor){
   const span=Math.max(hi-lo,1e-6);
-  const steps=[1,2,5,10,25,50,100,250,500,1000,2500,5000,10000];
-  const st=steps.find(s=>span/s<=5)||20000;
+  const steps=[0.5,1,2,5,10,20,25,50,100,200,250,500,1000,2500,5000,10000];
+  const st=steps.find(s=>span/s<=6)||20000;
   const out=[];
-  for(let v=Math.ceil(lo/st)*st; v<=hi; v+=st) out.push(v);
+  if(anchor!==undefined&&anchor!==null){
+    /* rungs measured from the strike, so every gridline is a distance from the thing being decided */
+    for(let v=anchor;v<=hi;v+=st) out.push(v);
+    for(let v=anchor-st;v>=lo;v-=st) out.unshift(v);
+  } else {
+    for(let v=Math.ceil(lo/st)*st; v<=hi; v+=st) out.push(v);
+  }
   return out;
 }
 function frame(){
   const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight||360;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
   cx.setTransform(dpr,0,0,dpr,0,0); cx.clearRect(0,0,W,H);
-  const padL=8,padR=64,padT=16,padB=24;
+  const padL=10,padR=78,padT=30,padB=30;   /* headroom for the header, room for wider y labels */
   return {W,H,padL,padR,padT,padB,iw:W-padL-padR,ih:H-padT-padB};
 }
-function yGrid(F,lo,hi,Y){
-  cx.strokeStyle="rgba(15,46,63,.08)"; cx.lineWidth=1; cx.textAlign="left"; cx.font="11px "+FONT();
-  for(const v of niceTicks(lo,hi)){
-    const y=Y(v);
+function yGrid(F,lo,hi,Y,anchor){
+  cx.lineWidth=1; cx.textAlign="left"; cx.font="12px "+FONT();
+  const ticks=niceTicks(lo,hi,anchor);
+  for(const v of ticks){
+    const y=Y(v), isAnchor=anchor!==undefined&&anchor!==null&&Math.abs(v-anchor)<1e-6;
+    cx.strokeStyle=isAnchor?"rgba(0,135,168,.16)":"rgba(15,46,63,.07)";
     cx.beginPath();cx.moveTo(F.padL,y);cx.lineTo(F.padL+F.iw,y);cx.stroke();
-    cx.fillStyle="#3E6274";
-    cx.fillText("$"+Math.round(v).toLocaleString(),F.padL+F.iw+5,y+4);
+    cx.fillStyle=isAnchor?"rgba(0,135,168,.85)":"#3E6274";
+    cx.fillText("$"+Math.round(v).toLocaleString(),F.padL+F.iw+6,y+4);
   }
-  cx.font="9px "+FONT();
+  cx.font="11px "+FONT();
 }
 function headerRow(F,leftTxt,rightTxt){
-  cx.font="9px "+FONT();
-  const rw=cx.measureText(rightTxt).width;
-  while(leftTxt.indexOf("\u00b7")>=0 && cx.measureText(leftTxt).width+rw+18>F.iw)
+  cx.font="11px "+FONT();
+  const y=F.padT-12;                                   /* above the plot area, never over the tape */
+  let rw=cx.measureText(rightTxt).width;
+  while(rightTxt.indexOf("\u00b7")>=0 && rw>F.iw*0.5){ rightTxt=rightTxt.slice(0,rightTxt.lastIndexOf("\u00b7")).trim(); rw=cx.measureText(rightTxt).width; }
+  while(leftTxt.indexOf("\u00b7")>=0 && cx.measureText(leftTxt).width+rw+22>F.iw)
     leftTxt=leftTxt.slice(0,leftTxt.lastIndexOf("\u00b7")).trim();
-  if(cx.measureText(leftTxt).width+rw+18>F.iw) leftTxt="";
-  cx.fillStyle="#7D97A6"; cx.textAlign="left"; cx.fillText(leftTxt,F.padL+2,F.padT+9);
-  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right"; cx.fillText(rightTxt,F.padL+F.iw-4,F.padT+9);
+  if(cx.measureText(leftTxt).width+rw+22>F.iw) leftTxt="";
+  cx.fillStyle="#7D97A6"; cx.textAlign="left"; cx.fillText(leftTxt,F.padL+2,y);
+  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right"; cx.fillText(rightTxt,F.padL+F.iw-4,y);
   cx.textAlign="left";
 }
 /* asymmetric eased domain: expand fast, contract slow, hard-contain always */
 function easeDomain(st,cT,sT,needLo,needHi){
   if(st.c===null){ st.c=cT; st.s=sT; }
   else{
-    st.c+=(cT-st.c)*(RM?1:0.15);
+    st.c+=(cT-st.c)*(RM?1:(Math.abs(cT-st.c)>st.s*0.5?0.5:0.12));   /* snap to a new anchor, drift otherwise */
     const d=sT-st.s;
     st.s+=d*(RM?1:(d>0?S.cfg.dilate:S.cfg.contract));
   }
@@ -2003,12 +2014,6 @@ function drawKeyedLine(pts,X,Y,keyFn){
     cx.lineTo(X(pts[j]),Y(pts[j].p));
   }
   if(runCol){ cx.strokeStyle=runCol; cx.stroke(); }
-}
-function seedPts(tFrom,tTo){
-  /* seeded 1-min closes (minute-end timestamps) covering [tFrom,tTo) — context before the live tape */
-  const out=[]; const k0=Math.floor(tFrom/60000), k1=Math.floor(tTo/60000);
-  for(let k=k0;k<=k1;k++){ const c=S.bars.get(k); if(c===undefined) continue; const t=(k+1)*60000; if(t>=tFrom&&t<tTo) out.push({t,p:c}); }
-  return out;
 }
 const ys={c:null,s:null};
 function liveStrike(R){ if(!R) return null; const a=R.strikes.filter(s=>!s.withdrawn); return a.length?a[a.length-1]:null; }
@@ -2037,27 +2042,30 @@ function renderSweep(){
   /* tape in view */
   const tp=S.tape, pts=[]; let mn=Infinity,mx=-Infinity;
   for(let i=Math.max(0,tp.length-8000);i<tp.length;i++){ const q=tp[i]; if(q.t<t0-2000) continue; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
-  const seeds=seedPts(t0,pts.length?pts[0].t:now);
-  for(const q of seeds){ if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
   const gates=kalshiGates(t0,t1);
   const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:null));
-  if(lastP===null){ cx.fillStyle="#7D97A6"; cx.font="9px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
-  /* scale from the recent tape only (last 12 min) + live strikes; older history may leave the frame */
+  if(lastP===null){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
+  /* the strike anchors the scale: it is the thing being decided, so it holds the centre of the frame.
+     the half-span is whatever contains the recent tape around it, so peaks and troughs are never clipped. */
   const RECENT=12*60000; let rmn=Infinity,rmx=-Infinity;
   for(let i=pts.length-1;i>=0;i--){ const q=pts[i]; if(q.t<now-RECENT) break; if(q.p<rmn)rmn=q.p; if(q.p>rmx)rmx=q.p; }
   if(!isFinite(rmn)){ rmn=isFinite(mn)?mn:lastP; rmx=isFinite(mx)?mx:lastP; }
-  let needLo=rmn, needHi=rmx;
-  for(const g of gates){ if(!g.result&&g.close>now&&g.series==="15m"&&g.open<=now){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
-  if(sk){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
-  let half=Math.max((needHi-needLo)/2*S.cfg.pad, lastP*1.0e-4);
-  /* close-weight: lean into the price–strike duel through the final minutes of an armed window */
+  /* live 15-minute strike, else the armed one, else price */
+  let anchor=null;
+  if(sk) anchor=sk.strike;
+  else { for(const g of gates){ if(!g.result&&g.close>now&&g.series==="15m"&&g.open<=now){ anchor=g.strike; break; } } }
+  if(anchor===null) anchor=(rmn+rmx)/2;
+  /* symmetric about the anchor: the greater of the two reaches, so nothing is cut off */
+  const reach=Math.max(Math.abs(rmx-anchor),Math.abs(anchor-rmn),Math.abs(lastP-anchor));
+  let half=Math.max(reach*S.cfg.pad, lastP*8e-5);
   if(sk&&R&&R.state!=="settled"){ const tau=(R.tEnd-now)/60000, start=15-S.cfg.closeStart;
-    if(tau<=start){ const prog=Math.min(1,(start-tau)/Math.max(1,start))*S.cfg.closeStr; const duel=Math.max(Math.abs(lastP-sk.strike)*1.6,lastP*7e-5);
-      half=half+(duel-half)*prog; needLo=Math.min(lastP,sk.strike)-lastP*2e-5; needHi=Math.max(lastP,sk.strike)+lastP*2e-5; } }
-  const D=easeDomain(ys,lastP,half,needLo-lastP*2e-5,needHi+lastP*2e-5);
+    if(tau<=start){ const prog=Math.min(1,(start-tau)/Math.max(1,start))*S.cfg.closeStr;
+      const duel=Math.max(Math.abs(lastP-anchor)*1.9,lastP*6e-5);
+      half=half+(duel-half)*prog; } }
+  const D=easeDomain(ys,anchor,half,anchor-reach*1.02,anchor+reach*1.02);
   const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
-  cx.font="9px "+FONT();
-  yGrid(F,D.lo,D.hi,Y);
+  cx.font="11px "+FONT();
+  yGrid(F,D.lo,D.hi,Y,(sk||anchor!==null)?anchor:null);
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
   /* future field */
   cx.fillStyle="rgba(0,135,168,.035)"; cx.fillRect(Xt(now),F.padT,F.padL+F.iw-Xt(now),F.ih);
@@ -2068,23 +2076,26 @@ function renderSweep(){
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
   }
   /* Kalshi windows: strike segment across each window; settled -> ribbon pip at the gate */
+  const edgeRows={};
   for(const g of gates){
     const xa=Xt(Math.max(g.open,t0)), xb=Xt(Math.min(g.close,t1));
     const off=g.strike<D.lo||g.strike>D.hi; const y=off?(g.strike>D.hi?F.padT+5:F.padT+F.ih-5):Y(g.strike);
     const hour=g.series==="hour";
     if(off&&!g.result){                               /* a live strike outside the scale rides the frame edge as a marker */
-      const col0=hour?"rgba(0,135,168,.9)":"rgba(0,135,168,.7)"; cx.fillStyle=col0; cx.font="8px "+FONT(); cx.textAlign="left";
-      cx.fillText((g.strike>D.hi?"\u25b2 ":"\u25bc ")+(hour?"HOUR \u2265":"")+"$"+Math.round(g.strike).toLocaleString(),xa+3,g.strike>D.hi?F.padT+10:F.padT+F.ih-4);
-      cx.setLineDash([2,3]); cx.strokeStyle=col0; cx.lineWidth=1; cx.beginPath(); cx.moveTo(xa,y); cx.lineTo(xb,y); cx.stroke(); cx.setLineDash([]);
-      cx.font="9px "+FONT(); continue; }
+      const above=g.strike>D.hi;
+      const row=(edgeRows[above?"top":"bot"]=(edgeRows[above?"top":"bot"]||0)+1);
+      const ty=above?(F.padT+11*row):(F.padT+F.ih-11*(row-1)-3);
+      const col0=hour?"rgba(0,135,168,.9)":"rgba(0,135,168,.6)"; cx.fillStyle=col0; cx.font="10px "+FONT(); cx.textAlign="left";
+      cx.fillText((above?"\u25b2 ":"\u25bc ")+(hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,ty);
+      cx.font="11px "+FONT(); continue; }
     const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(0,135,168,.75)":"rgba(0,135,168,.55)");
     cx.strokeStyle=col; cx.lineWidth=hour?1.6:1.1; cx.setLineDash(g.result?[2,3]:(hour?[6,4]:[4,4]));
     if(!off){ cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); } cx.setLineDash([]);
     if(off&&g.result){ cx.globalAlpha=0.45; }
     if(g.result){ cx.fillStyle=col; cx.beginPath();cx.arc(Xt(g.close),y,hour?4.5:3.5,0,7);cx.fill();
-      cx.fillStyle="#FFFFFF"; cx.font="7px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+2.5); cx.textAlign="left"; cx.font="9px "+FONT(); cx.globalAlpha=1; }
-    else if(g.close>now){ cx.fillStyle=col; cx.font="8px "+FONT(); cx.textAlign="left";
-      cx.fillText((hour?"HOUR \u2265":"")+"$"+Math.round(g.strike).toLocaleString(),xa+3,y-3); cx.font="9px "+FONT(); }
+      cx.fillStyle="#FFFFFF"; cx.font="8px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+3); cx.textAlign="left"; cx.font="11px "+FONT(); cx.globalAlpha=1; }
+    else if(g.close>now){ cx.fillStyle=col; cx.font="10px "+FONT(); cx.textAlign="left";
+      cx.fillText((hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,y-5); cx.font="11px "+FONT(); }
   }
   /* armed strike: dashed across its window, ghost fields confined to it */
   if(sk&&R){
@@ -2098,9 +2109,7 @@ function renderSweep(){
       cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([6,4]); cx.beginPath();cx.moveTo(xa,yS);cx.lineTo(xb,yS);cx.stroke(); cx.setLineDash([]);
     }
   }
-  /* seeded history, then the tape */
-  if(seeds.length>1){ cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
-    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q),y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke(); cx.setLineDash([]); }
+  /* the tape */
   const inDomSk=sk&&sk.strike>D.lo&&sk.strike<D.hi;
   const winning=p=>{ const above=p>=sk.strike; return (sk.call==="ABOVE")===above; };   /* green = the call is winning */
   drawKeyedLine(pts,X,Y,(p,j)=>inDomSk?(winning(p[j].p)?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC));
@@ -2114,39 +2123,39 @@ function renderSweep(){
       cx.fillStyle=gA; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
       cx.fillStyle=gB; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
       const yS=inDomSk?Y(sk.strike):(F.padT+F.ih/2);
-      cx.textAlign="right"; cx.font="15px "+FONT();
+      cx.textAlign="right"; cx.font="17px "+FONT();
       const cAbove=(sk.call==="ABOVE")?UPC:DNC, cBelow=(sk.call==="ABOVE")?DNC:UPC;
       cx.fillStyle=cAbove; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
       cx.fillStyle=cBelow; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
-      cx.font="9px "+FONT(); cx.fillStyle="rgba(15,46,63,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+48,yS-28));
+      cx.font="10px "+FONT(); cx.fillStyle="rgba(15,46,63,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+50,yS-30));
       cx.textAlign="left";
     }
     if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")&&inDomSk){
       const col=sk.outcome==="UP"?UPC:DNC; cx.strokeStyle=col; cx.lineWidth=1.8; cx.beginPath();cx.arc(Xt(R.tEnd),Y(sk.strike),6,0,7);cx.stroke();
-      cx.fillStyle=col; cx.font="10px "+FONT(); cx.textAlign="right"; cx.fillText(sk.outcome+" \u00b7 "+(sk.hit?"HIT":"MISS")+(sk.provisional?" \u00b7 provisional":""),Xt(R.tEnd)-8,Y(sk.strike)-8); cx.textAlign="left"; cx.font="9px "+FONT();
+      cx.fillStyle=col; cx.font="11px "+FONT(); cx.textAlign="right"; cx.fillText(sk.outcome+" \u00b7 "+(sk.hit?"HIT":"MISS")+(sk.provisional?" \u00b7 provisional":""),Xt(R.tEnd)-8,Y(sk.strike)-8); cx.textAlign="left"; cx.font="9px "+FONT();
     }
   }
   /* now cursor */
   cx.strokeStyle="rgba(15,46,63,.5)"; cx.lineWidth=1.2; cx.beginPath();cx.moveTo(Xt(now),F.padT);cx.lineTo(Xt(now),F.padT+F.ih);cx.stroke();
   cx.restore();
   /* foot clock at every gate, inward at the edges */
-  cx.fillStyle="rgba(0,135,168,.8)"; cx.font="9px "+FONT();
+  cx.font="11px "+FONT();
   for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
     const x=Xt(t), hour=(new Date(t).getMinutes()===0);
     cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
     cx.fillStyle=hour?"rgba(15,46,63,.8)":"rgba(0,135,168,.8)";
-    cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8);
+    cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-10);
   }
   cx.textAlign="left";
   /* axis pill for the armed strike */
   if(sk&&R){
     const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
-    if(inDomSk){ const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
-      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-11,w,22); cx.font="10px "+FONT(); cx.fillStyle="#FFFFFF";
-      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1); cx.font="9px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
-      cx.fillText(pa+" \u00b7 "+sk.call,x0+4,yS+9); }
-    else { const above=sk.strike>D.hi; cx.font="9px "+FONT(); cx.fillStyle="rgba(0,135,168,.85)";
-      cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+2,above?(F.padT+10):(F.padT+F.ih-4)); }
+    if(inDomSk){ const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-4;
+      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-13,w,26); cx.font="11px "+FONT(); cx.fillStyle="#FFFFFF"; cx.textAlign="left";
+      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1); cx.font="10px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
+      cx.fillText(pa+" "+sk.call.toLowerCase(),x0+4,yS+10); }
+    else { const above=sk.strike>D.hi; cx.font="10px "+FONT(); cx.fillStyle="rgba(0,135,168,.85)"; cx.textAlign="left";
+      cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+4,above?(F.padT+12):(F.padT+F.ih-6)); }
   }
   /* header */
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
@@ -2292,5 +2301,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905175808 -->
+<!-- build-20260905183955 -->
 </html>
