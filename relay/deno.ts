@@ -1,16 +1,14 @@
 // Alternate-IP relay to Kalshi's public API (Deno Deploy). Read-only, keyless.
-// Deploy from GitHub with this file as the entrypoint; paste the resulting
-// https://<name>.deno.dev URL into TUNE -> relay URL. History queries route here.
+// Deploy from GitHub with this file as the entrypoint; paste the resulting URL into TUNE / Advanced -> relay URL.
 const UP = "https://api.elections.kalshi.com/trade-api/v2";
 const ALLOW = /^\/(markets|events|series)(\/|$)/;
-const ORIGINS = ["https://btc-terminal.pages.dev", "https://ghostarchitecture.github.io", "http://localhost:8080"];
 
 Deno.serve(async (req: Request): Promise<Response> => {
   const u = new URL(req.url);
-  const o = req.headers.get("origin") || "";
   const cors: Record<string, string> = {
-    "access-control-allow-origin": ORIGINS.includes(o) ? o : ORIGINS[0],
-    "vary": "origin",
+    "access-control-allow-origin": "*",      // public read-only data; any instrument origin may read it
+    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-headers": "accept, content-type",
     "cache-control": "no-store",
   };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
