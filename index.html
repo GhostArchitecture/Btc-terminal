@@ -963,7 +963,8 @@ function kNetOk(base){ const K=S.k; if(K.bench&&K.bench[base]) K.bench[base].n=0
 async function kGet(path){
   const bases=kBases(path); if(!bases.length) throw new Error("no base");
   const K=S.k; const now=Date.now();
-  if(K.backoffUntil&&now<K.backoffUntil) throw new Error("backoff "+Math.ceil((K.backoffUntil-now)/1000)+"s");
+  K.backoff=K.backoff||{}; const cls0=/status=(settled|unopened)/.test(path)?"history":(/orderbook/.test(path)?"book":"live");
+  if(K.backoff[cls0]&&now<K.backoff[cls0]) throw new Error(cls0+" backoff "+Math.ceil((K.backoff[cls0]-now)/1000)+"s");
   /* pacer: never two Kalshi requests within 1.6 s of each other */
   const wait=(K.nextSlot||0)-Date.now(); if(wait>0) await sleep(wait);
   K.nextSlot=Date.now()+1600;
@@ -991,11 +992,11 @@ async function kGet(path){
       const ra=parseFloat(r.headers.get("retry-after")||"");
       K.fails=(K.fails||0)+1;
       const wait=isFinite(ra)&&ra>0?ra*1000:Math.min(120000,5000*Math.pow(2,Math.min(K.fails,5)));
-      K.backoffUntil=Date.now()+wait; K.last429=Date.now();
-      throw new Error("429 rate-limited \u2014 backing off "+Math.round(wait/1000)+"s");
+      K.backoff[cls]=Date.now()+wait; K.last429=Date.now(); K.last429cls=cls;
+      throw new Error("429 on "+cls+" \u2014 backing off "+Math.round(wait/1000)+"s");
     }
-    if(!r.ok){ K.fails=(K.fails||0)+1; K.backoffUntil=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status); }
-    K.fails=0; K.backoffUntil=0;
+    if(!r.ok){ K.fails=(K.fails||0)+1; K.backoff[cls]=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status+" on "+cls); }
+    K.fails=0; K.backoff[cls]=0;
     return await r.json();
   } catch(e){
     if(!(e.message&&/^(429|HTTP)/.test(e.message))) logIt(e.name==="AbortError"?"timeout":("ERR "+String(e.message||e)));
@@ -1007,9 +1008,10 @@ async function kalshiTick(now){
   try{
     if(!K.t0){ /* staggered first run: market now, book +3s, hourly +8s, history +25s, queue +60s */
       K.t0=now; K.lastMkt=0; K.lastOb=now-5000+3000; K.lastHour=now-60000+8000; K.lastSched=now-600000+25000; K.lastUnopened=now-1800000+60000; }
-    if(K.backoffUntil&&now<K.backoffUntil){ K.err="rate-limited \u2014 resuming in "+Math.ceil((K.backoffUntil-now)/1000)+"s"; return; }
+    K.backoff=K.backoff||{}; const bo=c=>K.backoff[c]&&now<K.backoff[c];
+    if(bo("live")||bo("book")) K.err="live rate-limited \u2014 resuming in "+Math.ceil((Math.max(K.backoff.live||0,K.backoff.book||0)-now)/1000)+"s";
     /* one request per tick, in priority order */
-    if(!K.cur||now>K.cur.close||now-K.lastMkt>20000){
+    if((!K.cur||now>K.cur.close||now-K.lastMkt>20000)&&!bo("live")){
       K.lastMkt=now;
       const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
       const m=(j.markets||[])[0];
@@ -1017,12 +1019,12 @@ async function kalshiTick(now){
       else K.cur=null;
       K.err=null; return;
     }
-    if(K.cur&&now-K.lastOb>8000){
+    if(K.cur&&now-K.lastOb>8000&&!bo("book")){
       K.lastOb=now;
       const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
       K.ob=kParseBook(j); K.obAt=Date.now(); K.err=null; return;
     }
-    if(now-K.lastHour>60000){
+    if(now-K.lastHour>60000&&!bo("live")){
       K.lastHour=now;
       const j=await kGet("/markets?series_ticker=KXBTCD&status=open&limit=100");
       const ms=(j.markets||[]).map(kParseMarket).filter(m=>m.strike!==null);
@@ -1031,13 +1033,13 @@ async function kalshiTick(now){
       else { K.hour=[]; K.hourClose=null; }
       K.err=null; return;
     }
-    if(K.hour.length&&S.idxPx&&now-(K.lastHourOb||0)>20000){
+    if(K.hour.length&&S.idxPx&&now-(K.lastHourOb||0)>20000&&!bo("book")){
       K.lastHourOb=now;
       let best=null; for(const m of K.hour){ if(best===null||Math.abs(m.strike-S.idxPx)<Math.abs(best.strike-S.idxPx)) best=m; }
       if(best){ const j=await kGet("/markets/"+encodeURIComponent(best.ticker)+"/orderbook?depth=5"); K.hourOb={ticker:best.ticker,ob:kParseBook(j),t:now}; }
       K.err=null; return;
     }
-    if(now-K.lastSched>600000){
+    if(now-K.lastSched>600000&&!bo("history")){
       K.lastSched=now;
       const since=Math.floor((now-6*3600000)/1000);
       const a=await kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+since+"&limit=40");
@@ -1045,7 +1047,7 @@ async function kalshiTick(now){
       K.sched=keep.concat((a.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
       K.schedHourDue=true; kReconcile(); K.err=null; return;
     }
-    if(K.schedHourDue){
+    if(K.schedHourDue&&!bo("history")){
       K.schedHourDue=false;
       const since=Math.floor((now-6*3600000)/1000);
       const b=await kGet("/markets?series_ticker=KXBTCD&status=settled&min_close_ts="+since+"&limit=200");
@@ -1053,7 +1055,7 @@ async function kalshiTick(now){
       K.sched=keep.concat((b.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
       kReconcile(); K.err=null; return;
     }
-    if(now-K.lastUnopened>1800000){
+    if(now-K.lastUnopened>1800000&&!bo("history")){
       K.lastUnopened=now;
       const u=await kGet("/markets?series_ticker=KXBTC15M&status=unopened&limit=8");
       const up=(u.markets||[]).map(kParseMarket);
@@ -1125,7 +1127,8 @@ function renderKalshi(){
     +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
     +' \u00b7 net edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
     +' \u00b7 vol '+Math.round(c.vol).toLocaleString()
-    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)):'')+(K.failover?(' \u00b7 failover '+K.failover):'')
+    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)+(K.last429cls?(' ('+K.last429cls+')'):'')):'')+(K.failover?(' \u00b7 failover '+K.failover):'')
+    +((K.backoff&&K.backoff.history&&K.backoff.history>Date.now())?(' \u00b7 history paused '+Math.ceil((K.backoff.history-Date.now())/1000)+'s'):'')
     +((K.benched&&K.bench&&K.bench[K.benched]&&K.bench[K.benched].until>Date.now())?(' \u00b7 <span style="color:var(--down)">benched '+K.benched+' '+Math.ceil((K.bench[K.benched].until-Date.now())/60000)+'m</span>'):'')+'</span>'
     +(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
   if(tb){
@@ -2043,7 +2046,7 @@ function renderSweep(){
   for(let i=pts.length-1;i>=0;i--){ const q=pts[i]; if(q.t<now-RECENT) break; if(q.p<rmn)rmn=q.p; if(q.p>rmx)rmx=q.p; }
   if(!isFinite(rmn)){ rmn=isFinite(mn)?mn:lastP; rmx=isFinite(mx)?mx:lastP; }
   let needLo=rmn, needHi=rmx;
-  for(const g of gates){ if(!g.result&&g.close>now){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
+  for(const g of gates){ if(!g.result&&g.close>now&&g.series==="15m"&&g.open<=now){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
   if(sk){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
   let half=Math.max((needHi-needLo)/2*S.cfg.pad, lastP*1.0e-4);
   /* close-weight: lean into the price–strike duel through the final minutes of an armed window */
@@ -2068,7 +2071,11 @@ function renderSweep(){
     const xa=Xt(Math.max(g.open,t0)), xb=Xt(Math.min(g.close,t1));
     const off=g.strike<D.lo||g.strike>D.hi; const y=off?(g.strike>D.hi?F.padT+5:F.padT+F.ih-5):Y(g.strike);
     const hour=g.series==="hour";
-    if(off&&!g.result) continue;                      /* a live strike outside the scale is carried by the axis, not drawn */
+    if(off&&!g.result){                               /* a live strike outside the scale rides the frame edge as a marker */
+      const col0=hour?"rgba(0,135,168,.9)":"rgba(0,135,168,.7)"; cx.fillStyle=col0; cx.font="8px "+FONT(); cx.textAlign="left";
+      cx.fillText((g.strike>D.hi?"\u25b2 ":"\u25bc ")+(hour?"HOUR \u2265":"")+"$"+Math.round(g.strike).toLocaleString(),xa+3,g.strike>D.hi?F.padT+10:F.padT+F.ih-4);
+      cx.setLineDash([2,3]); cx.strokeStyle=col0; cx.lineWidth=1; cx.beginPath(); cx.moveTo(xa,y); cx.lineTo(xb,y); cx.stroke(); cx.setLineDash([]);
+      cx.font="9px "+FONT(); continue; }
     const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(0,135,168,.75)":"rgba(0,135,168,.55)");
     cx.strokeStyle=col; cx.lineWidth=hour?1.6:1.1; cx.setLineDash(g.result?[2,3]:(hour?[6,4]:[4,4]));
     if(!off){ cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); } cx.setLineDash([]);
@@ -2279,5 +2286,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905143702 -->
+<!-- build-20260905160515 -->
 </html>
