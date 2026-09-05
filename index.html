@@ -304,6 +304,8 @@
     <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
       <span class="note num" id="srcnote">0 live</span></div>
     <div id="srcrows"></div>
+    <div class="lbl" style="margin-top:10px;letter-spacing:.08em">kalshi request trail — last 40, newest first · outcome = HTTP status, timeout, or the browser’s network error verbatim</div>
+    <div class="tblwrap"><table id="reqtrail"><thead><tr><th>Time</th><th>Base</th><th>Class</th><th>Outcome</th><th>ms</th></tr></thead><tbody></tbody></table></div>
     <div id="seednote" class="lbl" style="margin-top:6px;letter-spacing:.08em"></div>
   </section>
 
@@ -958,9 +960,20 @@ async function kGet(path){
   K.nextSlot=Date.now()+1600;
   K.reqLog=(K.reqLog||[]).filter(t=>t>Date.now()-60000); K.reqLog.push(Date.now());
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
+  const cls=/status=(settled|unopened)/.test(path)?"history":(/orderbook/.test(path)?"book":"live");
+  const t0=Date.now(); let usedBase=bases[0];
+  const logIt=(outcome)=>{ K.reqTrail=(K.reqTrail||[]); K.reqTrail.unshift({t:Date.now(),base:usedBase,cls,outcome,ms:Date.now()-t0}); if(K.reqTrail.length>40) K.reqTrail.length=40; };
   try{
-    let r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"});
-    if(r.status===429&&bases[1]){ K.failover=(K.failover||0)+1; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
+    let r;
+    try{ r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"}); }
+    catch(e0){
+      /* network-layer failure on the primary: name it, and try the other pool once */
+      K.lastNetErr={t:Date.now(),base:bases[0],msg:String(e0.message||e0)};
+      if(bases[1]){ usedBase=bases[1]; K.failover=(K.failover||0)+1; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
+      else throw e0;
+    }
+    if(r.status===429&&bases[1]&&usedBase===bases[0]){ K.failover=(K.failover||0)+1; usedBase=bases[1]; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
+    logIt(String(r.status));
     if(r.status===429){
       const ra=parseFloat(r.headers.get("retry-after")||"");
       K.fails=(K.fails||0)+1;
@@ -971,6 +984,9 @@ async function kGet(path){
     if(!r.ok){ K.fails=(K.fails||0)+1; K.backoffUntil=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status); }
     K.fails=0; K.backoffUntil=0;
     return await r.json();
+  } catch(e){
+    if(!(e.message&&/^(429|HTTP)/.test(e.message))) logIt(e.name==="AbortError"?"timeout":("ERR "+String(e.message||e)));
+    throw e;
   } finally{ clearTimeout(to); }
 }
 async function kalshiTick(now){
@@ -1031,7 +1047,7 @@ async function kalshiTick(now){
       K.sched=K.sched.filter(x=>x.result||!x.ticker.startsWith("KXBTC15M")).concat(up).sort((x,y)=>x.close-y.close);
       K.err=null; return;
     }
-  }catch(e){ K.err=String(e.message||e); }
+  }catch(e){ const m=String(e.message||e); K.err=(K.lastNetErr&&Date.now()-K.lastNetErr.t<3000)?(m+" \u00b7 "+K.lastNetErr.base):m; }
   finally{ K.busy=false; kSyncQuote(); renderKalshi(); }
 }
 function kOnNewMarket(pm){
@@ -1856,7 +1872,14 @@ function renderSpot(p){
   $("chips").innerHTML=chips;
   const sl=$("spotlbl"); if(sl) sl.textContent="BTC/USD \u00b7 line "+(S.leader||"\u2014").toUpperCase()+" \u00b7 peer-verified"+(S.idxPx?(" \u00b7 index "+fmtUSD.format(S.idxPx)):"");
 }
+function renderReqTrail(){
+  const tb=$("reqtrail")&&$("reqtrail").querySelector("tbody"); if(!tb) return;
+  const T=S.k.reqTrail||[];
+  tb.innerHTML=T.map(r=>'<tr><td class="num">'+new Date(r.t).toLocaleTimeString([],{hour12:false})+'</td><td class="num" style="color:var(--dim)">'+r.base+'</td><td>'+r.cls+'</td>'
+    +'<td class="num" style="color:var(--'+(r.outcome==="200"?"up":"down")+')">'+r.outcome+'</td><td class="num">'+r.ms+'</td></tr>').join("")||'<tr><td colspan="5" style="color:var(--faint)">no requests yet</td></tr>';
+}
 function renderSources(){
+  if((Math.floor(Date.now()/1000)%5)===0) renderReqTrail();
   const now=Date.now(); let live=0;
   const med=S.lastPx;
   $("srcrows").innerHTML=SOURCES.map(s=>{
@@ -2232,5 +2255,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905131817 -->
+<!-- build-20260905142229 -->
 </html>
