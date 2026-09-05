@@ -949,8 +949,17 @@ function kBases(path){
   const hist=/status=(settled|unopened)/.test(path);
   const primary=hist?(p||same||local):(same||p||local);
   const secondary=hist?(same||local):(p||local);
-  return [primary,secondary].filter((b,i,a)=>b&&a.indexOf(b)===i);
+  const K=S.k; K.bench=K.bench||{};
+  const ok=b=>{ const bn=K.bench[b]; return !(bn&&bn.until>Date.now()); };   /* circuit breaker: benched pools sit out */
+  const list=[primary,secondary].filter((b,i,a)=>b&&a.indexOf(b)===i);
+  const live=list.filter(ok);
+  return live.length?live:list;
 }
+function kNetFail(base){
+  const K=S.k; K.bench=K.bench||{}; const bn=K.bench[base]||(K.bench[base]={n:0,until:0});
+  bn.n++; if(bn.n>=3){ bn.until=Date.now()+5*60000; bn.n=0; K.benched=base; K.benchedAt=Date.now(); }
+}
+function kNetOk(base){ const K=S.k; if(K.bench&&K.bench[base]) K.bench[base].n=0; }
 async function kGet(path){
   const bases=kBases(path); if(!bases.length) throw new Error("no base");
   const K=S.k; const now=Date.now();
@@ -965,14 +974,18 @@ async function kGet(path){
   const logIt=(outcome)=>{ K.reqTrail=(K.reqTrail||[]); K.reqTrail.unshift({t:Date.now(),base:usedBase,cls,outcome,ms:Date.now()-t0}); if(K.reqTrail.length>40) K.reqTrail.length=40; };
   try{
     let r;
-    try{ r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"}); }
+    try{ r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[0]); }
     catch(e0){
-      /* network-layer failure on the primary: name it, and try the other pool once */
-      K.lastNetErr={t:Date.now(),base:bases[0],msg:String(e0.message||e0)};
-      if(bases[1]){ usedBase=bases[1]; K.failover=(K.failover||0)+1; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
+      K.lastNetErr={t:Date.now(),base:bases[0],msg:String(e0.message||e0)}; if(e0.name!=="AbortError") kNetFail(bases[0]);
+      if(bases[1]){ usedBase=bases[1]; K.failover=(K.failover||0)+1;
+        try{ r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[1]); }
+        catch(e1){ if(e1.name!=="AbortError") kNetFail(bases[1]); throw e1; } }
       else throw e0;
     }
-    if(r.status===429&&bases[1]&&usedBase===bases[0]){ K.failover=(K.failover||0)+1; usedBase=bases[1]; r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); }
+    if(r.status===429&&bases[1]&&usedBase===bases[0]&&!(K.bench&&K.bench[bases[1]]&&K.bench[bases[1]].until>Date.now())){
+      K.failover=(K.failover||0)+1; usedBase=bases[1];
+      try{ r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[1]); }
+      catch(e1){ if(e1.name!=="AbortError") kNetFail(bases[1]); throw e1; } }
     logIt(String(r.status));
     if(r.status===429){
       const ra=parseFloat(r.headers.get("retry-after")||"");
@@ -1112,7 +1125,8 @@ function renderKalshi(){
     +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
     +' \u00b7 net edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
     +' \u00b7 vol '+Math.round(c.vol).toLocaleString()
-    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)):'')+'</span>'
+    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)):'')+(K.failover?(' \u00b7 failover '+K.failover):'')
+    +((K.benched&&K.bench&&K.bench[K.benched]&&K.bench[K.benched].until>Date.now())?(' \u00b7 <span style="color:var(--down)">benched '+K.benched+' '+Math.ceil((K.bench[K.benched].until-Date.now())/60000)+'m</span>'):'')+'</span>'
     +(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
   if(tb){
     const rows=K.sched.filter(x=>x.ticker.startsWith("KXBTC15M"));
@@ -2265,5 +2279,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905143107 -->
+<!-- build-20260905143702 -->
 </html>
