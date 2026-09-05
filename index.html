@@ -181,7 +181,7 @@
 <div class="wrap">
 
   <header class="tile">
-    <div class="mark">BTC/USD<small>VALIDATED TAPE · ROUND INSTRUMENT</small></div>
+    <div class="mark">BTC/USD<small>PEER-VERIFIED TAPE · WINDOW INSTRUMENT</small></div>
     <div class="hright">
       <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
       <span id="status" class="pill dead">INIT</span>
@@ -200,7 +200,7 @@
 
   <div id="viewChart">
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Arming tray — one strike per 15-minute window</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Arming tray — one strike per window</span>
 </div>
     <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
@@ -280,7 +280,7 @@
   </section>
 
   <section class="tile" data-key="rounds">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Rounds — strike calls, 15-min windows</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Windows — your strike calls</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
       <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th class="model">Edge@arm</th><th>Vote</th><th>Outcome</th><th>Hit</th><th>Kalshi</th></tr></thead>
@@ -291,9 +291,9 @@
   </section>
 
   <section class="tile" data-key="intervals">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Interval analysis — completed 15-min windows</span>
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Window analysis — completed windows</span>
       <span class="note num" id="inote"></span></div>
-    <div id="trendmap" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px">no completed intervals yet</div>
+    <div id="trendmap" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px">no completed windows yet</div>
     <div class="tblwrap"><table id="intervals">
       <thead><tr><th>Window</th><th>Open</th><th>Close</th><th>Δ</th><th>Range</th><th>Strikes</th><th>Hits</th></tr></thead>
       <tbody></tbody>
@@ -381,11 +381,11 @@
     <p><b>Feeds.</b> Primary transport is a WebSocket stream per exchange with reconnect, backoff, and a 15 s
       silence watchdog; REST cross-verifies at 3 s (relaxed to ~12 s while a socket is healthy) and a REST print
       disputing its own socket by &gt;25 bp flags <i>drift</i>. Settlement uses only prints fresh within 10 s.</p>
-    <p><b>Rounds.</b> Intervals open on global quarter-hour time, phased 5-5-5. One strike per window, armable to
+    <p><b>Windows.</b> Windows open on global quarter-hour time, phased 5-5-5. One strike per window, armable to
       T−5 s; arming over an existing strike replaces it and logs the prior as WITHDRAWN. Kalshi-loaded strikes settle
       the way Kalshi does — provisionally on the index proxy’s 60-second average at close, overwritten by the official
       result when it lands — while manually entered strikes settle by the multi-source vote. Calls tally against the
-      50% coin. Each settled window writes an interval-analysis row. Logs persist in this browser.</p>
+      50% coin. Each settled window writes a window-analysis row. Logs persist in this browser.</p>
     <p><b>Strike probabilities (calibrated, fit-2026-09-05-a).</b> Calibrated against 2,000 settled KXBTC15M windows
       (Aug 15–Sep 5, 2026) with Kalshi’s own quote at eight points to expiry. Findings written into the engine: the
       market quote beats a lognormal at every horizon, so when a Kalshi quote exists the headline is a
@@ -1678,7 +1678,7 @@ function showVerdict(R){
   const other=live.length-u-d;
   let cls="flat"; if(u&&!d) cls="up"; else if(d&&!u) cls="down";
   v.className="num "+cls;
-  v.textContent="SETTLED "+timeStr(R.tEnd)+" \u2014 "+u+" UP \u00b7 "+d+" DOWN"
+  v.textContent="WINDOW SETTLED "+timeStr(R.tEnd)+" \u2014 "+u+" UP \u00b7 "+d+" DOWN"
     +(other?(" \u00b7 "+other+" other"):"")
     +(scored.length?(" \u00b7 calls "+hits+"/"+scored.length):"");
   v.style.display="block";
@@ -1826,7 +1826,7 @@ function renderIntervals(){
       const calls=L.reduce((a,e)=>a+e.nCalls,0), hits=L.reduce((a,e)=>a+e.nHits,0);
       tm.textContent="trend (last "+seq.length+"): "+marks+"  \u00b7 net "+(net>=0?"+":"")+net.toFixed(0)
         +"bp \u00b7 up "+ups+"/"+seq.length+(calls?(" \u00b7 strike hits "+hits+"/"+calls):"");
-    } else tm.textContent="no completed intervals yet";
+    } else tm.textContent="no completed windows yet";
   }
   tb.innerHTML=L.map(e=>{
     const d=e.dBp===null?"\u2014":fmtBp(e.dBp);
@@ -2301,5 +2301,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905183955 -->
+<!-- build-20260905194243 -->
 </html>
