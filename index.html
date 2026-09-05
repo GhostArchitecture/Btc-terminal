@@ -220,7 +220,7 @@
         <span><span class="sw" style="background:var(--up)"></span>above / rising</span>
         <span><span class="sw" style="background:var(--down)"></span>below / falling</span>
         <span><span class="sw" style="background:var(--model)"></span>Kalshi strikes span their windows · hour heavier · settled = pip Y/N at the gate</span>
-        <span>sweep ±30 min, never wipes · line = leader book, constituent-verified · dotted grey = seeded history</span>
+        <span>sweep −30/+15 min, never wipes · line = leader book, constituent-verified · dotted grey = seeded history</span>
       </div>
     </div>
     <div id="kstrip" class="tile num"></div>
@@ -2029,8 +2029,9 @@ function kalshiGates(t0,t1){
 }
 function renderSweep(){
   const F=frame(); const now=Date.now();
-  const SPAN=30*60000, t0=now-SPAN, t1=now+SPAN;
-  const Xt=t=>F.padL+(t-t0)/(2*SPAN)*F.iw, X=q=>Xt(q.t);
+  const BACK=30*60000, FWD=15*60000;              /* the future holds only the next gate, not dead space */
+  const t0=now-BACK, t1=now+FWD, SPAN=BACK;
+  const Xt=t=>F.padL+(t-t0)/(BACK+FWD)*F.iw, X=q=>Xt(q.t);
   const R=(S.round&&(S.round.state!=="settled"||now-S.round.settledAt<=20000))?S.round:null;
   const sk=liveStrike(R);
   /* tape in view */
@@ -2090,8 +2091,10 @@ function renderSweep(){
     const xa=Xt(Math.max(R.tStart,t0)), xb=Xt(Math.min(R.tEnd,t1)), yS=Y(sk.strike);
     const inDom=sk.strike>D.lo&&sk.strike<D.hi;
     if(inDom){
-      cx.fillStyle="rgba(14,148,100,.07)"; cx.fillRect(xa,F.padT,xb-xa,Math.max(0,yS-F.padT));
-      cx.fillStyle="rgba(214,73,61,.07)"; cx.fillRect(xa,yS,xb-xa,Math.max(0,F.padT+F.ih-yS));
+      /* winning side of the call is green: ABOVE wins above the strike, BELOW wins below it */
+      const winAbove=sk.call==="ABOVE";
+      cx.fillStyle=winAbove?"rgba(14,148,100,.07)":"rgba(214,73,61,.07)"; cx.fillRect(xa,F.padT,xb-xa,Math.max(0,yS-F.padT));
+      cx.fillStyle=winAbove?"rgba(214,73,61,.07)":"rgba(14,148,100,.07)"; cx.fillRect(xa,yS,xb-xa,Math.max(0,F.padT+F.ih-yS));
       cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([6,4]); cx.beginPath();cx.moveTo(xa,yS);cx.lineTo(xb,yS);cx.stroke(); cx.setLineDash([]);
     }
   }
@@ -2099,19 +2102,22 @@ function renderSweep(){
   if(seeds.length>1){ cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
     cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q),y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke(); cx.setLineDash([]); }
   const inDomSk=sk&&sk.strike>D.lo&&sk.strike<D.hi;
-  drawKeyedLine(pts,X,Y,(p,j)=>inDomSk?(p[j].p>=sk.strike?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC));
-  if(pts.length){ const hd=pts[pts.length-1]; cx.fillStyle=inDomSk?(hd.p>=sk.strike?UPC:DNC):"#0087A8"; cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill(); }
+  const winning=p=>{ const above=p>=sk.strike; return (sk.call==="ABOVE")===above; };   /* green = the call is winning */
+  drawKeyedLine(pts,X,Y,(p,j)=>inDomSk?(winning(p[j].p)?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC));
+  if(pts.length){ const hd=pts[pts.length-1]; cx.fillStyle=inDomSk?(winning(hd.p)?UPC:DNC):"#0087A8"; cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill(); }
   /* live odds gauge + settled mark for the armed strike */
   if(sk&&R){
     const P=sk.prob;
     if(P&&R.state!=="settled"){
       const gx=F.padL+F.iw-7, gw=5, split=F.padT+(1-P.over)*F.ih;
-      cx.fillStyle="rgba(14,148,100,.45)"; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
-      cx.fillStyle="rgba(214,73,61,.45)"; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
+      const gA=(sk.call==="ABOVE")?"rgba(14,148,100,.45)":"rgba(214,73,61,.45)", gB=(sk.call==="ABOVE")?"rgba(214,73,61,.45)":"rgba(14,148,100,.45)";
+      cx.fillStyle=gA; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
+      cx.fillStyle=gB; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
       const yS=inDomSk?Y(sk.strike):(F.padT+F.ih/2);
       cx.textAlign="right"; cx.font="15px "+FONT();
-      cx.fillStyle=UPC; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
-      cx.fillStyle=DNC; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
+      const cAbove=(sk.call==="ABOVE")?UPC:DNC, cBelow=(sk.call==="ABOVE")?DNC:UPC;
+      cx.fillStyle=cAbove; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
+      cx.fillStyle=cBelow; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
       cx.font="9px "+FONT(); cx.fillStyle="rgba(15,46,63,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+48,yS-28));
       cx.textAlign="left";
     }
@@ -2145,8 +2151,8 @@ function renderSweep(){
   /* header */
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
   const nextGate=Math.ceil(now/900000)*900000;
-  const left=(R?(R.state.toUpperCase()+(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call):" \u00b7 no strike")):"IDLE")+" \u00b7 line "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws"+(S.idxPx?(" \u00b7 index "+fmtUSD.format(S.idxPx)):"");
-  headerRow(F,left,"SWEEP \u00b130m \u00b7 next gate "+timeStr(nextGate)+" in "+mmss(nextGate-now));
+  const left=(R?(R.state.toUpperCase()+(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call+(sk.prob?(" \u00b7 "+Math.round((sk.call==="ABOVE"?sk.prob.over:sk.prob.under)*100)+"%"):"")):" \u00b7 no strike")):"IDLE")+" \u00b7 "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws"+(S.idxPx?(" \u00b7 idx "+fmtUSD.format(S.idxPx)):"");
+  headerRow(F,left,"SWEEP \u221230m/+15m \u00b7 next gate "+timeStr(nextGate)+" in "+mmss(nextGate-now));
 }
 function renderXTData(){
   const cur=S.xt.cur, tb=$("xtcur")&&$("xtcur").querySelector("tbody"), tl=$("xtled")&&$("xtled").querySelector("tbody");
@@ -2286,5 +2292,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905160515 -->
+<!-- build-20260905175808 -->
 </html>
