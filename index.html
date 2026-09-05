@@ -131,10 +131,7 @@
   .tgrp .num{min-width:3.4em;color:var(--ink);font-size:11px}
   #kstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px}
   #kstrip b{color:var(--ink);font-weight:600}
-  #ostrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-  .ochip{font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:999px;background:rgba(14,148,100,.10);border:1px solid rgba(14,148,100,.35);color:var(--up)}
-  .ochip.phase{cursor:pointer}
-  .ochip.phase:hover{background:rgba(14,148,100,.2)}
+  #vstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;line-height:1.7}
   #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
     font-size:12px;letter-spacing:.05em;background:var(--glass)}
   #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
@@ -222,12 +219,12 @@
       <div class="legend">
         <span><span class="sw" style="background:var(--up)"></span>above / rising</span>
         <span><span class="sw" style="background:var(--down)"></span>below / falling</span>
-        <span><span class="sw" style="background:var(--model)"></span>strike · axis tag = level + odds at set time</span>
-        <span>gauge = live over/under · line = leader book, peer-verified · dotted grey = seeded history · dotted blue = +5m projection (auto band)</span>
+        <span><span class="sw" style="background:var(--model)"></span>Kalshi strikes span their windows · hour heavier · settled = pip Y/N at the gate</span>
+        <span>sweep ±30 min, never wipes · line = leader book, constituent-verified · dotted grey = seeded history</span>
       </div>
     </div>
     <div id="kstrip" class="tile num"></div>
-    <div id="ostrip" class="tile num"></div>
+    <div id="vstrip" class="tile num"></div>
   </section>
   </div>
 
@@ -273,14 +270,13 @@
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">settled windows carry Kalshi’s official result and expiration value · the live window is marked ● · refreshes every 5 min</div>
   </section>
 
-  <section class="tile" data-key="orders">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Suggested orders — Kalshi-priced, phase &amp; active hour</span>
-      <span class="note num" id="onote"></span></div>
-    <div class="tblwrap"><table id="orders">
-      <thead><tr><th>Window</th><th>Level</th><th>Suggestion</th><th>Net edge</th><th>EV / stake · evidence</th><th class="model">Model P▲</th><th>YES bid/ask</th><th>NO bid/ask</th></tr></thead>
-      <tbody></tbody>
+  <section class="tile" data-key="viability">
+    <div class="shead"><span class="lbl" style="color:var(--dim)">Viability — spread captured vs adverse selection vs fees, per series</span>
+      <span class="note num" id="vianote"></span></div>
+    <div class="tblwrap"><table id="viatbl">
+      <thead><tr><th>Series · source</th><th>Fills</th><th>Spread</th><th>Adverse</th><th>Fees</th><th>Net</th><th>Verdict</th></tr></thead><tbody></tbody>
     </table></div>
-    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">edge = model minus the ask on that side · a rung is suggested only above your min-edge setting · phase chips load into the tray; hour rungs are informational (rounds are 15-minute) · every near-money rung is graded in the edge ledger · nothing executes</div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">history = backtest on 2,000 fifteen-minute windows and 240 hourly rungs (Aug 15–Sep 5) · live = this browser’s recording: a resting bid at the best bid is deemed filled when the bid moves through it within a minute; adverse = mid move in the minute after the fill; fees = maker in and out · flow rows split live fills by order-flow sign at posting time · net &gt; 0 over ≥ 30 fills is the only thing that inverts the verdict</div>
   </section>
 
   <section class="tile" data-key="rounds">
@@ -353,7 +349,6 @@
       <div class="tgrp"><span class="lbl">Tape read</span>
         <label>confidence <input type="range" id="c_conf" min="0.50" max="0.99" step="0.01"><span class="num" id="v_conf"></span></label>
         <label>adherence <input type="range" id="c_adh" min="0.5" max="2.0" step="0.05"><span class="num" id="v_adh"></span></label>
-        <label>min edge <input type="range" id="c_minEdge" min="1" max="10" step="0.5"><span class="num" id="v_minEdge"></span></label>
         <button id="cfgReset">RESET</button>
       </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
@@ -441,12 +436,15 @@
       finds <code>/api</code> on its own origin automatically — no URL to paste, and Cloudflare redeploys on every
       push. Alternatives: a Worker relay URL pasted into TUNE, or serving the file from localhost
       (<code>python3 -m http.server 8080</code>). TEST probes whichever path is active.</p>
-    <p><b>Suggested orders.</b> Priced against Kalshi’s own books: the 15-minute phase market and the active hour’s
-      KXBTCD ladder (the near-money rung carries a polled orderbook; others use record prices). Edge is model minus
-      the ask minus the taker fee, per side; a rung is suggested only above the threshold, with EV per stake and an
-      <i>evidence</i> tag — the realized-versus-implied record of that edge band in the ledger for the same series,
-      or “unverified” until the band holds thirty windows. Phase suggestions load into the tray with a tap; hour
-      rungs are informational. Nothing executes.</p>
+    <p><b>Viability.</b> The backtest that replaced the order map: on 2,000 fifteen-minute windows and 240 hourly
+      rungs, crossing the spread lost 4.2¢ per round trip and even a perfectly timed exit only broke even; posting as
+      a maker captured 0.92¢ of spread against 1.68¢ of adverse selection and 0.87¢ of fees on the 15-minute
+      series (1.03 / 2.34 / 0.87 hourly). No spread bucket, horizon, stop-loss or series inverted the sign. The panel
+      carries those history rows and, beside them, this browser’s live measurement of the same three quantities —
+      a resting bid at the best bid is deemed filled when the bid moves through it within a minute, adverse selection
+      is the mid move in the minute after, fees are maker in and out — split further by the order-flow sign at posting
+      time, the one filter history could not test. The verdict reads NEGATIVE and inverts only on net &gt; 0 over at
+      least thirty live fills. Nothing executes.</p>
     <p><b>Settlement sources.</b> Kalshi meters its history endpoints per IP, and the Cloudflare relay’s egress is
       shared with other tenants, so official results can arrive late. Every tracked window is therefore graded
       <i>provisionally</i> at close from the tape — the same 60-second average at close that Kalshi settles on,
@@ -467,14 +465,14 @@
       market, and separately for 15-minute windows and hourly rungs. Edge bands take one paper position per window
       at the ask, net of fee. Calibration deciles compare stated and realized rates. All ledgers persist and export
       to CSV; the verdict rule reads 15-minute windows only.</p>
-    <p><b>Chart.</b> Two states, both originating where the tape begins — no dead field. Armed, the frame is
-      the round: clock-mapped 5-5-5 marks with minute minors, dollar gridlines on round steps, the strike as a
-      dashed line with its axis tag (level + odds at set time; off-scale strikes as edge markers), the field
-      ghost-tinted green above the strike and red below, the tape color-keyed to its side. The y-scale dilates
-      instantly to contain jumps and contracts slowly when calm, and from mid-window a close-weight tightens
-      the frame around the price–strike duel so resolution reads with increasing confidence toward the mark.
-      Idle, the frame is the rolling tape, trend-colored. Dollar gridlines are always true; the zoom is
-      presentation only.</p>
+    <p><b>Chart.</b> One perpetual sweep: thirty minutes behind the cursor, thirty ahead, scrolling continuously and
+      never wiping. Kalshi’s quarter-hour gates arrive from the right, cross the cursor and leave to the left; the
+      hour gate draws heavier. Each Kalshi window carries its strike as a segment spanning only that window — the
+      15-minute strike appears when Kalshi reveals it at open, the hour’s near-money rung spans the hour — and a
+      settled window collapses to a pip at its gate, green YES or red NO, scrolling left as the record. An armed strike
+      draws dashed across its own window with the over/under fields confined to it; the live odds gauge sits at the
+      right edge and the axis pill carries the level and the odds at arming. The price line is the leader book,
+      constituent-verified; dotted grey ahead of it is seeded history. Nothing is projected on the frame.</p>
   </div>
   </div>
 </div>
@@ -536,6 +534,7 @@ const S={
   xt:{cur:null,pinned:[],stats:{},lastPin:0},  // tape extrapolation + ledger
   cfg:{pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,touched:{}},
   auto:{z:1.645,cov:null,n:0},
+  via:null,
   k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,lastHour:0,lastUnopened:0,hour:[],hourClose:null,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false,backoffUntil:0,fails:0},
   edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   bars:new Map(),       // minuteKey -> close (median)
@@ -985,14 +984,14 @@ async function kalshiTick(now){
       K.lastMkt=now;
       const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
       const m=(j.markets||[])[0];
-      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; if(isNew) kOnNewMarket(pm); }
+      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; K.curAt=Date.now(); if(isNew) kOnNewMarket(pm); }
       else K.cur=null;
       K.err=null; return;
     }
     if(K.cur&&now-K.lastOb>8000){
       K.lastOb=now;
       const j=await kGet("/markets/"+encodeURIComponent(K.cur.ticker)+"/orderbook?depth=5");
-      K.ob=kParseBook(j); K.err=null; return;
+      K.ob=kParseBook(j); K.obAt=Date.now(); K.err=null; return;
     }
     if(now-K.lastHour>60000){
       K.lastHour=now;
@@ -1033,7 +1032,7 @@ async function kalshiTick(now){
       K.err=null; return;
     }
   }catch(e){ K.err=String(e.message||e); }
-  finally{ K.busy=false; kSyncQuote(); renderKalshi(); renderOrders(); }
+  finally{ K.busy=false; kSyncQuote(); renderKalshi(); }
 }
 function kOnNewMarket(pm){
   const K=S.k;
@@ -1087,8 +1086,11 @@ function renderKalshi(){
   }
   const eTxt=(v)=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"pt");
   const eCol=(v)=>v===null?"var(--faint)":(v>=3?"var(--up)":v<=-3?"var(--down)":"var(--dim)");
+  const qAge=Math.round((Date.now()-(K.obAt||K.curAt||0))/1000); const stale=qAge>30;
+  strip.style.color=stale?"var(--faint)":"";
   strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">KALSHI '+timeStr(c.open)+"\u2013"+timeStr(c.close)+'</span> '
     +'strike <b>'+(c.strike?fmtUSD.format(c.strike):"TBD")+'</b>'
+    +(stale?(' <span style="color:var(--down)">\u26a0 quotes stale '+qAge+'s</span>'):(' <span style="color:var(--faint)">\u00b7 quotes '+qAge+'s</span>'))
     +' \u00b7 YES '+(ob?cents(ob.yesBid)+"/"+cents(ob.yesAsk):cents(c.yesBid)+"/"+cents(c.yesAsk))
     +' \u00b7 NO '+(ob?cents(ob.noBid)+"/"+cents(ob.noAsk):cents(c.noBid)+"/"+cents(c.noAsk))
     +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
@@ -1105,7 +1107,7 @@ function renderKalshi(){
       const rc=m.result==="yes"?"var(--up)":m.result==="no"?"var(--down)":"var(--faint)";
       return '<tr'+(cur?' style="background:rgba(0,135,168,.06)"':'')+'><td class="num" style="color:var(--dim)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span style="color:var(--bondi)">\u25cf</span>':'')+'</td>'
         +'<td class="num">'+(m.strike?fmtUSD.format(m.strike):"TBD")+'</td>'
-        +'<td class="num">'+(m.last!==null?m.last.toFixed(1)+"\u00a2":"\u2014")+'</td>'
+        +'<td class="num">'+((m.last!==null&&m.last!==undefined)?m.last.toFixed(1)+"\u00a2":"\u2014")+'</td>'
         +'<td class="num" style="color:var(--faint)">'+Math.round(m.vol).toLocaleString()+'</td>'
         +'<td class="num">'+(m.expVal!==null?fmtUSD.format(m.expVal):"\u2014")+'</td>'
         +'<td class="num" style="color:'+rc+'">'+(m.result?m.result.toUpperCase():m.status)+'</td></tr>';
@@ -1196,11 +1198,6 @@ function refSnap(w){
   let best=null; for(const s of w.snaps){ if(s.tau<0) continue; if(best===null||Math.abs(s.tau-6)<Math.abs(best.tau-6)) best=s; } return best;
 }
 function kFee(ask){ return Math.ceil(0.07*ask*(1-ask)*100)/100; }
-function bandEvidence(series,edge){
-  const E=edgeStatsFor(series); if(!E) return "unverified (n0)";
-  const b=E.bands.find(b=>Math.abs(edge)>=b.lo&&Math.abs(edge)<b.hi); if(!b||b.n<30) return "unverified (n"+(b?b.n:0)+")";
-  return "band: realized "+Math.round(100*b.win/b.n)+"% vs implied "+Math.round(100*b.mkt/b.n)+"% (n"+b.n+")";
-}
 function edgeStatsFor(series){
   const all=Object.values(S.edge.windows).filter(w=>w.result&&w.snaps.length);
   const W=all.filter(w=>series==="all"||(series==="15m"?w.ticker.startsWith("KXBTC15M"):!w.ticker.startsWith("KXBTC15M")));
@@ -1291,61 +1288,61 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 /* ---------------------------------------------------------------- suggested orders (Kalshi-priced, phase + hour) */
-function kOrders(now){
-  const K=S.k, P0=(S.idxPx!==undefined&&S.idxPx!==null)?S.idxPx:S.lastPx; if(P0===null) return [];
+/* ---------------------------------------------------------------- viability (maker economics, live) */
+const MAKER_RATE=0.0175;
+const VIA_HIST={ "15m":{spread:0.92,adv:1.68,fee:0.87,n:18485}, "hourly":{spread:1.03,adv:2.34,fee:0.87,n:1286} };
+function viaLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.via")||"null"); if(j&&j.v===1) S.via=j; }catch(e){} if(!S.via||S.via.v!==1) S.via={v:1,series:{}}; }
+function viaSave(){ try{ localStorage.setItem("btc.via",JSON.stringify(S.via)); }catch(e){} }
+function viaSeries(k){ return S.via.series[k]||(S.via.series[k]={posts:0,fills:0,spread:0,adv:0,fee:0,flow:{with:{n:0,adv:0},against:{n:0,adv:0},none:{n:0,adv:0}}}); }
+function viaSample(now){
+  /* once a minute: post a hypothetical bid at the best bid on each tracked market; grade the previous post */
+  const K=S.k; if(!K.cur) return;
+  S.viaPend=S.viaPend||{};
+  const cands=[];
+  if(K.cur&&K.ob&&K.ob.yesBid!==null&&K.ob.yesAsk!==null) cands.push({key:"15m",ticker:K.cur.ticker,yb:K.ob.yesBid,ya:K.ob.yesAsk});
+  if(K.hourOb&&K.hourOb.ob&&K.hourOb.ob.yesBid!==null&&K.hourOb.ob.yesAsk!==null&&now-K.hourOb.t<40000) cands.push({key:"hourly",ticker:K.hourOb.ticker,yb:K.hourOb.ob.yesBid,ya:K.hourOb.ob.yesAsk});
+  for(const c of cands){
+    const p=S.viaPend[c.key];
+    if(p&&p.ticker===c.ticker&&now-p.t>=55000&&now-p.t<=125000){
+      const V=viaSeries(c.key); V.posts++;
+      const filled=c.yb<p.yb;                                  /* bid moved through our resting price */
+      if(filled){ const mid0=(p.yb+p.ya)/2, mid1=(c.yb+c.ya)/2; const adv=mid1-mid0;   /* cents */
+        const fee=100*MAKER_RATE*(mid0/100)*(1-mid0/100)*2;
+        V.fills++; V.spread+=(p.ya-p.yb); V.adv+=adv; V.fee+=fee;
+        const fk=p.ofi===null?"none":(p.ofi>0.15?"with":p.ofi<-0.15?"against":"none");
+        V.flow[fk].n++; V.flow[fk].adv+=adv; }
+      S.viaPend[c.key]=null;
+    }
+    if(!S.viaPend[c.key]||now-S.viaPend[c.key].t>125000||S.viaPend[c.key].ticker!==c.ticker){
+      const G=S.sig; S.viaPend[c.key]={t:now,ticker:c.ticker,yb:c.yb,ya:c.ya,ofi:(G&&G.ofi60)?G.ofi60.x:null};
+    }
+  }
+  viaSave();
+}
+function viaRows(){
   const rows=[];
-  const eval_=(m,label)=>{
-    if(m.strike===null) return;
-    const ob=(K.cur&&m.ticker===K.cur.ticker)?K.ob:((K.hourOb&&K.hourOb.ticker===m.ticker&&now-K.hourOb.t<40000)?K.hourOb.ob:null);
-    const qb0=ob&&ob.yesBid!==null?ob.yesBid:m.yesBid, qa0=ob&&ob.yesAsk!==null?ob.yesAsk:m.yesAsk;
-    const quote=(qb0!==null&&qa0!==null&&qa0>0)?{q:((qb0+qa0)/2)/100,spread:(qa0-qb0)/100}:null;
-    const P=strikeProbs({strike:m.strike,tEnd:m.close,quote},now); if(!P) return;
-    const ya=ob&&ob.yesAsk!==null?ob.yesAsk:m.yesAsk, na=ob&&ob.noAsk!==null?ob.noAsk:m.noAsk;
-    const yb=ob&&ob.yesBid!==null?ob.yesBid:m.yesBid, nb=ob&&ob.noBid!==null?ob.noBid:m.noBid;
-    const okY=ya!==null&&ya>0&&ya<100, okN=na!==null&&na>0&&na<100;
-    /* net edge = model minus ask minus Kalshi taker fee (in points) */
-    const eY=okY?(P.over-ya/100)*100-100*kFee(ya/100):null, eN=okN?((1-P.over)-na/100)*100-100*kFee(na/100):null;
-    const thr=(S.cfg.touched&&S.cfg.touched.minEdge)?S.cfg.minEdge:1.0;   /* automatic threshold: 1 pt net of fee */
-    let side=null, edge=null, ask=null;
-    if(eY!==null&&(eN===null||eY>=eN)&&eY>=thr){ side="BUY YES"; edge=eY; ask=ya; }
-    else if(eN!==null&&eN>=thr){ side="BUY NO"; edge=eN; ask=na; }
-    const ev=side?edge/ask*100:null;
-    const ev_=side?bandEvidence(label==="phase"?"15m":"hourly",edge):null;
-    rows.push({label,ticker:m.ticker,strike:m.strike,bp:1e4*Math.log(m.strike/P0),close:m.close,pm:P.over,yb,ya,nb,na,eY,eN,side,edge,ask,ev,evid:ev_,vol:m.vol,phase:label==="phase"});
-  };
-  if(K.cur) eval_(K.cur,"phase");
-  for(const m of K.hour){ if(Math.abs(1e4*Math.log(m.strike/P0))<=150) eval_(m,"hour"); }
-  rows.sort((a,b)=>(b.ev===null?-1e9:b.ev)-(a.ev===null?-1e9:a.ev));
+  for(const key of ["15m","hourly"]){
+    const h=VIA_HIST[key]; rows.push({label:key+" \u00b7 history",n:h.n,spread:h.spread,adv:h.adv,fee:h.fee,net:h.spread-h.adv-h.fee,live:false});
+    const V=S.via&&S.via.series[key];
+    if(V&&V.fills){ const s=V.spread/V.fills, a=-V.adv/V.fills, f=V.fee/V.fills; rows.push({label:key+" \u00b7 live",n:V.fills,spread:s,adv:a,fee:f,net:s-a-f,live:true,posts:V.posts}); }
+    else rows.push({label:key+" \u00b7 live",n:0,spread:null,adv:null,fee:null,net:null,live:true,posts:V?V.posts:0});
+    if(V){ for(const fk of ["with","against"]){ const x=V.flow[fk]; if(x.n){ const s=V.spread/V.fills, f=V.fee/V.fills, a=-x.adv/x.n; rows.push({label:key+" \u00b7 live, flow "+fk,n:x.n,spread:s,adv:a,fee:f,net:s-a-f,live:true,sub:true}); } } }
+  }
   return rows;
 }
-function renderOrders(){
-  const tb=$("orders")&&$("orders").querySelector("tbody"), strip=$("ostrip");
-  if(!tb&&!strip) return;
-  if(!kalshiBase()){ if(strip) strip.innerHTML='<span style="color:var(--faint)">ORDERS \u00b7 Kalshi not connected</span>'; if(tb) tb.innerHTML=""; return; }
-  const rows=kOrders(Date.now());
-  const cents=v=>v===null?"\u2014":v.toFixed(1)+"\u00a2";
-  const pt=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"pt");
-  const sug=rows.filter(r=>r.side);
-  if(strip){
-    strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">ORDERS \u00b7 min edge '+S.cfg.minEdge+'pt</span> '
-      +(sug.length?sug.slice(0,3).map(r=>'<span class="ochip'+(r.phase?' phase':'')+'"'+(r.phase?(' data-p="'+r.strike.toFixed(2)+'" data-call="'+(r.side==="BUY YES"?"ABOVE":"BELOW")+'"'):'')+'>'
-        +(r.phase?"PHASE ":"HOUR ")+timeStr(r.close)+' '+fmtUSD.format(r.strike)+' '+r.side+' @'+r.ask.toFixed(1)+'\u00a2 \u00b7 net '+pt(r.edge)+' \u00b7 EV '+(r.ev>=0?"+":"")+r.ev.toFixed(0)+'% \u00b7 '+(r.evid||"")+'</span>').join(" ")
-        :'<span style="color:var(--dim)">no rung clears the edge threshold \u2014 nothing suggested</span>');
-  }
-  if(tb){
-    tb.innerHTML=rows.map(r=>{
-      const c=r.side?"var(--up)":"var(--faint)";
-      return '<tr'+(r.side?' style="background:rgba(14,148,100,.05)"':'')+'><td class="num" style="color:var(--dim)">'+(r.phase?"phase ":"hour ")+timeStr(r.close)+'</td>'
-        +'<td class="num">'+fmtUSD.format(r.strike)+'<span class="sub">'+fmtBp(r.bp)+'</span></td>'
-        +'<td class="num" style="color:'+c+'">'+(r.side?(r.side+" @"+r.ask.toFixed(1)+"\u00a2"):"\u2014")+'</td>'
-        +'<td class="num" style="color:'+c+'">'+(r.side?pt(r.edge):("Y "+pt(r.eY)+" / N "+pt(r.eN)))+'</td>'
-        +'<td class="num" style="color:'+c+'">'+(r.ev===null?"\u2014":((r.ev>=0?"+":"")+r.ev.toFixed(0)+"%"))+(r.evid?('<span class="sub">'+r.evid+'</span>'):'')+'</td>'
-        +'<td class="num model">'+Math.round(r.pm*100)+'%</td>'
-        +'<td class="num" style="color:var(--faint)">'+cents(r.yb)+'/'+cents(r.ya)+'</td>'
-        +'<td class="num" style="color:var(--faint)">'+cents(r.nb)+'/'+cents(r.na)+'</td></tr>';
-    }).join("");
-    $("onote").textContent=rows.length?(rows.length+" rungs \u00b7 "+sug.length+" clear "+S.cfg.minEdge+"pt"+(S.k.hourClose?(" \u00b7 hour closes "+timeStr(S.k.hourClose)):"")):"waiting for Kalshi ladder";
-  }
+function renderViability(){
+  const strip=$("vstrip"), tb=$("viatbl")&&$("viatbl").querySelector("tbody"), note=$("vianote");
+  const rows=viaRows(); const f2=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(2)+"\u00a2");
+  const verdict=r=>r.n<30?"insufficient (n"+r.n+")":(r.net>0?"positive":"negative");
+  if(tb) tb.innerHTML=rows.map(r=>'<tr'+(r.sub?' style="color:var(--dim)"':'')+'><td>'+r.label+'</td><td class="num">'+r.n+(r.posts!==undefined?'<span class="sub">of '+r.posts+' posts</span>':'')+'</td>'
+    +'<td class="num">'+(r.spread===null?"\u2014":r.spread.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.adv===null?"\u2014":r.adv.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.fee===null?"\u2014":r.fee.toFixed(2)+"\u00a2")+'</td>'
+    +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td><td class="num" style="color:var(--'+(r.n>=30&&r.net>0?"up":"down")+')">'+(r.spread===null?"no fills yet":verdict(r))+'</td></tr>').join("");
+  const live15=rows.find(r=>r.label==="15m \u00b7 live"), liveH=rows.find(r=>r.label==="hourly \u00b7 live");
+  const h15=rows.find(r=>r.label==="15m \u00b7 history"), hH=rows.find(r=>r.label==="hourly \u00b7 history");
+  const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--faint)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
+    +' \u00b7 <span style="color:var(--'+((l&&l.n>=30&&l.net>0)?"up":"down")+')">'+((l&&l.n>=30&&l.net>0)?"POSITIVE":"NEGATIVE")+'</span>';
+  if(strip) strip.innerHTML='<span class="lbl">viability \u00b7 maker round trip \u00b7 spread \u2212 adverse \u2212 fees</span> '+txt("15m",h15,live15)+' \u00b7 '+txt("hour",hH,liveH);
+  if(note) note.textContent="verdict inverts only on net > 0 over \u2265 30 live fills";
 }
 /* ---------------------------------------------------------------- verdict (pre-registered decision rule) */
 const VERDICT_RULE={minWindows:200,brierCI:0.90,bandMinN:30,bandMargin:3,pnlMinN:100,pnlDays:2};
@@ -1973,274 +1970,129 @@ function seedPts(tFrom,tTo){
   for(let k=k0;k<=k1;k++){ const c=S.bars.get(k); if(c===undefined) continue; const t=(k+1)*60000; if(t>=tFrom&&t<tTo) out.push({t,p:c}); }
   return out;
 }
-function drawProjection(X,Y,now){
-  const cur=S.xt.cur; if(!cur||!cur.steps.length) return;
-  const P0={t:cur.t0,p:cur.P0};
-  cx.beginPath(); cx.moveTo(X(P0),Y(cur.P0));
-  for(const s of cur.steps) cx.lineTo(X(s),Y(s.hi));
-  for(let i=cur.steps.length-1;i>=0;i--) cx.lineTo(X(cur.steps[i]),Y(cur.steps[i].lo));
-  cx.closePath(); cx.fillStyle="rgba(0,135,168,.09)"; cx.fill();
-  cx.beginPath(); cx.moveTo(X(P0),Y(cur.P0));
-  for(const s of cur.steps) cx.lineTo(X(s),Y(s.p));
-  cx.strokeStyle="#0087A8"; cx.setLineDash([3,4]); cx.lineWidth=1.4; cx.stroke(); cx.setLineDash([]);
-  for(const s of cur.steps){ cx.fillStyle="#0087A8"; cx.beginPath();cx.arc(X(s),Y(s.p),1.8,0,7);cx.fill(); }
-  /* recently resolved pins: ring at projection, dot at print */
-  for(const pn of S.xt.pinned){ for(const s of pn.steps){ if(!s.res||s.res.void||s.t<now-300000||s.t>now) continue;
-    cx.strokeStyle=s.res.inB?UPC:DNC; cx.lineWidth=1.1; cx.beginPath();cx.arc(X(s),Y(s.p),2.6,0,7);cx.stroke(); } }
+const ys={c:null,s:null};
+function liveStrike(R){ if(!R) return null; const a=R.strikes.filter(s=>!s.withdrawn); return a.length?a[a.length-1]:null; }
+function kalshiGates(t0,t1){
+  /* Kalshi windows visible in the sweep: 15-minute markets (settled, live, upcoming) and the decisive hourly rung per hour */
+  const K=S.k, out=[];
+  const seen=new Set();
+  const push=(m,series)=>{ if(!m||m.strike===null||m.strike===undefined||seen.has(m.ticker)) return; if(m.close<t0||m.open>t1) return; seen.add(m.ticker);
+    out.push({ticker:m.ticker,open:m.open,close:m.close,strike:m.strike,result:m.result||null,expVal:m.expVal===undefined?null:m.expVal,series}); };
+  if(K.cur) push(K.cur,"15m");
+  for(const m of K.sched){ if(m.ticker.startsWith("KXBTC15M")) push(m,"15m"); }
+  /* hourly: live hour -> near-money rung; settled hours -> rung nearest the settle value */
+  if(K.hour&&K.hour.length&&S.idxPx){ let best=null; for(const m of K.hour){ if(best===null||Math.abs(m.strike-S.idxPx)<Math.abs(best.strike-S.idxPx)) best=m; } if(best) push(best,"hour"); }
+  const byClose={};
+  for(const m of K.sched){ if(!m.ticker.startsWith("KXBTCD")||!m.result||m.expVal===null||m.expVal===undefined) continue; (byClose[m.close]=byClose[m.close]||[]).push(m); }
+  for(const c of Object.keys(byClose)){ const arr=byClose[c]; let best=null; for(const m of arr){ if(best===null||Math.abs(m.strike-m.expVal)<Math.abs(best.strike-best.expVal)) best=m; } if(best) push(best,"hour"); }
+  return out;
 }
-const yv={c:null,s:null}, yr={c:null,s:null};
-function renderIdle(){
-  const now=Date.now(), F=frame();
-  cx.font="9px "+FONT();
-  const tp=S.tape;
-  if(tp.length<2){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT();
-    cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
-  const t1=now+5*60000;
-  const seedsAll=seedPts(now-15*60000,tp[0].t);
-  const t0=Math.max(now-15*60000, (seedsAll.length?seedsAll[0].t:tp[0].t)-20000);
-  const seeds=seedsAll.filter(q=>q.t>=t0);
-  const X=q=>F.padL+((q.t-t0)/(t1-t0))*F.iw;
-  const Xt=t=>F.padL+((t-t0)/(t1-t0))*F.iw;
-  const pts=[]; let mn=Infinity,mx=-Infinity;
-  for(const q of tp){ if(q.t<t0-2000) continue;
-    pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+function renderSweep(){
+  const F=frame(); const now=Date.now();
+  const SPAN=30*60000, t0=now-SPAN, t1=now+SPAN;
+  const Xt=t=>F.padL+(t-t0)/(2*SPAN)*F.iw, X=q=>Xt(q.t);
+  const R=(S.round&&(S.round.state!=="settled"||now-S.round.settledAt<=20000))?S.round:null;
+  const sk=liveStrike(R);
+  /* tape in view */
+  const tp=S.tape, pts=[]; let mn=Infinity,mx=-Infinity;
+  for(let i=Math.max(0,tp.length-8000);i<tp.length;i++){ const q=tp[i]; if(q.t<t0-2000) continue; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+  const seeds=seedPts(t0,pts.length?pts[0].t:now);
   for(const q of seeds){ if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
-  if(S.xt.cur){ for(const s of S.xt.cur.steps){ if(s.p<mn)mn=s.p; if(s.p>mx)mx=s.p; } }
-  if(!isFinite(mn)){ cx.fillStyle="#7D97A6"; cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); return; }
-  const cT=(mn+mx)/2, sT=Math.max((mx-mn)/2*1.22, cT*0.0004);
-  const D=easeDomain(yv,cT,sT,mn,mx);
+  const gates=kalshiGates(t0,t1);
+  const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:null));
+  if(lastP===null){ cx.fillStyle="#7D97A6"; cx.font="9px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
+  if(!isFinite(mn)){ mn=lastP; mx=lastP; }
+  let needLo=mn, needHi=mx;
+  for(const g of gates){ if(g.close>=now-SPAN/2){ needLo=Math.min(needLo,g.strike); needHi=Math.max(needHi,g.strike); } }
+  if(sk){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
+  const half=Math.max((needHi-needLo)/2*S.cfg.pad, lastP*1.2e-4);
+  const D=easeDomain(ys,lastP,half,needLo-lastP*2e-5,needHi+lastP*2e-5);
   const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
-  yGrid(F,D.lo,D.hi,Y);
-  /* dynamic clock ticks */
-  cx.font="11px "+FONT();
-  for(let t=Math.ceil(t0/300000)*300000; t<=t1; t+=300000){
-    const x=Xt(t);
-    cx.strokeStyle="rgba(15,46,63,.14)";
-    cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke();
-    cx.fillStyle="#3E6274";
-    cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
-    cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8); cx.textAlign="left";
-  }
-  cx.strokeStyle="rgba(15,46,63,.16)";
-  for(let t=Math.ceil(t0/60000)*60000; t<=t1; t+=60000){
-    const x=Xt(t);
-    cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
-  }
-  cx.strokeStyle="rgba(15,46,63,.4)"; cx.beginPath();cx.moveTo(Xt(now),F.padT);cx.lineTo(Xt(now),F.padT+F.ih);cx.stroke();
   cx.font="9px "+FONT();
+  yGrid(F,D.lo,D.hi,Y);
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-  if(seeds.length>1){
-    cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
-    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke();
-    cx.setLineDash([]);
-  }
-  /* trend-keyed tape */
-  let li=0;
-  drawKeyedLine(pts,X,Y,(P,j)=>{
-    while(li<j&&P[li].t<P[j].t-45000) li++;
-    if(li>j)li=j;
-    return P[j].p>=P[li].p?UPC:DNC;
-  });
-  const hd=pts[pts.length-1];
-  cx.fillStyle="#0087A8";
-  cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill();
-  drawProjection(X,Y,now);
-  cx.restore();
-  /* header + centered prompt */
-  const nb=nextBoundary(now), lastB=nb-900000;
-  const nWS=EXCH.filter(id=>S.src[id].ws).length;
-  headerRow(F,"IDLE \u00b7 line "+(S.leader||hd.src||"").toUpperCase()+" \u00b7 tape "+nWS+"ws",
-    "WINDOW "+timeStr(lastB)+"\u2013"+timeStr(nb));
-  cx.fillStyle="rgba(0,135,168,.6)"; cx.font="10px "+FONT(); cx.textAlign="center";
-  cx.fillText("ARM ANYTIME \u00b7 SETTLES IN "+mmss(nb-now),F.padL+F.iw/2,F.padT+22);
-  cx.textAlign="left"; cx.font="9px "+FONT();
-}
-function renderRound(){
-  const now=Date.now(), R=S.round, F=frame();
-  cx.font="9px "+FONT();
-  const e=(now-R.tStart)/60000;
-  const tp=S.tape;
-  const acts=activeStrikes(R);
-  const sk=acts.length?acts[acts.length-1]:null;
-  const dataStartM=tp.length?((tp[0].t-R.tStart)/60000):-5;
-  const xMin=Math.max(-S.cfg.lookback, Math.min(0, dataStartM-0.3));
-  const xMax=15.6;
-  const X=q=>F.padL+(((q.t-R.tStart)/60000)-xMin)/(xMax-xMin)*F.iw;
-  const Xm=m=>F.padL+(m-xMin)/(xMax-xMin)*F.iw;
-  const pts=[]; let pmn=Infinity,pmx=-Infinity;
-  for(const q of tp){
-    const m=(q.t-R.tStart)/60000;
-    if(m<xMin-0.5) continue;
-    pts.push(q);
-    if(q.p<pmn)pmn=q.p; if(q.p>pmx)pmx=q.p;
-  }
-  if(S.xt.cur){ for(const s of S.xt.cur.steps){ if(s.t<=R.tEnd){ if(s.p<pmn)pmn=s.p; if(s.p>pmx)pmx=s.p; } } }
-  const seedFrom=R.tStart+xMin*60000, seedTo=tp.length?tp[0].t:now;
-  const seeds=seedPts(seedFrom,seedTo);
-  for(const q of seeds){ if(q.p<pmn)pmn=q.p; if(q.p>pmx)pmx=q.p; }
-  const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:0));
-  if(!isFinite(pmn)){ pmn=lastP; pmx=lastP; }
-  const inDom=sk?Math.abs(1e4*Math.log(sk.strike/lastP))<=60:false;
-  let needLo=pmn, needHi=pmx;
-  if(sk&&inDom){ needLo=Math.min(needLo,sk.strike); needHi=Math.max(needHi,sk.strike); }
-  const floorS=lastP*0.00035;
-  const baseHalf=Math.max((needHi-needLo)/2*S.cfg.pad, floorS);
-  let cT=(needLo+needHi)/2, sT=baseHalf;
-  if(sk&&inDom){
-    const g=Math.pow(clamp((e-S.cfg.closeStart)/Math.max(1,14-S.cfg.closeStart),0,1),1.4)*S.cfg.closeStr;
-    const duelHalf=Math.max(Math.abs(lastP-sk.strike)*1.6, floorS);
-    sT=baseHalf*(1-g)+Math.max(duelHalf,(needHi-needLo)/2*1.03)*g;
-    cT=(1-g)*cT+g*((lastP+sk.strike)/2);
-  }
-  const D=easeDomain(yr,cT,sT,needLo,needHi);
-  const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
-  yGrid(F,D.lo,D.hi,Y);
-  /* 5-5-5 marks + minute minors */
-  cx.font="11px "+FONT();
-  for(let m=0;m<=15;m+=5){
-    const x=Xm(m);
-    cx.strokeStyle=m===0?"rgba(0,135,168,.45)":"rgba(0,135,168,.22)";
-    cx.setLineDash(m===0?[]:[2,5]); cx.lineWidth=1;
+  /* future field */
+  cx.fillStyle="rgba(0,135,168,.035)"; cx.fillRect(Xt(now),F.padT,F.padL+F.iw-Xt(now),F.ih);
+  /* gates: quarter-hours light, hours heavy; labels at the foot */
+  for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
+    const x=Xt(t), hour=(new Date(t).getMinutes()===0);
+    cx.strokeStyle=hour?"rgba(15,46,63,.35)":"rgba(15,46,63,.14)"; cx.lineWidth=hour?1.4:1; cx.setLineDash(hour?[]:[3,4]);
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
-    cx.fillStyle="rgba(0,135,168,.8)";
-    cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
-    cx.fillText(timeStr(R.tStart+m*60000),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8); cx.textAlign="left";
   }
-  cx.strokeStyle="rgba(15,46,63,.16)";
-  for(let m=Math.ceil(xMin);m<=15;m++){
-    const x=Xm(m);
-    cx.beginPath();cx.moveTo(x,F.padT+F.ih-4);cx.lineTo(x,F.padT+F.ih);cx.stroke();
+  /* Kalshi windows: strike segment across each window; settled -> ribbon pip at the gate */
+  for(const g of gates){
+    const xa=Xt(Math.max(g.open,t0)), xb=Xt(Math.min(g.close,t1)), y=Y(g.strike);
+    const hour=g.series==="hour";
+    const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(0,135,168,.75)":"rgba(0,135,168,.55)");
+    cx.strokeStyle=col; cx.lineWidth=hour?1.6:1.1; cx.setLineDash(g.result?[2,3]:(hour?[6,4]:[4,4]));
+    cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); cx.setLineDash([]);
+    if(g.result){ cx.fillStyle=col; cx.beginPath();cx.arc(Xt(g.close),y,hour?4.5:3.5,0,7);cx.fill();
+      cx.fillStyle="#FFFFFF"; cx.font="7px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+2.5); cx.textAlign="left"; cx.font="9px "+FONT(); }
+    else if(g.close>now){ cx.fillStyle=col; cx.font="8px "+FONT(); cx.textAlign="left";
+      cx.fillText((hour?"HOUR \u2265":"")+"$"+Math.round(g.strike).toLocaleString(),xa+3,y-3); cx.font="9px "+FONT(); }
   }
-  cx.font="9px "+FONT();
-  cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
-  /* ghost territories */
-  if(sk&&inDom){
-    const yS=Y(sk.strike);
-    cx.fillStyle="rgba(14,148,100,.055)";
-    cx.fillRect(F.padL,F.padT,F.iw,Math.max(0,yS-F.padT));
-    cx.fillStyle="rgba(214,73,61,.055)";
-    cx.fillRect(F.padL,yS,F.iw,Math.max(0,F.padT+F.ih-yS));
+  /* armed strike: dashed across its window, ghost fields confined to it */
+  if(sk&&R){
+    const xa=Xt(Math.max(R.tStart,t0)), xb=Xt(Math.min(R.tEnd,t1)), yS=Y(sk.strike);
+    const inDom=sk.strike>D.lo&&sk.strike<D.hi;
+    if(inDom){
+      cx.fillStyle="rgba(14,148,100,.07)"; cx.fillRect(xa,F.padT,xb-xa,Math.max(0,yS-F.padT));
+      cx.fillStyle="rgba(214,73,61,.07)"; cx.fillRect(xa,yS,xb-xa,Math.max(0,F.padT+F.ih-yS));
+      cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([6,4]); cx.beginPath();cx.moveTo(xa,yS);cx.lineTo(xb,yS);cx.stroke(); cx.setLineDash([]);
+    }
   }
-  /* strike dashed */
-  if(sk&&inDom){
-    cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([7,5]);
-    cx.beginPath();cx.moveTo(F.padL,Y(sk.strike));cx.lineTo(F.padL+F.iw,Y(sk.strike));cx.stroke();
-    cx.setLineDash([]);
-  }
-  /* seeded history (dotted) ahead of the live tape */
-  if(seeds.length>1){
-    cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
-    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q), y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke();
-    cx.setLineDash([]);
-  }
-  /* tape: side-keyed vs strike, else trend */
-  if(sk&&inDom){
-    drawKeyedLine(pts,X,Y,(P,j)=>P[j].p>=sk.strike?UPC:DNC);
-  } else {
-    let li=0;
-    drawKeyedLine(pts,X,Y,(P,j)=>{
-      while(li<j&&P[li].t<P[j].t-45000) li++;
-      if(li>j)li=j;
-      return P[j].p>=P[li].p?UPC:DNC;
-    });
-  }
-  if(pts.length){
-    const hd=pts[pts.length-1];
-    cx.fillStyle=(sk&&inDom)?(hd.p>=sk.strike?UPC:DNC):"#0087A8";
-    cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill();
-  }
-  /* +5 min tape projection ahead of the cursor, on the frame's own axes (auto-calibrated band) */
-  drawProjection(X,Y,now);
-  /* open prints */
-  for(const id of Object.keys(R.opens)){
-    const i=EXCH.indexOf(id); if(i<0) continue;
-    cx.fillStyle=BRAID[i];
-    cx.beginPath();cx.arc(Xm(0),Y(R.opens[id]),2.2,0,7);cx.fill();
-  }
-  for(const id of Object.keys(R.settles)){
-    const i=EXCH.indexOf(id); if(i<0) continue;
-    cx.fillStyle=BRAID[i];
-    cx.beginPath();cx.arc(Xm(15),Y(R.settles[id]),2.6,0,7);cx.fill();
-  }
-  /* live gauge + pair + spread */
-  if(R.state==="live"&&sk){
-    const fr=freshExch(now,10000);
-    let up=0,dn=0,fmn=Infinity,fmx=-Infinity;
-    for(const f of fr){ if(f.p>sk.strike)up++; else if(f.p<sk.strike)dn++;
-      fmn=Math.min(fmn,f.p); fmx=Math.max(fmx,f.p); }
+  /* seeded history, then the tape */
+  if(seeds.length>1){ cx.setLineDash([2,4]); cx.lineWidth=1.2; cx.strokeStyle="rgba(15,46,63,.45)";
+    cx.beginPath(); seeds.forEach((q,i)=>{ const x=X(q),y=Y(q.p); i?cx.lineTo(x,y):cx.moveTo(x,y); }); cx.stroke(); cx.setLineDash([]); }
+  const inDomSk=sk&&sk.strike>D.lo&&sk.strike<D.hi;
+  drawKeyedLine(pts,X,Y,(p,j)=>inDomSk?(p[j].p>=sk.strike?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC));
+  if(pts.length){ const hd=pts[pts.length-1]; cx.fillStyle=inDomSk?(hd.p>=sk.strike?UPC:DNC):"#0087A8"; cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill(); }
+  /* live odds gauge + settled mark for the armed strike */
+  if(sk&&R){
     const P=sk.prob;
-    if(P){
-      const gx=F.padL+F.iw-7, gw=5;
-      const split=F.padT+(1-P.over)*F.ih;
-      cx.fillStyle="rgba(14,148,100,.45)";
-      cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
-      cx.fillStyle="rgba(214,73,61,.45)";
-      cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
-      const yS=inDom?Y(sk.strike):(F.padT+F.ih/2);
+    if(P&&R.state!=="settled"){
+      const gx=F.padL+F.iw-7, gw=5, split=F.padT+(1-P.over)*F.ih;
+      cx.fillStyle="rgba(14,148,100,.45)"; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
+      cx.fillStyle="rgba(214,73,61,.45)"; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
+      const yS=inDomSk?Y(sk.strike):(F.padT+F.ih/2);
       cx.textAlign="right"; cx.font="15px "+FONT();
       cx.fillStyle=UPC; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
       cx.fillStyle=DNC; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
-      cx.font="9px "+FONT();
-      cx.fillStyle=UPC; cx.fillText("OVER \u00b7 "+up+"\u2191",F.padL+F.iw-14,Math.max(F.padT+48,yS-28));
-      cx.fillStyle=DNC; cx.fillText("UNDER \u00b7 "+dn+"\u2193",F.padL+F.iw-14,Math.min(F.padT+F.ih-22,yS+38));
+      cx.font="9px "+FONT(); cx.fillStyle="rgba(15,46,63,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+48,yS-28));
       cx.textAlign="left";
     }
-    if(fr.length>=2&&fmn<Infinity){
-      cx.textAlign="right"; cx.fillStyle="rgba(15,46,63,.55)";
-      cx.fillText("spread "+(1e4*Math.log(fmx/fmn)).toFixed(1)+"bp \u00b7 "+fr.length+" feeds",F.padL+F.iw-4,F.padT+21);
-      cx.textAlign="left";
+    if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")&&inDomSk){
+      const col=sk.outcome==="UP"?UPC:DNC; cx.strokeStyle=col; cx.lineWidth=1.8; cx.beginPath();cx.arc(Xt(R.tEnd),Y(sk.strike),6,0,7);cx.stroke();
+      cx.fillStyle=col; cx.font="10px "+FONT(); cx.textAlign="right"; cx.fillText(sk.outcome+" \u00b7 "+(sk.hit?"HIT":"MISS")+(sk.provisional?" \u00b7 provisional":""),Xt(R.tEnd)-8,Y(sk.strike)-8); cx.textAlign="left"; cx.font="9px "+FONT();
     }
   }
-  /* settled overlay */
-  if(R.state==="settled"&&sk){
-    const oc=sk.outcome;
-    const col=oc==="UP"?"rgba(14,148,100,":oc==="DOWN"?"rgba(214,73,61,":"rgba(0,135,168,";
-    cx.fillStyle=col+"0.06)"; cx.fillRect(F.padL,F.padT,F.iw,F.ih);
-    if(inDom){
-      cx.strokeStyle=oc==="UP"?UPC:oc==="DOWN"?DNC:"#0087A8"; cx.lineWidth=1.6;
-      cx.beginPath();cx.arc(Xm(15),Y(sk.strike),4.5,0,7);cx.stroke();
-    }
-    cx.fillStyle=col+"0.95)"; cx.font="18px "+FONT(); cx.textAlign="center";
-    cx.fillText(oc,F.padL+F.iw/2,F.padT+F.ih/2-6);
-    cx.font="10px "+FONT();
-    if(oc==="UP"||oc==="DOWN")
-      cx.fillText((sk.up!==undefined?(sk.up+"\u2191 "+sk.dn+"\u2193 "):"")+"vs "+fmtUSD.format(sk.strike)
-        +" \u00b7 CALL "+sk.call+" "+(sk.hit?"HIT":"MISS"),F.padL+F.iw/2,F.padT+F.ih/2+12);
-    cx.font="9px "+FONT(); cx.textAlign="left";
-  }
+  /* now cursor */
+  cx.strokeStyle="rgba(15,46,63,.5)"; cx.lineWidth=1.2; cx.beginPath();cx.moveTo(Xt(now),F.padT);cx.lineTo(Xt(now),F.padT+F.ih);cx.stroke();
   cx.restore();
-  /* axis denotation for the strike */
-  if(sk){
-    const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
-    const tpm="+"+Math.max(0,Math.round((sk.tArm-R.tStart)/60000))+"m";
-    if(inDom){
-      const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
-      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-11,w,22);
-      cx.textAlign="left"; cx.font="10px "+FONT(); cx.fillStyle="#FFFFFF";
-      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1);
-      cx.font="9px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
-      cx.fillText(pa+" \u00b7"+tpm,x0+4,yS+9);
-    } else {
-      const above=sk.strike>D.hi;
-      let col="rgba(0,135,168,.85)";
-      if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")) col=sk.outcome==="UP"?UPC:DNC;
-      cx.font="9px "+FONT(); cx.textAlign="left"; cx.fillStyle=col;
-      cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,
-        F.padL+F.iw+2, above?(F.padT+10):(F.padT+F.ih-4));
-    }
+  /* foot clock at every gate, inward at the edges */
+  cx.fillStyle="rgba(0,135,168,.8)"; cx.font="9px "+FONT();
+  for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
+    const x=Xt(t), hour=(new Date(t).getMinutes()===0);
+    cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
+    cx.fillStyle=hour?"rgba(15,46,63,.8)":"rgba(0,135,168,.8)";
+    cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-8);
   }
-  /* sweep cursor */
-  if(e>=xMin){
-    const xC=Xm(Math.min(e,xMax));
-    cx.strokeStyle="rgba(15,46,63,.4)"; cx.lineWidth=1;
-    cx.beginPath();cx.moveTo(xC,F.padT);cx.lineTo(xC,F.padT+F.ih);cx.stroke();
+  cx.textAlign="left";
+  /* axis pill for the armed strike */
+  if(sk&&R){
+    const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
+    if(inDomSk){ const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-6;
+      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-11,w,22); cx.font="10px "+FONT(); cx.fillStyle="#FFFFFF";
+      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1); cx.font="9px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
+      cx.fillText(pa+" \u00b7 "+sk.call,x0+4,yS+9); }
+    else { const above=sk.strike>D.hi; cx.font="9px "+FONT(); cx.fillStyle="rgba(0,135,168,.85)";
+      cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+2,above?(F.padT+10):(F.padT+F.ih-4)); }
   }
   /* header */
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
-  const left=R.state.toUpperCase()
-    +(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call):" \u00b7 no strike")
-    +" \u00b7 line "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws";
-  headerRow(F,left,"ROUND "+timeStr(R.tStart)+"\u2013"+timeStr(R.tEnd));
+  const nextGate=Math.ceil(now/900000)*900000;
+  const left=(R?(R.state.toUpperCase()+(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call):" \u00b7 no strike")):"IDLE")+" \u00b7 line "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws"+(S.idxPx?(" \u00b7 index "+fmtUSD.format(S.idxPx)):"");
+  headerRow(F,left,"SWEEP \u00b130m \u00b7 next gate "+timeStr(nextGate)+" in "+mmss(nextGate-now));
 }
 function renderXTData(){
   const cur=S.xt.cur, tb=$("xtcur")&&$("xtcur").querySelector("tbody"), tl=$("xtled")&&$("xtled").querySelector("tbody");
@@ -2267,11 +2119,7 @@ function renderXTData(){
   tl.innerHTML=rows.join("");
   $("xtnote").textContent="pinned "+S.xt.pinned.length+" \u00b7 target coverage 90%";
 }
-function render(){
-  const R=S.round;
-  if(R&&(R.state!=="settled"||Date.now()-R.settledAt<=20000)) renderRound();
-  else renderIdle();
-}
+function render(){ renderSweep(); }
 let _lastFrame=0;
 function loop(ts){
   if(ts-_lastFrame>33){ _lastFrame=ts; render(); }
@@ -2292,7 +2140,7 @@ $("viewBtn").addEventListener("click",()=>{
   $("viewBtn").setAttribute("aria-pressed",String(on));
 });
 $("armBtn").addEventListener("click",()=>{ $("verdict").style.display="none"; armRound(); });
-const CFG_KEYS=["pad","dilate","contract","closeStart","closeStr","lookback","conf","adh","minEdge"];
+const CFG_KEYS=["pad","dilate","contract","closeStart","closeStr","lookback","conf","adh"];
 function cfgFmt(k,v){
   if(k==="conf") return Math.round(v*100)+"% \u00b7 z"+invNorm((1+v)/2).toFixed(2);
   if(k==="adh") return v.toFixed(2)+"\u00d7";
@@ -2343,14 +2191,6 @@ function setAllSections(closed){
 function markOverflow(){
   document.querySelectorAll(".tblwrap").forEach(w=>{ w.classList.toggle("ovf",w.scrollWidth>w.clientWidth+4); });
 }
-$("ostrip").addEventListener("click",ev=>{
-  const b=ev.target.closest(".ochip.phase"); if(!b) return;
-  $("strikeIn").value=b.getAttribute("data-p");
-  const call=b.getAttribute("data-call"); S.callSel=call;
-  $("callAbove").classList.toggle("sel",call==="ABOVE"); $("callBelow").classList.toggle("sel",call==="BELOW");
-  S.k.quoteManual=false; kSyncQuote();
-  armMsg("loaded phase order "+fmtUSD.format(+b.getAttribute("data-p"))+" "+call+" \u2014 ARM to commit");
-});
 $("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
 $("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
@@ -2366,10 +2206,10 @@ $("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   try{ idxTick(Date.now()); }catch(e){}
+  if((Math.floor(Date.now()/1000)%5)===0){ try{ viaSample(Date.now()); renderViability(); }catch(e){} }
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
-  if((Math.floor(Date.now()/1000)%5)===0){ try{ renderOrders(); }catch(e){} }
   kalshiTick(Date.now());
   try{ edgeSnap(Date.now()); edgeProvisional(Date.now()); }catch(e){}
   roundTick(Date.now());
@@ -2384,13 +2224,13 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); kProbeSameOrigin(); initSections();
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderOrders(); renderEdge(); renderVerdict();
+  loadCfg(); syncCfgUI(); ledgerLoad(); viaLoad(); kProbeSameOrigin(); initSections();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260905080719 -->
+<!-- build-20260905131817 -->
 </html>
