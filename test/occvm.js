@@ -58,10 +58,16 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("sunTick is deterministic at a pinned instant", JSON.stringify(a) === JSON.stringify(b));
   T("sunTick writes all four light tokens", ["lx", "ly", "elev", "night"].every(k => a[k] !== undefined && a[k] !== ""));
 
+  /* Until 1.2 these two pinned BTC's own behaviour — a binary --night and a 0.15 --elev night floor —
+     specifically so that resolving the divergence would fail here rather than drift. It did. They now
+     pin the spine's law instead (OCCVM-L3, L9; D2 and D9 closed at 1.2). */
   const h = load(); h.setNow(NIGHT); h.R("sunTick()");
   const n = h.ctx.document.documentElement.style;
-  T("--night is BTC's binary step, not a ramp", n["--night"] === "1" || n["--night"] === "0", n["--night"]);
-  T("--elev holds BTC's 0.15 night floor", Math.abs(parseFloat(n["--elev"]) - 0.15) < 1e-9, n["--elev"]);
+  T("--night is a continuous ramp, not a step", /^[01]\.\d{3}$/.test(n["--night"]) && parseFloat(n["--night"]) === 1, n["--night"]);
+  T("--elev falls to zero at night; the floor lives in --amb", parseFloat(n["--elev"]) === 0 && parseFloat(n["--amb"]) > 0.5, { elev: n["--elev"], amb: n["--amb"] });
+  T("the light vector resolves neutral overhead below the horizon", n["--lx"] === "0.000" && n["--ly"] === "1.000", { lx: n["--lx"], ly: n["--ly"] });
+  T("--glow is a resolved scalar, never a calc()", /^\d+\.\d+$/.test(n["--glow"]), n["--glow"]);
+  T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
 /* --- the screen convention both tools share (occvm/SPINE-AUDIT.md section 3) --- */
@@ -79,13 +85,21 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   const spine = fs.readFileSync(path.join(ROOT, "occvm", "spine.css"), "utf8");
   const doc = fs.readFileSync(path.join(ROOT, "occvm", "SPINE.md"), "utf8");
-  const { block, OPEN, CLOSE } = require("../occvm/tools/splice-spine");
+  const { block, fence, PARTS } = require("../occvm/tools/splice-spine");
 
-  const opens = html.split(OPEN).length - 1, closes = html.split(CLOSE).length - 1;
-  T("the spine is spliced exactly once", opens === 1 && closes === 1, { opens, closes });
+  for (const part of PARTS) {
+    const f = fence(part.name);
+    const src = fs.readFileSync(path.join(ROOT, "occvm", part.name), "utf8");
+    T(`${part.name} is spliced exactly once`,
+      html.split(f.open).length - 1 === 1 && html.split(f.close).length - 1 === 1);
+    const a = html.indexOf(f.open), b = html.indexOf(f.close);
+    T(`${part.name} matches occvm/${part.name}`, html.slice(a, b + f.close.length) === block(part.name, src));
+  }
 
-  const i = html.indexOf(OPEN), j = html.indexOf(CLOSE);
-  T("the spliced block matches occvm/spine.css", html.slice(i, j + CLOSE.length) === block(spine));
+  const i = html.indexOf(fence("spine.css").open), j = html.indexOf(fence("spine.css").close);
+  T("the sundial is defined before sunTick calls it",
+    html.indexOf(fence("sundial.js").open) < html.indexOf("function sunTick(){"));
+  T("the tool keeps no second solar implementation (L3)", !html.includes("function solarPosition("));
 
   /* 1.0 is a no-op because the spine is inlined ABOVE the tool's own declarations, so the tool wins
      every collision by ordinary cascade order (2.0 migration process section 3.2). If the block ever
@@ -94,7 +108,12 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
   /* SPINE.md section 2a enumerates what 1.0 governs. The code cannot quietly grow past the document:
      the expected set is parsed out of the document, not restated here. */
-  const sec = doc.slice(doc.indexOf("### 2a."), doc.indexOf("### 2b."));
+  /* Section 2a alone — the tokens spine.css DECLARES. Slice to the next heading, not to a named one,
+     so inserting a section between them cannot silently widen what this scans. Section 2ab lists the
+     tokens the sundial WRITES at runtime; those are not CSS declarations and are not checked here. */
+  const secStart = doc.indexOf("### 2a.");
+  const secEnd = doc.indexOf("### 2", secStart + 8);
+  const sec = doc.slice(secStart, secEnd);
   const documented = new Set((sec.match(/--[a-z0-9-]+/g) || []));
   const declared = new Set(
     (spine.slice(spine.indexOf(":root"), spine.indexOf("---- primitives")).match(/^\s*(--[a-z0-9-]+)\s*:/gm) || [])
@@ -108,6 +127,59 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
      two tools (OCCVM-D11): an un-namespaced spine primitive breaks a tool on the day it is inlined. */
   const sels = (spine.match(/^\.[a-zA-Z][\w-]*/gm) || []);
   T("every spine primitive is namespaced .occvm-", sels.length > 0 && sels.every(x => x.startsWith(".occvm-")), sels);
+}
+
+/* --- OCCVM-L4 / roadmap 1.2 exit: no fixed cast offset survives outside the primitives -------------
+ * "Fixed offset" means a literal non-zero x or y. A `0 0 <blur>` bloom is not an offset and is not a
+ * cast; neither is `none`. The spine's own primitive block is where offsets may be authored, so it is
+ * excluded from the scan — that is what "outside the primitives" means.
+ */
+{
+  const fs = require("fs"), path = require("path");
+  const { fence } = require("../occvm/tools/splice-spine");
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const f = fence("spine.css");
+  const i = html.indexOf(f.open), j = html.indexOf(f.close);
+  const tool = html.slice(0, i) + html.slice(j);
+  const bad = [];
+  for (const m of tool.matchAll(/box-shadow:([^;}]*)/g))
+    for (const layer of m[1].split(",")) {
+      const t = layer.trim().replace(/^inset\s*/, "");
+      const n = /^(-?[\d.]+)px\s+(-?[\d.]+)px/.exec(t);
+      if (n && (parseFloat(n[1]) !== 0 || parseFloat(n[2]) !== 0)) bad.push(layer.trim());
+    }
+  T("no fixed cast offset outside the primitives (1.2 exit)", bad.length === 0, bad);
+}
+
+/* --- OCCVM-L4: the cast falls AWAY from the sun ---------------------------------------------------
+ * A direction that reads plausible and is backwards is the failure this repository takes most seriously
+ * (CLAUDE.md section 5). Every fixed offset 1.2 replaced had this sign inverted, so it is pinned here
+ * semantically — the sun's real position at four bearings, against the sign of the resulting cast —
+ * rather than by matching the text of a calc().
+ */
+{
+  const h = load();
+  const cast = (lx, ly) => ({ x: -lx, y: -ly });   /* the rule the spine's cast tokens encode */
+  const spine = require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "spine.css"), "utf8");
+
+  T("every cast depth negates the light vector", ["1", "2", "3"].every(d => {
+    const m = new RegExp(`--occvm-cast-${d}:\\s*calc\\(var\\(--lx[^)]*\\)\\s*\\*[^*]*\\*\\s*-`).test(spine.replace(/\n/g, " "));
+    return m;
+  }), "a cast depth is missing its negation");
+
+  /* Four bearings through the day, from the shared sundial, checked against where a shadow must land. */
+  const rows = [
+    { iso: "2026-09-06T11:30:00Z", where: "sun in the east",  expect: "cast to the west (screen left)",  x: -1 },
+    { iso: "2026-09-06T17:45:00Z", where: "sun due south",    expect: "cast to the north (screen up)",   y: -1 },
+    { iso: "2026-09-06T23:15:00Z", where: "sun in the west",  expect: "cast to the east (screen right)", x: +1 },
+  ];
+  for (const r of rows) {
+    const v = h.R(`(function(){var p=OCCVM_SUN.position(SUN_DEF.lat,SUN_DEF.lon,new Date(${JSON.stringify(r.iso)}));
+                    var t=OCCVM_SUN.respond(p); return {lx:+t["--lx"], ly:+t["--ly"]};})()`);
+    const c = cast(v.lx, v.ly);
+    const ok = r.x !== undefined ? Math.sign(c.x) === r.x : Math.sign(c.y) === r.y;
+    T(`${r.where}: ${r.expect}`, ok, { lx: v.lx, ly: v.ly, cast: c });
+  }
 }
 
 process.exit(done());

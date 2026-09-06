@@ -1,0 +1,139 @@
+/* OCCVM 1.2 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Before 1.2 each tool carried its own. They agreed on the screen convention and on nothing downstream:
+ * different solar algorithms, --elev on two scales, --night a step in one tool and a ramp in the other,
+ * --glow a calc() in one and a scalar in the other, and a light vector that kept tracking the sun 39
+ * degrees below the horizon. Those were OCCVM-D2, D8, D9 and D10, and one implementation closes all four.
+ *
+ * The split is deliberate and is registered in SPINE.md section 8: POSITION is the full NOAA algorithm,
+ * which BTC carried; RESPONSE is the derivation of surface behaviour from it, which Rhyme carried. Each
+ * tool kept its better half and neither keeps a second copy.
+ *
+ * Everything here is pure: same instant plus same place yields the same bytes. The golden set depends on
+ * it (occvm/golden), and so does anything 2.0 resolves at sunTick.
+ */
+var OCCVM_SUN = (function () {
+  "use strict";
+  var RAD = Math.PI / 180;
+  var DAYTON = { lat: 39.7589, lon: -84.1916, name: "Dayton" };
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  /* ---- position: NOAA general solar position, evaluated in UTC ------------------------------------
+   * Returns elevation in degrees and azimuth in degrees clockwise from north. UTC, not the local clock,
+   * so the reading does not move with the viewer's timezone database.
+   */
+  function position(lat, lon, date) {
+    var jd = date.getTime() / 86400000 + 2440587.5, jc = (jd - 2451545) / 36525;
+    var gml = (280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360;
+    var gma = 357.52911 + jc * (35999.05029 - 0.0001537 * jc);
+    var ecc = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
+    var ceq = Math.sin(gma * RAD) * (1.914602 - jc * (0.004817 + 0.000014 * jc))
+            + Math.sin(2 * gma * RAD) * (0.019993 - 0.000101 * jc)
+            + Math.sin(3 * gma * RAD) * 0.000289;
+    var app = gml + ceq - 0.00569 - 0.00478 * Math.sin((125.04 - 1934.136 * jc) * RAD);
+    var mo = 23 + (26 + ((21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813)))) / 60) / 60;
+    var oc = mo + 0.00256 * Math.cos((125.04 - 1934.136 * jc) * RAD);
+    var dec = Math.asin(Math.sin(oc * RAD) * Math.sin(app * RAD));
+    var y = Math.pow(Math.tan(oc / 2 * RAD), 2);
+    var eqt = 4 * (y * Math.sin(2 * gml * RAD) - 2 * ecc * Math.sin(gma * RAD)
+            + 4 * ecc * y * Math.sin(gma * RAD) * Math.cos(2 * gml * RAD)
+            - 0.5 * y * y * Math.sin(4 * gml * RAD) - 1.25 * ecc * ecc * Math.sin(2 * gma * RAD)) / RAD;
+    var minutes = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    var tst = (minutes + eqt + 4 * lon + 1440) % 1440;
+    var ha = (tst / 4 < 0) ? tst / 4 + 180 : tst / 4 - 180;
+    var cz = Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(ha * RAD);
+    var zen = Math.acos(clamp(cz, -1, 1));
+    var az = Math.acos(clamp(((Math.sin(lat * RAD) * Math.cos(zen)) - Math.sin(dec)) / (Math.cos(lat * RAD) * Math.sin(zen)), -1, 1)) / RAD;
+    az = ha > 0 ? (az + 180) % 360 : (540 - az) % 360;
+    return { elev: 90 - zen / RAD, az: az };
+  }
+
+  /* ---- response: the surface behaviour the position produces -------------------------------------- */
+
+  function mix(p, q, t) { return [0, 1, 2].map(function (i) { return Math.round(p[i] + (q[i] - p[i]) * t); }); }
+  function hex(c) { return "#" + c.map(function (v) { return clamp(v, 0, 255).toString(16).padStart(2, "0"); }).join(""); }
+
+  /* The noon anchors SPINE.md OCCVM-L1 records, and the two ends the day carries them toward. */
+  var SUB = [27, 26, 34], SUB_DUSK = [40, 28, 30], SUB_NIGHT = [14, 14, 26];
+  var BONE = [236, 227, 208], BONE_DUSK = [244, 214, 170], BONE_NIGHT = [204, 208, 224];
+  var EDGE = [11, 10, 16];
+
+  function respond(p) {
+    var elev = p.elev, az = p.az;
+
+    /* OCCVM-L3: below the horizon the vector does not keep tracking a sun nobody can see. Past civil
+       twilight it resolves to neutral overhead. BTC tracked the sun to -39 degrees and beyond (D9). */
+    var up = elev > -6;
+    var lx = up ? Math.sin(az * RAD) : 0;
+    var ly = up ? -Math.cos(az * RAD) : 1;
+
+    var e = clamp(Math.sin(Math.max(0, elev) * RAD) * 1.25, 0, 1);
+
+    /* OCCVM-L9: night is a continuous quantity, 0 at -2 degrees to 1 at -10. A step cannot express the
+       dusk stages 1.7 refines this into. */
+    var night = clamp((-elev - 2) / 8, 0, 1);
+    var twilight = 1 - clamp(Math.abs(elev) / 14, 0, 1);
+    var dusk = twilight * (1 - night);
+
+    /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
+       ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
+    var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
+    var rake = elev > 0 ? Math.min(22, 4 + 14 / Math.max(0.25, Math.tan(elev * RAD)) / 6) : 4;
+
+    var sub = mix(mix(SUB, SUB_DUSK, dusk), SUB_NIGHT, night);
+    var bone = mix(mix(BONE, BONE_DUSK, dusk), BONE_NIGHT, night);
+
+    /* OCCVM-L1: a derived token derives with its whole family. --bone-lo is --bone carried a quarter of
+       the way to --edge, so the pair cannot separate again (D10). At the noon anchor that reads #b4ada0
+       against the previously authored #b7ad9c — at most 4/255 in any channel, and the price of the
+       relationship being structural instead of remembered. */
+    var boneLo = mix(bone, EDGE, 0.25);
+
+    return {
+      "--lx": lx.toFixed(3),
+      "--ly": ly.toFixed(3),
+      "--elev": e.toFixed(3),
+      "--night": night.toFixed(3),
+      "--amb": amb.toFixed(3),
+      "--rake": rake.toFixed(1) + "px",
+      "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
+      "--hi-a": (0.30 * e + 0.06).toFixed(3),
+      "--cut-a": (0.40 * e + 0.06).toFixed(3),
+      "--shade-a": (0.45 + 0.3 * e).toFixed(3),
+      /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). */
+      "--glow": (0.45 + 0.25 * (1 - e) + 0.30 * night).toFixed(2),
+      "--lxpx": (lx * 0.9).toFixed(2) + "px",
+      "--lypx": (ly * 0.9).toFixed(2) + "px",
+      "--nglow": (6 * night).toFixed(1) + "px",
+      "--nglow-s": (3 * night).toFixed(1) + "px",
+      "--sub": hex(sub),
+      "--sub-hi": hex(mix(sub, [255, 255, 255], 0.14 * (0.5 + e))),
+      "--sub-lo": hex(mix(sub, [0, 0, 0], 0.42)),
+      "--bone": hex(bone),
+      "--bone-lo": hex(boneLo)
+    };
+  }
+
+  var DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+  /* tick(): position, respond, write. Returns the reading for a tool's own display. */
+  function tick(el, loc, date) {
+    var place = (loc && isFinite(loc.lat)) ? loc : DAYTON;
+    var p = position(place.lat, place.lon, date || new Date());
+    var t = respond(p);
+    if (el && el.style) for (var k in t) if (Object.prototype.hasOwnProperty.call(t, k)) el.style.setProperty(k, t[k]);
+    return {
+      elev: p.elev, az: p.az, tokens: t,
+      dir: DIRS[Math.round(p.az / 45) % 8],
+      night: parseFloat(t["--night"]),
+      lx: parseFloat(t["--lx"]), ly: parseFloat(t["--ly"]),
+      e: parseFloat(t["--elev"]),
+      name: place.name || "here"
+    };
+  }
+
+  return { position: position, respond: respond, tick: tick, DAYTON: DAYTON, DIRS: DIRS };
+})();

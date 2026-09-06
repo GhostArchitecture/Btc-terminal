@@ -1,10 +1,18 @@
-# OCCVM 1.0 — the spine
+# OCCVM 1.2 — the spine
 
 The shared visual system of the Ghost Codex tools. This document is the law; `occvm/spine.css` is the
 machine-readable half; `occvm/tools/splice-spine.js` puts it into a tool. All three are committed identically
 to every conforming repository.
 
-**Constituted 2026-09-06 from measurement, not from memory.** No prior spine document existed — the roadmap
+**Constituted at 1.0 on 2026-09-06 from measurement, not from memory.** 1.2 — *one light, completed* —
+closes `OCCVM-D2`, `D8`, `D9` and `D10`, promotes twelve tokens from registered to governed, and puts the
+whole light layer in one shared implementation (`occvm/sundial.js`).
+
+**1.1 was not shipped and the number is not reused.** Its determinism requirement — a seeded, injected
+generator — was met at 1.0 (§4); its DLA vein generator and the two tokens `--vein-density --vein-habit`
+are outstanding and remain unregistered. A gap in the sequence is honest; renumbering a release to close
+it would not be.
+ No prior spine document existed — the roadmap
 and the 2.0 migration process were both written against one that had never been committed, and its laws,
 defects and conformance table were unrecoverable. `occvm/SPINE-AUDIT.md` is the inventory this was authored
 from; every value below is one the tools were already carrying.
@@ -106,6 +114,14 @@ floors `--elev` at 0.15 and has no `--amb`: `OCCVM-D2`.
 Every cast shadow derives from `--lx --ly --rake --shade-a`. **No fixed `box-shadow` offset exists outside
 the primitives.** The primitive is `.occvm-cast` (§3).
 
+**`(--lx, --ly)` points toward the sun**, so a lit bevel sits at `+(lx, ly)` and **a cast falls at
+`−(lx, ly)`**. `ly = −cos(azimuth)`: at noon the sun is due south and `ly = +1`, which is screen-down.
+
+Every fixed offset 1.2 replaced had the cast sign backwards — BTC's tile threw `0 16px 36px` down-screen,
+toward the noon sun, and Rhyme's one derived drop-shadow used `+(lx, ly)` for the same reason. Both read
+plausible; both were inverted. That is the argument for this law being worth more than tidiness, and it is
+why 1.2's exit criterion is about direction and not only about the absence of literals.
+
 Completed at **1.2**. BTC carries 15 fixed offsets today: `OCCVM-D2`.
 
 ### OCCVM-L5 — gilt is reserved
@@ -181,10 +197,23 @@ Measured identical in both tools at all three golden instants. These are what `o
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
 
+**Added at 1.2 (OCCVM-L4, L2):** the cast depths `--occvm-cast-1 --occvm-cast-2 --occvm-cast-3` and the
+bevel components `--lit-x --lit-y --cut-x --cut-y`. A surface picks a depth or multiplies a bevel component
+by its own; it never authors an offset. The depth multipliers are anchored so each reproduces at high sun
+the offset it replaced, so the noon frame barely moves and the low-sun frames carry the change.
+
 `--serif` is spine-governed in one canonical spelling. Both tools also still declare their own — the same five
 faces in the same order, differing only in whitespace — and at 1.0 that shadowing declaration **stays**. The
 spine is inlined above the tool's CSS and nothing else changes (2.0 migration process §3.2); deleting a
 now-redundant tool declaration is per-surface adoption work, done at the release whose law covers it.
+
+### 2ab. Governed since 1.2 — written by the sundial
+
+`--lx --ly --elev --night --amb --rake --sheen --hi-a --cut-a --shade-a --glow --lxpx --lypx --nglow
+--nglow-s --sub --sub-hi --sub-lo --bone --bone-lo`
+
+All resolved scalars or hexes, all written by `occvm/sundial.js` at most once a minute, none a `calc()`.
+`--bone-lo` is derived from `--bone` rather than authored beside it (L1).
 
 ### 2b. Registered, not yet spine — promoted at the release named
 
@@ -193,10 +222,6 @@ until then the tools' own declarations stand and the gap is a defect.
 
 | token | today | spine at |
 |---|---|---|
-| `--sub --sub-hi --sub-lo --bone` | static in BTC, derived from twilight in Rhyme | **1.2** (L1, L9) |
-| `--lx --ly --elev --night` | both, divergent night behaviour and scale | **1.2** (L3) |
-| `--amb --rake --sheen --hi-a --cut-a --shade-a` | Rhyme only | **1.2** (L3, L4) |
-| `--glow` | `calc()` in BTC, scalar in Rhyme | **1.2** (L3, L9) |
 | `--mono`, `--t-num` | OS stack in BTC; `--t-num` nowhere | **1.3** (L7) |
 | `--mineral --mineral-lo --vein-hi --vein-lo --veins` | Rhyme only | **1.4** (L6) |
 | `--vein-density --vein-habit` | nowhere | **1.1** |
@@ -205,7 +230,11 @@ until then the tools' own declarations stand and the gap is a defect.
 ### 2c. Tool-local — not spine, not promised
 
 Semantic tokens that belong to one tool's subject matter: BTC's `--up --down --err --warn --model
---bondi --field --rule --glass`, Rhyme's `--thick --bthick --stone-h --pad --c --k --text`. A tool-local
+--bondi --field --rule --glass`, Rhyme's `--thick --bthick --stone-h --pad --c --k --text`.
+
+`--bloom` is BTC's malachite glow on `.tile`, renamed at 1.2 so it stops colliding with the spine's
+`--glow`. OCCVM-L9 reserves `--glow` for ink and 1.7's exit is that no surface has taken a glow, so the
+bloom is deleted at 1.7 — by the release that owns the law, not by this one. A tool-local
 token is not a fork. Promoting one is a minor release.
 
 ---
@@ -269,15 +298,15 @@ found by measurement after it was written.
 | id | tool | defect | closes at |
 |---|---|---|---|
 | **D1** | BTC | the expired `--ink --meas --bondi` alias block, past its removal window and still referenced (lines 26–27, 352, 359, 388, 1253) | 1.9 |
-| **D2** | BTC | one light incomplete: no `--amb --rake --sheen --hi-a --cut-a --shade-a`, 15 fixed `box-shadow` offsets, `--elev` on a different scale with a 0.15 night floor, `--night` a binary step | **1.2** |
+| **D2** | BTC | one light incomplete: no `--amb --rake --sheen --hi-a --cut-a --shade-a`, 15 fixed `box-shadow` offsets, `--elev` on a different scale with a 0.15 night floor, `--night` a binary step | **closed 1.2** |
 | **D3** | both | the numeric face is OS-supplied; metrics vary per platform under a column | **1.3** |
 | **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **1.6** |
 | **D5** | BTC | half-installed PWA: `manifest.webmanifest` and four icons ship, with zero `serviceWorker` registration | **1.6** |
 | **D6** | BTC | no mineral system at all. `--amethyst` is declared once and referenced zero times | **1.4** |
 | **D7** | Rhyme | no interaction floor: 0 `<button>`, 53 `onClick`, 0 `aria-*`, 0 `role`, 0 `tabIndex` | **1.5** |
-| **D8** | BTC | `--glow` is a `calc()` expression, so it never resolves to a number at token level and no law can read it (L3) | **1.2** |
-| **D9** | BTC | the light vector keeps tracking the sun below the horizon (−0.516, −0.856 at −39°) instead of resolving neutral overhead (L3) | **1.2** |
-| **D10** | Rhyme | `--bone` is derived from twilight while `--bone-lo` stays fixed, separating a pair that must move together (L1) | **1.2** |
+| **D8** | BTC | `--glow` is a `calc()` expression, so it never resolves to a number at token level and no law can read it (L3) | **closed 1.2** |
+| **D9** | BTC | the light vector keeps tracking the sun below the horizon (−0.516, −0.856 at −39°) instead of resolving neutral overhead (L3) | **closed 1.2** |
+| **D10** | Rhyme | `--bone` is derived from twilight while `--bone-lo` stays fixed, separating a pair that must move together (L1) | **closed 1.2** |
 | **D11** | both | `.row`, `.wrap`, `.note` are defined in both tools with incompatible meanings, so an un-namespaced spine primitive would break a tool on inline (L3 §3) | closed at 1.0 by namespacing |
 
 ---
@@ -286,11 +315,11 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0 | `build-20260906230915` | D1, D2, D3, D5, D6, D8, D9 |
-| **Rhyme Instrument** | 1.0 | `build-20260906230926` | D3, D4, D7, D10 |
+| **BTC Terminal** | 1.2 | `build-20260906232814` | D1, D3, D5, D6 |
+| **Rhyme Instrument** | 1.2 | `build-20260906232814` | D3, D4, D7 |
 | **Reference surface** | — | not built | — (1.8) |
 
-**The 1.0 splice is a no-op by construction, and the golden set proves it: zero deltas in either tool.**
+**At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
 
 That is the point, not a weak result. The spine is inlined *above* each tool's own CSS, so every value it
 declares is either identical to the tool's or shadowed by it — the parallel-spine pattern of migration §1,
@@ -301,10 +330,27 @@ the release (§3.5).
 
 ---
 
-## 8. What 1.0 deliberately does not do
+## 8. What each release did, and did not
 
-It does not change a pixel — measured, not asserted. It does not port a token. It does not close a defect
-except D11. It writes down what is true, names what is wrong, and numbers the releases that fix each one, so
-that 1.1 through 2.0 have a baseline that exists.
+**1.0** did not change a pixel — measured, not asserted, at zero deltas. It ported no token and closed no
+defect except D11. It wrote down what is true, named what is wrong, and numbered the releases that fix each
+one, so that everything after it had a baseline that exists.
+
+**1.2** changed 104 values across the two tools, every one of them accounted for before the baseline moved
+(migration §3.5: expected deltas only). The categories: the six response tokens and their companions
+arriving in BTC, which is 1.2's stated Add; the new cast and bevel tokens; `--glow` becoming a scalar;
+`--elev` rescaled with its night floor moved to `--amb`; the light vector resolving overhead below the
+horizon; substrate and ink moving with twilight; `--bone-lo` deriving with `--bone`. Rhyme's eighteen are
+the NOAA-versus-Spencer difference the audit measured, propagated — plus one real value change, the
+substrate anchor unifying on the documented `#1b1a22` against an internal `#1c1a24`.
+
+**What 1.2 found that nobody had written down:** every fixed cast offset in both tools had its direction
+inverted, throwing shadows toward the sun rather than away from it. It survived because it looked
+plausible and because no rule connected the offset to the light that was supposed to cause it. That is the
+argument for L4, and it is pinned now by a directional assertion at three bearings rather than by a string
+match.
+
+**1.2 did not** delete BTC's surface bloom, adopt any primitive class onto a surface beyond the cast, or
+touch the numeric face, the mineral system or the interaction floor. Those are 1.7, 1.3, 1.4 and 1.5.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.

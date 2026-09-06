@@ -13,8 +13,8 @@
 <meta name="application-name" content="BTC Terminal">
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
-/* ==== OCCVM 1.0 SPINE — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:12ceed0322a5 */
+/* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
+/* sha256:9fd692623cd7 */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -50,6 +50,37 @@
   /* OCCVM-L7 — the serif carries section heads in both tools. The mono face is OS-supplied in both and
      is registered, not governed, until 1.3 closes D3. */
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+
+  /* OCCVM-L4 (1.2) — cast depth. A surface picks a depth; it never authors an offset.
+   *
+   * THE SIGN IS NEGATIVE AND THAT IS THE POINT. (--lx, --ly) points TOWARD the sun: ly = -cos(azimuth),
+   * so at noon the sun is due south and ly = +1, which is screen-down. A lit bevel therefore sits at
+   * +(lx, ly) — the face turned toward the light — and a cast falls at -(lx, ly), away from it.
+   *
+   * Every fixed offset this replaced had it backwards. BTC's tile cast `0 16px 36px` threw the shadow
+   * down-screen, which at noon is toward the sun; Rhyme's one derived drop-shadow used +(lx, ly) for the
+   * same reason. Both read plausible and both were inverted, which is exactly why "no fixed offset
+   * survives" is worth more than tidiness.
+   *
+   * Magnitudes are anchored so each depth reproduces at high sun the LENGTH of the offset it replaced
+   * (2px/5px, 3px/8px, 16px/36px against a noon rake of 5.6px) — the length is preserved, the direction
+   * is corrected. Alphas are fractions of --shade-a, so a cast fades with the light like everything else. */
+  --occvm-cast-1:
+    calc(var(--lx, 0) * var(--rake, 4px) * -.36) calc(var(--ly, 1) * var(--rake, 4px) * -.36)
+    calc(var(--rake, 4px) * .9) rgba(0, 0, 0, calc(var(--shade-a, .6) * .67));
+  --occvm-cast-2:
+    calc(var(--lx, 0) * var(--rake, 4px) * -.54) calc(var(--ly, 1) * var(--rake, 4px) * -.54)
+    calc(var(--rake, 4px) * 1.43) rgba(0, 0, 0, calc(var(--shade-a, .6) * .80));
+  --occvm-cast-3:
+    calc(var(--lx, 0) * var(--rake, 4px) * -2.87) calc(var(--ly, 1) * var(--rake, 4px) * -2.87)
+    calc(var(--rake, 4px) * 6.4) rgba(0, 0, 0, calc(var(--shade-a, .6) * .73));
+
+  /* OCCVM-L2 — a bevel is struck from the light, never from a fixed edge. A surface multiplies these by
+     its own depth in px: inset calc(var(--lit-x) * 1.2) ... */
+  --lit-x: calc(var(--lx, 0) * 1px);
+  --lit-y: calc(var(--ly, 1) * 1px);
+  --cut-x: calc(var(--lx, 0) * -1px);
+  --cut-y: calc(var(--ly, 1) * -1px);
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
@@ -60,11 +91,9 @@
  */
 
 /* OCCVM-L4 — cast shadow derives from the light vector. No fixed offset survives outside this rule. */
-.occvm-cast {
-  box-shadow:
-    calc(var(--lx, 0) * var(--rake, 4px)) calc(var(--ly, 1) * var(--rake, 4px))
-    calc(var(--rake, 4px) * 1.5) rgba(0, 0, 0, var(--shade-a, .6));
-}
+.occvm-cast { box-shadow: var(--occvm-cast-2); }
+.occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
+.occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
 
 /* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
 .occvm-slab {
@@ -92,7 +121,9 @@
 .occvm-num {
   font-variant-numeric: tabular-nums lining-nums;
 }
-/* ==== END OCCVM SPINE ==== */
+/* ==== END OCCVM spine.css ==== */
+
+
 
   :root{
     /* the tome's material, as shipped in the rhyme instrument, with ruby added for this tool */
@@ -113,7 +144,9 @@
     --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,sans-serif;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
     --lit:rgba(255,255,255,calc(.16*var(--elev) + .05)); --shade:rgba(0,0,0,.62);
-    --glow:calc(var(--night)*.28);
+    /* tool-local: the malachite bloom on .tile. OCCVM-L9 reserves --glow for ink, so this is not it.
+       1.7 deletes the surface bloom outright under that law; 1.2 only stops the two names colliding. */
+    --bloom:calc(var(--night)*.28);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--field);color:var(--bone);font-family:var(--sans)}
@@ -140,8 +173,8 @@
     box-shadow:
       inset calc(var(--lx)*1.2px) calc(var(--ly)*1.2px) 0 rgba(255,255,255,.14),
       inset calc(var(--lx)*-1.2px) calc(var(--ly)*-1.2px) 0 var(--shade),
-      0 16px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4),
-      0 0 28px rgba(63,191,126,var(--glow));
+      var(--occvm-cast-3), var(--occvm-cast-1),
+      0 0 28px rgba(63,191,126,var(--bloom));
     -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
   .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--vein,none);opacity:.5;mix-blend-mode:screen}
   .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
@@ -153,7 +186,7 @@
   button{font:inherit;color:var(--bone);cursor:pointer;letter-spacing:.08em;font-size:11.5px;padding:6px 14px;border-radius:999px;
     background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
     border:1px solid rgba(0,0,0,.55);
-    box-shadow:inset 0 1px 0 rgba(255,236,190,.45), inset 0 -1px 0 rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.5);
+    box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.45), inset var(--cut-x) var(--cut-y) 0 rgba(0,0,0,.5), var(--occvm-cast-1);
     text-shadow:0 1px 0 rgba(0,0,0,.45)}
   button:hover{filter:brightness(1.08)}
   button:active{transform:translateY(1px)}
@@ -169,13 +202,13 @@
       radial-gradient(60% 50% at calc(50% + var(--lx)*40%) 0%, rgba(255,236,190,calc(.22*var(--elev)+.06)) 0%, transparent 70%),
       linear-gradient(180deg,#6a4f2b 0%,#4a3520 60%,#3a2917 100%);
     border-color:rgba(0,0,0,.6);
-    box-shadow:inset 0 1px 0 rgba(255,236,190,.28), inset 0 -3px 0 var(--verdigris-lo), 0 14px 30px rgba(0,0,0,.6)}
+    box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.28), inset calc(var(--cut-x)*3) calc(var(--cut-y)*3) 0 var(--verdigris-lo), var(--occvm-cast-3)}
   header.tile::before{display:none}
   .mark{font-family:var(--serif);font-weight:400;letter-spacing:.01em;font-size:19px;color:#f3e6c6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .mark small{color:#cdb98e;font-weight:400;letter-spacing:.18em;font-size:9px;margin-left:10px;text-transform:uppercase;font-family:var(--sans)}
   .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .pill{font-size:9.5px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.5);
-    background:rgba(0,0,0,.28);color:#e7dcc2;box-shadow:inset 0 1px 2px rgba(0,0,0,.6), 0 1px 0 rgba(255,236,190,.15)}
+    background:rgba(0,0,0,.28);color:#e7dcc2;box-shadow:inset var(--cut-x) var(--cut-y) 2px rgba(0,0,0,.6), var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.15)}
   .pill.live{color:var(--malachite)} .pill.warn{color:var(--gilt-a)} .pill.dead{color:var(--ruby)}
   #sunpill{font-family:var(--serif);text-transform:none;letter-spacing:.02em;font-size:12px}
 
@@ -186,13 +219,13 @@
   @media (prefers-reduced-motion:no-preference){ #px.flash-up{color:var(--malachite);transition:none} #px.flash-down{color:var(--ruby);transition:none} }
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .chip{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:3px 10px;font-size:11.5px;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.6), inset calc(var(--lx)*-0.5px) calc(var(--ly)*-0.5px) 0 rgba(255,255,255,.08)}
+    box-shadow:inset var(--cut-x) var(--cut-y) 2px rgba(0,0,0,.6), inset calc(var(--lx)*-0.5px) calc(var(--ly)*-0.5px) 0 rgba(255,255,255,.08)}
   .chip .lbl{margin-right:6px}
 
   section{margin-top:18px}
   #viewChart section{margin-top:0}
   .shead{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px;margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.55);
-    box-shadow:0 1px 0 rgba(255,255,255,.06)}
+    box-shadow:var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.06)}
   .shead .lbl{font-family:var(--serif);text-transform:none;letter-spacing:.01em;font-size:16px;color:var(--bone);text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .shead .note{font-size:10.5px;color:var(--bone-dim)}
   #viewData section{padding:14px 16px;border-radius:20px}
@@ -220,21 +253,21 @@
   /* arming tray: the tool's binding — inputs are engraved wells, ARM a malachite cabochon that shows patina when armed */
   #armbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-radius:18px;padding:12px 14px;margin-bottom:12px}
   #armbar input{font-family:var(--mono);font-size:13px;color:var(--bone);background:var(--sub-lo);border:1px solid rgba(0,0,0,.7);border-radius:12px;padding:7px 12px;width:10em;
-    box-shadow:inset 0 2px 5px rgba(0,0,0,.7), inset calc(var(--lx)*-0.6px) calc(var(--ly)*-0.6px) 0 rgba(255,255,255,.08)}
+    box-shadow:inset calc(var(--cut-x)*2) calc(var(--cut-y)*2) 5px rgba(0,0,0,.7), inset calc(var(--lx)*-0.6px) calc(var(--ly)*-0.6px) 0 rgba(255,255,255,.08)}
   #armbar input::placeholder{color:var(--bone-dim)}
   #armbar input:focus-visible{outline:2px solid var(--gilt-a);outline-offset:1px}
   #armbar input:disabled{opacity:.45}
-  .tgl{display:inline-flex;background:rgba(0,0,0,.45);border-radius:999px;padding:2px;gap:2px;box-shadow:inset 0 1px 3px rgba(0,0,0,.7)}
+  .tgl{display:inline-flex;background:rgba(0,0,0,.45);border-radius:999px;padding:2px;gap:2px;box-shadow:inset calc(var(--cut-x)*1) calc(var(--cut-y)*1) 3px rgba(0,0,0,.7)}
   .tgl button{border:0;background:transparent;color:var(--bone-lo);border-radius:999px;padding:5px 12px;font-size:10.5px;letter-spacing:.1em;box-shadow:none;text-shadow:none}
-  .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.18)}
   #armBtn{color:#0b0a10;font-weight:700;text-shadow:none;
     background:radial-gradient(60% 60% at calc(50% - var(--lx)*30%) calc(35% + var(--ly)*20%), rgba(255,255,255,.55) 0%, transparent 55%),linear-gradient(180deg,var(--malachite) 0%,var(--malachite-lo) 100%);
-    border-color:rgba(0,0,0,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.6)}
+    border-color:rgba(0,0,0,.7);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.35), inset calc(var(--cut-x)*2) calc(var(--cut-y)*2) 0 rgba(0,0,0,.35), var(--occvm-cast-2)}
   #armBtn:hover{filter:brightness(1.06)}
   #armBtn:disabled{opacity:.45}
   #armMsg{font-size:10.5px;color:var(--bone-dim)}
   #strikeChips{display:inline-flex;gap:6px;flex-wrap:wrap}
-  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(217,165,44,.14);border:1px solid rgba(217,165,44,.45);color:var(--gilt-a);text-shadow:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(217,165,44,.14);border:1px solid rgba(217,165,44,.45);color:var(--gilt-a);text-shadow:none;box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.12)}
   .schip:hover{background:rgba(224,71,95,.18);border-color:rgba(224,71,95,.5);color:var(--ruby)}
   #armStatus{font-size:11.5px;color:var(--bone-lo);letter-spacing:.03em}
   #tunebar{border-radius:16px;padding:10px 0 0;font-size:11px}
@@ -649,6 +682,149 @@
 </div>
 
 <script>
+/* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
+/* sha256:422bb07f7e07 */
+/* OCCVM 1.2 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Before 1.2 each tool carried its own. They agreed on the screen convention and on nothing downstream:
+ * different solar algorithms, --elev on two scales, --night a step in one tool and a ramp in the other,
+ * --glow a calc() in one and a scalar in the other, and a light vector that kept tracking the sun 39
+ * degrees below the horizon. Those were OCCVM-D2, D8, D9 and D10, and one implementation closes all four.
+ *
+ * The split is deliberate and is registered in SPINE.md section 8: POSITION is the full NOAA algorithm,
+ * which BTC carried; RESPONSE is the derivation of surface behaviour from it, which Rhyme carried. Each
+ * tool kept its better half and neither keeps a second copy.
+ *
+ * Everything here is pure: same instant plus same place yields the same bytes. The golden set depends on
+ * it (occvm/golden), and so does anything 2.0 resolves at sunTick.
+ */
+var OCCVM_SUN = (function () {
+  "use strict";
+  var RAD = Math.PI / 180;
+  var DAYTON = { lat: 39.7589, lon: -84.1916, name: "Dayton" };
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  /* ---- position: NOAA general solar position, evaluated in UTC ------------------------------------
+   * Returns elevation in degrees and azimuth in degrees clockwise from north. UTC, not the local clock,
+   * so the reading does not move with the viewer's timezone database.
+   */
+  function position(lat, lon, date) {
+    var jd = date.getTime() / 86400000 + 2440587.5, jc = (jd - 2451545) / 36525;
+    var gml = (280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360;
+    var gma = 357.52911 + jc * (35999.05029 - 0.0001537 * jc);
+    var ecc = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
+    var ceq = Math.sin(gma * RAD) * (1.914602 - jc * (0.004817 + 0.000014 * jc))
+            + Math.sin(2 * gma * RAD) * (0.019993 - 0.000101 * jc)
+            + Math.sin(3 * gma * RAD) * 0.000289;
+    var app = gml + ceq - 0.00569 - 0.00478 * Math.sin((125.04 - 1934.136 * jc) * RAD);
+    var mo = 23 + (26 + ((21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813)))) / 60) / 60;
+    var oc = mo + 0.00256 * Math.cos((125.04 - 1934.136 * jc) * RAD);
+    var dec = Math.asin(Math.sin(oc * RAD) * Math.sin(app * RAD));
+    var y = Math.pow(Math.tan(oc / 2 * RAD), 2);
+    var eqt = 4 * (y * Math.sin(2 * gml * RAD) - 2 * ecc * Math.sin(gma * RAD)
+            + 4 * ecc * y * Math.sin(gma * RAD) * Math.cos(2 * gml * RAD)
+            - 0.5 * y * y * Math.sin(4 * gml * RAD) - 1.25 * ecc * ecc * Math.sin(2 * gma * RAD)) / RAD;
+    var minutes = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    var tst = (minutes + eqt + 4 * lon + 1440) % 1440;
+    var ha = (tst / 4 < 0) ? tst / 4 + 180 : tst / 4 - 180;
+    var cz = Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(ha * RAD);
+    var zen = Math.acos(clamp(cz, -1, 1));
+    var az = Math.acos(clamp(((Math.sin(lat * RAD) * Math.cos(zen)) - Math.sin(dec)) / (Math.cos(lat * RAD) * Math.sin(zen)), -1, 1)) / RAD;
+    az = ha > 0 ? (az + 180) % 360 : (540 - az) % 360;
+    return { elev: 90 - zen / RAD, az: az };
+  }
+
+  /* ---- response: the surface behaviour the position produces -------------------------------------- */
+
+  function mix(p, q, t) { return [0, 1, 2].map(function (i) { return Math.round(p[i] + (q[i] - p[i]) * t); }); }
+  function hex(c) { return "#" + c.map(function (v) { return clamp(v, 0, 255).toString(16).padStart(2, "0"); }).join(""); }
+
+  /* The noon anchors SPINE.md OCCVM-L1 records, and the two ends the day carries them toward. */
+  var SUB = [27, 26, 34], SUB_DUSK = [40, 28, 30], SUB_NIGHT = [14, 14, 26];
+  var BONE = [236, 227, 208], BONE_DUSK = [244, 214, 170], BONE_NIGHT = [204, 208, 224];
+  var EDGE = [11, 10, 16];
+
+  function respond(p) {
+    var elev = p.elev, az = p.az;
+
+    /* OCCVM-L3: below the horizon the vector does not keep tracking a sun nobody can see. Past civil
+       twilight it resolves to neutral overhead. BTC tracked the sun to -39 degrees and beyond (D9). */
+    var up = elev > -6;
+    var lx = up ? Math.sin(az * RAD) : 0;
+    var ly = up ? -Math.cos(az * RAD) : 1;
+
+    var e = clamp(Math.sin(Math.max(0, elev) * RAD) * 1.25, 0, 1);
+
+    /* OCCVM-L9: night is a continuous quantity, 0 at -2 degrees to 1 at -10. A step cannot express the
+       dusk stages 1.7 refines this into. */
+    var night = clamp((-elev - 2) / 8, 0, 1);
+    var twilight = 1 - clamp(Math.abs(elev) / 14, 0, 1);
+    var dusk = twilight * (1 - night);
+
+    /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
+       ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
+    var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
+    var rake = elev > 0 ? Math.min(22, 4 + 14 / Math.max(0.25, Math.tan(elev * RAD)) / 6) : 4;
+
+    var sub = mix(mix(SUB, SUB_DUSK, dusk), SUB_NIGHT, night);
+    var bone = mix(mix(BONE, BONE_DUSK, dusk), BONE_NIGHT, night);
+
+    /* OCCVM-L1: a derived token derives with its whole family. --bone-lo is --bone carried a quarter of
+       the way to --edge, so the pair cannot separate again (D10). At the noon anchor that reads #b4ada0
+       against the previously authored #b7ad9c — at most 4/255 in any channel, and the price of the
+       relationship being structural instead of remembered. */
+    var boneLo = mix(bone, EDGE, 0.25);
+
+    return {
+      "--lx": lx.toFixed(3),
+      "--ly": ly.toFixed(3),
+      "--elev": e.toFixed(3),
+      "--night": night.toFixed(3),
+      "--amb": amb.toFixed(3),
+      "--rake": rake.toFixed(1) + "px",
+      "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
+      "--hi-a": (0.30 * e + 0.06).toFixed(3),
+      "--cut-a": (0.40 * e + 0.06).toFixed(3),
+      "--shade-a": (0.45 + 0.3 * e).toFixed(3),
+      /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). */
+      "--glow": (0.45 + 0.25 * (1 - e) + 0.30 * night).toFixed(2),
+      "--lxpx": (lx * 0.9).toFixed(2) + "px",
+      "--lypx": (ly * 0.9).toFixed(2) + "px",
+      "--nglow": (6 * night).toFixed(1) + "px",
+      "--nglow-s": (3 * night).toFixed(1) + "px",
+      "--sub": hex(sub),
+      "--sub-hi": hex(mix(sub, [255, 255, 255], 0.14 * (0.5 + e))),
+      "--sub-lo": hex(mix(sub, [0, 0, 0], 0.42)),
+      "--bone": hex(bone),
+      "--bone-lo": hex(boneLo)
+    };
+  }
+
+  var DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+  /* tick(): position, respond, write. Returns the reading for a tool's own display. */
+  function tick(el, loc, date) {
+    var place = (loc && isFinite(loc.lat)) ? loc : DAYTON;
+    var p = position(place.lat, place.lon, date || new Date());
+    var t = respond(p);
+    if (el && el.style) for (var k in t) if (Object.prototype.hasOwnProperty.call(t, k)) el.style.setProperty(k, t[k]);
+    return {
+      elev: p.elev, az: p.az, tokens: t,
+      dir: DIRS[Math.round(p.az / 45) % 8],
+      night: parseFloat(t["--night"]),
+      lx: parseFloat(t["--lx"]), ly: parseFloat(t["--ly"]),
+      e: parseFloat(t["--elev"]),
+      name: place.name || "here"
+    };
+  }
+
+  return { position: position, respond: respond, tick: tick, DAYTON: DAYTON, DIRS: DIRS };
+})();
+/* ==== END OCCVM sundial.js ==== */
+
 "use strict";
 /* ---------------------------------------------------------------- utilities */
 const $=id=>document.getElementById(id);
@@ -1638,42 +1814,18 @@ function exportCSV(){
 /* ---------------------------------------------------------------- suggested orders (Kalshi-priced, phase + hour) */
 /* ---------------------------------------------------------------- sundial (NOAA solar position; Dayton default; one light vector for the whole tool) */
 const SUN_DEF={lat:39.7589,lon:-84.1916,name:"Dayton, Ohio"};
-function solarPosition(lat,lon,date){
-  /* NOAA general solar position: returns elevation and azimuth (degrees, azimuth clockwise from north) */
-  const rad=Math.PI/180;
-  const jd=date.getTime()/86400000+2440587.5, jc=(jd-2451545)/36525;
-  const gml=(280.46646+jc*(36000.76983+jc*0.0003032))%360;
-  const gma=357.52911+jc*(35999.05029-0.0001537*jc);
-  const ecc=0.016708634-jc*(0.000042037+0.0000001267*jc);
-  const ceq=Math.sin(gma*rad)*(1.914602-jc*(0.004817+0.000014*jc))+Math.sin(2*gma*rad)*(0.019993-0.000101*jc)+Math.sin(3*gma*rad)*0.000289;
-  const tl=gml+ceq; const app=tl-0.00569-0.00478*Math.sin((125.04-1934.136*jc)*rad);
-  const mo=23+(26+((21.448-jc*(46.815+jc*(0.00059-jc*0.001813))))/60)/60; const oc=mo+0.00256*Math.cos((125.04-1934.136*jc)*rad);
-  const dec=Math.asin(Math.sin(oc*rad)*Math.sin(app*rad));
-  const y=Math.tan(oc/2*rad)**2;
-  const eqt=4*(y*Math.sin(2*gml*rad)-2*ecc*Math.sin(gma*rad)+4*ecc*y*Math.sin(gma*rad)*Math.cos(2*gml*rad)-0.5*y*y*Math.sin(4*gml*rad)-1.25*ecc*ecc*Math.sin(2*gma*rad))/rad;
-  const minutes=(date.getUTCHours()*60+date.getUTCMinutes()+date.getUTCSeconds()/60);
-  const tst=(minutes+eqt+4*lon+1440)%1440; const ha=(tst/4<0)?tst/4+180:tst/4-180;
-  const cz=Math.sin(lat*rad)*Math.sin(dec)+Math.cos(lat*rad)*Math.cos(dec)*Math.cos(ha*rad);
-  const zen=Math.acos(Math.max(-1,Math.min(1,cz)));
-  let az=Math.acos(Math.max(-1,Math.min(1,((Math.sin(lat*rad)*Math.cos(zen))-Math.sin(dec))/(Math.cos(lat*rad)*Math.sin(zen)))))/rad;
-  az=ha>0?(az+180)%360:(540-az)%360;
-  return {elev:90-zen/rad,az};
-}
 function sunTick(){
+  /* OCCVM-L3 — one light. Position and response both come from the shared sundial (occvm/sundial.js).
+     Before 1.2 this function carried its own derivation: --elev on a different scale with a 0.15 night
+     floor, --night as a binary step, and a light vector that kept tracking the sun below the horizon
+     (OCCVM-D2, D9). This is the tool's display shape around the shared reading, and nothing more. */
   const loc=(S.cfg.sun&&isFinite(S.cfg.sun.lat))?S.cfg.sun:SUN_DEF;
-  const p=solarPosition(loc.lat,loc.lon,new Date());
-  const rad=Math.PI/180;
-  /* screen light vector: the tool is read north-up, so the light comes from the sun's azimuth; below the horizon the field self-lights */
-  const lx=Math.sin(p.az*rad), ly=-Math.cos(p.az*rad);
-  const elev=Math.max(0,Math.min(1,Math.sin(Math.max(0,p.elev)*rad)*1.4));
-  const night=p.elev<-2?1:0;
-  const r=document.documentElement.style;
-  r.setProperty("--lx",lx.toFixed(3)); r.setProperty("--ly",ly.toFixed(3)); r.setProperty("--elev",(night?0.15:elev).toFixed(3)); r.setProperty("--night",String(night));
-  S.sun={...p,lx,ly,elev,night,name:loc.name||"here"};
+  const r=OCCVM_SUN.tick(document.documentElement,loc,new Date());
+  S.sun={elev:r.elev,az:r.az,lx:r.lx,ly:r.ly,elev01:r.e,night:r.night,name:r.name};
   const pill=$("sunpill");
-  if(pill){ const dirs=["N","NE","E","SE","S","SW","W","NW"]; const d=dirs[Math.round(p.az/45)%8];
-    const phase=p.elev<-6?"night":p.elev<0?"dusk":p.elev<8?(p.az<180?"sun rise":"sun set"):p.elev>50?"sun high":(p.az<180?"morning":"afternoon");
-    pill.textContent=phase+" \u00b7 "+d+" \u00b7 "+Math.round(p.elev)+"\u00b0"; pill.title="solar position for "+S.sun.name+", computed here; nothing leaves this browser"; }
+  if(pill){ const phase=r.elev<-6?"night":r.elev<0?"dusk":r.elev<8?(r.az<180?"sun rise":"sun set"):r.elev>50?"sun high":(r.az<180?"morning":"afternoon");
+    pill.textContent=phase+" \u00b7 "+r.dir+" \u00b7 "+Math.round(r.elev)+"\u00b0";
+    pill.title="solar position for "+S.sun.name+", computed here; nothing leaves this browser"; }
 }
 function sunUseLocation(){
   if(!navigator.geolocation){ return; }
@@ -5942,5 +6094,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260906230915 -->
+<!-- build-20260906232814 -->
 </html>

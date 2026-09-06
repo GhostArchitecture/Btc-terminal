@@ -277,9 +277,11 @@ function part2() {
     T("a phantom position open at repair time closes without re-booking its P&L, and its journal row stays flagged", open.flagged === "K1" && open.bankAfter === open.bankBefore && open.rowPhantom === "K1" && open.counted === 0, open);
   }
 
-  /* ---- sundial (§5): NOAA position for Dayton at the equinox */
+  /* ---- sundial (§5, §12): NOAA position for Dayton at the equinox. Since OCCVM 1.2 the position comes
+     from the shared sundial (occvm/sundial.js) rather than a copy in this file — same NOAA series, one
+     implementation across both tools (OCCVM-L3). */
   {
-    const r = R(`(function(){ const p=solarPosition(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,17,30,0))); const n=solarPosition(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,5,0,0))); return {noon:p,night:n,name:SUN_DEF.name}; })()`);
+    const r = R(`(function(){ const p=OCCVM_SUN.position(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,17,30,0))); const n=OCCVM_SUN.position(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,5,0,0))); return {noon:p,night:n,name:SUN_DEF.name}; })()`);
     T("Dayton default; solar noon at the equinox ≈ 50° elevation due south", /Dayton/.test(r.name) && Math.abs(r.noon.elev - 50.2) < 1.5 && Math.abs(r.noon.az - 180) < 6, r.noon);
     T("night reads below the horizon", r.night.elev < -10, r.night);
   }
