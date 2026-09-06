@@ -686,9 +686,10 @@ function connectWS(f,attempt){
   if(S.paused) return;
   let ws;
   try{ ws=new WebSocket(f.url); }catch(e){ scheduleWS(f,attempt+1); return; }
-  const st=S.src[f.id]; st.sock=ws;
+  const st=S.src[f.id]; st.sock=ws; st.wsAttempt=attempt;
   ws.onopen=()=>{ try{ if(f.sub) f.sub(ws); }catch(e){} };
   ws.onmessage=ev=>{
+    st.wsAttempt=0;   /* any frame from the server — heartbeat or trade — proves the connection is healthy; forget prior failures */
     let r=null; try{ r=f.parse(ev.data); }catch(e){}
     if(r===null){ const q=S.src[f.id]; q.wsAlive=Date.now(); return; }
     const p=(typeof r==="number")?r:r.p;
@@ -698,16 +699,18 @@ function connectWS(f,attempt){
     }
     ingest(f.id,p);
   };
-  ws.onclose=()=>{ st.ws=false; if(!S.paused) scheduleWS(f,attempt+1); };
+  ws.onclose=()=>{ st.ws=false; if(!S.paused) scheduleWS(f,st.wsAttempt+1); };
   ws.onerror=()=>{ try{ ws.close(); }catch(e){} };
 }
 function scheduleWS(f,attempt){
-  setTimeout(()=>connectWS(f,attempt),Math.min(30000,2000*Math.pow(1.6,Math.min(attempt,8))));
+  const st=S.src[f.id];
+  st.wsTimer=setTimeout(()=>{ st.wsTimer=null; connectWS(f,attempt); },Math.min(30000,2000*Math.pow(1.6,Math.min(attempt,8))));
 }
 function startWS(){ if(typeof WebSocket==="undefined") return;
   for(const f of WSFEEDS) connectWS(f,0); }
 function stopWS(){
   for(const id of EXCH){ const st=S.src[id];
+    if(st.wsTimer){ clearTimeout(st.wsTimer); st.wsTimer=null; }   /* a pending reconnect from an earlier drop must not fire after pause/resume and open a duplicate socket */
     if(st.sock){ try{ st.sock.close(); }catch(e){} } st.ws=false; }
 }
 
@@ -716,7 +719,8 @@ async function poll(src){
   const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),7000);
   const t0=performance.now();
   const pre=S.src[src.id];
-  if(pre.ws && Date.now()-(pre.wsAlive||0)<8000){
+  const wsFresh=pre.ws && Date.now()-(pre.wsAlive||0)<8000;
+  if(wsFresh){
     pre._skip=((pre._skip||0)+1)%4;
     if(pre._skip!==0){ clearTimeout(to); return; }
   }
@@ -726,8 +730,11 @@ async function poll(src){
     const j=await r.json(); const p=src.parse(j);
     if(!isFinite(p)||p<=0) throw new Error("bad payload");
     const st=S.src[src.id];
-    if(st.ws && Date.now()-(st.wsAlive||0)<8000 && st.price && Math.abs(1e4*Math.log(p/st.price))>25){
-      st.status="drift"; clearTimeout(to); return;   /* REST disputes the socket — flag, keep socket data visible */
+    if(wsFresh){
+      /* the socket is live and fresh: REST lags it by seconds, so it is a cross-check only —
+         never a print, never a leader candidate, and never overwrites the socket's price */
+      st.status=(st.price&&Math.abs(1e4*Math.log(p/st.price))>25)?"drift":"ok";
+      clearTimeout(to); return;
     }
     st.price=p; st.t=Date.now(); st.latency=Math.round(performance.now()-t0);
     st.status="ok"; st.errN=0;
@@ -737,7 +744,7 @@ async function poll(src){
   }catch(e){
     const st=S.src[src.id]; st.errN++;
     const msg=(e.name==="AbortError")?"timeout":(e instanceof TypeError)?"blocked":String(e.message||e);
-    if(st.ws&&Date.now()-(st.wsAlive||0)<8000) st.restErr=msg;   /* socket carries the source; note REST quietly */
+    if(wsFresh) st.restErr=msg;   /* socket carries the source; note REST quietly */
     else st.status=msg;
   }finally{ clearTimeout(to); }
 }
@@ -793,6 +800,7 @@ function acceptPrint(id,p,t){
     if(S.leader===id) S.leader=null;          /* demote a lying leader */
     return;
   }
+  S.src[id].verified=peers>0;                  /* zero fresh CF peers: accepted so the tape keeps moving, but not peer-verified */
   if(EXCH.indexOf(id)<0) return;               /* index sources are recorded, never plotted */
   /* sticky leadership: one book plots; others verify */
   if(S.leader===null) S.leader=id;
@@ -815,16 +823,20 @@ function acceptPrint(id,p,t){
   } else S.bars.set(mk,p);
   renderSpot(p);
 }
-function closesExcludingCurrent(){
+function barsExcludingCurrent(){
   const cur=Math.floor(Date.now()/60000);
-  const ks=S.barKeys.filter(k=>k<cur);
-  return ks.map(k=>S.bars.get(k)).filter(c=>c!==undefined);
+  const keys=[],closes=[];
+  for(const k of S.barKeys){ if(k>=cur) continue; const c=S.bars.get(k); if(c===undefined) continue; keys.push(k); closes.push(c); }
+  return {keys,closes};
 }
+function closesExcludingCurrent(){ return barsExcludingCurrent().closes; }
 
 /* ---------------------------------------------------------------- seeding */
 async function seed(){
+  const timed=(url)=>{ const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+    return fetch(url,{cache:"no-store",signal:ctl.signal}).finally(()=>clearTimeout(to)); };
   try{
-    const r=await fetch("https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1",{cache:"no-store"});
+    const r=await timed("https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1");
     const j=await r.json();
     const key=Object.keys(j.result).find(k=>k!=="last");
     const rows=j.result[key];
@@ -835,7 +847,7 @@ async function seed(){
     S.seedInfo="seeded: Kraken 1-min OHLC ×"+use.length;
   }catch(e){
     try{
-      const r=await fetch("https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=180",{cache:"no-store"});
+      const r=await timed("https://www.bitstamp.net/api/v2/ohlc/btcusd/?step=60&limit=180");
       const j=await r.json(); const rows=j.data.ohlc.slice(0,-1);
       for(const row of rows){ const mk=Math.floor(+row.timestamp/60); S.bars.set(mk,+row.close);
         if(!S.barKeys.includes(mk)) S.barKeys.push(mk); }
@@ -848,10 +860,11 @@ async function seed(){
 
 /* ---------------------------------------------------------------- statistics */
 function computeStats(){
-  const closes=closesExcludingCurrent();
+  const {keys,closes}=barsExcludingCurrent();
   if(closes.length<16) return null;
-  const c=closes.slice(-241);
-  const r=[]; for(let i=1;i<c.length;i++) r.push(Math.log(c[i]/c[i-1]));
+  const K=keys.slice(-241), c=closes.slice(-241);
+  const r=[]; for(let i=1;i<c.length;i++){ if(K[i]-K[i-1]===1) r.push(Math.log(c[i]/c[i-1])); }   /* a background/sleep gap is not a 1-minute return — drop it rather than inflate sigma on it */
+  if(r.length<15) return null;
   const rWin=r.slice(-240);
   const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
   const m0=mean(rWin); let v=mean(rWin.map(x=>(x-m0)*(x-m0)))||1e-10;
@@ -1006,7 +1019,7 @@ async function kTest(urlOverride){
 function kQuoteFor(strike,tEnd){
   const K=S.k, c=K.cur;
   const mk=(m,ob)=>{ const yb=ob&&ob.yesBid!==null?ob.yesBid:m.yesBid, ya=ob&&ob.yesAsk!==null?ob.yesAsk:m.yesAsk;
-    if(yb===null||ya===null||ya<=0) return null; return {q:((yb+ya)/2)/100,spread:(ya-yb)/100}; };
+    if(yb===null||ya===null||ya<=0||ya>=100) return null; return {q:((yb+ya)/2)/100,spread:(ya-yb)/100}; };
   if(c&&c.strike!==null&&Math.abs(c.strike-strike)<0.01&&Math.abs(c.close-tEnd)<60000) return mk(c,K.ob);
   for(const m of K.hour){ if(Math.abs(m.strike-strike)<0.01&&Math.abs(m.close-tEnd)<60000) return mk(m,null); }
   return null;
@@ -1059,23 +1072,25 @@ async function kGet(path){
   const wait=(K.nextSlot||0)-Date.now(); if(wait>0) await sleep(wait);
   K.nextSlot=Date.now()+1600;
   K.reqLog=(K.reqLog||[]).filter(t=>t>Date.now()-60000); K.reqLog.push(Date.now());
-  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
   const cls=/status=(settled|unopened)/.test(path)?"history":(/orderbook/.test(path)?"book":"live");
   const t0=Date.now(); let usedBase=bases[0];
   const logIt=(outcome)=>{ K.reqTrail=(K.reqTrail||[]); K.reqTrail.unshift({t:Date.now(),base:usedBase,cls,outcome,ms:Date.now()-t0}); if(K.reqTrail.length>40) K.reqTrail.length=40; };
+  const doFetch=(base)=>{ const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),9000);
+    return fetch(base+path,{signal:ctl.signal,cache:"no-store"}).finally(()=>clearTimeout(to)); };   /* one budget per attempt \u2014 a primary timeout must not doom the failover */
+  const canFailover=st=>st>=500||st===429;
   try{
     let r;
-    try{ r=await fetch(bases[0]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[0]); }
+    try{ r=await doFetch(bases[0]); kNetOk(bases[0]); }
     catch(e0){
       K.lastNetErr={t:Date.now(),base:bases[0],msg:String(e0.message||e0)}; if(e0.name!=="AbortError") kNetFail(bases[0]);
       if(bases[1]){ usedBase=bases[1]; K.failover=(K.failover||0)+1;
-        try{ r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[1]); }
+        try{ r=await doFetch(bases[1]); kNetOk(bases[1]); }
         catch(e1){ if(e1.name!=="AbortError") kNetFail(bases[1]); throw e1; } }
       else throw e0;
     }
-    if(r.status===429&&bases[1]&&usedBase===bases[0]&&!(K.bench&&K.bench[bases[1]]&&K.bench[bases[1]].until>Date.now())){
+    if(canFailover(r.status)&&bases[1]&&usedBase===bases[0]&&!(K.bench&&K.bench[bases[1]]&&K.bench[bases[1]].until>Date.now())){
       K.failover=(K.failover||0)+1; usedBase=bases[1];
-      try{ r=await fetch(bases[1]+path,{signal:ctl.signal,cache:"no-store"}); kNetOk(bases[1]); }
+      try{ r=await doFetch(bases[1]); kNetOk(bases[1]); }
       catch(e1){ if(e1.name!=="AbortError") kNetFail(bases[1]); throw e1; } }
     logIt(String(r.status));
     if(r.status===429){
@@ -1085,13 +1100,17 @@ async function kGet(path){
       K.backoff[cls]=Date.now()+wait; K.last429=Date.now(); K.last429cls=cls;
       throw new Error("429 on "+cls+" \u2014 backing off "+Math.round(wait/1000)+"s");
     }
-    if(!r.ok){ K.fails=(K.fails||0)+1; K.backoff[cls]=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4))); throw new Error("HTTP "+r.status+" on "+cls); }
+    if(!r.ok){
+      K.fails=(K.fails||0)+1; K.backoff[cls]=Date.now()+Math.min(60000,3000*Math.pow(2,Math.min(K.fails,4)));
+      if(r.status>=500) kNetFail(usedBase);   /* a persistent 5xx is a pool-health signal, same as a network failure */
+      throw new Error("HTTP "+r.status+" on "+cls);
+    }
     K.fails=0; K.backoff[cls]=0;
     return await r.json();
   } catch(e){
     if(!(e.message&&/^(429|HTTP)/.test(e.message))) logIt(e.name==="AbortError"?"timeout":("ERR "+String(e.message||e)));
     throw e;
-  } finally{ clearTimeout(to); }
+  }
 }
 async function kalshiTick(now){
   const K=S.k; if(K.busy||!kalshiBase()) return; K.busy=true;
@@ -1105,8 +1124,9 @@ async function kalshiTick(now){
       K.lastMkt=now;
       const j=await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1");
       const m=(j.markets||[])[0];
-      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; K.curAt=Date.now(); if(isNew) kOnNewMarket(pm); }
-      else K.cur=null;
+      if(m){ const pm=kParseMarket(m); const isNew=!K.cur||K.cur.ticker!==pm.ticker; K.cur=pm; K.curAt=Date.now();
+        if(isNew){ K.ob=null; K.obAt=null; kOnNewMarket(pm); } }   /* the old window's book is not this window's book */
+      else { K.cur=null; K.ob=null; K.obAt=null; }
       K.err=null; return;
     }
     if(K.cur&&now-K.lastOb>8000&&!bo("book")){
@@ -1134,7 +1154,8 @@ async function kalshiTick(now){
       const since=Math.floor((now-6*3600000)/1000);
       const a=await kGet("/markets?series_ticker=KXBTC15M&status=settled&min_close_ts="+since+"&limit=40");
       const keep=K.sched.filter(x=>!x.result||!x.ticker.startsWith("KXBTC15M"));
-      K.sched=keep.concat((a.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
+      const fresh15=(a.markets||[]).map(kParseMarket);
+      K.sched=fresh15.concat(keep).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);   /* fresh (settled) entries win the dedupe over an unopened stub */
       K.schedHourDue=true; kReconcile(); K.err=null; return;
     }
     if(K.schedHourDue&&!bo("history")){
@@ -1142,7 +1163,8 @@ async function kalshiTick(now){
       const since=Math.floor((now-6*3600000)/1000);
       const b=await kGet("/markets?series_ticker=KXBTCD&status=settled&min_close_ts="+since+"&limit=200");
       const keep=K.sched.filter(x=>!x.result||!x.ticker.startsWith("KXBTCD"));
-      K.sched=keep.concat((b.markets||[]).map(kParseMarket)).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
+      const freshH=(b.markets||[]).map(kParseMarket);
+      K.sched=freshH.concat(keep).filter((x,i,arr)=>arr.findIndex(y=>y.ticker===x.ticker)===i).sort((x,y)=>x.close-y.close);
       kReconcile(); K.err=null; return;
     }
     if(now-K.lastUnopened>1800000&&!bo("history")){
@@ -1175,7 +1197,7 @@ function kReconcile(){
   let retally=false;
   for(const r of S.roundLog){
     if(r.kalshi!==undefined) continue;
-    const m=S.k.sched.find(x=>x.result&&x.ticker.startsWith("KXBTC15M")&&Math.abs(x.close-r.tEnd)<60000);
+    const m=S.k.sched.find(x=>(x.result==="yes"||x.result==="no")&&x.ticker.startsWith("KXBTC15M")&&Math.abs(x.close-r.tEnd)<60000);
     if(m){ r.kalshi={result:m.result,strike:m.strike,expVal:m.expVal};
       /* Kalshi-loaded strikes settle on Kalshi's official result */
       if(r.kalshiTicker&&r.strike!==null&&m.strike!==null&&Math.abs(r.strike-m.strike)<0.01&&(r.outcome==="UP"||r.outcome==="DOWN")){
@@ -1242,13 +1264,15 @@ function renderKalshi(){
 }
 /* ---------------------------------------------------------------- edge ledger (model vs market, persisted) */
 function ledgerSave(){
+  /* each key gets its own try/catch: a quota failure on one ledger must never stop the others from persisting */
   try{
     const W=Object.values(S.edge.windows).sort((a,b)=>a.close-b.close).slice(-1500);
     const wins={}; for(const w of W) wins[w.ticker]=w;
     localStorage.setItem("btc.edge",JSON.stringify(wins));
-    localStorage.setItem("btc.rounds",JSON.stringify(S.roundLog.slice(0,600)));
-    localStorage.setItem("btc.intervals",JSON.stringify(S.intervalLog.slice(0,400)));
-  }catch(e){}
+    S.ledgerErr=(S.ledgerErr==="edge")?null:S.ledgerErr;
+  }catch(e){ S.ledgerErr="edge"; }
+  try{ localStorage.setItem("btc.rounds",JSON.stringify(S.roundLog.slice(0,600))); }catch(e){ S.ledgerErr="rounds"; }
+  try{ localStorage.setItem("btc.intervals",JSON.stringify(S.intervalLog.slice(0,400))); }catch(e){ S.ledgerErr="intervals"; }
 }
 function ledgerLoad(){
   try{
@@ -1259,6 +1283,8 @@ function ledgerLoad(){
     for(const x of S.roundLog){ if(x.outcome==="UP"||x.outcome==="DOWN"){ S.tally.calls++; if(x.hit) S.tally.hits++; } }
   }catch(e){}
 }
+function roundSave(){ try{ if(S.round) localStorage.setItem("btc.round",JSON.stringify(S.round)); else localStorage.removeItem("btc.round"); }catch(e){} }
+function roundLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.round")||"null"); if(j&&typeof j==="object"&&Array.isArray(j.strikes)) S.round=j; }catch(e){} }   /* survives a reload or tab kill between ARM and the gate; roundTick resolves a stale one on the next tick */
 function edgeSnapOne(m,now,ob){
   if(!m||m.strike===null) return false;
   if(now>=m.close) return false;
@@ -1278,7 +1304,8 @@ function edgeSnap(now){
   const K=S.k; if(S.lastPx===null) return;
   if(now-S.edge.lastSnap<60000) return;
   let any=false;
-  if(K.cur) any=edgeSnapOne(K.cur,now,K.ob)||any;
+  const freshOb=(K.obAt&&now-K.obAt<=90000)?K.ob:null;   /* a book stale beyond one read cycle is not paired with a fresh model probability — fall back to the market's own top-of-book */
+  if(K.cur) any=edgeSnapOne(K.cur,now,freshOb)||any;
   for(const m of K.hour){ if(Math.abs(1e4*Math.log(m.strike/S.lastPx))<=150) any=edgeSnapOne(m,now,null)||any; }
   if(any){ S.edge.lastSnap=now; ledgerSave(); }
 }
@@ -1300,8 +1327,8 @@ function edgeProvisional(now){
   for(const w of Object.values(S.edge.windows)){
     if(w.result||w.provTried) continue;
     if(now<w.close+65000) continue;
+    const r=tapeSettleAvg(w.close); if(r===null) continue;   /* not tried yet: retry next tick rather than give up on a window that closed before the tape/seed caught up */
     w.provTried=true;
-    const r=tapeSettleAvg(w.close); if(r===null) continue;
     w.result=r.avg>=w.strike?"yes":"no"; w.provisional=true; w.provSrc=r.src; w.settleAvg=+r.avg.toFixed(2); changed=true;
   }
   if(changed){ ledgerSave(); renderEdge(); renderVerdict(); }
@@ -1309,7 +1336,7 @@ function edgeProvisional(now){
 function edgeGrade(){
   let changed=false;
   for(const m of S.k.sched){
-    if(!m.result) continue;
+    if(m.result!=="yes"&&m.result!=="no") continue;   /* a void/other settlement is not yes or no — leave it unresolved rather than grading it as NO */
     const w=S.edge.windows[m.ticker]; if(!w) continue;
     if(w.result&&!w.provisional) continue;
     if(w.provisional){ w.provResult=w.result; w.agree=(w.result===m.result); }
@@ -1367,7 +1394,7 @@ function renderEdge(){
   const nProv=allW.filter(w=>w.provisional).length, nOff=allW.length-nProv;
   const cmp=allW.filter(w=>w.agree!==undefined); const agree=cmp.filter(w=>w.agree).length;
   sm.innerHTML=E.nWin+" settled windows, one read each ("+nOff+" official \u00b7 "+nProv+" provisional from tape"
-    +(cmp.length?(" \u00b7 tape/official agree "+agree+"/"+cmp.length):"")+") \u00b7 "+E.nSnap+" snapshots \u00b7 model beats market where \u0394 is positive: Brier "
+    +(cmp.length?(" \u00b7 tape/official agree "+agree+"/"+cmp.length):"")+") \u00b7 "+E.nSnap+" windows \u00b7 model beats market where \u0394 is positive: Brier "
     +'<span style="color:var(--'+(dB>0?"up":"down")+')">'+(dB>=0?"+":"")+f3(dB)+'</span>'+" \u00b7 log-loss "
     +'<span style="color:var(--'+(dL>0?"up":"down")+')">'+(dL>=0?"+":"")+f3(dL)+'</span>';
   if(tbS){
@@ -1525,7 +1552,7 @@ function swingSides(now){
 }
 /* ledger: one entry per window-side; reads each minute; graded at the gate on the max bid seen after each read */
 function swingLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.swing")||"null"); if(j&&j.v===1) S.swing=j; }catch(e){} if(!S.swing||S.swing.v!==1) S.swing={v:1,w:{}}; }
-function swingSave(){ try{ const keys=Object.keys(S.swing.w).sort(); while(keys.length>400){ delete S.swing.w[keys.shift()]; } localStorage.setItem("btc.swing",JSON.stringify(S.swing)); }catch(e){} }
+function swingSave(){ try{ const keys=Object.keys(S.swing.w).sort((a,b)=>S.swing.w[a].close-S.swing.w[b].close); while(keys.length>400){ delete S.swing.w[keys.shift()]; } localStorage.setItem("btc.swing",JSON.stringify(S.swing)); }catch(e){} }   /* prune the oldest window by its close time — a lexicographic ticker sort deletes the wrong entries across a month boundary */
 function swingTick(now){
   const K=S.k, c=K.cur; if(!c||!K.ob) return;
   /* update running max bids for every open window-side entry (both sides, every poll) */
@@ -1541,7 +1568,7 @@ function swingTick(now){
   for(const s of swingSides(now)){ if(s.p===null) continue;
     const key=s.ticker+"|"+s.side; const e=S.swing.w[key]||(S.swing.w[key]={ticker:s.ticker,side:s.side,strike:s.strike,close:s.close,reads:[],graded:false,hit:null});
     e.reads.push({t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0});
-    simEnter(e,e.reads[e.reads.length-1],key); }
+    const bidAtEntry=(s.side==="YES"?yb:nb); simEnter(e,e.reads[e.reads.length-1],key,(bidAtEntry!==null&&bidAtEntry!==undefined)?bidAtEntry/100:null); }
   swingSave();
 }
 function swingGrade(now){
@@ -1588,14 +1615,16 @@ function simDecide(entry,r,side,key){
 }
 function jLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.journal")||"null"); if(j&&j.v===3){ S.journal=j.t||[]; S.simBank=j.bank||{}; } }catch(e){} if(!Array.isArray(S.journal)) S.journal=[]; if(!S.simBank) S.simBank={}; for(const a of SIM_ARMS){ if(!S.simBank[a.id]) S.simBank[a.id]={bank:SIM.bank0,peak:SIM.bank0,dd:0}; } }
 function jSave(){ try{ localStorage.setItem("btc.journal",JSON.stringify({v:3,t:S.journal.slice(0,3000),bank:S.simBank})); }catch(e){} }
-function simEnter(e,r,key){
+function simEnter(e,r,key,bidAtEntry){
   if(r.tau<2) return;
   for(const a of SIM_ARMS){
     if(e.sim&&e.sim[a.id]) continue;
     if(a.aggressive&&r.ask>SIM.aggressiveMax) continue;
     if(!simDecide(a.entry,r,e.side,key)) continue;
-    const B=S.simBank[a.id]; const stake=Math.max(1,B.bank*SIM.risk); const shares=Math.max(1,Math.min(SIM.maxShares,Math.floor(stake/r.ask)));
-    e.sim=e.sim||{}; e.sim[a.id]={arm:a.id,exitRule:a.exit,tIn:r.t,tau:r.tau,entry:r.ask,shares,stake:+(shares*r.ask).toFixed(2),p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true,peak:r.ask,armed:false,bidNow:null};
+    const B=S.simBank[a.id]; if(B.bank<=0) continue;   /* a busted arm stops trading rather than compounding a negative bankroll */
+    const stake=Math.max(1,B.bank*SIM.risk); const shares=Math.max(1,Math.min(SIM.maxShares,Math.floor(stake/r.ask)));
+    const entryBid=(bidAtEntry!==null&&bidAtEntry!==undefined&&bidAtEntry>0)?bidAtEntry:r.ask;   /* the trail stop references what you could have sold for at entry, not the ask you paid */
+    e.sim=e.sim||{}; e.sim[a.id]={arm:a.id,exitRule:a.exit,tIn:r.t,tau:r.tau,entry:r.ask,entryBid,shares,stake:+(shares*r.ask).toFixed(2),p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true,peak:r.ask,armed:false,bidNow:null};
     if(a.entry==="tool"&&!(S.swingActive&&S.swingActive.key===key)) S.swingActive={key,side:e.side,ticker:e.ticker,close:e.close,t:r.t};
   }
 }
@@ -1615,7 +1644,7 @@ function simUpdate(e,bid,now){
     /* trail */
     if(!t.armed&&bid>=t.entry*SIM.trailArm) t.armed=true;
     if(t.armed&&bid<=t.peak*(1-SIM.trailPull)){ simCloseOne(e,t,bid,"trail",now); closed=true; continue; }
-    if(!t.armed&&bid<=t.entry*SIM.stop){ simCloseOne(e,t,bid,"stop",now); closed=true; continue; }
+    if(!t.armed&&bid<=t.entryBid*SIM.stop){ simCloseOne(e,t,bid,"stop",now); closed=true; continue; }
     if(tau<=SIM.timeStop&&!t.armed&&bid<t.entry*2){ simCloseOne(e,t,bid,"time",now); closed=true; continue; }
   }
   if(closed) jSave();
@@ -1677,8 +1706,9 @@ function renderJournal(){
   const st=journalStats();
   ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id]; const isTool=a.entry==="tool";
     const head='<tr'+(isTool?' style="background:rgba(217,165,44,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
-    if(!s.n) return head+'<td class="num">$'+s.bank.toFixed(2)+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
-    return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">$'+s.bank.toFixed(2)+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
+    const bankTxt='$'+s.bank.toFixed(2)+(s.bank<=0?' <span style="color:var(--down)">\u00b7 busted</span>':'');
+    if(!s.n) return head+'<td class="num">'+bankTxt+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
+    return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">'+bankTxt+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
       +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--dim)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
   tb.innerHTML=S.journal.slice(0,40).map(t=>'<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td>'+t.arm+'</td><td class="num">'+cents(t.entry)+'</td><td class="num">'+cents(t.exit)+'</td><td>'+t.reason+'</td><td class="num">'+t.shares+'</td><td class="num">$'+t.stake.toFixed(2)+'</td>'
     +'<td class="num" style="color:var(--'+(t.pnl>0?"up":"down")+')">'+(t.pnl>=0?"+":"")+'$'+t.pnl.toFixed(2)+'<span class="sub">'+c2(t.pnlShare)+'/sh</span></td><td class="num">'+cents(t.peak)+'</td><td class="num model">'+pc(t.p)+'</td><td class="num">'+(t.ofi===null||t.ofi===undefined?"thin":((t.ofi>=0?"+":"")+t.ofi.toFixed(2)))+'</td></tr>').join("")
@@ -1838,6 +1868,8 @@ function autoBand(){
   const st=S.xt.stats; let n=0,inB=0; for(const k of Object.keys(st)){ n+=st[k].n; inB+=st[k].inB; }
   S.auto.n=n; if(n<20){ S.auto.cov=n?inB/n:null; return; }
   const cov=inB/n; S.auto.cov=cov;
+  if(n===(S.auto.lastN||0)) return;   /* new resolutions land once a minute; do not compound the adjustment every 1 Hz tick */
+  S.auto.lastN=n;
   if(cov<0.87) S.auto.z=Math.min(3.0,S.auto.z*1.04); else if(cov>0.93) S.auto.z=Math.max(1.0,S.auto.z*0.98);
 }
 function xtResolve(now){
@@ -1866,7 +1898,7 @@ function normCdf(x){
   const p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));
   return x>0?1-p:p;
 }
-function hourStart(t){ const d=new Date(t); d.setMinutes(0,0,0); return d.getTime(); }
+function hourStart(t){ return Math.floor(t/3600000)*3600000; }   /* UTC hour floor by arithmetic — a calendar setMinutes() floors in the browser's local zone */
 function anchoredStats(now){
   const h0=hourStart(now);
   const k0=Math.floor(h0/60000), kNow=Math.floor(now/60000);
@@ -1949,6 +1981,7 @@ function armRound(){
   if(nb-now<5000){ armMsg("settling \u2014 next window opens "+timeStr(nb)); return; }
   let R=S.round;
   if(!R||R.state==="settled"||R.tStart!==lastB){
+    if(R&&R.state==="live"&&R.tStart!==lastB) settleRound(R,now);   /* a stale live round from an earlier window is settled and logged, never just discarded */
     R={state:"live",tStart:lastB,tEnd:nb,opens:{},openRef:null,settles:{},strikes:[],settledAt:0};
     captureOpensAt(R);
     S.round=R;
@@ -1957,7 +1990,7 @@ function armRound(){
   for(const p0 of prev){ p0.withdrawn=true; p0.outcome="WITHDRAWN"; p0.tW=now; logStrike(R,p0); }
   const sk={id:++S.strikeSeq,strike:v,call:S.callSel,tArm:now,
     probAtArm:null,prob:null,probFinal:null,outcome:null,hit:null,up:undefined,dn:undefined,withdrawn:false};
-  const P=strikeProbs({strike:v,tEnd:R.tEnd},now);
+  const P=strikeProbs({strike:v,tEnd:R.tEnd,quote:kQuoteFor(v,R.tEnd)},now);
   if(P){ sk.probAtArm=P.over; sk.prob=P; sk.probFinal=P.over; }
   const qraw=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
   sk.quoteAtArm=(isFinite(qraw)&&qraw>0&&qraw<100)?qraw:null;
@@ -1965,6 +1998,7 @@ function armRound(){
   sk.edgeAtArm=(sk.quoteAtArm!==null&&sk.pCallAtArm!==null)?+((sk.pCallAtArm-sk.quoteAtArm/100)*100).toFixed(2):null;
   sk.kalshiTicker=(S.k.cur&&S.k.cur.strike!==null&&Math.abs(S.k.cur.strike-v)<0.01)?S.k.cur.ticker:null;
   R.strikes.push(sk);
+  roundSave();
   armMsg((prev.length?"replaced \u2014 prior logged WITHDRAWN \u00b7 ":"")+"armed "+fmtUSD.format(v)+" "+sk.call+" at T+"+mmss(now-lastB));
   renderArmBar();
 }
@@ -1973,15 +2007,17 @@ function withdrawStrike(id){
   const sk=R.strikes.find(s=>s.id===id&&!s.withdrawn); if(!sk) return;
   sk.withdrawn=true; sk.outcome="WITHDRAWN"; sk.tW=Date.now();
   logStrike(R,sk);
+  roundSave();
   armMsg("withdrew "+fmtUSD.format(sk.strike)+" \u2014 logged");
   renderArmBar();
 }
 function settleRound(R,now){
-  const fr=freshExch(now,10000);
+  /* anchor the settlement at the gate (R.tEnd), not at the tick that happens to notice it — a throttled tab can call this a minute late */
+  const fr=[]; for(const id of EXCH){ const q=priceAtSrc(S.src[id].hist,R.tEnd); if(q) fr.push({id,p:q.p}); }
   let mn=Infinity,mx=-Infinity;
   for(const f of fr){ R.settles[f.id]=f.p; mn=Math.min(mn,f.p); mx=Math.max(mx,f.p); }
   const voters=fr.length;
-  const prox=tapeSettleAvg(now);
+  const prox=tapeSettleAvg(R.tEnd);
   for(const sk of R.strikes){
     if(sk.withdrawn) continue;
     let up=0,dn=0;
@@ -2041,7 +2077,7 @@ function showVerdict(R){
   const scored=live.filter(s=>s.outcome==="UP"||s.outcome==="DOWN");
   const hits=scored.filter(s=>s.hit).length;
   const other=live.length-u-d;
-  let cls="flat"; if(u&&!d) cls="up"; else if(d&&!u) cls="down";
+  let cls="flat"; if(hits&&hits===scored.length) cls="up"; else if(scored.length&&hits===0) cls="down";   /* colour keys to the call, not to price direction */
   v.className="num "+cls;
   v.textContent="WINDOW SETTLED "+timeStr(R.tEnd)+" \u2014 "+u+" UP \u00b7 "+d+" DOWN"
     +(other?(" \u00b7 "+other+" other"):"")
@@ -2061,6 +2097,7 @@ function roundTick(now){
     }
     if(R.state==="settled"&&now-R.settledAt>20000) S.round=null;
   }
+  roundSave();
   renderProbNote();
   renderArmBar();
 }
@@ -2119,7 +2156,11 @@ function renderArmBar(){
   let s="OPEN "+timeStr(lastB)+"\u2013"+timeStr(nb)+" \u00b7 settles in "+mmss(nb-now)+ix
     +(act.length?(" \u00b7 strike "+fmtUSD.format(act[0].strike)+" "+act[0].call):" \u00b7 strike \u2014");
   if(act.length&&act[0].prob){
-    const q=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
+    /* the ask must match the ARMED call's side, not whichever button is currently highlighted */
+    const ob=S.k.ob, cur=S.k.cur;
+    const bookAsk=act[0].call==="ABOVE"?(ob&&ob.yesAsk!==null?ob.yesAsk:(cur&&cur.yesAsk)):(ob&&ob.noAsk!==null?ob.noAsk:(cur&&cur.noAsk));
+    const manual=parseFloat(($("quoteIn").value||"").replace(/[^\d.]/g,""));
+    const q=(S.k.quoteManual&&isFinite(manual))?manual:bookAsk;
     if(isFinite(q)&&q>0&&q<100){
       const mp=act[0].call==="ABOVE"?act[0].prob.over:act[0].prob.under;
       const edge=(mp-q/100)*100-100*kFee(q/100), ev=edge/q*100;
@@ -2253,7 +2294,8 @@ function renderSpot(p){
   }).join("");
   chips+=verifiableReads();
   $("chips").innerHTML=chips;
-  const sl=$("spotlbl"); if(sl) sl.textContent="BTC/USD \u00b7 line "+(S.leader||"\u2014").toUpperCase()+" \u00b7 peer-verified"+(S.idxPx?(" \u00b7 index "+fmtUSD.format(S.idxPx)):"");
+  const verified=!S.leader||S.src[S.leader].verified!==false;
+  const sl=$("spotlbl"); if(sl) sl.textContent="BTC/USD \u00b7 line "+(S.leader||"\u2014").toUpperCase()+(verified?" \u00b7 peer-verified":" \u00b7 unverified (no fresh peers)")+(S.idxPx?(" \u00b7 index "+fmtUSD.format(S.idxPx)):"");
 }
 function renderReqTrail(){
   const tb=$("reqtrail")&&$("reqtrail").querySelector("tbody"); if(!tb) return;
@@ -2513,7 +2555,9 @@ function renderSweep(){
     const P=sk.prob;
     if(P&&R.state!=="settled"){
       const gx=F.padL+F.iw-7, gw=5, split=F.padT+(1-P.over)*F.ih;
-      const gA=(sk.call==="ABOVE")?"rgba(63,191,126,.45)":"rgba(224,71,95,.45)", gB=(sk.call==="ABOVE")?"rgba(224,71,95,.45)":"rgba(63,191,126,.45)";
+      /* split = padT+(1-P.over)*ih: the TOP segment's height fraction is 1-P.over (=P(below)), the BOTTOM segment's is P.over (=P(above)).
+         so the colour that should grow with the call's odds belongs to the BOTTOM segment when the call is ABOVE, and to the TOP segment when it is BELOW. */
+      const gA=(sk.call==="ABOVE")?"rgba(224,71,95,.45)":"rgba(63,191,126,.45)", gB=(sk.call==="ABOVE")?"rgba(63,191,126,.45)":"rgba(224,71,95,.45)";
       cx.fillStyle=gA; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
       cx.fillStyle=gB; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
       const yS=inDomSk?Y(sk.strike):(F.padT+F.ih/2);
@@ -2525,7 +2569,7 @@ function renderSweep(){
       cx.textAlign="left";
     }
     if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")&&inDomSk){
-      const col=sk.outcome==="UP"?UPC:DNC; cx.strokeStyle=col; cx.lineWidth=1.8; cx.beginPath();cx.arc(Xt(R.tEnd),Y(sk.strike),6,0,7);cx.stroke();
+      const col=sk.hit?UPC:DNC; cx.strokeStyle=col; cx.lineWidth=1.8; cx.beginPath();cx.arc(Xt(R.tEnd),Y(sk.strike),6,0,7);cx.stroke();
       cx.fillStyle=col; cx.font="11px "+FONT(); cx.textAlign="right"; cx.fillText(sk.outcome+" \u00b7 "+(sk.hit?"HIT":"MISS")+(sk.provisional?" \u00b7 provisional":""),Xt(R.tEnd)-8,Y(sk.strike)-8); cx.textAlign="left"; cx.font="9px "+FONT();
     }
   }
@@ -2650,44 +2694,47 @@ $("sunLoc").addEventListener("click",sunUseLocation);
 $("secCollapse").addEventListener("click",()=>setAllSections(true));
 const SEC_DEFAULT_CLOSED={signals:1,xt:1,advanced:1,method:1};
 const SEC_KEY="btc.sections.v2";
+let SEC_STATE={};
+function loadSecState(){ try{ const j=JSON.parse(localStorage.getItem(SEC_KEY)||"{}"); SEC_STATE=(j&&typeof j==="object"&&!Array.isArray(j))?j:{}; }catch(e){ SEC_STATE={}; } }
+function saveSecState(){ try{ localStorage.setItem(SEC_KEY,JSON.stringify(SEC_STATE)); }catch(e){} }
 function setSec(sec,closed){ sec.classList.remove("collapsed"); if(closed) sec.classList.add("collapsed"); }
 function initSections(){
-  let st={}; try{ const j=JSON.parse(localStorage.getItem(SEC_KEY)||"{}"); if(j&&typeof j==="object"&&!Array.isArray(j)) st=j; }catch(e){}
+  loadSecState();   /* one shared in-memory copy — a single-section toggle must not overwrite what EXPAND/COLLAPSE ALL just saved, or vice versa */
   document.querySelectorAll("section[data-key],div[data-key]").forEach(sec=>{
     const key=sec.getAttribute("data-key");
-    const closed=(Object.prototype.hasOwnProperty.call(st,key))?(st[key]===1):(SEC_DEFAULT_CLOSED[key]===1);
+    const closed=(Object.prototype.hasOwnProperty.call(SEC_STATE,key))?(SEC_STATE[key]===1):(SEC_DEFAULT_CLOSED[key]===1);
     setSec(sec,closed);
     const head=sec.querySelector(".shead"); if(!head) return;
     head.addEventListener("click",ev=>{
       if(ev.target.closest("button")) return;
       const now=!sec.classList.contains("collapsed");
       setSec(sec,now);
-      st[key]=now?1:0; try{ localStorage.setItem(SEC_KEY,JSON.stringify(st)); }catch(e){}
+      SEC_STATE[key]=now?1:0; saveSecState();
       markOverflow();
     });
   });
 }
 function setAllSections(closed){
-  const st={};
-  document.querySelectorAll("section[data-key],div[data-key]").forEach(sec=>{ setSec(sec,closed); st[sec.getAttribute("data-key")]=closed?1:0; });
-  try{ localStorage.setItem(SEC_KEY,JSON.stringify(st)); }catch(e){}
+  document.querySelectorAll("section[data-key],div[data-key]").forEach(sec=>{ setSec(sec,closed); SEC_STATE[sec.getAttribute("data-key")]=closed?1:0; });
+  saveSecState();
   markOverflow();
 }
 function markOverflow(){
   document.querySelectorAll(".tblwrap").forEach(w=>{ w.classList.toggle("ovf",w.scrollWidth>w.clientWidth+4); });
 }
 $("quoteIn").addEventListener("input",()=>{ S.k.quoteManual=($("quoteIn").value.trim()!==""); });
-$("callAbove").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
-$("callBelow").addEventListener("click",()=>{ S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("strikeChips").addEventListener("click",ev=>{
   const b=ev.target.closest(".schip"); if(!b) return;
   withdrawStrike(+b.getAttribute("data-sid"));
 });
 $("strikeIn").addEventListener("keydown",ev=>{ if(ev.key==="Enter") $("armBtn").click(); });
+/* one listener per button: set the call before deriving the quote from it, so kSyncQuote never reads the side just left */
 $("callAbove").addEventListener("click",()=>{ S.callSel="ABOVE";
-  $("callAbove").classList.add("sel"); $("callBelow").classList.remove("sel"); });
+  $("callAbove").classList.add("sel"); $("callBelow").classList.remove("sel");
+  S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
-  $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel"); });
+  $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel");
+  S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
   try{ idxTick(Date.now()); }catch(e){}
@@ -2713,7 +2760,7 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); viaLoad(); swingLoad(); jLoad(); kProbeSameOrigin(); initSections();
+  loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); kProbeSameOrigin(); initSections();
   try{ veinLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();

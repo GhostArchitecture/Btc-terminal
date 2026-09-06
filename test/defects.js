@@ -82,11 +82,12 @@ D("R4", "the arm-time headline ignores the Kalshi quote (armRound 1960: fit 'fal
     return {fitAtArm:sk&&sk.prob&&sk.prob.fit, quoteFound:!!kQuoteFor(100000,nb)}; })()`);
   return { repro: r.quoteFound && r.fitAtArm === "fallback-3", detail: r };
 });
-D("S1", "the trail arm's 50% stop sits inside a normal cheap-side spread and fires on the first poll (simUpdate 1618)", () => {
+D("S1", "the trail arm's 50% stop is referenced to the ask paid, so it sits inside a normal cheap-side spread and fires on the first poll with no price move (simUpdate 1618 / simEnter 1597)", () => {
   const H = load(); H.setNow(NOW);
   const r = H.R(`(function(){ S.journal=[]; S.simBank={}; jLoad(); const e={ticker:"T",side:"YES",strike:1,close:${NOW}+600000,reads:[],graded:false,hit:null};
-    const read={t:${NOW},tau:10,ask:0.05,p:0.5,base:0.05,be:0.16,ofi:null,maxAfter:0}; e.reads.push(read); simEnter(e,read,"T|YES");
-    simUpdate(e,0.02,${NOW}+1000); const t=e.sim["all/trail"]; return {open:t.open,reason:t.reason,exit:t.exit}; })()`);
+    const read={t:${NOW},tau:10,ask:0.05,p:0.5,base:0.05,be:0.16,ofi:null,maxAfter:0}; e.reads.push(read);
+    const bidAtEntry=0.02; simEnter(e,read,"T|YES",bidAtEntry);   /* ask 5c / bid 2c at entry — a real spread, not a move */
+    simUpdate(e,bidAtEntry,${NOW}+1000); const t=e.sim["all/trail"]; return {open:t.open,reason:t.reason,entryBid:t.entryBid}; })()`);
   return { repro: r.open === false && r.reason === "stop", detail: r };
 });
 D("S2", "swingSave prunes by string order; month abbreviations in tickers delete the newest entries at a month boundary (1528)", () => {
@@ -96,17 +97,20 @@ D("S2", "swingSave prunes by string order; month abbreviations in tickers delete
     return {octSurvives:"KXBTC15M-26OCT01T0000|YES" in S.swing.w, n:Object.keys(S.swing.w).length}; })()`);
   return { repro: r.octSurvives === false, detail: r };
 });
-D("S3", "no bankruptcy floor: a busted arm keeps trading on a $1 stake and the bankroll goes negative (simEnter 1597)", () => {
+D("S3", "no bankruptcy floor: a busted arm (bank already ≤ 0) keeps opening new $1-stake positions instead of stopping (simEnter 1597)", () => {
   const H = load(); H.setNow(NOW);
-  const r = H.R(`(function(){ S.journal=[]; S.simBank={}; jLoad(); S.simBank["all/box"].bank=0.40; const e={ticker:"T",side:"YES",strike:1,close:${NOW}+600000,reads:[],graded:false,hit:null,lastBid:0};
-    const read={t:${NOW},tau:10,ask:0.05,p:0.5,base:0.05,be:0.16,ofi:null,maxAfter:0}; e.reads.push(read); simEnter(e,read,"T|YES"); const sh=e.sim["all/box"].shares; simClose(e); return {shares:sh,bank:S.simBank["all/box"].bank}; })()`);
-  return { repro: r.shares > 0 && r.bank < 0, detail: r };
+  const r = H.R(`(function(){ S.journal=[]; S.simBank={}; jLoad(); S.simBank["all/box"].bank=-0.20;
+    const e={ticker:"T",side:"YES",strike:1,close:${NOW}+600000,reads:[],graded:false,hit:null,lastBid:0};
+    const read={t:${NOW},tau:10,ask:0.05,p:0.5,base:0.05,be:0.16,ofi:null,maxAfter:0}; e.reads.push(read); simEnter(e,read,"T|YES");
+    return {entered:!!(e.sim&&e.sim["all/box"]),bank:S.simBank["all/box"].bank}; })()`);
+  return { repro: r.entered === true, detail: r };
 });
-D("N1", "a print with zero fresh CF peers is accepted unverified and becomes the leader (acceptPrint 790)", () => {
+D("N1", "a print with zero fresh CF peers is accepted (so the tape keeps moving) but the spot label still claims 'peer-verified' (acceptPrint 790, renderSpot)", () => {
   const H = load(); H.setNow(NOW);
   const r = H.R(`(function(){ for(const id of Object.keys(S.src)){ S.src[id].price=null; S.src[id].t=0; } S.src.coinbase.price=100000; S.src.coinbase.t=${NOW}-11000; S.tape=[]; S.leader=null; S.lastPx=null;
-    acceptPrint("binanceus",105000,${NOW}); return {leader:S.leader,tape:S.tape.length,lastPx:S.lastPx}; })()`);
-  return { repro: r.leader === "binanceus" && r.tape === 1, detail: r };
+    acceptPrint("binanceus",105000,${NOW}); renderSpot(105000);
+    return {leader:S.leader,verified:S.src.binanceus.verified,label:document.getElementById("spotlbl").textContent}; })()`);
+  return { repro: r.leader === "binanceus" && r.verified !== false, detail: r };
 });
 D("N2", "WebSocket reconnect delay never resets after a healthy session (connectWS 700, scheduleWS 704)", () => {
   const H = load();
@@ -115,13 +119,16 @@ D("N2", "WebSocket reconnect delay never resets after a healthy session (connect
     return delays; })()`);
   return { repro: r[r.length - 1] === 30000, detail: r };
 });
-D("N3", "after a 9 s timeout the failover fetch reuses the aborted signal and fails instantly (kGet 1062)", () => {
-  const calls = [];
-  const H = load({ fetch: (u, init) => { calls.push(String(u)); if (init && init.signal && init.signal.aborted) { const e = new Error("aborted"); e.name = "AbortError"; return Promise.reject(e); } return okJson({ markets: [] }); } });
+D("N3", "the primary and failover fetch attempts share one AbortController, so a primary timeout dooms the failover instantly (kGet 1062)", () => {
+  const signals = [];   /* tag the path so this test's calls are never confused with init()'s own background probe/seed fetches, which hit the same real endpoints */
+  const H = load({ fetch: (u, init) => {
+    if (!String(u).includes("__n3_test__")) return okJson({ markets: [] });
+    signals.push(init && init.signal);
+    return signals.length === 1 ? Promise.reject(Object.assign(new Error("network down"), { name: "TypeError" })) : okJson({ markets: [] });
+  } });
   return H.R(`(async function(){ S.cfg.kproxy="https://relay.example"; S.k.sameOrigin=true; S.k.nextSlot=0;
-    const real=setTimeout; setTimeout=(fn,ms)=>{ if(ms>=9000){ fn(); return 0; } return real(fn,ms); };
-    let err=null; try{ await kGet("/markets?series_ticker=KXBTC15M&status=open&limit=1"); }catch(e){ err=e.name; }
-    setTimeout=real; return {repro:err==="AbortError", detail:{err, trail:S.k.reqTrail.map(t=>t.outcome+"@"+t.base)}}; })()`);
+    await kGet("/__n3_test__?series_ticker=KXBTC15M&status=open&limit=1"); return {}; })()`)
+    .then(() => ({ repro: signals.length < 2 || signals[0] === signals[1] || signals[1].aborted === true, detail: { attempts: signals.length, sharedController: signals[0] === signals[1], secondPreAborted: signals[1] && signals[1].aborted } }));
 });
 D("N4", "a settled result is dropped from the schedule when an unopened stub for the same ticker is already present (kalshiTick 1137)", () => {
   const H = load({ fetch: u => okJson(/status=settled/.test(String(u)) ? { markets: [{ ticker: "KXBTC15M-X", event_ticker: "E", status: "finalized", floor_strike: "100000", open_time: new Date(NOW - 1800000).toISOString(), close_time: new Date(NOW - 900000).toISOString(), result: "yes", expiration_value: "100010" }] } : { markets: [] }) });

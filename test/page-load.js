@@ -51,6 +51,15 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
   T("verdict reads NOT READY on an empty ledger", /NOT READY/.test(w.document.getElementById("verdictbox").textContent), w.document.getElementById("verdictbox").textContent);
   T("viability strip reads NEGATIVE with no live fills", /NEGATIVE/.test(w.document.getElementById("vstrip").textContent), w.document.getElementById("vstrip").textContent.slice(0, 120));
   T("sundial set the four light custom properties", ["--lx", "--ly", "--elev", "--night"].every(p => w.document.documentElement.style.getPropertyValue(p) !== ""), null);
+
+  /* §10.3 SEC1: EXPAND/COLLAPSE ALL must not be discarded by the very next single-section toggle (shared SEC_STATE, not two stale closures) */
+  g("setAllSections(true)");
+  const afterAll = JSON.parse(w.localStorage.getItem("btc.sections.v2"));
+  const verdictHead = w.document.querySelector('section[data-key="verdict"] .shead');
+  verdictHead.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  const afterToggle = JSON.parse(w.localStorage.getItem("btc.sections.v2"));
+  const otherKeysStillClosed = Object.keys(afterAll).filter(k => k !== "verdict").every(k => afterToggle[k] === 1);
+  T("collapsing every section then expanding one keeps the rest collapsed in storage", afterToggle.verdict === 0 && otherKeysStillClosed, { afterAll, afterToggle });
   T("errors after ticks and frame: none", errors.length === 0 && rejections.length === 0, errors.concat(rejections));
   w.close();
   process.exitCode = done() ? 1 : 0;

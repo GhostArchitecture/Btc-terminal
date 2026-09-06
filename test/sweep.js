@@ -83,4 +83,43 @@ for (const c of cells) {
   T("a settled window draws its Y pip at the gate", !!pip, pip && pip.args);
 }
 
+/* the live odds gauge (§10.3 G1): the segment that grows with the call's own odds must be the call's colour, not its opposite */
+function gaugeScene(call, over) {
+  R(`(function(){
+    S.lock=null; S.drag=null; S.swingActive=null; S.k.cur=null; S.k.sched=[]; S.k.hour=[]; S.leader="coinbase";
+    S.tape=[]; for(let t=${now}-5*60000;t<=${now};t+=15000) S.tape.push({t,p:100050,src:"coinbase"});
+    S.lastPx=100050; S.idxPx=100050;
+    S.round={state:"live",tStart:${tStart},tEnd:${tEnd},opens:{},openRef:null,settles:{},settledAt:0,
+      strikes:[{id:1,strike:100000,call:"${call}",tArm:${tStart}+60000,probAtArm:${over},prob:{over:${over},under:${1 - over}},probFinal:${over},outcome:null,hit:null,withdrawn:false}]};
+  })()`);
+  const calls = canvasCalls(); calls.length = 0;
+  R("renderSweep()");
+  const gaugeColor = c => /63,191,126/.test(c) ? "green" : /224,71,95/.test(c) ? "red" : c;   /* the gauge paints raw rgba literals, not the PAL hex values `name()` matches */
+  return calls.filter(c => c.op === "fillRect" && c.args[2] === 5).map(c => ({ fill: gaugeColor(c.fillStyle), height: c.args[3] }));
+}
+for (const [call, over] of [["ABOVE", 0.9], ["ABOVE", 0.1], ["BELOW", 0.9], ["BELOW", 0.1]]) {
+  const g = gaugeScene(call, over);
+  const favored = (call === "ABOVE") === (over > 0.5);
+  const big = g.length === 2 ? (g[0].height > g[1].height ? g[0] : g[1]) : null;
+  T(`live odds gauge: call ${call} at P(above)=${over} is mostly ${favored ? "green" : "red"} (call ${favored ? "winning" : "losing"})`, !!big && big.fill === (favored ? "green" : "red"), g);
+}
+
+/* the settled armed-strike ring and HIT/MISS label (§10.3 R2b): keyed to the call, not to price direction — same rule as showVerdict */
+function settledMarkerScene(call, outcome, hit) {
+  R(`(function(){
+    S.lock=null; S.drag=null; S.swingActive=null; S.k.cur=null; S.k.sched=[]; S.k.hour=[]; S.leader="coinbase";
+    S.tape=[]; for(let t=${now}-5*60000;t<=${now};t+=15000) S.tape.push({t,p:100050,src:"coinbase"});
+    S.lastPx=100050; S.idxPx=100050;
+    S.round={state:"settled",tStart:${tStart},tEnd:${tEnd},settledAt:${now},strikes:[{id:1,strike:100000,call:"${call}",outcome:"${outcome}",hit:${hit},withdrawn:false,probFinal:0.9}]};
+  })()`);
+  const calls = canvasCalls(); calls.length = 0;
+  R("renderSweep()");
+  const ring = calls.find(c => c.op === "arc" && c.args[2] === 6);
+  return ring ? name(ring.strokeStyle) : null;
+}
+T("settled marker: a BELOW call that settled DOWN (a HIT) rings green, not red-by-direction", settledMarkerScene("BELOW", "DOWN", true) === "green", null);
+T("settled marker: an ABOVE call that settled DOWN (a MISS) rings red", settledMarkerScene("ABOVE", "DOWN", false) === "red", null);
+T("settled marker: a BELOW call that settled UP (a MISS) rings red", settledMarkerScene("BELOW", "UP", false) === "red", null);
+T("settled marker: an ABOVE call that settled UP (a HIT) rings green", settledMarkerScene("ABOVE", "UP", true) === "green", null);
+
 process.exitCode = done() ? 1 : 0;
