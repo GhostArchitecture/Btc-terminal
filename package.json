@@ -5,7 +5,9 @@
   "description": "Peer-verified BTC tape and window instrument for Kalshi's 15-minute and hourly markets. Single file, no build step; this package exists only to run the harnesses.",
   "scripts": {
     "test": "node test/run.js",
-    "test:defects": "node test/defects.js"
+    "test:defects": "node test/defects.js",
+    "test:units": "node units/run.js",
+    "test:all": "node test/run.js && node units/run.js"
   },
   "devDependencies": {
     "jsdom": "^24.1.0"

@@ -22,7 +22,11 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ worker/kalshi-relay.js        Cloudflare Worker relay (paste-deploy, separate account)
 ├─ manifest.webmanifest          PWA manifest
 ├─ icon-{180,192,512}.png, icon-maskable-512.png, favicon-32.png, icon.png
-├─ test/                         harnesses (§6, §10.1)
+├─ test/                         page harnesses (§6, §10.1)
+├─ units/                        the H-protocol units — code, suites, specs and reviews (§6, §11)
+│   ├─ {volspace,calendar,detect,schema,prereg}/{code.js,test.js,*.md}
+│   ├─ run.js                    runs every unit suite
+│   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 └─ .nojekyll
 ```
 
@@ -221,9 +225,16 @@ Suite (`npm test`, after `npm install` for jsdom):
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
 currently **231 assertions across 5 harnesses**.
 
-The H-protocol units keep their own suites outside the repo, under the scratchpad (`volspace` 241, `calendar` 440,
-`detect` 229, `schema` 370, `prereg`). **The units are the source and `index.html` is the splice target** — edit a
-unit and re-splice, never patch the spliced copy, or the next splice silently reverts the patch.
+`npm run test:units` runs the five H-protocol unit suites under `units/` (~1,480 assertions); `npm run test:all`
+runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
+`node units/tools/resplice.js <unit>...`, and never patch the spliced copy, or the next splice silently reverts
+the patch. The splice is verified reproducible: re-splicing every unit from `units/` leaves `index.html`
+byte-identical.
+
+*These lived only in the session scratchpad until 2026-09-06 — ~7,400 lines of unit code, suites, specs and
+adversarial reviews in an ephemeral container, including the whole calendar unit, which is not spliced anywhere.
+An earlier revision of this section documented that as a property of the design rather than fixing it. It was the
+same failure as the missing `test/prereg.js`: recording a gap instead of closing it.*
 
 ---
 
