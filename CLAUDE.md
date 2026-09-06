@@ -678,6 +678,21 @@ retroactive side-picking of §7.4 wearing a different hat — the same mistake t
 - Phase 2's own bar is Phase 1's bar in full, plus the confusion matrix, plus its own holdout. Being second buys it
   nothing.
 
+**Which hypotheses this gates, written down before a single row exists.** H3 splits maker economics between a
+*scheduled numeric* release and a *narrative headline*; H4 fades the side a narrative headline sent the flow
+into. A narrative headline has no calendar entry — that is what makes it narrative — so **both are Phase-2
+comparisons and neither may report until the detector carries its confusion matrix.** `shockStatus` already
+returns `INVALID` without one; that is the rule in force, not a reminder.
+
+**Recording is not reporting, and the distinction is the whole reason the rows exist now.** A maker fill that was
+never written down cannot be recovered once the tick has passed, so H3's per-fill rows and H4's flow-asymmetry
+rows are collected from the moment the instrument runs. **Stored rows are not permission to report**, and nobody
+reading a CSV full of them should infer otherwise. The gate is on the statistic, never on the collection.
+
+*H1 is not gated this way.* Its trigger is a calendar timestamp, so it is Phase 1 outright — and its arm, if it
+ever earns one, is conditioned on shock **size**, which is measured from the tape rather than assigned by a
+detector. It still owes §11.3 its time-matched controls like everything else.
+
 ### 11.6 Holdout discipline
 
 §7.4 records two episodes where an edge evaporated once the hindsight was removed. Calibrating a threshold on
