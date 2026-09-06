@@ -1,0 +1,200 @@
+/* occvm/golden/record.js — the golden set.
+ *
+ * The 2.0 migration process asks for a field-recorded baseline at three sun elevations, diffed against
+ * after every change (sections 3.3, 5, 8). Neither repository had an instrument for it: the harnesses are
+ * jsdom, which does not render. This is that instrument.
+ *
+ * It records TWO tiers, and the distinction is load-bearing:
+ *
+ *   tier 1 — tokens.json.  The computed value of every OCCVM token on documentElement at each pinned
+ *            instant. Pure numbers and hexes, byte-stable on any machine. THIS is what CI asserts on.
+ *   tier 2 — <case>.png.   A viewport screenshot. Recorded for the eye. NEVER diffed for equality:
+ *            font rasterisation and GPU compositing differ per machine, so a pixel-equality gate would
+ *            be red on every machine but the one that recorded it. Look at these; do not assert on them.
+ *
+ * Determinism comes from three pins, all injected rather than internal:
+ *   - the clock      (Playwright page.clock, fixed instant)
+ *   - the timezone   (America/New_York — Rhyme's solar() reads local getHours(), so an unpinned runner
+ *                     timezone moves its day-of-year and therefore its declination)
+ *   - the seed       (sessionStorage btc.seed / tome:seed, written before any page script evaluates)
+ *
+ * Usage:  node occvm/golden/record.js [--tool btc|rhyme] [--out DIR]
+ *         node occvm/golden/verify.js            (re-records and diffs tier 1 only)
+ *
+ * Requires playwright and a Chromium; both are present in the Claude Code web environment.
+ */
+"use strict";
+const fs = require("fs"), path = require("path"), http = require("http"), url = require("url");
+
+const HERE = __dirname;
+const REPOS = {
+  btc:   { root: path.resolve(HERE, "..", ".."), seedKey: "btc.seed",
+           /* --vein is written only by veinLayer(); it has no CSS default, so it cannot pass while dead */
+           ready: () => getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
+  rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed",
+           /* the binding only exists once React has mounted and rendered */
+           ready: () => !!document.querySelector(".binding") },
+};
+
+/* Pinned instants over Dayton. Elevations are from occvm/tools/solar-compare.js, not asserted here. */
+const CASES = [
+  { name: "low",   iso: "2026-09-06T11:30:00Z", note: "elev +3.06 deg, az 84.3 (E) — rake at its longest" },
+  { name: "high",  iso: "2026-09-06T17:45:00Z", note: "elev +56.40 deg, az 184.5 (S) — near solar noon" },
+  { name: "night", iso: "2026-09-07T04:00:00Z", note: "elev -39.21 deg, az 328.9 — night in both tools" },
+];
+/* Rhyme compiles its own JSX in the browser and pulls React, ReactDOM and Babel from a CDN, so it
+   cannot boot without three external requests — a cold load with cdnjs unreachable renders nothing.
+   A determinism instrument must not depend on that, so the recorder serves them from a local cache and
+   records them as vendored rather than external. The cache is gitignored: 3.1 MB, mostly babel. */
+const VENDOR = {
+  "https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js": "react_18.3.1_umd_react.production.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js": "react-dom_18.3.1_umd_react-dom.production.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js": "babel-standalone_7.26.4_babel.min.js",
+};
+const VENDOR_DIR = path.join(HERE, ".vendor");
+function ensureVendor() {
+  fs.mkdirSync(VENDOR_DIR, { recursive: true });
+  for (const [u, f] of Object.entries(VENDOR)) {
+    const dest = path.join(VENDOR_DIR, f);
+    if (fs.existsSync(dest) && fs.statSync(dest).size > 0) continue;
+    console.log("  fetching " + f + " ...");
+    const r = require("child_process").spawnSync("curl", ["-sSL", "--max-time", "120", u, "-o", dest], { stdio: "inherit" });
+    if (r.status !== 0 || !fs.existsSync(dest) || !fs.statSync(dest).size)
+      throw new Error(`could not vendor ${u}\n  fetch it by hand into ${VENDOR_DIR}/${f} and re-run`);
+  }
+}
+
+const SEED = "20260906";
+const TZ = "America/New_York";
+const VIEW = { width: 1200, height: 900 };
+
+/* The token list is derived from the tools themselves at record time, so a token added to either tool
+   appears in the next manifest instead of being silently missed by a hand-kept list. */
+function tokenUnion() {
+  const names = new Set();
+  for (const k of Object.keys(REPOS)) {
+    const f = path.join(REPOS[k].root, "index.html");
+    if (!fs.existsSync(f)) continue;
+    const html = fs.readFileSync(f, "utf8");
+    const styles = (html.match(/<style[^>]*>[\s\S]*?<\/style>/g) || []).join("\n");
+    for (const m of styles.matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)) names.add(m[1]);
+    /* tokens only ever written from JS (BTC's --vein) never appear in the style block */
+    for (const m of html.matchAll(/(?:setProperty|set)\(\s*"(--[a-zA-Z0-9-]+)"/g)) names.add(m[1]);
+  }
+  return [...names].sort();
+}
+
+function serve(root) {
+  const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
+                  ".png": "image/png", ".webmanifest": "application/manifest+json", ".txt": "text/plain" };
+  const srv = http.createServer((req, res) => {
+    const p = decodeURIComponent(url.parse(req.url).pathname);
+    const f = path.join(root, p === "/" ? "index.html" : p);
+    if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end("nf"); }
+    res.writeHead(200, { "content-type": TYPES[path.extname(f)] || "application/octet-stream" });
+    fs.createReadStream(f).pipe(res);
+  });
+  return new Promise(r => srv.listen(0, "127.0.0.1", () => r({ srv, port: srv.address().port })));
+}
+
+async function record(tool, outDir) {
+  const { chromium } = require("playwright");
+  ensureVendor();
+  const cfg = REPOS[tool];
+  if (!fs.existsSync(path.join(cfg.root, "index.html")))
+    return { tool, skipped: `no index.html at ${cfg.root} — clone the sibling repository to record both` };
+
+  const TOKENS = tokenUnion();
+  const { srv, port } = await serve(cfg.root);
+  const browser = await chromium.launch();
+  const out = { tool, recorded_by: "occvm/golden/record.js", seed: SEED, timezone: TZ,
+                viewport: VIEW, tokens: TOKENS.length, cases: {} };
+  try {
+    for (const c of CASES) {
+      const ctx = await browser.newContext({
+        viewport: VIEW, deviceScaleFactor: 1, timezoneId: TZ, locale: "en-US",
+        colorScheme: "dark", reducedMotion: "reduce",
+      });
+      /* every external request is recorded and refused except the ones a tool cannot boot without */
+      const blocked = [], vendored = [];
+      await ctx.route("**", async route => {
+        const u = route.request().url();
+        if (u.includes("127.0.0.1:" + port)) return route.continue();
+        const key = u.split("?")[0];
+        if (VENDOR[key]) {
+          vendored.push(key);
+          return route.fulfill({ status: 200, contentType: "text/javascript",
+            body: fs.readFileSync(path.join(VENDOR_DIR, VENDOR[key])) });
+        }
+        /* every other egress is refused: the recording measures the tool, never the network */
+        blocked.push(key);
+        return route.abort();
+      });
+      const page = await ctx.newPage();
+      /* setFixedTime pins Date and Date.now only. The install() variant also fakes timers, and React 18
+         schedules through them, so under it Rhyme never mounts and the recording silently captures
+         :root defaults as though they were live values. Pin the wall clock; leave the event loop alone. */
+      await page.clock.setFixedTime(new Date(c.iso));
+      await page.addInitScript(([k, v]) => {
+        try { sessionStorage.setItem(k, v); } catch (e) {}
+      }, [cfg.seedKey, SEED]);
+
+      const errors = [];
+      page.on("pageerror", e => errors.push("pageerror: " + String(e.message || e)));
+      page.on("console", m => {
+        if (m.type() !== "error") return;
+        const t = m.text();
+        /* the recorder refuses egress on purpose; the resulting load failures are the instrument
+           working, not the tool failing. Real exceptions still arrive through pageerror. */
+        if (/Failed to load resource|net::ERR_/.test(t)) return;
+        errors.push("console: " + t);
+      });
+      await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" });
+      /* Fatal, deliberately. A recording of a tool that never booted is worse than no recording: it
+         looks like a clean baseline, and every later diff is then measured against a blank page. */
+      await page.waitForFunction(cfg.ready, undefined, { timeout: 20000 }).catch(() => {
+        throw new Error(`${tool}/${c.name}: the tool never became ready — refusing to record a dead page.` +
+          (errors.length ? "\n  " + errors.join("\n  ") : "\n  (no page or console errors reported)"));
+      });
+
+      const values = await page.evaluate(list => {
+        const cs = getComputedStyle(document.documentElement);
+        const o = {};
+        for (const n of list) { const v = cs.getPropertyValue(n).trim(); if (v !== "") o[n] = v; }
+        return o;
+      }, TOKENS);
+
+      fs.mkdirSync(path.join(outDir, tool), { recursive: true });
+      await page.screenshot({ path: path.join(outDir, tool, c.name + ".png") });
+
+      out.cases[c.name] = {
+        instant: c.iso, note: c.note,
+        vendored_requests: [...new Set(vendored)].sort(),
+        blocked_requests: [...new Set(blocked)].sort(),
+        page_errors: errors,
+        tokens: values,
+      };
+      await ctx.close();
+      console.log(`  ${tool}/${c.name}: ${Object.keys(values).length} tokens` +
+                  (errors.length ? `, ${errors.length} PAGE ERROR(S)` : "") +
+                  (vendored.length ? `, ${new Set(vendored).size} vendored` : "") +
+                  (blocked.length ? `, ${new Set(blocked).size} blocked` : ""));
+    }
+  } finally { await browser.close(); srv.close(); }
+
+  fs.writeFileSync(path.join(outDir, tool, "tokens.json"), JSON.stringify(out, null, 1) + "\n");
+  return out;
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const only = argv.includes("--tool") ? argv[argv.indexOf("--tool") + 1] : null;
+  const outDir = argv.includes("--out") ? argv[argv.indexOf("--out") + 1] : HERE;
+  for (const tool of Object.keys(REPOS)) {
+    if (only && tool !== only) continue;
+    const r = await record(tool, outDir);
+    if (r.skipped) console.log(`  ${tool}: SKIPPED — ${r.skipped}`);
+  }
+}
+if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
+module.exports = { record, tokenUnion, CASES, SEED, TZ };
