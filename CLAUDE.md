@@ -757,6 +757,18 @@ recorded data and then testing it on that same data reproduces both.
   train and July CPI in test and leaks the regime across the boundary. Chronological only.
 - The boundary is a count, not a date, and cannot be moved once the 30th calibration window is graded.
 
+**A calibration window draws only controls that closed at or before the boundary** — registered 2026-09-06,
+and part of the control-matching rule this subsection freezes. A matching cell is (series, slot, weekday,
+quarter), a combination that recurs **weekly**, so without this restriction every calibration cell gains a
+control every week by construction and the calibration set is never finished. That makes the frozen `sd`
+non-stationary: it is recomputed from a different set on every run, and §11.2a's required holdout n moves with
+it — observed moving **80 → 44** from pruning one old control row, in the direction §11.2a says it may never
+take. A boundary that fixes which *shock* windows are calibration, while leaving their *controls* open to
+accrual, freezes a count and not a quantity. It also closes the weaker form of the same problem: a calibration
+pair could otherwise be matched against a control window that postdates the holdout shocks it is being
+compared with, which is the chronological leakage §11.6 exists to prevent, arriving through the control set
+rather than through the split.
+
 **Freezing.** Every threshold, coefficient, detector parameter, control-matching rule and arm designation that the
 calibration set touched is frozen, tagged `fit-YYYY-MM-DD-x` in the code and recorded in this file with a build
 stamp, **before a single holdout window is scored.** READY is decided on the holdout alone. The calibration

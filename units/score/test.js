@@ -76,7 +76,13 @@ const EXPORTS="\n;({SCORE:SCORE,SC_OMIT:SC_OMIT,SC_CALLER_FIELDS:SC_CALLER_FIELD
   "scClusterStat:scClusterStat,scSplitCheck:scSplitCheck,scRatchet:scRatchet,"+
   "scAfterBoundary:scAfterBoundary,scCoverage:scCoverage,scRequiredFields:scRequiredFields,"+
   "scMissingRequired:scMissingRequired,scIsRefusal:scIsRefusal,scRefused:scRefused,"+
-  "scMaxMonths:scMaxMonths,scRatchetStatus:scRatchetStatus,"+
+  "scMaxMonths:scMaxMonths,scRatchetStatus:scRatchetStatus,scMissingAll:scMissingAll,"+
+  "SC_ROW_FIELDS:SC_ROW_FIELDS,SC_SNAP_FIELDS:SC_SNAP_FIELDS,SC_OPT_FIELDS:SC_OPT_FIELDS,"+
+  "SC_SPLIT_FIELDS:SC_SPLIT_FIELDS,SC_NEIGHBOUR_FIELDS:SC_NEIGHBOUR_FIELDS,"+
+  "scTypeNum:scTypeNum,scTypeBool:scTypeBool,scTypeStr:scTypeStr,scTypeArr:scTypeArr,scTypeFn:scTypeFn,"+
+  "scTypeStamp:scTypeStamp,scFieldOf:scFieldOf,scFieldCheck:scFieldCheck,scRowCheck:scRowCheck,"+
+  "scRowsCheck:scRowsCheck,scOptsCheck:scOptsCheck,scHash:scHash,scFpNum:scFpNum,scCalFp:scCalFp,"+
+  "shockFeasible:(typeof shockFeasible==='undefined'?null:shockFeasible),"+
   "scHasCalendar:scHasCalendar,scHasPrereg:scHasPrereg,scNum:scNum,scMean:scMean,scSdOf:scSdOf,"+
   "scSlotUtc:scSlotUtc,scWeekdayUtc:scWeekdayUtc,scQuarterUtc:scQuarterUtc,scSeriesOf:scSeriesOf,"+
   "scMatchKey:scMatchKey,scKeyEqual:scKeyEqual,scClearProbes:scClearProbes,scWindowLenMin:scWindowLenMin,"+
@@ -173,6 +179,21 @@ function mkWin(id,open,lenMin,result,pm,qm,extra){
   const w={ticker:id,open:open,close:close,strike:100000,result:result,snaps:snaps,phase:1,shock:false};
   if(extra) for(const k in extra) w[k]=extra[k];
   return w;
+}
+
+/* THE CALLER'S REGISTRATION LOOP, ONCE, AS A HELPER. 11.6's boundary and 11.2a's required holdout n are
+   caller REGISTRATIONS, and since the second review they are refusals rather than optional: a verdict computed
+   against a boundary nobody registered, or against a requirement that was silently recomputed downward, is a
+   verdict 11.6 and 11.2a do not admit. Neither can be supplied before the state that defines it exists, so the
+   documented loop is: run, read rep.split.boundary and rep.holdN.computed off the refusal, write them into
+   CLAUDE.md with a date, register them, run again. This helper is that loop, and every fixture below that
+   expects a VERDICT (rather than a refusal) goes through it. */
+function reg(rows,base){
+  const r0=U.scReport(rows,base);
+  const o={}; for(const k in base) o[k]=base[k];
+  if(r0.split&&r0.split.boundary) o.boundary=r0.split.boundary;
+  if(r0.holdN&&typeof r0.holdN.computed==="number") o.holdNRegistered=r0.holdN.computed;
+  return o;
 }
 
 /* ==================================================================================================== */
@@ -737,8 +758,8 @@ sect("11.6 the holdout split: chronological, by count, and hard to move");
 sect("S5: the boundary is REGISTERED, not recomputed, and the required n only ratchets up");
 {
   /* scSplitCheck first, on stamps alone */
-  const b1={n:30,close:1000,ticker:"KXBTC15M-a"};
-  const b2={n:30,close:1900,ticker:"KXBTC15M-b"};
+  const b1={n:30,close:1000,ticker:"KXBTC15M-a",fp:"deadbeef-30"};
+  const b2={n:30,close:1900,ticker:"KXBTC15M-b",fp:"deadbeef-30"};
   eq("an unregistered boundary is reported, not refused",U.scSplitCheck(b1,null).refuse,false);
   ok("...and says it is unregistered",/not yet registered/.test(U.scSplitCheck(b1,null).why));
   eq("a registered boundary that matches is accepted",U.scSplitCheck(b1,b1).registeredOk,true);
@@ -747,6 +768,8 @@ sect("S5: the boundary is REGISTERED, not recomputed, and the required n only ra
   eq("...and says which way it moved",U.scSplitCheck(b2,b1).why,"boundary window close changed");
   eq("a registered boundary with nothing to compare against is refused",U.scSplitCheck(null,b1).refuse,true);
   eq("garbage in the registered slot is refused",U.scSplitCheck(b1,{n:30}).refuse,true);
+  eq("...and so is a stamp with no calibration-set fingerprint",
+     U.scSplitCheck(b1,{n:30,close:1000,ticker:"KXBTC15M-a"}).refuse,true);
   /* the ratchet, on numbers alone (11.2a: "it may only ever move up") */
   eq("with nothing registered the computed requirement stands",U.scRatchet(80,null).effective,80);
   eq("a LARGER registered requirement wins",U.scRatchet(44,80).effective,80);
@@ -781,30 +804,35 @@ sect("S5: the boundary is REGISTERED, not recomputed, and the required n only ra
   eq("...and computes no difference-in-differences against it",rMoved.did,null);
   eq("...and no CI",rMoved.ci,null);
   ok("...and says 11.6 spends the holdout for it",/spends the holdout/.test(rMoved.status.why),rMoved.status.why);
-  const rOk=U.scReport(rows,Object.assign({},OPT,{boundary:r1.split.boundary}));
+  const rOk=U.scReport(rows,reg(rows,OPT));
   eq("the SAME rows against their own registered boundary are not refused",rOk.boundary.registeredOk,true);
   ok("...and score normally",rOk.ok===true&&rOk.did!==null);
+  ok("...and reach a verdict rather than a refusal",rOk.status.status!=="REFUSED",rOk.status);
   /* the required n ratchets: a registered requirement is never traded down for a smaller computed one */
   const R=grid(120,[0.80,0.81,0.79],[0.700,0.705,0.695,0.700,0.700]);
+  const RBASE={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false};
+  const RREG=reg(R.rows,RBASE);
   seeded(5150,function(){
-    const good=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false});
-    eq("this fixture reaches READY with nothing registered",good.status.status,"READY",good.status);
+    const good=U.scReport(R.rows,RREG);
+    eq("this fixture reaches READY once both registrations are supplied",good.status.status,"READY",good.status);
     ok("...on a computed requirement of its own",typeof good.holdN.computed==="number",good.holdN);
-    const held=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
-      holdNRegistered:999});
+    const held=U.scReport(R.rows,Object.assign({},RREG,{holdNRegistered:999}));
     eq("a REGISTERED requirement of 999 is not traded down for the computed one",held.holdN.effective,999);
     eq("...so the same evidence reads HOLDOUT, not READY",held.status.status,"HOLDOUT");
     ok("...against the registered requirement",/may only ever move up/.test(held.status.why),held.status.why);
     eq("...and the status reports the registered n, not the recomputed one",held.status.holdNReq,999);
     eq("...and the downward move is on the record",held.holdN.movedDown,true);
-    const late=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:25,frozen:true,holdoutSpent:false,
-      holdNRegistered:999});
+    const late=U.scReport(R.rows,Object.assign({},RREG,{holdNRegistered:999,monthsElapsed:25}));
     eq("...and past 24 months an unreachable registered n abandons (11.7 clause 5)",late.status.status,"ABANDON");
-    const smaller=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
-      holdNRegistered:1});
+    const smaller=U.scReport(R.rows,Object.assign({},RREG,{holdNRegistered:U.SCORE.HOLD_N_MIN}));
     eq("a registered requirement SMALLER than the computed one changes nothing",smaller.holdN.effective,
        smaller.holdN.computed);
     eq("...and READY still stands",smaller.status.status,"READY");
+    /* 11.2a's floor is 30 and a registration BELOW it is a loosening, which 11.7 clause 6 closes the
+       programme for. It is refused rather than clamped. */
+    const under=U.scReport(R.rows,Object.assign({},RREG,{holdNRegistered:1}));
+    eq("a registered requirement below 11.2a's floor of 30 is refused",under.status.status,"REFUSED");
+    eq("...as a caller-field violation",under.status.code,U.SC_OMIT.BAD_OPT);
   });
   /* the ratchet may only tighten: a status that is already a refusal or an abandonment is untouched */
   const abandoned={status:"ABANDON",why:"w",ciLevel:0.9,bootstrapB:200,holdNReq:30};
@@ -1014,10 +1042,15 @@ sect("S6: a caller field the verdict depends on is a REFUSAL when it is missing,
      sharp one: 11.6's spent-holdout flag arrives at shockStatus as undefined, which is NOT true, which is the
      value that lets the programme advance. `missing` named it and nothing acted on it. */
   const R=grid(120,[0.80,0.81,0.79],[0.700,0.705,0.695,0.700,0.700]);
-  const FULL={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,bootstrap:null};
+  const FULL=reg(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+    bootstrap:null});
   seeded(60606,function(){
     eq("the complete call reaches a verdict",U.scReport(R.rows,FULL).status.status,"READY");
-    const drops=["holdoutSpent","monthsElapsed","arms","pnlN","pnlNet","frozen"];
+    /* R2: `boundary` and `holdNRegistered` are in this list now. They were the two verdict-bearing caller
+       fields left optional and unpoliced, which made 11.6's registered split and 11.2a's upward-only ratchet
+       advisory -- see the dedicated block below for what each omission bought. */
+    const drops=["holdoutSpent","monthsElapsed","arms","pnlN","pnlNet","frozen",
+      "boundary","holdNRegistered"];
     for(let i=0;i<drops.length;i++){
       const o={}; for(const k in FULL) if(k!==drops[i]) o[k]=FULL[k];
       const rp=U.scReport(R.rows,o);
@@ -1109,7 +1142,8 @@ function grid(nWeeks,shockP,ctrlP){
   ok("...and it is positive, because this fixture's tool is better",did.controlled>0);
   ok("...and above 11.2's effect floor",did.controlled>=U.SHOCK_RULE.dBrierFloor,did.controlled);
 
-  const opts={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,bootstrap:null};
+  const opts=reg(G.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+    bootstrap:null});
   const rep=U.scReport(G.rows,opts);
   eq("the report is for phase 1",rep.st.phase,1);
   eq("nCal is the calibration count",rep.st.nCal,30);
@@ -1167,20 +1201,21 @@ function grid(nWeeks,shockP,ctrlP){
      alike, so the cluster bootstrap has little control-side variance to add, and a large tool edge. */
   const TIGHT=[0.700,0.705,0.695,0.700,0.700];
   const R=grid(120,[0.80,0.81,0.79],TIGHT);
+  const ropts=reg(R.rows,opts);
   seeded(777001,function(){
-    const rr=U.scReport(R.rows,opts);
+    const rr=U.scReport(R.rows,ropts);
     eq("a fixture with a tight control set and a real edge reaches READY",rr.status.status,"READY",rr.status);
     ok("...and READY is necessary, never sufficient",/necessary, never sufficient/.test(rr.status.why));
     ok("...on a strictly positive cluster lower bound",rr.ci.lo>0,rr.ci);
     ok("...taken over cells, not windows",rr.ci.unit==="cell"&&rr.ci.cells>0&&rr.ci.cells<rr.ci.n,rr.ci);
   });
   for(let sdi=1;sdi<=4;sdi++) seeded(sdi*31337,function(){
-    eq("...on every seed",U.scReport(R.rows,opts).status.status,"READY");
+    eq("...on every seed",U.scReport(R.rows,ropts).status.status,"READY");
   });
 
   /* the same grid with the tool WORSE must not read READY */
   const W=grid(120,[0.40,0.41,0.42]);
-  const repW=U.scReport(W.rows,opts);
+  const repW=U.scReport(W.rows,reg(W.rows,opts));
   ok("a worse-than-market tool gives a NEGATIVE dBrier",repW.st.dBrier<0,repW.st.dBrier);
   ok("...and does not read READY",repW.status.status!=="READY",repW.status);
   eq("...it abandons",repW.status.status,"ABANDON");
@@ -1198,7 +1233,11 @@ sect("S2: control coverage is read on the HOLDOUT ALONE (11.2)");
     const t0=base+i*15*MIN;                       /* one cell per UTC slot, same weekday and quarter */
     for(let j=0;j<5;j++) rows.push(mkWin("KXBTC15M-c"+i+"-"+j,t0+j*WEEK,15,"yes",cps[j],60));
     for(let k=0;k<2;k++){
-      const w=mkWin("KXBTC15M-s"+i+"-"+k,t0+(6+k)*WEEK,15,"yes",0.80,60,{shock:true});
+      /* the tool read varies a little across shock windows so the calibration half has a MEASURED spread:
+         with every paired value identical the sd is exactly zero, shockRequiredHoldN returns null and the
+         judge answers INVALID before coverage is reached, which would make this fixture about something
+         else. The controls stay tight, so the CI is still not what decides it. */
+      const w=mkWin("KXBTC15M-s"+i+"-"+k,t0+(6+k)*WEEK,15,"yes",[0.80,0.81,0.79][(i+k)%3],60,{shock:true});
       STUB_RELEASES.push(w.open+5*MIN); rows.push(w);
     }
   }
@@ -1208,9 +1247,12 @@ sect("S2: control coverage is read on the HOLDOUT ALONE (11.2)");
     const w=mkWin("KXBTC15M-s"+i+"-0",t0+9*WEEK,15,"yes",0.80,60,{shock:true});
     STUB_RELEASES.push(w.open+5*MIN); rows.push(w);
   }
-  const opts={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,bootstrap:null};
+  const opts=reg(rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+    bootstrap:null});
   const rep=U.scReport(rows,opts);
-  eq("70 shock windows are recorded",rep.coverage.all.total,70);
+  eq("70 shock windows are recorded",rep.coverage.recorded,70);
+  eq("...all of them graded and side-determinable, so all 70 are in the pooled denominator",
+     rep.coverage.all.total,70);
   eq("...60 of them matched",rep.coverage.all.matched,60);
   close("...so POOLED coverage is 0.857, which passes the 80% bar",rep.coverage.all.frac,60/70,1e-12);
   eq("the holdout carries 40 recorded shock windows",rep.coverage.hold.total,40);
@@ -1228,14 +1270,23 @@ sect("S2: control coverage is read on the HOLDOUT ALONE (11.2)");
     ctrlMatched:rep.coverage.all.matched,ctrlTotal:rep.coverage.all.total},opts).st;
   eq("the pooled coverage this fixture used to hand the judge reads READY",
      U.shockStatus(pooled).status,"READY",U.shockStatus(pooled));
-  /* the pooled figures are still reported, because the calibration half is still worth seeing */
-  eq("the pooled counts remain on the report",rep.ctrlTotal,70);
-  eq("...and so does the pooled matched count",rep.ctrlMatched,60);
+  /* R7: the pooled figures are still reported -- the calibration half is worth seeing -- but they are NOT a
+     second `ctrlMatched`/`ctrlTotal` pair on the report object beside the holdout one. rep.ctrlMatched and
+     rep.ctrlTotal were the POOLED figures while rep.st.ctrlMatched and rep.st.ctrlTotal were the HOLDOUT
+     ones: two identically-named pairs differing only by denominator, and NOTES routed the pooled pair into
+     the CSV -- the one 11.2 says is not the gate, which was the whole point of the holdout-only fix. */
+  eq("there is no second ctrlTotal on the report to export by mistake",rep.ctrlTotal,undefined);
+  eq("...nor a second ctrlMatched",rep.ctrlMatched,undefined);
+  eq("the pooled counts are reported under rep.coverage, which names its denominator",
+     rep.coverage.all.total,70);
+  eq("...beside the holdout cut and the calibration cut",
+     rep.coverage.hold.total+","+rep.coverage.cal.total,"40,30");
+  eq("...and the gate cut, which is the one st receives",rep.coverage.gate.total,rep.st.ctrlTotal);
   /* BEFORE a boundary exists there is no holdout, so the gate has nothing to read -- and the calibration
      coverage is still reported, so 11.7 clause 3's question can be asked during calibration by the caller
      rather than answered here on a set that is not the holdout. */
   const early=[]; for(let i=0;i<rows.length;i++) if(!/-s3\d-/.test(rows[i].ticker)) early.push(rows[i]);
-  const shortRep=U.scReport(early.slice(0,60),opts);
+  const shortRep=U.scReport(early.slice(0,60),reg(early.slice(0,60),opts));
   eq("with no boundary yet the holdout carries nothing",shortRep.coverage.hold.total,0);
   eq("...so the gate reads nothing",shortRep.st.ctrlTotal,0);
   ok("...but the calibration coverage is on the report to be read",shortRep.coverage.cal.total>0,
@@ -1256,6 +1307,678 @@ sect("a short calibration set cannot open a holdout");
   ok("fewer than 30 calibration windows yields no sd",rep.sd===null,rep.sd);
   eq("...and the code says so",rep.code,U.SC_OMIT.CAL_SHORT);
   eq("...and the status is CALIBRATING, never READY",rep.status.status,"CALIBRATING");
+}
+
+/* ====================================================================================================
+   THE SECOND REVIEW'S FOURTEEN FINDINGS. One reproduction each, from the concrete input the reviewer
+   published, before the fix and as a regression assertion after it. The five that share a fault -- 2, 3, 4, 5
+   and 8 -- are reproduced separately here because the reproductions are what pin the CLASS fix: the contract
+   is one table, and each of these is a different field falling through it. */
+
+/* the inverse the reviewer's fixtures are written in: skill = (q-y)^2 - (pm-y)^2, so pmFor(skill) is the
+   tool read that produces a WANTED skill against a given quote. Every expected number below is arithmetic. */
+function pmFor(skill,qm,y){
+  const b=brier(qm/100,y)-skill;
+  return (y===1)?1-Math.sqrt(b):Math.sqrt(b);
+}
+/* cells of the shape 11.3's four dimensions produce: one UTC slot each, controls in weeks 0..4, shock windows
+   in weeks 6.. -- so cell order is time order and the calibration half is the first 30 cells' first shocks. */
+const CELL_BASE=Date.UTC(2026,0,7,12,30);
+function mkCells(o){
+  const rows=[],shocks=[],qm=o.qm||60;
+  for(let i=0;i<o.n;i++){
+    const t0=CELL_BASE+(o.slot0||0)*15*MIN+i*15*MIN;
+    for(let j=0;j<o.nCtrl;j++)
+      rows.push(mkWin("KXBTC15M-"+o.tag+"c"+i+"-"+j,t0+j*WEEK,15,"yes",o.ctrl(i,j),qm));
+    for(let k=0;k<o.nShock;k++){
+      const res=o.result?o.result(i,k):"yes";
+      const w=mkWin("KXBTC15M-"+o.tag+"s"+i+"-"+k,t0+(6+k)*WEEK,15,res,o.shock(i,k),qm,{shock:true});
+      STUB_RELEASES.push(w.open+5*MIN);
+      if(o.mangle) o.mangle(w,i,k);
+      rows.push(w); shocks.push(w);
+    }
+  }
+  return {rows:rows,shocks:shocks};
+}
+/* the reviewer's control-skill pattern: constant within a cell, ((i%13)-6)*0.0105 across cells, so the
+   calibration half has a real spread and the 6th-control variant halves it exactly. */
+function cellSkill(i){ return ((i%13)-6)*0.0105; }
+const SHOCK_SKILL=0.045;
+function baseOpts(){ return {arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+  bootstrap:null}; }
+
+sect("R1 + R5: 11.2's REGISTERED coverage denominator -- holdout, GRADED, side-determinable, and not asked below 30");
+{
+  /* THE FALSE CLOSURE, verbatim from the review. 30 matched calibration windows, then ONE holdout shock
+     window with only four eligible controls. Holdout coverage reads 0/1 = 0.000, and 11.7 clause 3 is a
+     PERMANENT closure -- "closed or redesigned, and a redesign restarts the count at zero". Against section
+     8's ~47 events a year the holdout spends its first months in exactly this regime.
+     11.2 now defines the denominator and 11.7 clause 3 carries the same sentence: the clause may not fire
+     below 30. The bar is still 80%. */
+  STUB_RELEASES.length=0;
+  const cal=mkCells({tag:"f1",n:30,nCtrl:5,nShock:1,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const thin=mkCells({tag:"f1t",slot0:30,n:1,nCtrl:4,nShock:1,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const rows=cal.rows.concat(thin.rows);
+  const rep=U.scReport(rows,reg(rows,baseOpts()));
+  eq("the calibration half is complete",rep.st.nCal,30);
+  eq("the one holdout shock window is recorded, unmatched",rep.unmatched.length,1);
+  eq("...for the reason 11.7 clause 3 is about",rep.unmatched[0].code,U.SC_OMIT.THIN);
+  eq("...and it IS in the holdout coverage denominator, which is measured and reported",
+     rep.coverage.hold.total,1);
+  close("...at 0.000",rep.coverage.hold.frac,0,1e-12);
+  /* the counterfactual, which is the finding: handed to the judge, that ratio is a permanent closure */
+  const wouldClose=U.scAssemble({phase:1,nCal:30,nHold:0,sd:rep.sd,dBrier:null,ciLo:null,
+    ctrlMatched:0,ctrlTotal:1},baseOpts()).st;
+  eq("0/1 handed to shockStatus ABANDONS under 11.7 clause 3",U.shockStatus(wouldClose).status,"ABANDON");
+  /* and what the registered denominator does instead */
+  eq("...but 11.2 does not evaluate the clause at a denominator of one",rep.coverage.hold.evaluable,false);
+  ok("...and says so in words",/only at 30 or more/.test(rep.coverage.hold.why),rep.coverage.hold.why);
+  eq("...so the gate receives nothing rather than 0/1",rep.st.ctrlTotal,0);
+  eq("...and nothing matched with it",rep.st.ctrlMatched,0);
+  ok("THE PROGRAMME IS NOT CLOSED BY ITS FIRST UNMATCHED HOLDOUT WINDOW",rep.status.status!=="ABANDON",
+     rep.status);
+  eq("...it is simply an incomplete holdout",rep.status.status,"HOLDOUT",rep.status);
+  eq("the minimum denominator is reported so the caller can see why",rep.coverage.minN,30);
+
+  /* the reviewer's second and third rows: 3/4 and 10/12 are the same regime, and 30/33 is not */
+  const mid=mkCells({tag:"f1m",slot0:40,n:3,nCtrl:5,nShock:1,
+    ctrl:function(i){ return pmFor(cellSkill(i+3),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const r2=U.scReport(rows.concat(mid.rows),reg(rows.concat(mid.rows),baseOpts()));
+  eq("3 matched holdout windows beside 1 unmatched is still a denominator of 4",r2.coverage.hold.total,4);
+  close("...reading 0.750",r2.coverage.hold.frac,0.75,1e-12);
+  ok("...and 11.7 clause 3 still does not fire on it",r2.status.status!=="ABANDON",r2.status);
+}
+sect("R5: a void, ungraded or post-gate-only window is NOT a control-matching failure");
+{
+  /* Same 60-window fixture as S2, but the 10 extra holdout shock windows differ ONLY in that they are not
+     GRADED. 11.2 lists "n >= 30 graded holdout shock windows" and control coverage as SEPARATE conditions;
+     an ungraded window has as many controls as any other. Ungraded windows are the normal state of a recent
+     export -- every currently-live shock window is one -- so this compounded the false closure rather than
+     being independent of it. */
+  const variants=[
+    {name:"result \"void\" (10.4: a void settlement is not a NO)",result:function(){ return "void"; }},
+    {name:"no result at all: the window is still open",result:function(){ return null; }},
+    {name:"snapshots all post-gate (tau < 0)",mangle:function(w){
+      for(let i=0;i<w.snaps.length;i++) w.snaps[i].tau=-1; }}
+  ];
+  for(let v=0;v<variants.length;v++){
+    STUB_RELEASES.length=0;
+    const good=mkCells({tag:"f5g"+v,n:30,nCtrl:5,nShock:2,
+      ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+      shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+    const un=mkCells({tag:"f5u"+v,slot0:30,n:10,nCtrl:5,nShock:1,
+      ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+      shock:function(){ return pmFor(SHOCK_SKILL,60,1); },
+      result:variants[v].result,mangle:variants[v].mangle});
+    const rows=good.rows.concat(un.rows);
+    const rep=U.scReport(rows,reg(rows,baseOpts()));
+    eq("30 calibration and 30 holdout windows are matched ["+variants[v].name+"]",
+       rep.st.nCal+","+rep.st.nHold,"30,30");
+    eq("...the 10 ungraded ones are recorded",rep.unmatched.length,10);
+    ok("...and marked ungraded rather than unmatched",
+       rep.unmatched.every(function(u){ return u.graded===false; }),rep.unmatched[0]);
+    eq("...and excluded from the coverage denominator, counted",rep.coverage.excluded.ungraded,10);
+    eq("...so the denominator is the 30 GRADED holdout windows",rep.coverage.hold.total,30);
+    close("...at 100%",rep.coverage.hold.frac,1,1e-12);
+    eq("...which IS evaluable, and passes",rep.coverage.hold.evaluable,true);
+    ok("...so 11.7 clause 3 does not fire",rep.status.status!=="ABANDON",rep.status);
+    /* the counterfactual: counted as failures, the same fixture reads 30/40 and closes the programme */
+    const wouldClose=U.scAssemble({phase:1,nCal:30,nHold:30,sd:rep.sd,dBrier:rep.st.dBrier,ciLo:rep.st.ciLo,
+      ctrlMatched:30,ctrlTotal:40},baseOpts()).st;
+    eq("...where counting them as matching failures ABANDONS",U.shockStatus(wouldClose).status,"ABANDON");
+  }
+  /* and the control: 10 GRADED windows that genuinely have too few controls still close it (the S2 fixture
+     above asserts the same thing end to end) */
+  STUB_RELEASES.length=0;
+}
+sect("R4: a window whose SIDE of the split cannot be determined is in NEITHER denominator");
+{
+  /* The review's input: 10 unmatched shock windows after the boundary, identical except for `close`.
+     Well formed -> 30/40 -> ABANDON. `delete w.close` or a STRING close -> 30/30 -> READY, because
+     scAfterBoundary returned false for anything it could not compare and false routed to CALIBRATION.
+     Two answers now: the row contract refuses the malformed row outright (a close is required and must be a
+     number), and scCoverage counts an undeterminable side in neither denominator. */
+  STUB_RELEASES.length=0;
+  const good=mkCells({tag:"f4g",n:30,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const mangles=[{name:"close deleted",f:function(w){ delete w.close; }},
+                 {name:"close as a string",f:function(w){ w.close=String(w.close); }}];
+  for(let v=0;v<mangles.length;v++){
+    const bad=mkCells({tag:"f4b"+v,slot0:30,n:10,nCtrl:4,nShock:1,
+      ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+      shock:function(){ return pmFor(SHOCK_SKILL,60,1); },mangle:mangles[v].f});
+    const rows=good.rows.concat(bad.rows);
+    const rep=U.scReport(rows,reg(rows,baseOpts()));
+    eq("a shock row with a "+mangles[v].name+" is refused, not counted as calibration",
+       rep.status.status,"REFUSED");
+    eq("...naming the field",rep.status.code,U.SC_OMIT.BAD_ROW);
+    eq("...and which row",(rep.badRow||{}).field,"close");
+    ok("...and it never reaches READY",rep.status.status!=="READY");
+  }
+  /* scCoverage's own rule, exercised directly: a row the boundary cannot place is in neither denominator */
+  const b={n:30,close:1000,ticker:"t",fp:"x-30"};
+  const P={pairs:[{ticker:"a",close:2000},{ticker:"b",close:500}],
+    unmatched:[{ticker:"c",close:2000,graded:true},{ticker:"d",graded:true},
+               {ticker:"e",close:"2000",graded:true}]};
+  const cov=U.scCoverage(P,b);
+  eq("five recorded windows",cov.recorded,5);
+  eq("...two of which cannot be placed relative to the boundary",cov.excluded.undetermined,2);
+  eq("...so the holdout denominator is the two that can",cov.hold.total,2);
+  eq("...one matched",cov.hold.matched,1);
+  eq("...and the calibration side keeps its own",cov.cal.total,1);
+  eq("scAfterBoundary says `undeterminable` rather than `calibration`",
+     U.scAfterBoundary({ticker:"d"},b),null);
+  eq("...and with no boundary at all there is simply no holdout yet",
+     U.scAfterBoundary({ticker:"d",close:5},null),false);
+}
+
+sect("R3 [WORST]: `shock` is the treatment assignment and is now strictly boolean");
+{
+  /* THE REVIEWER'S FIXTURE. One cell, five controls at skill 0, two shock windows -- one where the tool wins
+     (+0.20) and one where it loses (-0.20). The honest difference-in-differences is 0.
+     scPairs tested `w.shock!==true` and scMatchControls tested `c.shock===true`, so `shock:1` fell through
+     BOTH: the losing window was not treated AND not excluded from its own cell's control pool. It vanished
+     from ctrlTotal with no unmatched row, no reason code and nothing in `missing`, and it joined the control
+     mean -- so both terms of the difference moved the same way and the ESTIMATE moved, not just a gate:
+     0.00000 -> +0.23333, which is 0.20 + 0.20/6. That is 7.4's retroactive side-picking reachable through a
+     type coercion, leaving no trace on the record. */
+  STUB_RELEASES.length=0;
+  const base=Date.UTC(2026,0,7,12,30);
+  const rows=[];
+  for(let j=0;j<5;j++) rows.push(mkWin("KXBTC15M-r3c"+j,base+j*WEEK,15,"yes",pmFor(0,50,1),50));
+  const win=mkWin("KXBTC15M-r3win",base+6*WEEK,15,"yes",pmFor(0.20,50,1),50,{shock:true});
+  const lose=mkWin("KXBTC15M-r3lose",base+7*WEEK,15,"yes",pmFor(-0.20,50,1),50,{shock:true});
+  STUB_RELEASES.push(win.open+5*MIN); STUB_RELEASES.push(lose.open+5*MIN);
+  rows.push(win); rows.push(lose);
+  const clean=U.scPairs(rows);
+  eq("both shock windows are treated",clean.pairs.length,2);
+  close("the winning window's skill is +0.20",clean.pairs[0].shockSkill,0.20,1e-12);
+  close("the losing window's skill is -0.20",clean.pairs[1].shockSkill,-0.20,1e-12);
+  close("...and every control is skill 0",clean.pairs[0].ctrlMeanSkill,0,1e-12);
+  close("SO THE HONEST DIFFERENCE-IN-DIFFERENCES IS EXACTLY 0",U.scDid(clean.pairs).controlled,0,1e-12);
+  /* what the coercion bought, computed from the definition rather than from the unit: the loser leaves the
+     treatment set and joins its own cell's controls, so the estimate becomes 0.20 - (-0.20/6) */
+  const corrupted=0.20-(-0.20/6);
+  close("...against +0.23333 if the loser is silently demoted to a control",corrupted,0.2333333333333333,1e-15);
+  const truthy=[1,"true","yes",{},[],0.5];
+  for(let i=0;i<truthy.length;i++){
+    const bad=rows.slice(); bad[bad.length-1]=Object.assign({},lose,{shock:truthy[i]});
+    const P=U.scPairs(bad);
+    eq("shock:"+JSON.stringify(truthy[i])+" is refused, not coerced",P.code,U.SC_OMIT.BAD_SHOCK);
+    eq("...and produces no pairs at all",P.pairs.length,0);
+    eq("...so no estimate exists to be moved",U.scDid(P.pairs).controlled,null);
+    const rep=U.scReport(bad,reg(bad,baseOpts()));
+    eq("...and the whole call is REFUSED",rep.status.status,"REFUSED");
+    eq("...naming the treatment flag",rep.status.code,U.SC_OMIT.BAD_SHOCK);
+    ok("...and saying which row",rep.badRow&&rep.badRow.field==="shock",rep.badRow);
+  }
+  /* an ABSENT shock flag cannot default to false either: a shock window whose flag was dropped in an export
+     would become a CONTROL for its own cell, which is the same corruption in the same direction */
+  const noFlag=rows.slice(); const nf=Object.assign({},lose); delete nf.shock;
+  noFlag[noFlag.length-1]=nf;
+  eq("an ABSENT shock flag is refused, not defaulted to false",U.scPairs(noFlag).code,U.SC_OMIT.BAD_SHOCK);
+  /* and the other half of the gap: called on its own, the matcher must not admit such a row as a CONTROL */
+  const pool=rows.slice(); pool[pool.length-1]=Object.assign({},lose,{shock:1});
+  const m=U.scMatchControls(win,pool);
+  eq("a shock:1 row is not admitted to the control pool",m.n,5);
+  eq("...and the rejection is counted by its own code",m.rejects[U.SC_OMIT.BAD_SHOCK],1);
+  ok("...so the control mean is untouched by it",Math.abs(U.scMean(m.controls.map(function(c){
+    return c.skill; })))<1e-12);
+  STUB_RELEASES.length=0;
+}
+
+sect("R2: 11.6's boundary and 11.2a's required n are REGISTRATIONS, not optional extras");
+{
+  /* INPUT A -- READY with the boundary never registered. 30 cells x 5 controls x 2 shocks, a complete opts
+     set, and no `boundary`. scSplitCheck returned refuse:false when `registered` was null and nothing
+     downstream consulted registeredOk, so `frozen:true` and an unregistered boundary were accepted together
+     -- at a point where nCal >= 30 means the 30th calibration window IS graded, which 11.6 says is exactly
+     when the boundary can no longer move. */
+  STUB_RELEASES.length=0;
+  const G=mkCells({tag:"r2a",n:30,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const full=reg(G.rows,baseOpts());
+  const noB={}; for(const k in full) if(k!=="boundary") noB[k]=full[k];
+  const repA=U.scReport(G.rows,noB);
+  eq("a computed boundary exists, so 11.6 requires it to be registered",!!repA.split.boundary,true);
+  eq("...and an unregistered one is now a REFUSAL",repA.status.status,"REFUSED");
+  eq("...as a missing caller field",repA.status.code,U.SC_OMIT.MISSING_FIELDS);
+  ok("...naming the boundary",repA.status.why.indexOf("boundary")>=0,repA.status.why);
+  ok("...and it appears in `missing`",repA.missing.indexOf("boundary")>=0,repA.missing);
+  ok("...while every measurement it DID make stays on the report",
+     repA.did!==null&&repA.sd!==null&&repA.split.boundary!==null);
+  eq("...so the caller can register what it read",repA.boundary.registeredOk,false);
+  eq("the same call WITH the registration reaches a verdict",
+     U.scReport(G.rows,full).status.status!=="REFUSED",true);
+
+  /* INPUT B -- HOLDOUT becomes READY because the ratchet was not supplied. 35 cells x 5 controls x 2 shocks
+     (cal 30, hold 40), control skills constant within a cell, shock skill 0.045. Then ONE extra control per
+     cell arrives later at -2x the cell's offset: every shock was already matched, so the pair list, its order
+     and the {n, close, ticker} boundary stamp are IDENTICAL -- only the control means moved. */
+  STUB_RELEASES.length=0;
+  const H1=mkCells({tag:"r2b",n:35,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const sixth=[];
+  for(let i=0;i<35;i++){
+    const t0=CELL_BASE+i*15*MIN;
+    sixth.push(mkWin("KXBTC15M-r2bc"+i+"-5",t0+5*WEEK,15,"yes",pmFor(-2*cellSkill(i),60,1),60));
+  }
+  const R1=U.scReport(H1.rows,reg(H1.rows,baseOpts()));
+  const rows2=H1.rows.concat(sixth);
+  const B2=U.scReport(rows2,baseOpts()).split.boundary;    /* run 2's OWN computed stamp */
+  /* the sd, from the definition, computed here: paired = 0.045 - mean(control skills) in each cell */
+  const calVals1=[],calVals2=[];
+  for(let i=0;i<30;i++){ calVals1.push(SHOCK_SKILL-cellSkill(i));
+    calVals2.push(SHOCK_SKILL-(5*cellSkill(i)+(-2*cellSkill(i)))/6); }
+  close("run 1's calibration sd is the n-1 sd of the fixture's own paired values",R1.sd,sdRef(calVals1),1e-12);
+  close("...which is 0.040862",R1.sd,0.04086217372313067,1e-12);
+  eq("run 1 is 30 calibration and 40 holdout windows",R1.st.nCal+","+R1.st.nHold,"30,40");
+  eq("...requiring 46 holdout windows at 50% power",R1.holdN.computed,46);
+  eq("...so it reads HOLDOUT",R1.status.status,"HOLDOUT",R1.status);
+  close("run 2's calibration sd is exactly half of run 1's",sdRef(calVals2),R1.sd/2,1e-12);
+  /* run 2 judged against its OWN boundary, so this assertion is about the RATCHET alone. (Judged against
+     run 1's registered boundary it is refused for a different reason -- see R6 immediately below.) */
+  const R2noRatchet=U.scReport(rows2,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,
+    holdoutSpent:false,bootstrap:null,boundary:B2});
+  close("...and the unit measures that halving",R2noRatchet.sd,sdRef(calVals2),1e-12);
+  eq("...so the recomputed requirement falls to the floor of 30",R2noRatchet.holdN.computed,30);
+  ok("...which is the downward move 11.2a forbids",R2noRatchet.holdN.computed<R1.holdN.computed);
+  eq("omitting holdNRegistered no longer buys that requirement",R2noRatchet.status.status,"REFUSED");
+  eq("...it is a missing registration",R2noRatchet.status.code,U.SC_OMIT.MISSING_FIELDS);
+  ok("...named",R2noRatchet.status.why.indexOf("holdNRegistered")>=0,R2noRatchet.status.why);
+  ok("...while the measurements stay on the report for the caller to register from",
+     R2noRatchet.sd!==null&&R2noRatchet.holdN.computed!==null);
+  const R2=U.scReport(rows2,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+    bootstrap:null,boundary:B2,holdNRegistered:R1.holdN.computed});
+  eq("...and with the registration supplied the requirement stays at 46",R2.holdN.effective,46);
+  eq("...so the same 40 holdout windows do not complete it",R2.status.status,"HOLDOUT");
+  eq("...and the downward computation is on the record rather than hidden",R2.holdN.movedDown,true);
+
+  /* R6: the same two runs, judged against run 1's REGISTERED boundary. The boundary WINDOW never moved --
+     every shock was already matched, so the pair list, its order and {n, close, ticker} are identical -- and
+     the old stamp therefore reported `moved:false, registeredOk:true` while the frozen sd halved underneath
+     it. 11.6 freezes the sd and everything derived from it, not the identity of the 30th window. */
+  eq("the boundary WINDOW is identical across the two runs",
+     B2.ticker+"|"+B2.close+"|"+B2.n,
+     R1.split.boundary.ticker+"|"+R1.split.boundary.close+"|"+R1.split.boundary.n);
+  ok("...so a {n, close, ticker} stamp cannot tell them apart",
+     U.scSplitStable({n:B2.n,close:B2.close,ticker:B2.ticker,fp:"same"},
+                     {n:R1.split.boundary.n,close:R1.split.boundary.close,
+                      ticker:R1.split.boundary.ticker,fp:"same"}).moved===false);
+  ok("...but the calibration-set fingerprint differs",B2.fp!==R1.split.boundary.fp,
+     {run1:R1.split.boundary.fp,run2:B2.fp});
+  const R2vs1=U.scReport(rows2,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+    bootstrap:null,boundary:R1.split.boundary,holdNRegistered:R1.holdN.computed});
+  eq("...so run 2 against run 1's registered boundary is REFUSED",R2vs1.status.status,"REFUSED");
+  eq("...as a moved boundary (11.6: a post-freeze change spends the holdout)",
+     R2vs1.status.code,U.SC_OMIT.BOUNDARY_MOVED);
+  ok("...saying the calibration set changed",
+     /calibration set changed/.test(R2vs1.boundary.why),R2vs1.boundary.why);
+  ok("...and computing no difference-in-differences against it",R2vs1.did===null);
+  STUB_RELEASES.length=0;
+}
+sect("R6: the boundary stamp fingerprints the calibration SET, not the identity of its last window");
+{
+  const b1={n:30,close:1000,ticker:"KXBTC15M-a",fp:"aaa-30"};
+  const b2={n:30,close:1000,ticker:"KXBTC15M-a",fp:"bbb-30"};
+  eq("the same window with a different calibration set is a MOVED boundary",U.scSplitStable(b1,b2).moved,true);
+  eq("...and says which way",U.scSplitStable(b1,b2).why,
+     "the calibration set changed under an unchanged boundary window");
+  eq("...and scSplitCheck refuses it",U.scSplitCheck(b2,b1).refuse,true);
+  eq("an identical set is not a move",U.scSplitStable(b1,b1).moved,false);
+  /* the fingerprint is over the pairs' identities, their paired values AND their control sets, because 11.6
+     freezes the sd and everything derived from it -- not the identity of the 30th window */
+  function fpPairs(paired,ctrlSkill){
+    const a=[]; for(let i=0;i<30;i++) a.push(mkPair("KXBTC15M-"+i,i,paired,"c",[ctrlSkill,0,0,0,0],paired));
+    return a;
+  }
+  const A=fpPairs(0.02,0), B=fpPairs(0.02,0.5);
+  ok("a changed CONTROL skill changes the fingerprint",U.scCalFp(A)!==U.scCalFp(B),U.scCalFp(A));
+  ok("a changed PAIRED value changes it",U.scCalFp(A)!==U.scCalFp(fpPairs(0.03,0)));
+  eq("...and an unchanged set does not",U.scCalFp(A),U.scCalFp(fpPairs(0.02,0)));
+  eq("the fingerprint carries the count",U.scCalFp(A).split("-")[1],"30");
+  eq("it is deterministic under enumeration order",U.scCalFp(A),U.scCalFp(A.slice().reverse()));
+  eq("scCalFp on a non-array is null, never a value",U.scCalFp(null),null);
+}
+
+sect("R8: holdoutSpent failed OPEN; both 11.6 flags are strictly boolean now");
+{
+  STUB_RELEASES.length=0;
+  const G=mkCells({tag:"r8",n:30,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const full=reg(G.rows,baseOpts());
+  seeded(818181,function(){
+    ok("the fixture reaches a verdict with holdoutSpent:false",
+       U.scReport(G.rows,full).status.status!=="REFUSED");
+    eq("holdoutSpent:true INVALIDATES it (11.6)",
+       U.scReport(G.rows,Object.assign({},full,{holdoutSpent:true})).status.status,"INVALID");
+    /* THE FINDING: shockStatus tests ===true, and SC_VERDICT_FIELDS only required the field to be PRESENT,
+       so the one value 11.6 uses to invalidate everything was accepted in any shape and read as NOT SPENT.
+       `frozen` failed SAFE under identical treatment only because ===true is the value that OPENS its gate;
+       that asymmetry was luck, not design. */
+    const shapes=[1,"yes","true",{},[]];
+    for(let i=0;i<shapes.length;i++){
+      const bad=Object.assign({},full,{holdoutSpent:shapes[i]});
+      const rep=U.scReport(G.rows,bad);
+      eq("holdoutSpent:"+JSON.stringify(shapes[i])+" is refused, not read as NOT SPENT",
+         rep.status.status,"REFUSED");
+      eq("...as a caller-field type violation",rep.status.code,U.SC_OMIT.BAD_OPT);
+      ok("...and it never reaches READY",rep.status.status!=="READY");
+      /* the counterfactual: handed to the judge verbatim, it sails through 11.6's own gate */
+      const st=U.scAssemble({phase:1,nCal:30,nHold:30,sd:0.01,dBrier:0.02,ciLo:0.01,ctrlMatched:30,
+        ctrlTotal:30},Object.assign({},baseOpts(),{holdoutSpent:shapes[i]})).st;
+      eq("...where shockStatus would have read it as not spent",U.shockStatus(st).status,"READY");
+      /* frozen, for the same shapes, is refused here too rather than relying on ===true failing safe */
+      eq("frozen:"+JSON.stringify(shapes[i])+" is refused as well",
+         U.scReport(G.rows,Object.assign({},full,{frozen:shapes[i]})).status.code,U.SC_OMIT.BAD_OPT);
+    }
+  });
+  STUB_RELEASES.length=0;
+}
+
+sect("R12: a REFUSED call reports no CI level");
+{
+  STUB_RELEASES.length=0;
+  const G=mkCells({tag:"r12",n:30,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const full=reg(G.rows,baseOpts());
+  const rep=U.scReport(G.rows,Object.assign({},full,{arms:"20"}));
+  eq("arms:\"20\" is refused",rep.status.status,"REFUSED");
+  eq("...as a caller-field type violation",rep.status.code,U.SC_OMIT.BAD_OPT);
+  eq("...and reports NO CI level, because there is no arm count to derive one from",rep.status.ciLevel,null);
+  eq("...nor a resample count",rep.status.bootstrapB,null);
+  /* why the check has to be here: shockStatus coerces the string through `st.arms >= 1` and reports 0.995 */
+  const st=U.scAssemble({phase:1,nCal:30,nHold:30,sd:0.01,dBrier:0.02,ciLo:null,ctrlMatched:30,ctrlTotal:30},
+    Object.assign({},baseOpts(),{arms:"20"})).st;
+  close("shockStatus would have reported a level of 0.995 for a refused call",
+        U.shockStatus(st).ciLevel,0.995,1e-12);
+  eq("a non-integer k is refused too",U.scReport(G.rows,Object.assign({},full,{arms:1.5})).status.code,
+     U.SC_OMIT.BAD_OPT);
+  eq("...and k below 1",U.scReport(G.rows,Object.assign({},full,{arms:0})).status.code,U.SC_OMIT.BAD_OPT);
+  STUB_RELEASES.length=0;
+}
+
+sect("R9: 11.2a requires BOTH power figures, and the at-open feasibility test");
+{
+  STUB_RELEASES.length=0;
+  const G=mkCells({tag:"r9",n:35,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const rep=U.scReport(G.rows,reg(G.rows,baseOpts()));
+  /* both figures, from 11.2a's own formula n = (z*sd/0.010)^2 with z = invNorm(1-(1-lvl)/2) + invNorm(power),
+     computed here rather than by calling the code under test */
+  const nFor=function(power){ const z=invNorm(1-(1-0.90)/2)+invNorm(power);
+    return Math.max(30,Math.ceil(Math.pow(z*rep.sd/0.010,2))); };
+  eq("the required n at 50% power is 46",rep.holdN.computed,46);
+  eq("...which is 11.2a's formula, computed independently",rep.holdN.computed,nFor(0.5));
+  eq("...and the 80%-power figure is BESIDE it, not absent",rep.holdN.n80,104);
+  eq("...also from the formula",rep.holdN.n80,nFor(0.8));
+  eq("...and it is prereg's, not a second implementation",rep.holdN.n80,
+     U.shockRequiredHoldN(rep.sd,1,0.8));
+  eq("...and the report says which power each figure is",rep.holdN.power.computed+"/"+rep.holdN.power.alongside,
+     "0.5/0.8");
+  ok("the 80% figure is the larger one, which is why it is the one that says whether to open",
+     rep.holdN.n80>rep.holdN.computed);
+  /* shockFeasible existed in prereg and was called by NOTHING in the repository */
+  ok("the at-open feasibility test is computed",!!rep.holdN.feasible,rep.holdN);
+  eq("...at 11.1's low release-rate premise",rep.holdN.feasible.lo.holdN,46);
+  eq("...and its high one",rep.holdN.feasible.hi.holdN,46);
+  ok("...carrying n80 with it",rep.holdN.feasible.lo.n80===104&&rep.holdN.feasible.hi.n80===104);
+  ok("...and an `ok` against 11.7 clause 5's deadline",
+     typeof rep.holdN.feasible.lo.ok==="boolean"&&typeof rep.holdN.feasible.hi.ok==="boolean");
+  eq("...which is 24 months",rep.holdN.feasible.lo.deadline,U.SHOCK_RULE.maxMonths);
+  close("...and the months it implies at 100 releases a year",rep.holdN.feasible.lo.months,12*46/100,1e-12);
+  close("...and at 150",rep.holdN.feasible.hi.months,12*46/150,1e-12);
+  ok("the premise is LABELLED a premise, not a measurement",
+     /NOT a measurement/.test(rep.holdN.feasible.premise),rep.holdN.feasible.premise);
+  /* it is output, not a gate: closing the programme at the holdout's open is 11.2a's decision for the caller
+     to record, exactly like holdoutSpent -- but it cannot be made without the number */
+  ok("the feasibility figure does not itself change the verdict",
+     rep.status.status==="HOLDOUT"||rep.status.status==="READY"||rep.status.status==="NEGATIVE",rep.status);
+  STUB_RELEASES.length=0;
+}
+
+sect("R10: a floating-point residue is not a measured sd");
+{
+  /* scSd returned 1.41e-17 on thirty identical paired values, and shockRequiredHoldN guards on `sd > 0`, so
+     11.2a's "sd not measured on the calibration half" refusal was reachable only at EXACT binary zero and the
+     residue silently became the holdN floor of 30 instead. */
+  const same=[]; for(let i=0;i<30;i++) same.push(0.0341);
+  let m=0; for(let i=0;i<same.length;i++) m+=same[i]; m/=same.length;
+  let ss=0; for(let i=0;i<same.length;i++) ss+=(same[i]-m)*(same[i]-m);
+  const residue=Math.sqrt(ss/(same.length-1));
+  ok("the two-pass sd of thirty identical values is NOT zero in binary float",residue>0,residue);
+  ok("...it is about 1.4e-17",residue<1e-16&&residue>1e-18,residue);
+  eq("scSdOf returns exactly zero on it",U.scSdOf(same),0);
+  const pairs=[]; for(let i=0;i<30;i++) pairs.push({ticker:"t"+i,close:i,paired:0.0341,shockSkill:0.0341,
+    ctrlMeanSkill:0,nCtrl:5});
+  eq("...so scSd does too",U.scSd(pairs),0);
+  eq("...and 11.2a's refusal is reachable: no required n is derivable from it",
+     U.shockRequiredHoldN(U.scSd(pairs),1,0.5),null);
+  eq("...where the residue would have bought the floor of 30 instead",U.shockRequiredHoldN(residue,1,0.5),30);
+  /* the floor is RELATIVE and only ever turns a number into a refusal */
+  ok("a genuine spread is untouched",U.scSdOf([0,1])>0.7);
+  close("...exactly",U.scSdOf([0,1]),Math.sqrt(0.5),1e-15);
+  ok("a spread just above the relative floor survives",U.scSdOf([1,1+1e-9])>0);
+  eq("scSdOf on an all-zero sample is zero, not a residue",U.scSdOf([0,0,0]),0);
+}
+
+sect("THE CONTRACT IS TOTAL: one table, exhaustive against what the code actually reads");
+{
+  /* THE CLASS FIX, asserted as a class rather than field by field. The reviewer's closing sentence was
+     "every input this unit does not police, it policies on the permissive side" -- one fault wearing nine
+     fields. So the enumeration is in ONE place, and this block is what stops a field being added later
+     without one: the source is parsed, every property name it READS is collected, the names this unit itself
+     ASSIGNS and a fixed list of JS builtins are subtracted, and the remainder must be a subset of the
+     contract tables. A new `w.something` or `o.something` fails here unless it is declared. */
+  /* comments AND string literals are stripped: a `.md` inside a refusal message is not a property read */
+  const CODE=SRC.replace(/\/\*[\s\S]*?\*\//g,"").replace(/"(?:[^"\\]|\\.)*"/g,'""');
+  const reads={},assigned={};
+  let m;
+  const reRead=/\.([A-Za-z_$][\w$]*)/g;
+  while((m=reRead.exec(CODE))) reads[m[1]]=(reads[m[1]]||0)+1;
+  const reKey=/([A-Za-z_$][\w$]*)\s*:/g;
+  while((m=reKey.exec(CODE))) assigned[m[1]]=1;
+  const reSet=/\.([A-Za-z_$][\w$]*)\s*=[^=]/g;
+  while((m=reSet.exec(CODE))) assigned[m[1]]=1;
+  /* the JS surface this unit uses. Fixed, short, and nothing caller-supplied can hide in it. */
+  const BUILTIN=["abs","call","ceil","charCodeAt","filter","floor","getUTCDay","getUTCFullYear","getUTCMonth",
+    "hasOwnProperty","imul","indexOf","isArray","join","keys","length","map","max","min","pow","prototype",
+    "push","random","replace","reverse","round","slice","sort","split","sqrt","toFixed","toString"];
+  const declared={};
+  const tables=[U.SC_ROW_FIELDS,U.SC_SNAP_FIELDS,U.SC_OPT_FIELDS,U.SC_NEIGHBOUR_FIELDS];
+  for(let i=0;i<tables.length;i++) for(let j=0;j<tables[i].length;j++) declared[tables[i][j].name]=1;
+  const undeclared=Object.keys(reads).filter(function(k){
+    return !assigned[k]&&BUILTIN.indexOf(k)<0&&!declared[k]; }).sort();
+  eq("every field this unit reads and does not itself produce is in the contract",undeclared.join(","),"");
+  /* and the other direction, so the table cannot rot: every declared field is actually read */
+  const dead=Object.keys(declared).filter(function(k){ return !reads[k]; }).sort();
+  eq("...and every declared field is actually read",dead.join(","),"");
+  /* the tables agree with the field lists the rest of the unit already had */
+  const optNames=U.SC_OPT_FIELDS.map(function(f){ return f.name; });
+  for(let i=0;i<U.SC_CALLER_FIELDS.length;i++)
+    ok("SC_OPT_FIELDS covers the st-bound caller field "+U.SC_CALLER_FIELDS[i],
+       optNames.indexOf(U.SC_CALLER_FIELDS[i])>=0);
+  for(let i=0;i<U.SC_SPLIT_FIELDS.length;i++)
+    ok("...and the split-bound field "+U.SC_SPLIT_FIELDS[i],optNames.indexOf(U.SC_SPLIT_FIELDS[i])>=0);
+  eq("...and nothing else but bootstrap",optNames.length,
+     U.SC_CALLER_FIELDS.length+U.SC_SPLIT_FIELDS.length+1);
+  ok("every contract entry states a permitted shape in words",
+     tables.every(function(t){ return t.every(function(f){
+       return typeof f.shape==="string"&&f.shape.length>0; }); }));
+  ok("every ROW and OPT entry carries a predicate, so nothing is merely `read`",
+     U.SC_ROW_FIELDS.every(function(f){ return typeof f.ok==="function"; })&&
+     U.SC_OPT_FIELDS.every(function(f){ return typeof f.ok==="function"; }));
+  /* THE FAILURE MODE OF A FIELD THAT SKIPPED THE CONTRACT IS REFUSAL, NOT PASSAGE */
+  STUB_RELEASES.length=0;
+  const G=mkCells({tag:"ct",n:30,nCtrl:5,nShock:2,
+    ctrl:function(i){ return pmFor(cellSkill(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const full=reg(G.rows,baseOpts());
+  const stray=U.scReport(G.rows,Object.assign({},full,{newThresholdNobodyDeclared:0.5}));
+  eq("an opts key that is not in the table is REFUSED, not ignored",stray.status.status,"REFUSED");
+  eq("...with its own code",stray.status.code,U.SC_OMIT.UNKNOWN_OPT);
+  ok("...naming the key",stray.status.why.indexOf("newThresholdNobodyDeclared")>=0,stray.status.why);
+  eq("...and scOptsCheck says which field",U.scOptsCheck({zzz:1}).field,"zzz");
+  /* a ROW key that is not in the table is NOT an error: an edge-ledger row legitimately carries columns this
+     unit does not read, and the exhaustiveness scan above is what enforces the enumeration there instead */
+  const extra=G.rows.map(function(w){ return Object.assign({},w,{strike:100000,vrp:0.001}); });
+  ok("an unread ROW column is not an error",U.scPairs(extra).ok===true);
+  STUB_RELEASES.length=0;
+}
+sect("the row contract, field by field: present-and-wrong-typed is a refusal, absent-and-load-bearing too");
+{
+  const good=mkWin("KXBTC15M-ct",Date.UTC(2026,0,7,12,30),15,"yes",0.7,60);
+  eq("a well-formed row passes",U.scRowCheck(good).ok,true);
+  const cases=[
+    {f:"ticker",v:42,code:U.SC_OMIT.BAD_ROW},{f:"ticker",v:"",code:U.SC_OMIT.BAD_ROW},
+    {f:"open",v:"1771",code:U.SC_OMIT.BAD_ROW},{f:"open",v:NaN,code:U.SC_OMIT.BAD_ROW},
+    {f:"close",v:Infinity,code:U.SC_OMIT.BAD_ROW},
+    {f:"phase",v:"1",code:U.SC_OMIT.BAD_PHASE},{f:"phase",v:true,code:U.SC_OMIT.BAD_PHASE},
+    {f:"shock",v:1,code:U.SC_OMIT.BAD_SHOCK},{f:"shock",v:"true",code:U.SC_OMIT.BAD_SHOCK},
+    {f:"shock",v:0,code:U.SC_OMIT.BAD_SHOCK},
+    {f:"snaps",v:{},code:U.SC_OMIT.BAD_ROW},{f:"snaps",v:"[]",code:U.SC_OMIT.BAD_ROW},
+    {f:"result",v:1,code:U.SC_OMIT.BAD_ROW},{f:"result",v:true,code:U.SC_OMIT.BAD_ROW}
+  ];
+  for(let i=0;i<cases.length;i++){
+    const w=Object.assign({},good); w[cases[i].f]=cases[i].v;
+    const r=U.scRowCheck(w);
+    eq(cases[i].f+" = "+JSON.stringify(cases[i].v)+" is refused",r.ok,false);
+    eq("...with the right code",r.code,cases[i].code);
+    eq("...naming the field",r.field,cases[i].f);
+  }
+  const required=["ticker","open","close","phase","shock","snaps"];
+  for(let i=0;i<required.length;i++){
+    const w=Object.assign({},good); delete w[required[i]];
+    eq("an absent "+required[i]+" is a refusal, not a default",U.scRowCheck(w).ok,false);
+    eq("...naming it",U.scRowCheck(w).field,required[i]);
+  }
+  /* the two that are legitimately absent or legitimately not "yes"/"no" */
+  const noRes=Object.assign({},good); delete noRes.result;
+  eq("an absent result is NOT a contract violation: the window is simply ungraded",U.scRowCheck(noRes).ok,true);
+  eq("...and scSkill is what refuses to grade it",U.scSkill(noRes).code,U.SC_OMIT.UNGRADED);
+  const voided=Object.assign({},good,{result:"void"});
+  eq("a void result is a legitimate string",U.scRowCheck(voided).ok,true);
+  eq("...and ungraded (10.4)",U.scSkill(voided).code,U.SC_OMIT.UNGRADED);
+  const empty=Object.assign({},good,{snaps:[]});
+  eq("an EMPTY snaps array is legitimate: the window has no usable read yet",U.scRowCheck(empty).ok,true);
+  eq("...and refuses as no-refsnap, which is a measurement state",U.scSkill(empty).code,U.SC_OMIT.NO_REFSNAP);
+  /* cross-field */
+  eq("close must be strictly after open",U.scRowCheck(Object.assign({},good,{close:good.open})).ok,false);
+  eq("...naming close",U.scRowCheck(Object.assign({},good,{close:good.open})).field,"close");
+  eq("a row that is not an object at all",U.scRowCheck(null).ok,false);
+  eq("...nor an array",U.scRowCheck([1,2]).ok,false);
+  /* scRowsCheck reports the first failure, its index, and how many rows failed */
+  const rs=U.scRowsCheck([good,Object.assign({},good,{shock:1}),Object.assign({},good,{shock:"x"})]);
+  eq("one bad row refuses the whole set",rs.ok,false);
+  eq("...at its index",rs.at,1);
+  eq("...counting every failure",rs.bad,2);
+  eq("scRowsCheck on a non-array",U.scRowsCheck(null).ok,false);
+}
+sect("the opts contract, field by field");
+{
+  const okOpts={arms:1,pnlN:30,pnlNet:1,monthsElapsed:6,frozen:true,holdoutSpent:false};
+  eq("a well-formed opts passes",U.scOptsCheck(okOpts).ok,true);
+  eq("an absent opts is not a violation: the required-field pass answers for it",U.scOptsCheck(null).ok,true);
+  eq("...nor is an empty one",U.scOptsCheck({}).ok,true);
+  eq("opts must be an object",U.scOptsCheck([1]).ok,false);
+  const bad=[["arms","20"],["arms",0],["arms",1.5],["arms",Infinity],
+    ["pnlN",-1],["pnlN","30"],["pnlNet","1"],["monthsElapsed",-1],
+    ["frozen",1],["frozen","true"],["holdoutSpent",1],["holdoutSpent","yes"],
+    ["detPrecision",1.5],["detPrecision","0.9"],
+    ["holdNRegistered",29],["holdNRegistered",46.5],["holdNRegistered","46"],
+    ["boundary",{n:30,close:1,ticker:"t"}],["boundary",42],
+    ["bootstrap",{}]];
+  for(let i=0;i<bad.length;i++){
+    const o=Object.assign({},okOpts); o[bad[i][0]]=bad[i][1];
+    const r=U.scOptsCheck(o);
+    eq("opts."+bad[i][0]+" = "+JSON.stringify(bad[i][1])+" is refused",r.ok,false);
+    eq("...naming the field",r.field,bad[i][0]);
+    eq("...as a caller-field violation",r.code,U.SC_OMIT.BAD_OPT);
+  }
+  eq("a registered n at exactly 11.2a's floor is permitted",
+     U.scOptsCheck(Object.assign({},okOpts,{holdNRegistered:30})).ok,true);
+  eq("...and 30 is SHOCK_RULE.holdN, restated",U.SCORE.HOLD_N_MIN,U.SHOCK_RULE.holdN);
+  eq("a boundary stamp with a fingerprint is permitted",
+     U.scOptsCheck(Object.assign({},okOpts,{boundary:{n:30,close:1,ticker:"t",fp:"a-30"}})).ok,true);
+  eq("an explicit null reads as absent, not as a type violation",
+     U.scOptsCheck(Object.assign({},okOpts,{frozen:null})).ok,true);
+  eq("scRequiredFields adds `boundary` once a boundary exists",
+     U.scRequiredFields(1,{boundaryExists:true}).indexOf("boundary")>=0,true);
+  eq("...and `holdNRegistered` once the sd is measured",
+     U.scRequiredFields(1,{sdMeasured:true}).indexOf("holdNRegistered")>=0,true);
+  eq("...and neither before that",U.scRequiredFields(1,{}).length,U.SC_VERDICT_FIELDS.length);
+  eq("scMissingAll reports both split fields when they are absent",
+     U.scMissingAll([],{}).join(","),"boundary,holdNRegistered");
+  eq("...and neither when they are supplied",
+     U.scMissingAll([],{boundary:{},holdNRegistered:30}).length,0);
+}
+sect("the contract looks where the READ looks, and a declared shape IS its predicate (third review)");
+{
+  /* R3-2. scOptsCheck gated on hasOwnProperty while scAssemble/scMissingRequired/scRatchet read with plain
+     member access, which walks the prototype chain - so an INHERITED value was consumed having never been
+     validated. holdoutSpent is the field 11.6 gives the largest blast radius, shockStatus tests it with
+     ===true, and an inherited 1 read as NOT SPENT and reached READY. */
+  const proto = function(own, inherited){
+    const P = {}; for(const k in inherited) P[k] = inherited[k];
+    const o = Object.create(P); for(const k in own) o[k] = own[k];
+    return o;
+  };
+  const OWN = {arms:1,pnlN:30,pnlNet:1,monthsElapsed:6,frozen:true,holdoutSpent:false};
+  const cases = [["holdoutSpent",1],["holdoutSpent","yes"],["pnlN","50"],["pnlNet","5"],
+                 ["monthsElapsed",-5],["holdNRegistered",5],["arms","20"],["frozen",1]];
+  for(let i=0;i<cases.length;i++){
+    const k = cases[i][0], v = cases[i][1];
+    const own = {}; for(const q in OWN) if(q!==k) own[q] = OWN[q];
+    const inh = {}; inh[k] = v;
+    ok("an INHERITED "+k+"="+JSON.stringify(v)+" is refused, exactly as an own one is",
+       U.scOptsCheck(proto(own, inh)).ok === false && U.scOptsCheck(Object.assign({}, own, inh)).ok === false);
+  }
+  ok("...while an inherited WELL-FORMED value is still accepted, so the fix is not merely refusing everything",
+     U.scOptsCheck(proto({arms:1,pnlN:30,pnlNet:1,monthsElapsed:6,frozen:true}, {holdoutSpent:false})).ok === true);
+
+  /* R3-3. `phase` was typed as any finite number while the table's own shape string said "1 or 2", so an
+     out-of-domain number skipped 11.5's phase-2 gate exactly as an ABSENT phase used to (round 1, finding 3).
+     shockStatus gates on st.phase===2, so anything that is not 1 or 2 silently means "not phase 2". */
+  const bad = [3, 1.5, 0, -1, 2.0000001, -0, NaN, Infinity];
+  for(let i=0;i<bad.length;i++)
+    ok("phase "+String(bad[i])+" is refused, not treated as 'not phase 2'",
+       U.scFieldCheck(U.SC_ROW_FIELDS,"phase",bad[i]).ok === false);
+  ok("phase 1 and phase 2 are the only accepted values",
+     U.scFieldCheck(U.SC_ROW_FIELDS,"phase",1).ok === true &&
+     U.scFieldCheck(U.SC_ROW_FIELDS,"phase",2).ok === true);
+  ok("the declared shape string and the predicate now agree, so an auditor reading either is told the truth",
+     /exactly 1 or 2/.test((function(){ for(let i=0;i<U.SC_ROW_FIELDS.length;i++)
+       if(U.SC_ROW_FIELDS[i].name==="phase") return U.SC_ROW_FIELDS[i].shape; return ""; })()));
+}
+
+sect("the four 2026-09-06 registrations are in CLAUDE.md, not only in this unit");
+{
+  if(fs.existsSync(DOC)){
+    const doc=fs.readFileSync(DOC,"utf8");
+    ok("11.2 registers the coverage denominator as GRADED",
+       /over\s+a\s+denominator\s+of\s+\*\*graded\*\*\s+shock\s+windows/.test(doc));
+    ok("...whose side of the split is determinable",/whose side of the split is determinable/.test(doc));
+    ok("...and evaluated only once that denominator reaches 30",
+       /evaluated \*\*only once\s+that denominator reaches 30\*\*/.test(doc));
+    ok("11.7 clause 3 carries the same minimum",
+       /This clause may not fire below that minimum denominator/.test(doc));
+    ok("11.2 registers the matching CELL as the resampling unit",
+       /The resampling unit is the matching cell, not the window/.test(doc));
+    ok("11.2a requires BOTH power figures as output",
+       /Both power figures are required output/.test(doc));
+    ok("...and 11.2 still says control coverage is 80%",/Control coverage .{0,4}80%/.test(doc));
+  } else ok("CLAUDE.md not present; registration guards skipped",true);
 }
 
 /* ==================================================================================================== */
@@ -1291,6 +2014,16 @@ sect("garbage in");
   eq("scWindowLenMin on a zero-length window",U.scWindowLenMin({open:1,close:1}),null);
   eq("scMatchKey on a window with no ticker",U.scMatchKey({open:1}),null);
   ok("scReport on garbage does not throw",!!U.scReport(null,null));
+  /* the contract is what keeps this true: every one of these is refused by name rather than reaching the
+     matcher, the split or the bootstrap */
+  const junk=[null,42,"row",[],{},{ticker:"x"},{ticker:"x",open:1,close:0,phase:1,shock:true,snaps:[]}];
+  for(let i=0;i<junk.length;i++){
+    const r=U.scReport([junk[i]],{arms:1,pnlN:1,pnlNet:1,monthsElapsed:1,frozen:true,holdoutSpent:false});
+    ok("a junk row ["+JSON.stringify(junk[i])+"] does not throw",!!r&&!!r.status);
+    ok("...and is never scored",r.ok!==true||r.did===null);
+  }
+  ok("scPairs on a row list containing a number does not throw",!!U.scPairs([1,2,3]));
+  eq("...it refuses it",U.scPairs([1,2,3]).code,U.SC_OMIT.BAD_ROW);
 }
 
 /* ==================================================================================================== */

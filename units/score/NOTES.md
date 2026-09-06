@@ -1,9 +1,9 @@
 # Unit: `score` — the half that computes `st`
 
-`code.js` is the exact block to splice. `node test.js` runs green: **453 assertions, 0 failed, exit 0**.
-902 lines, 49 top-level declarations, pure ASCII (asserted), ES2019, no arrow functions, no template
-literals. (Was 255 assertions and 545 lines before the 2026-09-06 adversarial review; §"What the review
-changed" at the foot records every difference.) Pure: no DOM, no `localStorage`, no `fetch`, no timers, no `S`, no page helpers — the harness
+`code.js` is the exact block to splice. `node test.js` runs green: **861 assertions, 0 failed, exit 0**.
+1,318 lines, 69 top-level declarations, pure ASCII (asserted), ES2019, no arrow functions, no template
+literals. (Was 255 assertions and 545 lines before the first 2026-09-06 adversarial review, 453 and 902
+after it; the two §"What the review changed" sections at the foot record every difference.) Pure: no DOM, no `localStorage`, no `fetch`, no timers, no `S`, no page helpers — the harness
 stubs every page helper with **throwers** and `S`/`SEAS`/`document`/`localStorage` with throwing
 Proxies, and a static scan over the comment-stripped source asserts the same thing textually.
 
@@ -67,10 +67,15 @@ better tool, `−0.40` for the worse one, whose `shockStatus` is **ABANDON**, no
 
 | symbol | kind | notes |
 |---|---|---|
-| `SCORE` | const | `CTRL_MIN 5`, `CAL_N 30`, `CLEAR_HALF_MIN 45`, `REF_TAU_MIN 6`, `SLOT_MIN 15` |
-| `SC_OMIT` | const | 22 reason codes; every refusal is countable, none is a default |
+| `SCORE` | const | `CTRL_MIN 5`, `CAL_N 30`, `HOLD_N_MIN 30`, `COV_MIN_N 30`, `CLEAR_HALF_MIN 45`, `REF_TAU_MIN 6`, `SLOT_MIN 15`, `SD_ZERO_REL 1e-12` |
+| `SC_OMIT` | const | 26 reason codes; every refusal is countable, none is a default |
+| `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_NEIGHBOUR_FIELDS` | const | **the contract** — every field this unit reads, with an explicit type and an explicit permitted shape, enumerated in one place |
+| `scTypeNum` / `scTypeBool` / `scTypeStr` / `scTypeArr` / `scTypeFn` / `scTypeStamp` | fn | the contract's predicates; `scTypeStamp` is the boundary stamp `{n, close, ticker, fp}` |
+| `scFieldOf(table,name)` / `scFieldCheck(table,name,v)` | fn | one field, one answer: absent-and-required and present-and-wrong-typed are different codes |
+| `scRowCheck(w)` / `scRowsCheck(rows)` / `scOptsCheck(opts)` | fn | the contract applied; one bad row or one unknown opts key refuses the whole call |
 | `SC_CALLER_FIELDS` | const | the seven `st` fields the caller owns (the other eight are measured here) |
-| `SC_VERDICT_FIELDS` / `scRequiredFields(phase)` / `scMissingRequired(missing,phase)` | const, fn | which caller fields the verdict actually depends on; `detPrecision` only at phase 2 |
+| `SC_SPLIT_FIELDS` | const | `boundary` and `holdNRegistered` — caller fields the verdict depends on that are **not** `st` fields |
+| `SC_VERDICT_FIELDS` / `scRequiredFields(phase,ctx)` / `scMissingRequired(missing,phase,ctx)` / `scMissingAll(missing,opts)` | const, fn | which caller fields the verdict actually depends on; `detPrecision` at phase 2, `boundary` once a boundary exists, `holdNRegistered` once the sd is measured |
 | `SC_REFUSALS` / `SC_REFUSAL_WHY` / `scIsRefusal(code)` / `scRefused(code,why,k)` | const, fn | the codes that must be REPORTED as refusals, and the refusal object |
 | `scHasOwn(o,k)` | fn | own-property lookup for every caller-keyed map |
 | `scRowId(w)` / `scDedupe(rows)` | fn | window identity `(ticker, open)`, and first-occurrence-wins dedupe with a count |
@@ -88,7 +93,8 @@ better tool, `−0.40` for the worse one, whose `shockStatus` is **ABANDON**, no
 | `scPairs(rows)` | fn | one paired difference per matched shock window |
 | `scSplit(pairs)` / `scSplitStable(a,b)` / `scSplitCheck(computed,registered)` | fn | §11.6 chronological split; boundary-move detector; the registered-boundary gate `scReport` calls |
 | `scRatchet(computed,registered)` / `scRatchetStatus(...)` / `scMaxMonths()` | fn | §11.2a's "may only ever move up", applied to the required holdout n and then to the judge's answer |
-| `scAfterBoundary(w,b)` / `scCoverage(P,boundary)` | fn | which side of the boundary a recorded window sits on; coverage on the holdout, the calibration half and pooled |
+| `scAfterBoundary(w,b)` / `scCoverage(P,boundary)` | fn | which side of the boundary a recorded window sits on (`null` = undeterminable); §11.2's registered denominator — holdout, graded, side-determinable, not evaluated below 30 — plus the calibration and pooled cuts and the exclusion counts |
+| `scHash(str)` / `scFpNum(v)` / `scCalFp(cal)` | fn | the deterministic fingerprint of the calibration **set** carried on the boundary stamp (§11.6) |
 | `scCells(pairs)` / `scClusterStat(cells)` | fn | the matching cells the CI resamples, and one two-stage replicate |
 | `scSd(cal)` | fn | sample sd of the paired difference, calibration half, else `null` |
 | `scDid(pairs)` | fn | the difference-in-differences (`controlled` = market − tool), the negation, and the unconditional sibling |
@@ -206,7 +212,16 @@ only ever tighten: an INVALID, ABANDON, FROZEN-PENDING or CALIBRATING answer is 
 returns `null` below 30. `shockRequiredHoldN(null, …)` returns `null`, `shockStatus` turns that into
 INVALID, and the count check reads CALIBRATING first — so a short calibration set cannot open a holdout
 through this path. n−1 matters: `shockRequiredHoldN` **squares** the sd, so the population form
-understates the requirement.
+understates the requirement. It also returns **exactly zero**, not a floating-point residue, when the
+calibration half's paired values are identical: `shockRequiredHoldN` guards on `sd > 0`, so a residue of
+1.4e−17 is a *positive* sd that squares to nothing and silently becomes the `holdN` floor of 30, while
+§11.2a's "sd not measured on the calibration half" refusal stays unreachable. The snap is relative
+(`SD_ZERO_REL`) and only ever turns a number into a refusal.
+
+`rep.holdN` carries **both** power figures, because §11.2a requires both as output: `computed` at 50%
+power, `n80` at 80%, `power` naming which is which, and `feasible` — `shockFeasible` against §11.7 clause
+5's 24-month deadline, evaluated at both ends of §11.1's release-rate premise and labelled a premise,
+because §8 records the enumerated calendar at ~47 events a year and no observed count exists yet.
 
 ## The CI — and the one statistics decision in this unit
 
@@ -303,9 +318,10 @@ as a certainty.
 | Nothing is defaulted to a permissive value | `scAssemble` copies caller fields verbatim, names the absent ones in `missing` | absent `frozen` → `undefined` → **FROZEN-PENDING**; absent `detPrecision` on phase 2 → **INVALID**; `frozen:"true"` is still refused |
 | A void settlement is not a NO (§10.4) | `result === "yes" \|\| "no"` only | void and `null` both read `ungraded` |
 | An empty-side book is not a quote (§10.3 K2) | `qm === 0` and `qm === 100` are refused before any Brier is formed | `empty-book`, and such a control is rejected and counted |
-| Coverage is read on the **holdout alone** (§11.2) | `scCoverage` splits recorded windows on the boundary; only `hold` reaches `st`, and all three sides are reported | pooled 0.857 passes while holdout 0.750 abandons, with the pooled counterfactual asserted beside it; before a boundary exists the holdout is empty, the gate reads nothing, and `coverage.cal` is on the report so §11.7 clause 3 can still be asked during calibration |
+| **Every field this unit reads is typed** — a value present in the wrong type is a refusal, an absent load-bearing field is a refusal, an opts key that is not in the contract is a refusal | `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_NEIGHBOUR_FIELDS`, applied by `scRowsCheck` and `scOptsCheck` before anything is matched, scored or split | `shock:1`, `"true"`, `{}`, `[]`, `0.5` and an absent `shock` all refuse (`bad-shock-flag`); `holdoutSpent:1` and `"yes"` refuse (`bad-caller-field`) with the counterfactual READY asserted beside each; an undeclared opts key refuses (`unknown-caller-field`); and the suite **parses `code.js`**, collects every property name it reads, subtracts what the unit assigns and a fixed builtin list, and requires the remainder to be a subset of the tables — so a field added later cannot skip the contract |
+| Coverage is read on the **holdout alone**, over §11.2's registered denominator (§11.2, §11.7 clause 3) | `scCoverage` splits recorded windows on the boundary; only `hold` reaches `st`, and all three sides are reported | pooled 0.857 passes while holdout 0.750 abandons, with the pooled counterfactual asserted beside it; **one unmatched window at the open of the holdout reads 0/1 and no longer closes the programme** (the counterfactual ABANDON is asserted beside it); void, still-open and post-gate-only windows are excluded and counted rather than read as matching failures; a window whose side cannot be determined is in neither denominator; before a boundary exists the holdout is empty, the gate reads nothing, and `coverage.cal` is on the report so §11.7 clause 3 can still be asked during calibration |
 | A row set with no `phase` is not scorable (§11.5) | `scPhaseGuard` refuses an absent or non-numeric phase before anything else | `no-phase` / `bad-phase`; and the assertion that a null phase sails past `shockStatus`, which is why the gate is here |
-| A window is `(ticker, open)` (§10.2's overlapping exports) | `scDedupe` on the control pool and on the rows, first occurrence wins, drops counted | three windows in five rows do **not** meet the 5-control minimum |
+| A window is `(ticker, open)` (§10.2's overlapping exports) | `scDedupe` on the control pool and on the rows, first occurrence wins, drops counted | three windows in five rows do **not** meet the 5-control minimum. **Residual limitation:** the identity is exactly `(ticker, open)`, so three real controls plus two copies carrying `open + 1`, or two copies under a renamed ticker, still read as five windows. Both require the caller to corrupt an identity Kalshi supplies verbatim; this is a property of the chosen key, not a reachable defect, and the contract cannot type its way out of it |
 | The boundary is registered, not recomputed (§11.6) | `scSplitCheck`; a disagreement stops the pass | pruning one old control row moves it, and the registered call refuses |
 | The required n only ratchets up (§11.2a) | `scRatchet` + `scRatchetStatus` | a registered 999 turns the same evidence from READY into HOLDOUT |
 | A hole is not a verdict | `scMissingRequired`; a missing verdict-bearing caller field is a refusal | omitting `holdoutSpent` refuses instead of reading absent as "not spent" |
@@ -333,7 +349,29 @@ wrong quarter, release-in-shoulder, another shock window, and an ungraded window
 ### Mutation testing
 
 Each fix is reverted in a throwaway copy of `code.js` run against the unmodified suite. **No survivors.**
-The seventeen below are the 2026-09-06 review's fixes; the eight after them are pre-existing rules
+
+**The second review's round, fifteen mutations, all killed** (the assertion counts are what the suite
+loses when the rule is removed):
+
+| mutation | assertions killed |
+|---|---|
+| R3 `shock` is not type-checked | 52 |
+| R6/R8 every boolean predicate accepts anything truthy | 76 |
+| R1 the coverage clause is evaluated at any denominator (`COV_MIN_N` 0) | 7 |
+| R5 ungraded windows are counted as control-matching failures | 12 |
+| R4 an undeterminable side is counted as calibration | 2 |
+| R4 `close` is not in the row contract | 6 |
+| R2 `boundary` and `holdNRegistered` are optional again | 16 |
+| R6 the boundary stamp ignores the calibration set | 7 |
+| R7 the pooled coverage pair is back on the report | 2 |
+| R9 only the 50%-power figure is reported | 4 |
+| R10 a floating-point residue is a measured sd again | 3 |
+| R12 `arms` is not type-checked | 18 |
+| the class fix: an unknown opts key is ignored rather than refused | 4 |
+| the class fix: the row contract is not applied in `scPairs` at all | 44 |
+| **a NEW caller field is read with no contract entry** | **1** — the exhaustiveness scan, which is the one that has to bite for the enumeration to mean anything |
+
+The seventeen below are the **first** review's fixes; the eight after them are pre-existing rules
 re-checked because the suite changed around them (the full thirty-mutation first-round table is in the
 git history of this file — every one of those was killed then and the sample here confirms the suite did
 not lose its grip while growing).
@@ -415,8 +453,8 @@ same array with `phase:2` and its detector's flag, into a **separate** call — 
 | `frozen` | `true` only once every threshold, coefficient, detector parameter, matching rule and arm designation is frozen and stamped in `CLAUDE.md` §11 with a build stamp (§11.6). **Absent must stay absent** — defaulting it to `true` opens a holdout nobody froze |
 | `holdoutSpent` | `true` if any frozen quantity changed after the holdout opened, or if `scSplitStable` reports the boundary moved after it opened |
 | `bootstrap` | the page's `bootstrapCI`, passed straight in. It now receives an array of **matching cells**, not an array of numbers — it resamples what it is given, so nothing about it changes |
-| `boundary` | §11.6's registered split stamp, `{n, close, ticker}`, exactly as `rep.split.boundary` returned it when the 30th calibration window was graded. **Persist it the moment it first appears and pass it on every later call**; a disagreement is refused, not adopted |
-| `holdNRegistered` | §11.2a's registered required holdout n, written into `CLAUDE.md` with its date at the same moment. It ratchets: a smaller recomputed value never wins |
+| `boundary` | §11.6's registered split stamp, `{n, close, ticker, fp}`, exactly as `rep.split.boundary` returned it when the 30th calibration window was graded. **Persist it the moment it first appears and pass it on every later call**; a disagreement is refused, not adopted. `fp` fingerprints the calibration **set** — its pairs, their paired values and the identified controls behind each mean — because §11.6 freezes the sd and everything derived from it, not the identity of the 30th window. Required once a boundary exists |
+| `holdNRegistered` | §11.2a's registered required holdout n, written into `CLAUDE.md` with its date at the same moment, **with the 80%-power figure beside it** (`rep.holdN.n80`). Integer, never below 30 — a smaller registration is a loosening and is refused, not clamped. It ratchets: a smaller recomputed value never wins. Required once the calibration sd is measured |
 
 ```js
 var rep = scReport(rows, {arms:20, pnlN:n, pnlNet:net, monthsElapsed:m,
@@ -427,7 +465,12 @@ var rep = scReport(rows, {arms:20, pnlN:n, pnlNet:net, monthsElapsed:m,
 
 **Every caller field the verdict depends on must be supplied**, or `rep.status.status` is `"REFUSED"`
 with `rep.status.code === "missing-caller-fields"` naming the holes: `arms`, `pnlN`, `pnlNet`,
-`monthsElapsed`, `frozen`, `holdoutSpent`, and `detPrecision` at phase 2. `"REFUSED"` is deliberately
+`monthsElapsed`, `frozen`, `holdoutSpent`, `detPrecision` at phase 2, **`boundary` once a boundary
+exists** and **`holdNRegistered` once the calibration sd is measured**. The last two are registrations,
+not conveniences: the caller runs once, reads `rep.split.boundary` and `rep.holdN.computed` (with
+`rep.holdN.n80` beside it) off the refusal, writes them into `CLAUDE.md` §11.2a with a date, and passes
+them on every later call. Every measurement stays on the report through the refusal, which is what makes
+that loop possible. `"REFUSED"` is deliberately
 **not** one of `shockStatus`'s statuses — it is this unit declining to hand the judge an input it does
 not have, and a caller switching on the seven real statuses sees an unknown string, which is safe in the
 only direction that matters: it is not READY. `rep.dupRows`, `rep.coverage` (holdout, calibration and
@@ -442,9 +485,17 @@ months, then `FROZEN-PENDING`, then `HOLDOUT`. That is the correct answer and §
 softened. `scReport` renders nothing, stores nothing and decides nothing. It is a **CSV/export-time
 computation**, exactly as §10.2 records for the other H-protocol columns: derived from each row's own
 measurements when the file is written, so it costs the recorder no bytes and always reads against the
-release calendar as it stands at export time. `rep.caveat`, `rep.known`, `rep.ctrlMatched`,
-`rep.ctrlTotal` and every `unmatched` row belong in that export beside the estimate — per §11.3 the
-caveat travels with the number or it is lost.
+release calendar as it stands at export time. `rep.caveat`, `rep.known`, **`rep.coverage`** and every
+`unmatched` row belong in that export beside the estimate — per §11.3 the caveat travels with the number
+or it is lost.
+
+**Export `rep.coverage`, and nothing that looks like it.** This paragraph used to name `rep.ctrlMatched`
+and `rep.ctrlTotal`, which were the **pooled** counts, while `rep.st.ctrlMatched` and `rep.st.ctrlTotal`
+were the **holdout** ones: two identically-named pairs on one object differing only by denominator, and
+the pair this file routed into the CSV was the one §11.2 says is not the gate — the S2 fix undone at
+export time. The pooled pair is no longer on the report at all. `rep.coverage` carries every cut and
+labels each: `.hold` (§11.2's denominator, with `evaluable` and `why`), `.cal`, `.all`, `.gate` (what
+`st` actually received), `.excluded` (`ungraded`, `undetermined`) and `.recorded`.
 
 If a status ever *is* surfaced, it is `rep.status.status` and `rep.status.why` verbatim, with the
 coverage fraction and the caveat beside them, and never a bare `dBrier`.
@@ -506,3 +557,54 @@ Two things the review got right that are **not** fixed and are recorded instead:
 caller-supplied and never cross-checked against `releasesBetween` (treatment assignment belongs to
 `calendar/`), and `scClearProbes`'s `-1` can leave a 1 ms sliver for a window that is not minute-aligned
 (unreachable for Kalshi windows).
+
+## What the second adversarial review changed (2026-09-06, same day)
+
+`REVIEW.md`'s second dated section found **fourteen** more, and closed with the sentence that is the real
+finding: *"every input this unit does not police, it policies on the permissive side."* Findings 2, 3, 4,
+5 and 8 are that one fault wearing five different fields, so they are **fixed as a class** — the contract
+is a table, in one place, covering every field this unit reads on a row, on a snapshot, in `opts` and on
+a neighbour, with an explicit type and an explicit permitted shape and no third category. The individual
+findings fall out of it. Everything below was reproduced from the reviewer's own input before it was
+fixed, and every reproduction is now a regression assertion; the suite went **453 → 861** assertions.
+
+Four §11 registrations were made after that review and before this work, and they are the specification
+it was written against: §11.2's coverage denominator (graded, side-determinable, holdout, minimum 30),
+§11.2's naming of the **matching cell** as the resampling unit, §11.2a's requirement that **both** power
+figures be reported, and §11.7 clause 3's "may not fire below that minimum denominator". `test.js` reads
+all four off `CLAUDE.md`, so the code and the document cannot drift apart silently.
+
+| # | finding | what it did | closed by |
+|---|---|---|---|
+| **3** | `shock` — the treatment-assignment flag — had no type discipline | `scPairs` tested `w.shock!==true` and `scMatchControls` tested `c.shock===true`, so `shock:1` fell through **both**: the window was not treated **and** not excluded from its own cell's control pool. Measured: an honest DiD of **0.00000** became **+0.23333** when the *losing* window carried `shock:1` — with no reason code, no `unmatched` row and nothing in `missing`. §7.4's retroactive side-picking through a type coercion, leaving no trace, and moving the **estimate**, not a gate | the contract: strictly boolean, strictly required. An absent flag refuses too — defaulting it to `false` would demote a shock window to a control for its own cell, the same corruption in the same direction |
+| **2** | `boundary` and `holdNRegistered` were optional and unpoliced | §11.6's registered split and §11.2a's upward-only ratchet were **advisory**. A 35-cell fixture went HOLDOUT (need 46) → **READY** (need 30) purely by omitting `holdNRegistered`, and READY was reachable with `frozen:true` and no boundary ever registered — at a point where `nCal >= 30` means the 30th calibration window is already graded, which §11.6 says is exactly when the boundary can no longer move | both are conditionally **required** — `boundary` once a boundary exists, `holdNRegistered` once the sd is measured — and their absence is a refusal that names them while every measurement stays on the report, so the caller registers from the refusal |
+| **8** | `holdoutSpent` failed **open** | `shockStatus` tests `===true` and `SC_VERDICT_FIELDS` required only presence, so `holdoutSpent:1` and `"yes"` read as **not spent** and reached READY. `frozen` failed safe under identical treatment only because `===true` is the value that *opens* its gate — luck, not design | both are strictly boolean in the contract; the counterfactual (`shockStatus` reading each shape as READY) is asserted beside each refusal |
+| **1 + 5** | the S2 fix's own shadow: one unmatched window at the open of the holdout **ABANDONED** the programme | holdout coverage `0/1 = 0.000` fires §11.7 clause 3, a **permanent** closure, on the ordinary first pass after calibration completes. Finding 5 compounded it: void, still-open and post-gate-only windows were counted as control-matching failures, which they are not | §11.2's registered denominator, implemented exactly: **holdout, graded, side-determinable, and not evaluated below 30**. The 80% bar is unchanged. `graded` is recorded on each unmatched row by `scPairs` rather than inferred from a reason code, and every exclusion is counted in `rep.coverage.excluded` |
+| **4** | a shock window with a missing or non-numeric `close` was counted on the **calibration** side | `scAfterBoundary` returned `false` for anything it could not compare, and `false` routed to calibration: 10 such rows moved holdout coverage from 30/40 (ABANDON) to 30/30 (**READY**) | the row contract refuses the row outright, and `scAfterBoundary` now returns `null` for an undeterminable side, which `scCoverage` puts in **neither** denominator |
+| **6** | the boundary stamp did not fingerprint the calibration **set** | with the same 30th window, one extra control per cell halved the frozen sd (**0.04086 → 0.02043**) and moved the required n from 46 to 30 while the check reported `moved:false, registeredOk:true`. §11.6 freezes the sd and everything derived from it, not the identity of the 30th window | the stamp carries `fp` — a deterministic fingerprint over each calibration pair's identity, its paired value and its identified controls with their skills. A changed set is a moved boundary |
+| **7** | `rep.ctrlMatched`/`rep.ctrlTotal` were **pooled** while `rep.st.*` were **holdout**, and NOTES told the caller to export the pooled pair | the S2 fix undone at export time: the figure §11.2 says is not the gate was the one travelling with the number | the pooled pair is off the report; `rep.coverage` carries all cuts, labelled, and is what the wiring section names |
+| **9** | §11.2a's 80%-power figure and its at-open feasibility test were computed nowhere | `shockRequiredHoldN(sd,k,0.5)` was the only call; `shockFeasible` — which already returns `n80` and an `ok` against `maxMonths` — was called by **nothing in the repository** | `rep.holdN.n80`, `rep.holdN.power` and `rep.holdN.feasible` (at both ends of §11.1's release-rate premise, labelled a premise). It is **output, not a gate**: closing at the holdout's open is §11.2a's decision for the caller to record, like `holdoutSpent` — but it cannot be made without the number |
+| **10** | `scSd` returned `1.4e-17` on identical values | §11.2a's "sd not measured" refusal was reachable only at exact binary zero; a residue silently became the `holdN` floor of 30 | `scSdOf` snaps below a **relative** floor (`SD_ZERO_REL`) to exact zero. It only ever turns a number into a refusal |
+| **12** | `arms:"20"` refused correctly but `rep.status.ciLevel` still read 0.995 | `shockStatus` coerces the string through `st.arms >= 1` | `arms` is typed in the contract (integer ≥ 1) and the call refuses **before** any level is derived; a refused call reports `ciLevel: null` |
+| — | the S1 registration | the cluster bootstrap was correct and was verified by the reviewer against an analytic standard error; it is **unchanged** | the comment now cites **CLAUDE.md §11.2**, where the matching cell is registered as the resampling unit, rather than pointing at this file |
+
+### Residual limitations, recorded rather than engineered around
+
+- **Dedupe evasion (finding 11).** `(ticker, open)` is the identity; copies carrying `open + 1` or a
+  renamed ticker still count as distinct windows. Both require the caller to corrupt an identity Kalshi
+  supplies verbatim. Recorded beside the dedupe row in the refusals table above.
+- **Controls straddle the split (finding 13).** A cell with shock windows on both sides of the boundary
+  uses the same control windows for the calibration `sd` and for the holdout estimate, and a control may
+  postdate the holdout shocks it is matched to (same slot, weekday and quarter; later week). §11.6
+  defines the split on **shock windows only**, so the unit is following the registration exactly — but
+  the chronological separation that buys is weaker than §11.6's prose implies. **This is a §11 sentence
+  to sharpen, not a code defect**, and changing the matching rule to fix it here would be changing a
+  frozen rule (§11.6) on the unit's own initiative. Recorded for the next registration pass.
+- **`rep.status` is `null` when `prereg` is absent (finding 14).** `scRatchetStatus` passes a null status
+  through, so a caller reading `rep.status.status` would throw at the call site rather than seeing a
+  reason code. Unreachable under the prescribed splice order — `score` must land below `prereg`, and the
+  ALONE context's refusal path (`no-calendar`, which fires first) is asserted. Left as-is because the
+  fix would be a synthetic status object that no §11 rule defines.
+- **`shock` is still caller-supplied** and never cross-checked against `releasesBetween`; treatment
+  assignment belongs to `calendar/` and `detect/` (§11.5). What changed is that it is now *typed*: the
+  unit cannot tell you whether the flag is **right**, only that it is a flag.

@@ -684,3 +684,320 @@ be settled before the splice makes the unit reachable — §11.6 prices it at th
 Findings 4–8 are each smaller but all sit on the same fault line: every input this unit does not police is
 policed on the permissive side. Nothing here has a shock-conditioned row behind it yet, so all nine are
 still free.
+
+---
+
+# Adversarial re-review — `units/score` — 2026-09-06 (third round)
+
+Reviewer role. **Nothing in the repository was edited**; this section is the only artefact.
+`node units/score/test.js` green (861/861), `node units/run.js` green (7 units), `npm test` green
+(5 harnesses), `index.html` byte-unchanged — the working tree touches only `units/score/{code,test,NOTES}.js|md`.
+
+Everything below was reproduced in a `vm` context built independently of `test.js` (its own loader, its own
+`controlEligible` stub, its own fixture builder with a `pmFor(skill, qm)` inverse derived from
+`skill = (q-y)^2 - (pm-y)^2`, so every expected value is arithmetic). The four §11 registrations of
+`cfbc11e` were read off `CLAUDE.md` on disk, not from the brief.
+
+---
+
+## Part 1 — every prior reproduction, re-run from its own symptom
+
+Seventeen, not fourteen: the first round's eight numbered findings plus its `qm 0/100` minor, and the second
+round's nine. Each was re-driven from the symptom described in its own section, not from the diff.
+
+| round | # | original symptom | re-run result |
+|---|---|---|---|
+| 1 | 1 | one cell, seven identical pairs -> 90% CI width **exactly 0**, `lo = +0.0341` | width 0.24 across 5 seeds, `lo` negative; `unit:"cell"`, `cells:1` |
+| 1 | 2 | pooled coverage 0.857 read READY while holdout-only was 0.750 | `coverage.hold` **30/40**, `coverage.all` 0.857 reported beside it, status **ABANDON** |
+| 1 | 3 | `phase` omitted -> phase-2 gate skipped, READY | **REFUSED / `no-phase`** |
+| 1 | 4 | 3 control windows in 5 rows met the 5-minimum; a cloned shock scored twice | `n 3, matched false, dupControls 3`; clone -> `pairs 0` from 1 shock, `dupRows 4` |
+| 1 | 5 | boundary slid when one old control row was pruned | **REFUSED / `boundary-moved`**, `why "boundary window close changed"` |
+| 1 | 6 | `holdoutSpent` / `monthsElapsed` / `pnlN` absent -> READY | each **REFUSED / `missing-caller-fields`** |
+| 1 | 7 | mixed phase reported `CALIBRATING` | **REFUSED / `mixed-phase`** with §11.5's sentence |
+| 1 | 8 | miscounted MEASURED/caller sentence, vacuous leak scan | code reads EIGHT/SEVEN; leak scan rebuilt on a matched fixture |
+| 1 | m | `qm` 0 / 100 scored | `{ok:false, code:"empty-book"}` at both ends |
+| 2 | 1 | one unmatched window at the holdout's open -> **ABANDON** | `gate 0/0, evaluable:false`, status INVALID; clause 3 unreachable below 30 |
+| 2 | 2 | `boundary` / `holdNRegistered` optional -> READY unregistered, need 46 -> 30 | both **REFUSED / `missing-caller-fields`**, conditionally required |
+| 2 | 3 | `shock:1` neither treated nor excluded; DiD 0.00000 -> +0.23333 | `1`, `"true"`, `{}`, `[]`, `0.5` and an **absent** flag all **REFUSED / `bad-shock-flag`**; `scMatchControls` standalone rejects and counts by code |
+| 2 | 4 | unmatched window with missing / string `close` counted as calibration | the row contract **refuses the whole call** (`bad-row-field`, naming the field and the index) |
+| 2 | 5 | void / still-open / post-gate windows counted as matching failures | `excluded.ungraded 10`, `coverage.hold 30/30` |
+| 2 | 6 | calibration contents changed under an unchanged boundary window | **REFUSED / `boundary-moved`**, `why "the calibration set changed under an unchanged boundary window"` |
+| 2 | 7 | `rep.ctrlMatched`/`ctrlTotal` pooled while `rep.st.*` were holdout | the pooled pair is **not on the object** (`"ctrlMatched" in rep === false`); `rep.coverage` carries all cuts |
+| 2 | 8 | `holdoutSpent:1` / `"yes"` read as not spent -> READY | **REFUSED / `bad-caller-field`** — *as own properties.* See finding 2 below |
+| 2 | 9 | 80%-power figure and feasibility computed nowhere | `rep.holdN.n80`, `.power`, `.feasible` at both ends of §11.1's premise |
+
+**And the honest happy path still works, which was the other half of the brief.** On a legitimate 35-cell
+fixture the unit runs the intended two-call loop: pass one **REFUSES** naming `boundary, holdNRegistered`
+while leaving every measurement on the report; the caller reads `rep.split.boundary` and
+`rep.holdN.computed`/`n80` off that refusal, registers them, and pass two reads **READY**
+(`sd 0.004138`, `dBrier 0.05100`, `ciLo 0.04958`, `nHold 40`, `coverage.gate 40/40`). The contract has not
+made the unit inert.
+
+---
+
+## Part 2 — new findings
+
+Five, and **none of them reaches a wrong verdict from well-formed ordinary input**, which is the honest
+headline and is dealt with in Part 4. Findings 1-3 should be settled before the splice; 4 and 5 are the
+guard on the guard.
+
+### 1. The calibration fingerprint fires on ordinary control accrual, so after registration the unit refuses on a weekly cadence and tells the caller its holdout is spent
+
+**Where:** `scCalFp` (code.js:352-368) hashes, for every calibration pair, its identity, its `paired` value,
+**and the id and skill of every control its mean was estimated from**. `scSplitStable` treats any change in
+that hash as `moved:true`, and `scSplitCheck` turns `moved` into `refuse:true`.
+
+The round-2 finding-6 fix is right in direction — §11.6 freezes the sd, not the identity of the 30th window —
+but its trigger is not "the frozen sd changed". It is "any control row in a calibration cell changed", and a
+**cell is `(series, slot, weekday, quarter)`, a combination that recurs once a week**. Every calibration cell
+therefore gains a control every week, by construction, for as long as the quarter lasts.
+
+**Concrete input.** The registered 35-cell fixture, re-run with **one** extra control added to **one**
+calibration cell, whose skill is exactly that cell's existing mean so nothing derived moves:
+
+```
+registered  {"n":30,"close":1773041400000,"ticker":"KXBTC15M-s29-0","fp":"ac84eaa-30"}   sd 0.004138409933973343
+same rows again                                  -> READY
+one extra control, skill = the cell mean         -> REFUSED / boundary-moved
+   why: "the calibration set changed under an unchanged boundary window"
+   status.why: "...11.6 makes that a post-freeze change, which spends the holdout"
+```
+
+Nothing about the frozen quantity moved. The refusal message asserts that the holdout is spent, and it is
+addressed to the one field (`holdoutSpent`) that turns every scored window into nothing. A control landing in
+a **holdout** cell correctly does not fire it (measured: READY), so the asymmetry is real and only the
+calibration half is affected — which is precisely the half §11.6 freezes.
+
+**Why this is a registration decision and not a tuning knob.** The root cause is one line above the
+fingerprint: `scPairs` matches every shock window against the **whole current row set**, so a *calibration*
+pair's control mean is estimated partly from windows recorded **after** the boundary. The frozen sd is
+therefore non-stationary by construction, and the fingerprint is doing its job by reporting it. The second
+round recorded the chronological half of this as a minor ("controls straddle the split... a §11 sentence to
+sharpen, not a code change"); the fingerprint promoted it from a weakness into a refusal that fires every
+week.
+
+The clean answer is the one §11.6's own prose implies: **a calibration pair may draw only controls whose
+`close` is at or before the boundary.** That makes the calibration half a function of pre-boundary data
+alone, makes the fingerprint stable by construction rather than by luck, and closes the straddle minor in the
+same edit. The alternative — registering that control accrual is not a post-freeze change and fingerprinting
+only the derived `sd` — is defensible but weaker, because it lets the frozen number move as long as it moves
+smoothly. Either way it is a change to the **control-matching rule**, which §11.6 freezes and prices at the
+whole holdout once one is open. There is still no shock-conditioned row anywhere, so right now it is free.
+
+### 2. The opts contract is checked with `hasOwnProperty` and consumed with plain member access, so an inherited value bypasses it entirely — and `holdoutSpent: 1` is READY again
+
+**Where:** `scOptsCheck` (code.js:274-302) enumerates `Object.keys(opts)` for the unknown-key pass and gates
+the type pass on `scHasOwn(opts, f.name)`. `scAssemble` (code.js:1004-1012) then reads `o.arms`, `o.frozen`,
+`o.holdoutSpent` and the rest with plain member access, which walks the prototype chain; so does
+`scMissingRequired`'s presence test (`o[f]===undefined||o[f]===null`) and `scRatchet(needNow, o.holdNRegistered)`.
+**The check refuses to look where the read looks.**
+
+**Concrete input.** The READY fixture, with one field moved from an own property to the prototype:
+
+```
+baseline (all own)                       READY
+proto holdoutSpent = 1        optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto holdoutSpent = "yes"    optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto pnlN         = "50"     optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto pnlNet       = "5"      optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto monthsElapsed= -5       optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto holdNRegistered = 5     optsCheck.ok=true  -> READY      (own-property control: REFUSED)
+proto arms  = "20"            optsCheck.ok=true  -> INVALID    (fails safe)
+proto frozen= 1               optsCheck.ok=true  -> FROZEN-PENDING (fails safe)
+```
+
+`st.holdoutSpent` arrives at `shockStatus` as `1`, `shockStatus` tests `===true`, and the field §11.6 uses to
+retire every window scored under an old freeze reads **not spent**. That is round-2 finding 8 verbatim,
+reached through a different door in the same wall — and the door is the unit's own defence, `scHasOwn`, used
+in exactly the place where it prevents a check and nowhere in the places that consume the value.
+
+Reachability is a caller idiom rather than a data shape: `Object.create(DEFAULTS)`, `Object.assign(Object.create(base), userOpts)`, or a class instance carrying defaults on its prototype. `JSON.parse` and an object
+literal cannot produce it. That is why I rate this below round 2's version of the same finding — but the
+contract's stated promise is "a value PRESENT with the wrong type is a REFUSAL, never a coercion", and an
+inherited value is present. The fix is one operator: test presence with `(f.name in opts)` in `scOptsCheck`'s
+unknown-key and type passes, or read every opts field through `scHasOwn` in `scAssemble`,
+`scMissingRequired` and `scReport`. Whichever, the check and the read must agree.
+
+*(`Object.defineProperty(opts, "holdoutSpent", {value:1, enumerable:false})` is **not** a hole:
+`Object.keys` misses it but `scHasOwn` sees it, so the type pass runs and refuses. It is the prototype chain
+specifically.)*
+
+### 3. `phase` is typed as "any finite number" while its declared shape says "1 or 2", so §11.5's phase-2 gate is skipped by an out-of-domain number exactly as it used to be skipped by an absence
+
+**Where:** `SC_ROW_FIELDS`'s phase entry (code.js:160-161) states
+`shape: "finite number (1 or 2); never the string \"1\""` and carries `ok: scTypeNum`. `scTypeNum` admits
+every finite number. `scRequiredFields` (code.js:1130) demands `detPrecision` on `phase===2` only, and
+`shockStatus` gates on `st.phase===2`.
+
+```
+phase 1            -> READY            detPrecision required: false   (correct)
+phase 2            -> REFUSED (needs detPrecision)                    (correct)
+phase 3            -> READY            detPrecision required: false
+phase 1.5          -> READY            detPrecision required: false
+phase 0            -> READY            detPrecision required: false
+phase -1           -> READY            detPrecision required: false
+phase 2.0000001    -> READY            detPrecision required: false
+```
+
+The first round's finding 3 was "an absent phase skips the gate"; this is the same gate skipped by a number
+outside its domain, and the shape string already says what the predicate should be. §11.5 is the section that
+says Phase 2 "does not report at all" without its confusion matrix, and every other §11.5 dimension here is a
+hard refusal. Fix: `ok: function(v){ return v===1||v===2; }` — the table already declares it in words.
+
+### 4. The exhaustiveness scan — the mechanism the whole rebuild rests on — is blind to 162 property names, and the mutation that is supposed to prove it bites only bites outside that set
+
+**Where:** `test.js:1785-1806`. The scan collects every `.name` read in the comment- and string-stripped
+source, then subtracts (a) every name that appears **anywhere in the file** as an object-literal key
+`name:`, (b) every assignment target `.name =`, and (c) a 30-entry builtin list. The subtraction is
+file-wide and scope-blind, so any name the unit *emits* is invisible to it as a name the unit *reads*.
+
+**Measured, by mutation against the unmodified suite** (three throwaway copies of `code.js`):
+
+```
+insert  const zz = (o.weight===undefined)?0:o.weight;   -> 860 passed, 1 FAILED   (the scan, as NOTES claims)
+insert  const zz = (o.level ===undefined)?0:o.level;    -> 861 passed, 0 failed
+insert  if(w.skill===-999) continue;   (a ROW read)     -> 861 passed, 0 failed
+```
+
+The blind set is 162 names and includes `level, point, n, code, why, status, reason, known, total, matched,
+frac, skill, series, phase, effective, registered, computed`. NOTES.md records this mutation as
+"**a NEW caller field is read with no contract entry | 1** — the exhaustiveness scan, which is the one that
+has to bite for the enumeration to mean anything". It bites for `weight`; it does not bite for `level`. The
+guarantee is real but conditional, and the condition is undocumented.
+
+Cheapest honest fix: subtract only names assigned **inside the same function** (or, simpler and stricter,
+subtract an explicit hand-maintained allow-list of internal names rather than deriving it), and assert its
+size so it cannot grow silently.
+
+### 5. `SC_SNAP_FIELDS` is decorative — five entries, zero predicates, never handed to `scFieldCheck` — and a wrong-typed `tau` silently promotes a different read to be the scored observation
+
+**Where:** `SC_SNAP_FIELDS` (code.js:186-192) has `name`, `req` and `shape` and **no `ok`**. `scFieldCheck`'s
+type branch is `if(f.ok&&!f.ok(v))`, so every value passes:
+
+```
+SC_SNAP_FIELDS entries carrying a predicate: 0/5
+scFieldCheck(SNAP,"pm","banana") -> {ok:true}
+scFieldCheck(SNAP,"tau",{})      -> {ok:true}
+```
+
+The suite's own assertion is worded to exclude it: *"every ROW and OPT entry carries a predicate, so nothing
+is merely `read`"* (test.js:1820). The snapshot table is the one that is merely read.
+
+**And it is load-bearing.** §4 and §10.2 fix one observation per window: the read whose `tau` is nearest
+6 minutes remaining. `scRefSnap` skips a snapshot whose `tau` is not a finite number — so corrupting the
+`tau` of the read that *is* the refSnap does not refuse the window, it **scores the next-nearest read
+instead**:
+
+```
+snaps [{tau:14, skill +0.20}, {tau:6, skill -0.20}]
+  clean                      refSnap tau 6    scored skill  -0.20000
+  tau of the tau-6 read is the STRING "6"     refSnap tau 14  scored skill  +0.20000
+```
+
+One string flips the scored observation by 0.40 on that window, with no reason code and nothing on the
+report. `pm` and `qm` fail closed (`bad-prob`, `empty-book`), so `tau` is the sharp one. The corruption is not
+correlated with the outcome, so this is variance rather than the §7.4 selection failure — but the unit's own
+stated doctrine is that a value present in the wrong type is refused, and here it is silently routed around.
+Give the five entries predicates and run the chosen refSnap through `scFieldCheck` before `scSkill` grades it;
+`phantom` stays truthy-tested, for the reason the comment already gives.
+
+---
+
+## Part 3 — worth recording, not blocking
+
+- **One malformed row poisons the whole call, including for fields that carry no treatment assignment.**
+  Measured on a 400-row mixed export (live windows with `result:null`, 40 duplicated rows from an overlapping
+  export): the set scores normally, `dupRows 40`. Add **one** row with `result: 0`, or **one** row with no
+  `snaps` key, and the entire call is `REFUSED / bad-row-field`. For `phase` and `shock` that is right and the
+  comment argues it well. For `ticker/open/close/snaps/result` the unit already owns a per-row discipline —
+  `unmatched`, with an identity and a reason code — and §10.2's concatenated-CSV input is exactly where a
+  schema-drift row comes from. Which of the two applies is a sentence in §11, not a preference.
+- **The wiring's input cannot accumulate 60 windows.** NOTES' wiring section builds `rows` from
+  `S.edge.windows`, which `ledgerSave` prunes to the newest 1,500 windows (index.html:1269) — §10.2's ~15 days.
+  At §8's ~47 calendar events a year that buffer holds about two shock windows; the programme needs 60.
+  The CSV *is* reconstructible into rows (it emits one line per **snapshot** with `is_ref_snap`, `tau_min`,
+  `p_model_yes`, `mkt_yes_mid`), but nothing in the repo does it and neither `shock` nor `phase` is a CSV
+  column. The persistence design decides whether the boundary and the calibration control set are stable,
+  which is finding 1, so it belongs in the registration rather than after it.
+- **`arms` is the one §11.4 threshold taken purely on trust.** Understating k lowers the CI level and the
+  required holdout n together, and nothing here can cross-check it against the ten (or twenty) arms `SIM`
+  actually scores. NOTES already says "**not** 1". Not a coercion — a registration the caller owns, like
+  `frozen` — but the report should probably carry k beside `ciLevel` wherever the estimate travels.
+- **A throwing getter propagates out of `scReport` uncaught.** A row or an opts object with
+  `get ticker(){ throw }` throws from `scRowCheck` / `scOptsCheck` rather than refusing. Degradation was
+  previously verified only against missing neighbours, which is a different claim. Not a wrong verdict.
+- **The `(ticker, open)` identity can still bend the coverage invariant.** `scAfterBoundary` ties on
+  `close` then `ticker`, so a duplicate carrying the same ticker and close but a different `open` — which
+  `scDedupe` keeps — sits on the calibration side of coverage while `scSplit` counts it in the holdout. That
+  is the only construction I found under which `nHold >= 30` does not imply a coverage denominator of 30,
+  i.e. under which READY is reachable with the coverage clause unevaluated. It requires the caller to corrupt
+  an identity Kalshi supplies verbatim, which is the same residual limitation NOTES already records for
+  dedupe evasion; one line beside it would cover both.
+
+---
+
+## Part 4 — what I checked and could not break
+
+1. **The registered coverage denominator does not lose or misplace a window.** On a fixture mixing matched,
+   thin and `void` shock windows: `cal.total + hold.total + excluded.ungraded + excluded.undetermined ===
+   coverage.recorded === ctrlTotal` exactly (30 + 30 + 5 + 0 = 65 = 65). The boundary window itself is on the
+   calibration side. Before a boundary exists everything is calibration and the gate reads nothing.
+2. **The minimum-30 rule does not suppress a closure that should fire.** A genuinely unexecutable design —
+   50% coverage, forever — ABANDONs the moment the denominator reaches 30, at every size I tried:
+   `1/32`, `5/40`, `15/60`, `54/90`, all **ABANDON, control coverage below 80% (11.7 clause 3)**, and the
+   same at 30 months elapsed. The rule delays clause 3 to the point where the ratio is a statement about the
+   holdout; it does not disarm it.
+3. **The cluster CI is still never narrower than the window-level one.** Four seeds each on 1x7, 30x1, 10x3
+   and 3x10 cell/shock configurations: cluster widths 0.0595-0.0660 vs naive 0.0018-0.0020 (1 cell),
+   0.0106-0.0130 vs 0.0000 (30 cells), 0.0181-0.0223 vs 0.0004-0.0005, 0.0359-0.0401 vs 0.0011-0.0012.
+   `unit:"cell"`, `point` is the deterministic mean, level and B unmoved.
+4. **The sign.** `scSkill` still returns `bMkt - bTool`; on a hand-built fixture where the tool is
+   unambiguously better and one where it is unambiguously worse the unit agrees with a DiD written from
+   §11.2, and the reviewer's own +0.20/-0.20 cell reads exactly 0.00000.
+5. **Rows are read consistently, prototype or not.** A row set whose `shock:true` lives on the prototype is
+   both type-checked and consumed through the same access, so it behaves like an own property — the
+   inconsistency in finding 2 is specific to `opts`.
+6. **Exotic scalars fail closed where they matter.** `new Number(1)`, `new Boolean(true)`, `new String("yes")`,
+   `NaN`, `Infinity`, `-1`, `0`, `0.5`, `"20"`, an array where a scalar is expected: refused, in `opts` and on
+   rows alike. `-0` passes as a finite number, which is correct and harmless.
+7. **`SCORE.HOLD_N_MIN` is enforced as a floor, not a clamp**: `holdNRegistered: 29` is `bad-caller-field`,
+   and `scRatchet` returns `max(computed, registered)` so a recomputed drop never wins.
+8. **The pooled coverage pair is genuinely gone** (`"ctrlMatched" in rep === false`), and NOTES' wiring
+   section names `rep.coverage`.
+9. **Both power figures and the feasibility pair are on the report**, at each end of §11.1's release-rate
+   premise and labelled a premise (`n@50% 30`, `n@80% 40` on one fixture; 46/120 on the reviewer's).
+10. **No execution path**, no DOM / storage / fetch / timers / `S`, `index.html` byte-unchanged, and the
+    suite green at 861 assertions with `units/run.js` at 7 and `npm test` at 5 harnesses.
+
+---
+
+## Verdict
+
+**NOT safe to splice — but this is convergence, and it should be said plainly.**
+
+Every blocking finding in rounds one and two reached a wrong verdict **from well-formed, ordinary input**:
+a pooled denominator, an absent field, duplicate rows out of overlapping exports, a bootstrap at the wrong
+level, an omitted registration, a `1` where a `true` belonged. **Not one finding in this round does.**
+Finding 2 needs the caller to hand in a prototype-backed options object; finding 3 needs a `phase` outside
+{1, 2}; finding 5 needs a wrong-typed `tau`; finding 4 is a gap in a test's reach rather than in the unit.
+The unit refuses every input the first two rounds got a wrong answer from, and it still reaches HOLDOUT and
+then READY on an honest one. The arithmetic — sign, level, B, cluster variance, split, sd, coverage
+accounting — I attacked again from an independent implementation and could not move.
+
+What remains before the splice is small and mostly mechanical:
+
+- **three predicates** — `(f.name in opts)` so the opts check looks where the read looks (finding 2);
+  `v===1||v===2` on `phase` (finding 3); real `ok` functions on `SC_SNAP_FIELDS` plus one
+  `scFieldCheck` call on the chosen refSnap (finding 5);
+- **one test fix** — scope the exhaustiveness scan's subtraction, and assert the size of what it subtracts,
+  so the mutation NOTES relies on bites for every name and not for 162 fewer (finding 4);
+- **one registration** — finding 1. Whether a calibration pair may draw controls recorded after the boundary
+  is a change to the **control-matching rule**, which §11.6 freezes and prices at the whole holdout once one
+  is open. As it stands the unit is correct and unusable in the same breath: it refuses on a weekly cadence,
+  with a message telling the caller its holdout is spent, over a change that moved nothing. Chronological
+  freezing of the calibration control set answers it and closes round two's straddle minor at the same time.
+
+Findings 6-10 (Part 3) are worth a paragraph in NOTES and no code.
+
+Nothing here has a shock-conditioned row behind it. All five are still free; after the splice puts the unit
+in service, three of them stop being.

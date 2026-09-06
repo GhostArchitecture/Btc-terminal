@@ -48,15 +48,28 @@
    reach page helpers, and test.js reads index.html and fails if refSnap's rule has moved.
    SLOT_MIN = 15 is the UTC slot grid of 11.3's first matching dimension. It is the KXBTC15M window length and is
    the grid for BOTH series: an hourly window is matched on the UTC 15-minute slot its open falls in, so hourly
-   and 15-minute controls are drawn on one clock. */
+   and 15-minute controls are drawn on one clock.
+   HOLD_N_MIN = 30 restates SHOCK_RULE.holdN (11.2a). It is the FLOOR of the required holdout n, so a caller that
+   registers a smaller one is registering a loosening, which 11.7 clause 6 closes the programme for -- this unit
+   refuses the call instead of scoring against it.
+   COV_MIN_N = 30 is 11.2's registered minimum coverage denominator, added to the document on 2026-09-06 after
+   the first draft of this unit was measured closing the programme on a denominator of ONE. The 80% bar itself
+   has NOT moved; what moved is the n at which the ratio is a statement about the holdout rather than about one
+   window, and 11.7 clause 3 now carries the same sentence ("This clause may not fire below that minimum
+   denominator"). See scCoverage.
+   SD_ZERO_REL = 1e-12 is the relative floor below which a measured sd is FLOATING-POINT RESIDUE rather than a
+   measurement (see scSdOf). It only ever turns a number into a refusal, never the other way round. */
 const SCORE={
   CTRL_MIN:5,
   CAL_N:30,
+  HOLD_N_MIN:30,
+  COV_MIN_N:30,
   CLEAR_HALF_MIN:45,
   REF_TAU_MIN:6,
   SLOT_MIN:15,
+  SD_ZERO_REL:1e-12,
   DAY_MS:86400000,
-  version:"score-2026-09-06-a"
+  version:"score-2026-09-06-b"
 };
 /* Reason codes. Every refusal in this unit produces one of these; nothing here returns a zero, a clamp, an
    Infinity or a plausible default in place of a measurement it could not make. An absence is diagnosable, a
@@ -83,8 +96,220 @@ const SC_OMIT={
   THIN:"thin-controls",            /* fewer than CTRL_MIN eligible controls: recorded, unmatched, unscored */
   RELEASE_NEARBY:"release-nearby", /* a candidate control is a shock window's shoulder */
   IS_SHOCK:"is-shock",             /* a candidate control is itself a shock window */
-  CAL_SHORT:"calibration-short"    /* fewer than CAL_N calibration windows: no sd, so no holdout may open */
+  CAL_SHORT:"calibration-short",   /* fewer than CAL_N calibration windows: no sd, so no holdout may open */
+  BAD_ROW:"bad-row-field",         /* a row field is present with the wrong type, or absent and load-bearing */
+  BAD_SHOCK:"bad-shock-flag",      /* `shock` is the treatment assignment and is not a boolean */
+  BAD_OPT:"bad-caller-field",      /* an opts field is present with the wrong type or an impermissible value */
+  UNKNOWN_OPT:"unknown-caller-field" /* an opts key that is not in SC_OPT_FIELDS: a field that skipped the contract */
 };
+
+/* ---- THE CONTRACT, ENUMERATED IN ONE PLACE (the fault this unit was rebuilt around) -----------------------
+   The second adversarial review closed with one sentence about nine findings: "every input this unit does not
+   police is policed on the permissive side." That was not nine defects, it was one defect wearing nine fields.
+   `shock` decided TREATMENT ASSIGNMENT and was tested with ===true in scPairs and ===true in scMatchControls, so
+   `shock:1` fell through BOTH -- the window was not treated AND not excluded from its own cell's control pool,
+   which moved an honest difference-in-differences of 0.00000 to +0.23333 with no reason code, no unmatched row
+   and nothing in `missing`. That is 7.4's retroactive side-picking reachable through a type coercion, and unlike
+   the 7.4 episodes it left no trace on the record. `holdoutSpent` -- the one field in 11.6 that invalidates
+   everything -- was tested with ===true too, so `holdoutSpent:1` and `holdoutSpent:"yes"` read as NOT SPENT and
+   reached READY. `boundary` and `holdNRegistered` were optional, so 11.6's frozen split and 11.2a's
+   upward-only ratchet were advisory: a 35-cell fixture went HOLDOUT (need 46) to READY (need 30) purely by
+   OMITTING holdNRegistered.
+
+   SO THE CONTRACT IS TOTAL, AND IT IS A TABLE RATHER THAN A HABIT. Every field this unit reads on a row, on a
+   snapshot, in opts, or on a neighbour's return value is enumerated below with an explicit type and an explicit
+   permitted shape. There is no third category and no field that is merely "read":
+     - a value PRESENT with the wrong type is a REFUSAL, never a coercion and never a truthiness test;
+     - a field ABSENT that any verdict depends on is a REFUSAL, never a default;
+     - an opts key that is NOT IN THE TABLE is a REFUSAL, because the failure mode of a field that skipped the
+       contract has to be refusal rather than passage. That is the whole point of enumerating it here: a field
+       added to this unit later cannot quietly acquire a permissive default, because there is nowhere to add one
+       without adding a row to this table.
+   Rows are the one asymmetry and it is deliberate: an edge-ledger row legitimately carries columns this unit
+   does not read (strike, phantom repair marks, H-protocol columns), so an unknown ROW key is not an error. The
+   enumeration is enforced there from the other end instead -- test.js parses this file, collects every property
+   name it READS, subtracts the names this unit itself assigns and a fixed list of JS builtins, and requires the
+   remainder to be a subset of these tables. A new `w.something` therefore fails the suite unless it is declared
+   here, and every declared field must actually be read, so the table cannot rot in either direction.
+
+   WHAT A REFUSAL IS. Not a status: SC_REFUSALS carries these codes through scReport as status "REFUSED", which
+   is this unit declining to hand shockStatus an input it does not have. A caller switching on READY / NEGATIVE /
+   HOLDOUT / CALIBRATING / FROZEN-PENDING / ABANDON / INVALID sees an unknown string, which is safe in the only
+   direction that matters: it is not READY.
+   ONE ROW POISONS THE CALL, and that is the existing precedent, not a new severity: scPhaseGuard already refuses
+   the WHOLE set when a single row's phase is absent or a string, because 1 and "1" must never pool. A row whose
+   `shock` flag is `1` is the same class of caller bug and gets the same answer. */
+function scTypeNum(v){ return scNum(v); }
+function scTypeBool(v){ return v===true||v===false; }
+function scTypeStr(v){ return typeof v==="string"&&v.length>0; }
+function scTypeArr(v){ return Array.isArray(v); }
+function scTypeFn(v){ return typeof v==="function"; }
+/* the boundary stamp scSplit emits: {n, close, ticker, fp}. `fp` is not decoration -- see scCalFp. */
+function scTypeStamp(v){
+  return !!v&&typeof v==="object"&&scNum(v.n)&&scNum(v.close)&&scTypeStr(v.ticker)&&scTypeStr(v.fp);
+}
+/* THE ROW CONTRACT. `req` means the verdict depends on it, so its absence is a refusal rather than a default. */
+const SC_ROW_FIELDS=[
+  {name:"ticker",req:true,shape:"non-empty string",ok:scTypeStr,code:SC_OMIT.BAD_ROW},
+  {name:"open",req:true,shape:"finite number (epoch ms, UTC)",ok:scTypeNum,code:SC_OMIT.BAD_ROW},
+  {name:"close",req:true,shape:"finite number (epoch ms, UTC), strictly after open",ok:scTypeNum,
+   code:SC_OMIT.BAD_ROW},
+  /* 11.5 keeps its own two codes: an ABSENT phase and a STRING phase are different caller bugs and the
+     difference is worth reading off the report. */
+  /* the predicate IS the declared shape. Typed as merely-numeric, phase 3 / 1.5 / 0 / -1 all reached READY
+     with 11.5's phase-2 confusion-matrix gate never running, because shockStatus gates on st.phase===2 - the
+     same hole an absent phase used to open, wearing a number. */
+  {name:"phase",req:true,shape:"exactly 1 or 2; never the string \"1\", never any other number",
+   ok:function(v){ return v===1||v===2; },
+   code:SC_OMIT.BAD_PHASE,codeMissing:SC_OMIT.NO_PHASE},
+  /* THE TREATMENT ASSIGNMENT. Strictly boolean, strictly required. An absent `shock` cannot default to false:
+     a shock window whose flag was dropped in an export would silently become a CONTROL for its own cell, which
+     is the same corruption as the truthy-value one and in the same direction. */
+  {name:"shock",req:true,shape:"boolean, strictly true or false",ok:scTypeBool,code:SC_OMIT.BAD_SHOCK},
+  /* snapshots may be empty (a window with no reads is refused as no-refsnap, which is a measurement state) but
+     the ARRAY is required: an absent snaps is a malformed row, not an ungraded window. */
+  {name:"snaps",req:true,shape:"array of snapshot records (may be empty)",ok:scTypeArr,code:SC_OMIT.BAD_ROW},
+  /* result is legitimately absent on a live window and legitimately "void" on a settled one (10.4), so it is
+     OPTIONAL -- but a non-string result is a malformed row, not an ungraded one. Grading is scSkill's, on
+     "yes"/"no" only. */
+  {name:"result",req:false,shape:"string when present: \"yes\" and \"no\" grade, anything else is ungraded",
+   ok:function(v){ return typeof v==="string"; },code:SC_OMIT.BAD_ROW}
+];
+/* THE SNAPSHOT CONTRACT. These are read by scRefSnap and scSkill, which already refuse rather than coerce --
+   a snapshot that fails them is skipped or produces bad-prob, and that IS the refusal for this layer, because
+   one unusable read is an ordinary condition inside a window rather than a malformed window.
+   `phantom` is the exception and it is deliberate: it is TRUTHY-tested, exactly as index.html's refSnap tests
+   it, because the K1 repair (10.4b) writes the STRING "K1" into it. A truthy test here skips a read, which is
+   the conservative direction; tightening it to a boolean would start SCORING the repaired phantom rows. */
+const SC_SNAP_FIELDS=[
+  {name:"tau",req:true,shape:"finite number, minutes remaining; a read at tau<0 is post-gate and is skipped"},
+  {name:"pm",req:true,shape:"finite number in [0,1]: the tool's headline probability"},
+  {name:"qm",req:true,shape:"finite number in (0,100): Kalshi's quote in cents; 0 and 100 are an empty book"},
+  {name:"phantom",req:false,shape:"truthy marks a K1-repaired read (10.4b writes the string \"K1\"); skipped"},
+  {name:"t",req:false,shape:"finite number when present; carried onto the scored observation, never compared"}
+];
+/* THE OPTS CONTRACT. Seven fields reach `st` (SC_CALLER_FIELDS), two register 11.6's split and 11.2a's ratchet
+   (SC_SPLIT_FIELDS), one is the page's bootstrapCI. `req` here means "required unconditionally"; the two
+   split fields and detPrecision are required CONDITIONALLY, by scRequiredFields, because none of them can be
+   supplied before the state that makes them meaningful exists. */
+const SC_OPT_FIELDS=[
+  {name:"arms",req:true,shape:"integer >= 1: k, the number of arms scored in the phase (11.4)",
+   ok:function(v){ return scNum(v)&&v>=1&&Math.floor(v)===v; }},
+  {name:"pnlN",req:true,shape:"finite number >= 0: holdout paper entries (11.2)",
+   ok:function(v){ return scNum(v)&&v>=0; }},
+  {name:"pnlNet",req:true,shape:"finite number: net paper P&L, fees charged as section 4 charges them",
+   ok:scTypeNum},
+  {name:"monthsElapsed",req:true,shape:"finite number >= 0: months since the first recorded shock window",
+   ok:function(v){ return scNum(v)&&v>=0; }},
+  {name:"frozen",req:true,shape:"boolean: 11.6's freeze, stamped in CLAUDE.md",ok:scTypeBool},
+  /* 11.6's spent-holdout flag. The largest blast radius in section 11 and the one that used to fail OPEN:
+     shockStatus tests ===true, so `holdoutSpent:1` and `holdoutSpent:"yes"` both read as NOT SPENT and reached
+     READY. `frozen` failed safe under identical treatment only because ===true is the value that OPENS its
+     gate; that asymmetry is luck, not design, and neither field relies on it any more. */
+  {name:"holdoutSpent",req:true,shape:"boolean: 11.6 -- true retires every window scored under the old freeze",
+   ok:scTypeBool},
+  {name:"detPrecision",req:false,shape:"finite number in [0,1]: phase-2 detector precision against the phase-1 "+
+   "calendar (11.5); required AT PHASE 2 ONLY",ok:function(v){ return scNum(v)&&v>=0&&v<=1; }},
+  {name:"boundary",req:false,shape:"the boundary stamp {n, close, ticker, fp} scSplit returned when the 30th "+
+   "calibration window was graded (11.6); required ONCE A BOUNDARY EXISTS",ok:scTypeStamp},
+  {name:"holdNRegistered",req:false,shape:"integer >= 30: the required holdout n written into CLAUDE.md 11.2a; "+
+   "required ONCE THE CALIBRATION SD EXISTS",
+   ok:function(v){ return scNum(v)&&Math.floor(v)===v&&v>=SCORE.HOLD_N_MIN; }},
+  {name:"bootstrap",req:false,shape:"function: the page's bootstrapCI; falls back to one in scope",ok:scTypeFn}
+];
+/* the two 11.6/11.2a registrations, named separately because they are NOT st fields -- shockStatus never sees
+   them -- but they are caller fields the verdict depends on, so they belong in `missing` and in the refusal. */
+const SC_SPLIT_FIELDS=["boundary","holdNRegistered"];
+/* WHAT THIS UNIT READS OFF ITS NEIGHBOURS. Not caller input, but read all the same, and enumerated for the same
+   reason: the exhaustiveness scan in test.js subtracts nothing it cannot name. */
+const SC_NEIGHBOUR_FIELDS=[
+  {name:"eligible",from:"controlEligible (calendar/)",shape:"true only when the probe instant is clear"},
+  {name:"maxMonths",from:"SHOCK_RULE (prereg/)",shape:"finite number: 11.7 clause 5's deadline in months"},
+  {name:"relLo",from:"SHOCK_RULE (prereg/)",shape:"11.1's low release-rate PREMISE, not a measurement"},
+  {name:"relHi",from:"SHOCK_RULE (prereg/)",shape:"11.1's high release-rate PREMISE, not a measurement"}
+];
+function scFieldOf(table,name){
+  for(let i=0;i<table.length;i++) if(table[i].name===name) return table[i];
+  return null;
+}
+/* one field, one answer: {ok, code, why}. Absent is distinguished from wrong-typed because they are different
+   caller bugs, and 11.5 already proved the difference is worth reading (no-phase vs bad-phase). */
+function scFieldCheck(table,name,v){
+  const f=scFieldOf(table,name);
+  if(f===null) return {ok:false,code:SC_OMIT.UNKNOWN_OPT,why:name+" is not a field this unit reads"};
+  if(v===undefined||v===null){
+    if(!f.req) return {ok:true,code:null,why:null};
+    return {ok:false,code:f.codeMissing||f.code,why:name+" is required and was not supplied ("+f.shape+")"};
+  }
+  if(f.ok&&!f.ok(v)) return {ok:false,code:f.code,why:name+" is present with the wrong type or shape: expected "+
+    f.shape};
+  return {ok:true,code:null,why:null};
+}
+/* ONE ROW against the row contract. Cross-field rules live here because they belong to no single field:
+   close must be strictly after open, or the window has no length and 11.3's clearance probes are undefined. */
+function scRowCheck(w){
+  if(!w||typeof w!=="object"||Array.isArray(w))
+    return {ok:false,code:SC_OMIT.BAD_ROW,field:null,why:"a window record must be an object"};
+  for(let i=0;i<SC_ROW_FIELDS.length;i++){
+    const f=SC_ROW_FIELDS[i];
+    const r=scFieldCheck(SC_ROW_FIELDS,f.name,w[f.name]);
+    if(!r.ok) return {ok:false,code:r.code,field:f.name,why:r.why};
+  }
+  if(!(w.close>w.open))
+    return {ok:false,code:SC_OMIT.BAD_ROW,field:"close",why:"close must be strictly after open"};
+  return {ok:true,code:null,field:null,why:null};
+}
+/* EVERY row, before anything is matched, scored or split. The first failure names itself and the whole call is
+   refused: a set that contains one row this unit cannot type is a set whose treatment assignment is unknown. */
+function scRowsCheck(rows){
+  const out={ok:true,code:null,field:null,why:null,at:-1,ticker:null,bad:0};
+  if(!Array.isArray(rows)){ out.ok=false; out.code=SC_OMIT.BAD_ROW; out.why="rows must be an array"; return out; }
+  for(let i=0;i<rows.length;i++){
+    const r=scRowCheck(rows[i]);
+    if(!r.ok){
+      out.bad++;
+      if(out.ok){ out.ok=false; out.code=r.code; out.field=r.field; out.at=i;
+        out.ticker=(rows[i]&&typeof rows[i].ticker==="string")?rows[i].ticker:null;
+        out.why="row "+i+(out.ticker?" ("+out.ticker+")":"")+": "+r.why; }
+    }
+  }
+  return out;
+}
+/* OPTS against the opts contract, INCLUDING keys that are not in it. An unknown key is refused rather than
+   ignored: ignoring it is how a caller silently believes it registered something it did not. */
+function scOptsCheck(opts){
+  const out={ok:true,code:null,field:null,why:null};
+  if(opts===undefined||opts===null) return out;
+  if(typeof opts!=="object"||Array.isArray(opts)){
+    out.ok=false; out.code=SC_OMIT.BAD_OPT; out.why="opts must be an object"; return out;
+  }
+  const ks=Object.keys(opts);
+  for(let i=0;i<ks.length;i++){
+    if(scFieldOf(SC_OPT_FIELDS,ks[i])===null){
+      out.ok=false; out.code=SC_OMIT.UNKNOWN_OPT; out.field=ks[i];
+      out.why="opts."+ks[i]+" is not a field this unit reads; a field that skipped the contract is refused, "+
+        "never ignored";
+      return out;
+    }
+  }
+  for(let i=0;i<SC_OPT_FIELDS.length;i++){
+    const f=SC_OPT_FIELDS[i];
+    /* `in`, NOT hasOwnProperty: scAssemble, scMissingRequired and scRatchet read these with plain member
+       access, which walks the prototype chain. Gating the CHECK on ownership while the READ ignores it means
+       an inherited value is consumed having never been validated - measured, an inherited holdoutSpent:1
+       reached shockStatus, which tests ===true, and read as NOT SPENT. The check must look where the read
+       looks; an inherited value is refused rather than silently accepted. */
+    if(!(f.name in opts)) continue;
+    const v=opts[f.name];
+    if(v===undefined||v===null) continue;             /* absent: the required-field pass answers for it */
+    if(f.ok&&!f.ok(v)){
+      out.ok=false; out.code=SC_OMIT.BAD_OPT; out.field=f.name;
+      out.why="opts."+f.name+" is present with the wrong type or shape: expected "+f.shape;
+      return out;
+    }
+  }
+  return out;
+}
 
 /* ---- presence of the units this one leans on ------------------------------------------------------------
    Same degradation pattern as revHasDetect: a missing neighbour is a reason code, never a throw and never a
@@ -102,12 +327,56 @@ function scNum(v){ return typeof v==="number"&&isFinite(v); }
 function scMean(a){ if(!Array.isArray(a)||!a.length) return null;
   let s=0; for(let i=0;i<a.length;i++){ if(!scNum(a[i])) return null; s+=a[i]; } return s/a.length; }
 /* SAMPLE standard deviation, n-1. The population form would understate the spread of the paired difference and
-   shockRequiredHoldN squares it, so the error compounds into the holdout requirement. */
+   shockRequiredHoldN squares it, so the error compounds into the holdout requirement.
+
+   A RESIDUE IS NOT A MEASUREMENT. On 30 identical paired values the two-pass form returns 1.76e-17 rather than
+   0, because the mean of thirty copies of 0.0341 is not exactly 0.0341 in binary float. shockRequiredHoldN
+   guards on `sd > 0`, so that residue is not null -- it is a POSITIVE sd, it squares to nothing, and the
+   required holdout n silently becomes the floor of 30 while shockStatus's "paired-difference sd not measured on
+   the calibration half (11.2a)" refusal stays unreachable except at exact binary zero. A calibration half whose
+   paired differences are identical HAS no measured spread, and the honest answer is the refusal.
+   The floor is RELATIVE (SD_ZERO_REL x the largest magnitude in the sample) because an absolute one would mean
+   something different at Brier scale than at price scale. It only ever turns a number into a refusal. */
 function scSdOf(a){
   if(!Array.isArray(a)||a.length<2) return null;
   const m=scMean(a); if(m===null) return null;
-  let s=0; for(let i=0;i<a.length;i++) s+=(a[i]-m)*(a[i]-m);
-  return Math.sqrt(s/(a.length-1));
+  let s=0,scale=0;
+  for(let i=0;i<a.length;i++){ s+=(a[i]-m)*(a[i]-m); if(Math.abs(a[i])>scale) scale=Math.abs(a[i]); }
+  const sd=Math.sqrt(s/(a.length-1));
+  if(sd<=0) return 0;
+  if(scale>0&&sd<scale*SCORE.SD_ZERO_REL) return 0;   /* floating-point residue, not a spread */
+  return sd;
+}
+/* A DETERMINISTIC FINGERPRINT OF THE CALIBRATION HALF (11.6). FNV-1a over an ASCII rendering, which is enough:
+   this is a change detector between two runs of the same code, not a cryptographic commitment.
+   WHY IT EXISTS. The boundary stamp used to carry {n, close, ticker} only, so it detected the boundary WINDOW
+   moving and nothing else. Measured: with the same 30th window in place, one extra control arriving into every
+   cell halved the calibration sd (0.04086 -> 0.02043) and moved the required holdout n from 46 to 30, while
+   scSplitStable reported `moved:false` and scSplitCheck reported `registeredOk:true`. 11.6 freezes the sd and
+   everything derived from it, not the identity of the 30th window, so the stamp has to fingerprint what the sd
+   was computed FROM: each calibration pair's identity, its paired value, and the identified controls (with
+   their skills) that its control mean was estimated from. Sorted at both levels so enumeration order cannot
+   move it; numbers rendered at fixed precision so the string is stable. */
+function scHash(str){
+  let h=2166136261;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+  return (h>>>0).toString(16);
+}
+function scFpNum(v){ return scNum(v)?v.toFixed(12):"?"; }
+function scCalFp(cal){
+  if(!Array.isArray(cal)) return null;
+  const parts=[];
+  for(let i=0;i<cal.length;i++){
+    const p=cal[i]; if(!p||typeof p!=="object") return null;
+    const ids=[];
+    if(Array.isArray(p.ctrl)) for(let j=0;j<p.ctrl.length;j++){ const q=p.ctrl[j];
+      ids.push(((q&&typeof q.id==="string")?q.id:"?")+"="+scFpNum(q&&q.skill)); }
+    ids.sort();
+    parts.push(((typeof p.ticker==="string")?p.ticker:"?")+"@"+scFpNum(p.open)+"/"+scFpNum(p.close)+
+      ":"+scFpNum(p.paired)+"["+ids.join(",")+"]");
+  }
+  parts.sort();
+  return scHash(parts.join(";"))+"-"+parts.length;
 }
 
 /* ---- WINDOW IDENTITY, AND THE DEDUPLICATION THAT FOLLOWS FROM IT ----------------------------------------
@@ -323,6 +592,13 @@ function scMatchControls(shock,pool){
     const c=rows[i];
     if(!c||c===shock) continue;
     if(c.ticker===shock.ticker&&c.open===shock.open) continue;
+    /* THE CONTRACT, ON EVERY CANDIDATE. In the scPairs path this can never fire -- scRowsCheck refused the
+       whole call already -- but scMatchControls is callable on its own, and a candidate whose `shock` flag is
+       `1` must not fall through this test into the control pool the way it used to. It is rejected and the
+       rejection is COUNTED by its own code, so a caller reading rejects sees the type error rather than an
+       unexplained thin control set. */
+    const chk=scRowCheck(c);
+    if(!chk.ok){ bump(chk.code); continue; }
     if(c.shock===true){ bump(SC_OMIT.IS_SHOCK); continue; }
     if(!scKeyEqual(scMatchKey(c),key)){ continue; }        /* a key miss is the ordinary case, not a reject */
     const sk=scSkill(c);
@@ -366,8 +642,10 @@ function scPhaseGuard(rows){
     const r=rows[i];
     if(!r||typeof r!=="object") continue;
     n++;
-    if(r.phase===undefined||r.phase===null) return {ok:false,phases:[],code:SC_OMIT.NO_PHASE};
-    if(typeof r.phase!=="number"||!isFinite(r.phase)) return {ok:false,phases:[],code:SC_OMIT.BAD_PHASE};
+    /* the presence and type rules are the CONTRACT's, read from the table rather than restated here, so the
+       phase cannot end up with two definitions that drift apart. */
+    const chk=scFieldCheck(SC_ROW_FIELDS,"phase",r.phase);
+    if(!chk.ok) return {ok:false,phases:[],code:chk.code};
   }
   if(!n) return {ok:false,phases:[],code:SC_OMIT.NO_PHASE};
   if(typeof shockPoolGuard==="function"){ const g=shockPoolGuard(rows);
@@ -398,9 +676,15 @@ function scSeriesGuard(rows){
    ones is how it gets scored by accident. */
 function scPairs(rows){
   const out={ok:false,code:null,pairs:[],unmatched:[],ctrlTotal:0,ctrlMatched:0,
-    dupRows:0,phase:null,series:null,known:null};
+    dupRows:0,phase:null,series:null,known:null,badRow:null};
   if(!Array.isArray(rows)||!rows.length){ out.code=SC_OMIT.NO_SHOCKS; return out; }
   const ded=scDedupe(rows); const rw=ded.rows; out.dupRows=ded.dropped;
+  /* THE CONTRACT, BEFORE ANYTHING IS MATCHED, SCORED OR SPLIT. One row this unit cannot type is a set whose
+     treatment assignment is unknown, and 11.5's phase guard already set the precedent that such a set is
+     refused whole rather than scored around. */
+  const rc=scRowsCheck(rw);
+  if(!rc.ok){ out.code=rc.code; out.badRow={at:rc.at,ticker:rc.ticker,field:rc.field,why:rc.why,n:rc.bad};
+    return out; }
   const pg=scPhaseGuard(rw); if(!pg.ok){ out.code=pg.code||SC_OMIT.MIXED_PHASE; return out; }
   const sg=scSeriesGuard(rw); if(!sg.ok){ out.code=SC_OMIT.MIXED_SERIES; return out; }
   if(!scHasCalendar()){ out.code=SC_OMIT.NO_CALENDAR; return out; }
@@ -409,6 +693,10 @@ function scPairs(rows){
   const seen={}, inSpan=[]; let series=null, caveat=null;
   for(let i=0;i<rw.length;i++){
     const w=rw[i];
+    /* scRowsCheck has already refused anything whose `shock` is not strictly boolean, so this test now means
+       exactly "not treated" -- and, crucially, scMatchControls's `c.shock===true` test means exactly "treated"
+       on the same rows, so no value can fall through BOTH and end up neither treated nor excluded from its own
+       cell's control pool. That gap moved a measured difference-in-differences from 0.00000 to +0.23333. */
     if(!w||w.shock!==true) continue;
     out.ctrlTotal++;
     const sk=scSkill(w);
@@ -420,7 +708,12 @@ function scPairs(rows){
       for(let j=0;j<sp.length;j++) if(seen[sp[j]]!==1){ seen[sp[j]]=1; inSpan.push(sp[j]); }
     }
     if(!sk.ok||!m.matched){
-      out.unmatched.push({ticker:w.ticker,open:w.open,close:w.close,nCtrl:m.n,
+      /* `graded` is the field 11.2's registered coverage denominator turns on, and it is recorded HERE rather
+         than inferred downstream from the reason code. A void settlement, a still-open window and a window
+         whose only reads are post-gate are NOT control-matching failures -- they have as many controls as any
+         other window, they are simply not graded yet -- and counting them as failures fired 11.7 clause 3, a
+         PERMANENT closure, on the ordinary state of a recent export. */
+      out.unmatched.push({ticker:w.ticker,open:w.open,close:w.close,nCtrl:m.n,graded:sk.ok,
         code:sk.ok?m.reason:sk.code,known:m.known});
       continue;
     }
@@ -430,7 +723,7 @@ function scPairs(rows){
       cid.push({id:scRowId(m.controls[j]),skill:m.controls[j].skill});
     }
     const cm=scMean(cs);
-    if(cm===null){ out.unmatched.push({ticker:w.ticker,open:w.open,close:w.close,nCtrl:m.n,
+    if(cm===null){ out.unmatched.push({ticker:w.ticker,open:w.open,close:w.close,nCtrl:m.n,graded:false,
       code:SC_OMIT.BAD_PROB,known:m.known}); continue; }
     out.ctrlMatched++;
     /* `cell` and `ctrl` are what make the CLUSTER bootstrap possible (scCells): the pair carries not just the
@@ -478,7 +771,9 @@ function scSplit(pairs){
   out.hold=s.slice(SCORE.CAL_N);
   if(s.length>=SCORE.CAL_N){
     const b=s[SCORE.CAL_N-1];
-    out.boundary={n:SCORE.CAL_N,close:b.close,ticker:b.ticker};
+    /* the stamp carries a fingerprint of the calibration SET, not just the identity of its last window: 11.6
+       freezes the sd and everything derived from it, and the sd is a function of the whole half. */
+    out.boundary={n:SCORE.CAL_N,close:b.close,ticker:b.ticker,fp:scCalFp(out.cal)};
   }
   return out;
 }
@@ -489,6 +784,11 @@ function scSplitStable(a,b){
   if(a.n!==b.n) return {moved:true,why:"calibration count changed"};
   if(a.close!==b.close) return {moved:true,why:"boundary window close changed"};
   if(a.ticker!==b.ticker) return {moved:true,why:"boundary window identity changed"};
+  /* the boundary WINDOW can be identical while the calibration half's CONTENTS are not -- a control arriving
+     late, or ageing out of 10.2's 15-day buffer, changes a pair's control mean without moving the 30th window.
+     Measured, that halved the frozen sd and moved the required holdout n from 46 to 30 while this function
+     reported "unchanged". 11.6 freezes the sd, so a changed calibration set IS a moved boundary. */
+  if(a.fp!==b.fp) return {moved:true,why:"the calibration set changed under an unchanged boundary window"};
   return {moved:false,why:"unchanged"};
 }
 /* ONCE THE BOUNDARY EXISTS IT IS AN INPUT, NOT A COMPUTATION -- and a computed boundary that disagrees with the
@@ -516,8 +816,9 @@ function scSplitCheck(computed,registered){
     out.why=out.computed?"boundary computed; not yet registered by the caller":"boundary not established";
     return out;
   }
-  if(!scNum(out.registered.close)||!scNum(out.registered.n)||typeof out.registered.ticker!=="string"){
-    out.refuse=true; out.moved=true; out.why="the registered boundary is not a boundary stamp"; return out;
+  if(!scTypeStamp(out.registered)){
+    out.refuse=true; out.moved=true;
+    out.why="the registered boundary is not a boundary stamp {n, close, ticker, fp}"; return out;
   }
   if(out.computed===null){
     out.refuse=true; out.moved=true;
@@ -591,8 +892,11 @@ function scDid(pairs){
    one definition of each in the codebase. NEITHER MOVES HERE. The level is the level, B is B; what changed on
    2026-09-06 is the RESAMPLING UNIT, and only that.
 
-   THE RESAMPLING UNIT IS THE MATCHING CELL, NOT THE WINDOW. This is a statistics decision, registered now
-   because 11.6 freezes the primary statistic and changing it after the holdout opens SPENDS the holdout.
+   THE RESAMPLING UNIT IS THE MATCHING CELL, NOT THE WINDOW. That sentence is now CLAUDE.md 11.2's, in the
+   READY list's CI bullet, registered 2026-09-06 and frozen with the rest of the primary statistic -- it is a
+   section 11 threshold governed by 11.7 clause 6, not a note in this unit's NOTES.md. The reasoning below is
+   the registration's own, and test.js reads it off the document so the two cannot drift: 11.6 freezes the
+   primary statistic, and changing the resampling unit after the holdout opens SPENDS the holdout.
 
    Why the window is the wrong unit. Each paired value is `shock skill - mean(control skills)`. Resampling the
    paired column alone treats that control mean as a CONSTANT with zero sampling error. But 11.3's four
@@ -720,41 +1024,85 @@ function scAssemble(measured,opts){
   return {st:st,missing:missing};
 }
 
-/* ---- COVERAGE, ON THE HOLDOUT ALONE (11.2) --------------------------------------------------------------
+/* ---- COVERAGE: THE DENOMINATOR 11.2 REGISTERED ON 2026-09-06 --------------------------------------------
    11.2 prefixes its whole READY list with "on the HOLDOUT set alone (11.6)", and "Control coverage >= 80%" is
    the second item in that list. Coverage used to be counted over EVERY recorded shock window, calibration and
-   holdout together, and handed to shockStatus that way. That is not conservative: a coverage failure that lands
-   in the holdout -- which is where it matters -- is diluted by calibration windows that have already been
-   spent. Measured, on 60 matched windows plus 10 unmatched ones dated after the boundary: pooled coverage
-   0.857 PASSES and the pass reads READY, while holdout-only coverage is 0.750 and 11.7 clause 3 ABANDONS.
-   Both figures are reported -- the calibration one is still worth seeing, and so is the pooled one -- but only
-   the HOLDOUT figure reaches `st`, because that is the one the gate reads.
-   A window is on the holdout side when it sorts after the boundary stamp under scSplit's own order (close,
-   ticker), matched or not: an unmatched window is never scored, but it is RECORDED, and coverage is precisely
-   the count of what was recorded against what could be scored. With no boundary yet there is no holdout, so
-   the holdout counts are zero and shockStatus's `ctrlTotal > 0` guard skips the gate -- correct: the coverage
-   test is a holdout test and there is nothing to test yet. */
+   holdout together: a coverage failure that lands in the holdout -- which is where it matters -- was diluted by
+   calibration windows that had already been spent. Measured, on 60 matched windows plus 10 unmatched ones dated
+   after the boundary: pooled coverage 0.857 PASSES and reads READY, holdout-only coverage is 0.750 and 11.7
+   clause 3 ABANDONS.
+
+   AND THEN THAT FIX CAST ITS OWN SHADOW, WHICH IS WHY THIS FUNCTION IS NOW THREE RULES RATHER THAN ONE. Moving
+   the denominator to the holdout alone made it TINY at exactly the moment the holdout opens. Measured on the
+   first pass after calibration completes: 30 matched calibration windows and ONE unmatched holdout window read
+   0/1 = 0.000 and ABANDON -- and 11.7 clause 3 is a PERMANENT closure, "closed or redesigned, and a redesign
+   restarts the count at zero". Against section 8's ~47 calendar events a year the holdout spends its first
+   months in exactly that regime, so it was not a corner case; it fired on the ordinary first pass. A ratio over
+   a denominator of one is not evidence about a design.
+
+   11.2 now defines the denominator, and 11.7 clause 3 now carries the same sentence. Three rules, all three
+   registered 2026-09-06 with no shock-conditioned observation in existence:
+     1. HOLDOUT ONLY, as before -- the S2 fix stands and nothing here weakens it.
+     2. GRADED ONLY. 11.2 lists "n >= 30 graded holdout shock windows" and control coverage as SEPARATE
+        conditions. A void settlement (10.4), a window still open, and a window whose only reads are post-gate
+        each have as many controls as any other window; they are simply not graded. Counting them as
+        control-matching failures fires clause 3 on something that is not one, and ungraded windows are the
+        normal state of a recent export -- every currently-live shock window is one. `graded` is recorded on
+        each unmatched row by scPairs rather than inferred from a reason code here.
+     3. SIDE-DETERMINABLE ONLY. A window that cannot be placed relative to the boundary is not a calibration
+        window; it is a window whose side is unknown, and it belongs in NEITHER denominator. (The row contract
+        now refuses a row with a missing or non-numeric close outright, so this rule is defence in depth rather
+        than the only guard -- but it is the rule 11.2 states, and it is stated here.)
+     4. NOT EVALUATED BELOW COV_MIN_N. Below 30 graded, side-determinable holdout windows the 80% question is
+        not asked at all: `gate` reports 0/0, shockStatus's `ctrlTotal > 0` guard skips the clause, and the
+        measured figures stay on the report to be read. This is the same discipline scSd already applies by
+        returning null below CAL_N.
+   NONE OF THIS IS A LOOSENING UNDER 11.7 CLAUSE 6. The bar is still 80%; what changed is a test that returned
+   the wrong answer at small n, and the pooled figure it replaced passed the same input at 0.968. READY cannot
+   reach past an unevaluated coverage clause either: READY needs nHold >= 30 MATCHED holdout windows, and every
+   matched window is graded and side-determinable by construction, so the denominator is >= 30 whenever READY is
+   in reach. test.js asserts that invariant rather than asserting the reasoning.
+
+   Every excluded window is COUNTED, by reason, and reported. An excluded row that is invisible is exactly the
+   permissive default this unit exists not to have. */
 function scAfterBoundary(w,b){
-  if(!b||!scNum(b.close)||!w||!scNum(w.close)) return false;
+  if(!b||!scNum(b.close)) return false;              /* no boundary yet: there is no holdout side */
+  if(!w||!scNum(w.close)) return null;               /* the side cannot be determined -- neither denominator */
   if(w.close!==b.close) return w.close>b.close;
   const wt=(typeof w.ticker==="string")?w.ticker:"", bt=(typeof b.ticker==="string")?b.ticker:"";
   return wt>bt;
 }
 function scCoverage(P,boundary){
-  const out={hold:{matched:0,total:0,frac:null},cal:{matched:0,total:0,frac:null},
-    all:{matched:0,total:0,frac:null}};
+  const out={hold:{matched:0,total:0,frac:null,evaluable:false,why:null},
+    cal:{matched:0,total:0,frac:null},
+    all:{matched:0,total:0,frac:null},
+    gate:{matched:0,total:0,frac:null,evaluable:false,why:null},
+    excluded:{ungraded:0,undetermined:0},recorded:0,minN:SCORE.COV_MIN_N};
   if(!P) return out;
   const add=function(side,matched){ side.total++; if(matched) side.matched++; };
-  const walk=function(list,matched){
+  const walk=function(list,matched,gradedDefault){
     if(!Array.isArray(list)) return;
     for(let i=0;i<list.length;i++){
+      const w=list[i];
+      out.recorded++;
+      const graded=(gradedDefault===true)?true:(w&&w.graded===true);
+      if(!graded){ out.excluded.ungraded++; continue; }
+      const side=scAfterBoundary(w,boundary);
+      if(side===null){ out.excluded.undetermined++; continue; }
       add(out.all,matched);
-      add(scAfterBoundary(list[i],boundary)?out.hold:out.cal,matched);
+      add(side?out.hold:out.cal,matched);
     }
   };
-  walk(P.pairs,true); walk(P.unmatched,false);
+  walk(P.pairs,true,true); walk(P.unmatched,false,false);
   const frac=function(x){ x.frac=x.total?x.matched/x.total:null; };
   frac(out.hold); frac(out.cal); frac(out.all);
+  out.hold.evaluable=out.hold.total>=SCORE.COV_MIN_N;
+  out.hold.why=out.hold.evaluable?null:
+    ("the holdout coverage denominator is "+out.hold.total+" graded, side-determinable windows; 11.2 evaluates "+
+     "the 80% clause only at "+SCORE.COV_MIN_N+" or more, and 11.7 clause 3 may not fire below it");
+  out.gate.evaluable=out.hold.evaluable; out.gate.why=out.hold.why;
+  if(out.hold.evaluable){ out.gate.matched=out.hold.matched; out.gate.total=out.hold.total; }
+  frac(out.gate);
   return out;
 }
 
@@ -771,22 +1119,50 @@ function scCoverage(P,boundary){
    NEGATIVE / HOLDOUT / CALIBRATING / FROZEN-PENDING / ABANDON / INVALID sees an unknown string, which is safe
    in the only direction that matters: it is not READY. */
 const SC_VERDICT_FIELDS=["arms","pnlN","pnlNet","monthsElapsed","frozen","holdoutSpent"];
-function scRequiredFields(phase){
+/* THE CONDITIONALLY REQUIRED FIELDS, and why they are conditional rather than simply required.
+   `detPrecision` is 11.5's, at phase 2 only. `boundary` and `holdNRegistered` are 11.6's and 11.2a's, and they
+   were the two remaining holes: neither was in SC_CALLER_FIELDS or SC_VERDICT_FIELDS, so neither appeared in
+   `missing` and neither was ever a refusal, which made the registered split and the upward-only ratchet
+   ADVISORY. Measured: a 35-cell fixture went HOLDOUT (need 46) -> READY (need 30) purely by omitting
+   holdNRegistered, and READY was reachable with `frozen:true` and no boundary ever registered -- at a point
+   where nCal >= 30 means the 30th calibration window is already graded, which 11.6 says is exactly when the
+   boundary can no longer move.
+   They cannot be required UNCONDITIONALLY because neither exists before the state that defines it: there is
+   nothing to register until scSplit computes a boundary, and 11.2a's required n cannot be written down until
+   the calibration sd is measured. So each becomes required at the moment its subject exists -- and the caller
+   learns the value from the refusal itself, because scReport leaves every measurement it did make on the
+   report and only withholds the verdict. That is the intended loop: run, read `rep.split.boundary` and
+   `rep.holdN.computed`/`n80`, write them into CLAUDE.md 11.2a with a date, register them, run again. */
+function scRequiredFields(phase,ctx){
   const r=SC_VERDICT_FIELDS.slice();
   if(phase===2) r.push("detPrecision");
+  if(ctx&&ctx.boundaryExists===true) r.push("boundary");
+  if(ctx&&ctx.sdMeasured===true) r.push("holdNRegistered");
   return r;
 }
-function scMissingRequired(missing,phase){
+function scMissingRequired(missing,phase,ctx){
   const out=[]; if(!Array.isArray(missing)) return out;
-  const need=scRequiredFields(phase);
+  const need=scRequiredFields(phase,ctx);
   for(let i=0;i<need.length;i++) if(missing.indexOf(need[i])>=0) out.push(need[i]);
+  return out;
+}
+/* every caller field that was not supplied, st-bound (SC_CALLER_FIELDS) and split-bound (SC_SPLIT_FIELDS)
+   alike. Reporting one is not the same as requiring it: scRequiredFields decides what refuses. */
+function scMissingAll(missing,opts){
+  const out=Array.isArray(missing)?missing.slice():[];
+  const o=(opts&&typeof opts==="object")?opts:{};
+  for(let i=0;i<SC_SPLIT_FIELDS.length;i++){
+    const f=SC_SPLIT_FIELDS[i];
+    if(o[f]===undefined||o[f]===null) out.push(f);
+  }
   return out;
 }
 /* the refusals that must be REPORTED as refusals rather than answered on the window count. A mixed-phase call
    used to come back "CALIBRATING / calibration set incomplete" -- a benign progress message for a call 11.5
    forbids outright, which cannot reach READY but hides a caller bug indefinitely. */
 const SC_REFUSALS=[SC_OMIT.MIXED_PHASE,SC_OMIT.MIXED_SERIES,SC_OMIT.NO_PHASE,SC_OMIT.BAD_PHASE,
-  SC_OMIT.NO_CALENDAR,SC_OMIT.BOUNDARY_MOVED,SC_OMIT.MISSING_FIELDS];
+  SC_OMIT.NO_CALENDAR,SC_OMIT.BOUNDARY_MOVED,SC_OMIT.MISSING_FIELDS,
+  SC_OMIT.BAD_ROW,SC_OMIT.BAD_SHOCK,SC_OMIT.BAD_OPT,SC_OMIT.UNKNOWN_OPT];
 const SC_REFUSAL_WHY={
   "mixed-phase":"phase 1 and phase 2 are never pooled (11.5): separate ledgers, separate n, separate READY",
   "mixed-series":"15-minute and hourly windows are scored separately (section 4)",
@@ -794,7 +1170,11 @@ const SC_REFUSAL_WHY={
   "bad-phase":"a phase that is not a number cannot be compared with === ; 1 and \"1\" must never pool (11.5)",
   "no-calendar":"controlEligible is not in scope, so 11.3's control eligibility cannot be consulted",
   "boundary-moved":"the calibration/holdout boundary is not the registered one (11.6); moving it after the holdout opened spends the holdout",
-  "missing-caller-fields":"a caller field the verdict depends on was not supplied; a hole is not a verdict"
+  "missing-caller-fields":"a caller field the verdict depends on was not supplied; a hole is not a verdict",
+  "bad-row-field":"a window record is missing a field this unit reads, or carries one with the wrong type; a value present in the wrong type is refused, never coerced",
+  "bad-shock-flag":"`shock` is the treatment assignment (11.2) and must be strictly true or false; a truthy value would be neither treated nor excluded from its own cell's control pool",
+  "bad-caller-field":"a caller field is present with the wrong type or an impermissible value",
+  "unknown-caller-field":"opts carries a key this unit does not read; a field that skipped the contract is refused, never ignored"
 };
 function scIsRefusal(code){ return typeof code==="string"&&SC_REFUSALS.indexOf(code)>=0; }
 function scRefused(code,why,k){
@@ -836,27 +1216,48 @@ function scRatchetStatus(status,nHold,holdN,monthsElapsed){
      {ticker, open, close, result, snaps} plus {phase, shock}. `shock` is the caller's -- phase 1 reads it off
      the release calendar, phase 2 off its detector -- because deciding what a shock IS belongs to calendar/ and
      detect/, not here. Mixed phases and mixed series are REFUSED, not merged.
-   opts: the eight caller fields, plus `bootstrap` (the page's bootstrapCI).
+   opts: SC_OPT_FIELDS and nothing else -- the seven that reach `st`, the two that register 11.6's split and
+     11.2a's ratchet, and `bootstrap` (the page's bootstrapCI). An unknown key is refused, not ignored.
 
    sd comes from the CALIBRATION half; dBrier and ciLo come from the HOLDOUT ALONE, because 11.6 decides READY on
-   the holdout alone and the calibration half is never re-scored into the result. Coverage is over every RECORDED
-   shock window, matched or not, which is what 11.7 clause 3 asks for. */
+   the holdout alone and the calibration half is never re-scored into the result. Coverage is the denominator
+   11.2 registered on 2026-09-06 -- holdout, graded, side-determinable, and not evaluated at all below 30 (see
+   scCoverage) -- and it is the ONLY coverage figure that reaches `st`. */
 function scReport(rows,opts){
   const o=(opts&&typeof opts==="object")?opts:{};
-  const P=scPairs(rows);
-  const rep={version:SCORE.version,ok:false,code:P.code,
-    phase:P.phase,series:P.series,
-    ctrlTotal:P.ctrlTotal,ctrlMatched:P.ctrlMatched,unmatched:P.unmatched,
-    dupRows:P.dupRows,coverage:null,
-    known:P.known,caveat:(P.known&&P.known.caveat)||null,
+  const rep={version:SCORE.version,ok:false,code:null,
+    phase:null,series:null,
+    unmatched:[],dupRows:0,badRow:null,coverage:null,
+    known:null,caveat:null,
     split:null,boundary:null,sd:null,holdN:null,did:null,ci:null,st:null,missing:null,status:null};
+  /* THE CALLER'S OWN MESSAGE IS CHECKED FIRST, before any row is read. An unknown opts key is refused here
+     rather than ignored, which is what makes the failure mode of a field that skipped the contract be refusal
+     rather than passage -- and a refused call reports NO CI level, because `arms:"20"` used to refuse (no-arms
+     -> ciLo null -> INVALID) while rep.status.ciLevel still read 0.995, coerced out of the string by
+     shockStatus's `st.arms >= 1`. A refusal has no level: there is no arm count to derive one from. */
+  const oc=scOptsCheck(opts);
+  if(!oc.ok){
+    rep.code=oc.code;
+    rep.status=scRefused(oc.code,oc.why,null);
+    return rep;
+  }
+  const P=scPairs(rows);
+  rep.code=P.code; rep.phase=P.phase; rep.series=P.series;
+  rep.unmatched=P.unmatched; rep.dupRows=P.dupRows; rep.badRow=P.badRow;
+  rep.known=P.known; rep.caveat=(P.known&&P.known.caveat)||null;
+  /* THE POOLED COVERAGE PAIR IS NOT ON THIS OBJECT. It used to be, as rep.ctrlMatched / rep.ctrlTotal, beside
+     rep.st.ctrlMatched / rep.st.ctrlTotal, which are the HOLDOUT ones -- two identically-named pairs on one
+     object differing only by denominator, and NOTES told the caller to export the pooled pair, the one 11.2
+     says is not the gate. That was the S2 fix being undone in the CSV. `rep.coverage` carries all three cuts
+     plus the gate and the exclusions, and it is the field the export names. */
   if(!P.ok){
     const a0=scAssemble({phase:P.phase,nCal:0,nHold:0,sd:null,dBrier:null,ciLo:null,
       ctrlMatched:0,ctrlTotal:0},o);
-    rep.st=a0.st; rep.missing=a0.missing; rep.coverage=scCoverage(P,null);
+    rep.st=a0.st; rep.missing=scMissingAll(a0.missing,o); rep.coverage=scCoverage(P,null);
     /* a REFUSAL is reported as a refusal; "no shock windows yet" and "none matched yet" are progress, and the
        judge answers those on the counts, which is what they are. */
-    rep.status=scIsRefusal(P.code)?scRefused(P.code,null,o.arms)
+    rep.status=scIsRefusal(P.code)
+      ?scRefused(P.code,(P.badRow&&P.badRow.why)?(SC_REFUSAL_WHY[P.code]+" -- "+P.badRow.why):null,o.arms)
       :((typeof shockStatus==="function")?shockStatus(a0.st):null);
     return rep;
   }
@@ -870,7 +1271,7 @@ function scReport(rows,opts){
     rep.code=SC_OMIT.BOUNDARY_MOVED;
     const ab=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:null,dBrier:null,ciLo:null,
       ctrlMatched:0,ctrlTotal:0},o);
-    rep.st=ab.st; rep.missing=ab.missing; rep.coverage=scCoverage(P,sp.boundary);
+    rep.st=ab.st; rep.missing=scMissingAll(ab.missing,o); rep.coverage=scCoverage(P,sp.boundary);
     rep.status=scRefused(SC_OMIT.BOUNDARY_MOVED,
       "the calibration/holdout boundary moved ("+bchk.why+"): 11.6 makes that a post-freeze change, which "+
       "spends the holdout, and only the caller may declare that",o.arms);
@@ -881,15 +1282,39 @@ function scReport(rows,opts){
   const did=scDid(sp.hold);
   const ci=scCi(sp.hold,o.arms,o.bootstrap);
   const a=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:sd,
-    dBrier:did.controlled,ciLo:ci.lo,ctrlMatched:cov.hold.matched,ctrlTotal:cov.hold.total},o);
+    dBrier:did.controlled,ciLo:ci.lo,ctrlMatched:cov.gate.matched,ctrlTotal:cov.gate.total},o);
   rep.ok=true; rep.code=(sd===null?SC_OMIT.CAL_SHORT:null);
-  rep.coverage=cov; rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=a.st; rep.missing=a.missing;
-  const needNow=(scHasPrereg()&&typeof shockRequiredHoldN==="function"&&scNum(o.arms)&&o.arms>=1)
-    ?shockRequiredHoldN(sd,o.arms,0.5):null;
+  rep.coverage=cov; rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=a.st;
+  rep.missing=scMissingAll(a.missing,o);
+  /* 11.2a REQUIRES BOTH POWER FIGURES AS OUTPUT (registered 2026-09-06): "a report that carries the 50%-power
+     required n without the 80% figure beside it is exactly the barely-powered design mistaken for a good one
+     this subsection was written to prevent, and the at-open feasibility test against 11.7's deadline cannot be
+     applied without it". The unit used to call shockRequiredHoldN at 0.5 and nothing else; shockFeasible --
+     which returns n80 and an `ok` against maxMonths -- existed in prereg and was called by nothing in the
+     repository. On the fixture that produced the registration, n@50% is 46 and n@80% is 120.
+     `months` and `ok` are computed at BOTH ends of 11.1's release-rate premise (SHOCK_RULE.relLo/relHi) and
+     are labelled a premise for that reason: section 8 records the enumerated calendar at ~47 events a year,
+     and no observed count exists yet to replace it. Nothing here fires a status off the feasibility figure --
+     closing the programme at the holdout's open is 11.2a's decision for the caller to record, exactly like
+     holdoutSpent -- but it cannot be made without the number, so the number is on the report. */
+  const kOk=(scHasPrereg()&&typeof shockRequiredHoldN==="function"&&scNum(o.arms)&&o.arms>=1);
+  const needNow=kOk?shockRequiredHoldN(sd,o.arms,0.5):null;
   rep.holdN=scRatchet(needNow,o.holdNRegistered);
+  rep.holdN.n80=kOk?shockRequiredHoldN(sd,o.arms,0.8):null;
+  rep.holdN.power={computed:0.5,alongside:0.8};
+  rep.holdN.feasible=(kOk&&typeof shockFeasible==="function"&&typeof SHOCK_RULE==="object"&&SHOCK_RULE!==null)
+    ?{premise:"11.1 planning premise, NOT a measurement: releases per year",
+      lo:shockFeasible(sd,o.arms,o.monthsElapsed,SHOCK_RULE.relLo),
+      hi:shockFeasible(sd,o.arms,o.monthsElapsed,SHOCK_RULE.relHi)}
+    :null;
   /* a caller field the verdict depends on is missing -> a refusal, not a verdict. The measurements above stay
      on the report: they are real, and the caller needs them to see what it under-specified. */
-  const req=scMissingRequired(a.missing,P.phase);
+  /* `holdNRegistered` becomes required at the moment 11.2a's number EXISTS -- when the calibration sd is a
+     measured spread and the required n is therefore derivable. A calibration half whose paired differences are
+     identical has no measured spread (scSdOf returns exactly 0, and shockRequiredHoldN returns null on it), so
+     there is nothing to register and requiring it would be requiring a number nobody can compute. */
+  const req=scMissingRequired(rep.missing,P.phase,
+    {boundaryExists:sp.boundary!==null,sdMeasured:rep.holdN.computed!==null});
   if(req.length){
     rep.code=SC_OMIT.MISSING_FIELDS;
     rep.status=scRefused(SC_OMIT.MISSING_FIELDS,
