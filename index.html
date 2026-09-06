@@ -1632,8 +1632,13 @@ function simEnter(e,r,key,bidAtEntry){
 function simCloseOne(e,t,exit,reason,now){
   const fin=0.07*t.entry*(1-t.entry), fout=0.07*exit*(1-exit);
   t.open=false; t.exit=exit; t.reason=reason; t.tOut=now; t.pnlShare=(exit-t.entry-fin-fout)*100; t.pnl=+(t.pnlShare*t.shares/100).toFixed(2); t.hit=t.peak>=SWING.payout;
-  const B=S.simBank[t.arm]; B.bank=+(B.bank+t.pnl).toFixed(2); if(B.bank>B.peak) B.peak=B.bank; const dd=(B.peak-B.bank)/B.peak; if(dd>B.dd) B.dd=dd;
-  S.journal.unshift({arm:t.arm,exitRule:t.exitRule,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tOut:now,tau:t.tau,entry:t.entry,exit,reason,shares:t.shares,stake:t.stake,pnlShare:t.pnlShare,pnl:t.pnl,hit:t.hit,peak:t.peak,be:t.be,base:t.base,p:t.p,ofi:t.ofi,bank:B.bank});
+  const B=S.simBank[t.arm];
+  /* a position the K1 repair flagged was opened against a stale book: it still closes and stays on the record,
+     but its fabricated P&L never reaches the bankroll — otherwise the gate would re-book what the repair withdrew */
+  if(!t.phantom){ B.bank=+(B.bank+t.pnl).toFixed(2); if(B.bank>B.peak) B.peak=B.bank; const dd=(B.peak-B.bank)/B.peak; if(dd>B.dd) B.dd=dd; }
+  const row={arm:t.arm,exitRule:t.exitRule,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tOut:now,tau:t.tau,entry:t.entry,exit,reason,shares:t.shares,stake:t.stake,pnlShare:t.pnlShare,pnl:t.pnl,hit:t.hit,peak:t.peak,be:t.be,base:t.base,p:t.p,ofi:t.ofi,bank:B.bank};
+  if(t.phantom) row.phantom=t.phantom;
+  S.journal.unshift(row);
 }
 function simUpdate(e,bid,now){
   /* every book poll: track peaks and run the exit rules of every open position on this window-side */

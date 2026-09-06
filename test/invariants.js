@@ -248,6 +248,19 @@ function part2() {
     T("refSnap skips a flagged snapshot and scores the clean one", r.scoredTau === 6, r.scoredTau);
     T("viability counters are reset but preserved in the repair record", r.viaReset === 0 && r.viaKept === true, r);
     T("the repair is versioned and idempotent — a second pass moves no bank", r.repeated === true && r.bankTwice === 995, { repeated: r.repeated, bank: r.bankTwice });
+    /* a phantom position still OPEN when the repair runs must not re-book its fabricated P&L when the gate closes it */
+    const open = R(`(function(){
+      localStorage.removeItem("btc.repair"); localStorage.removeItem("btc.journal"); S.repair=null; S.journal=[]; S.simBank={}; jLoad();
+      S.swing={v:1,w:{"KXBTC15M-O|NO":{ticker:"KXBTC15M-O",side:"NO",strike:100000,close:2,graded:false,hit:null,lastBid:0.35,
+        reads:[{t:1,tau:14.2,ask:0.03,p:0.96,base:0.024,be:0.16,ofi:null,maxAfter:0.35}],
+        sim:{"all/box":{arm:"all/box",exitRule:"box",tIn:1,tau:14.2,entry:0.03,entryBid:0.02,shares:1666,stake:49.98,p:0.96,base:0.024,be:0.16,ofi:null,open:true,peak:0.35,armed:false}}}}};
+      const bankBefore=S.simBank["all/box"].bank;
+      repairLedgers();
+      const flagged=S.swing.w["KXBTC15M-O|NO"].sim["all/box"].phantom;
+      simClose(S.swing.w["KXBTC15M-O|NO"]);            /* the gate arrives and closes it */
+      return {flagged,bankBefore,bankAfter:S.simBank["all/box"].bank,rowPhantom:S.journal[0]&&S.journal[0].phantom,
+        counted:journalStats()["all/box"].n}; })()`);
+    T("a phantom position open at repair time closes without re-booking its P&L, and its journal row stays flagged", open.flagged === "K1" && open.bankAfter === open.bankBefore && open.rowPhantom === "K1" && open.counted === 0, open);
   }
 
   /* ---- sundial (§5): NOAA position for Dayton at the equinox */
