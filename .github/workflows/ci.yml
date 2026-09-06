@@ -22,6 +22,12 @@ jobs:
       - name: Harnesses (CLAUDE.md section 6)
         run: npm test
 
+      # OCCVM: the spine is generated content under a fence (2.0 migration process section 0b). The
+      # spliced block must match occvm/spine.css, or someone hand-edited inside the fence and the next
+      # splice will silently revert it.
+      - name: OCCVM spine is spliced and current
+        run: node occvm/tools/splice-spine.js --check
+
       - name: H-protocol unit suites
         run: npm run test:units
 

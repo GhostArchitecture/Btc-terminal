@@ -72,4 +72,42 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the light vector is unit length (lx=sin az, ly=-cos az)", Math.abs(Math.hypot(lx, ly) - 1) < 2e-3, { lx, ly });
 }
 
+/* --- the spine: spliced, matching, above the tool's own CSS, and no wider than SPINE.md says --- */
+{
+  const fs = require("fs"), path = require("path");
+  const ROOT = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const spine = fs.readFileSync(path.join(ROOT, "occvm", "spine.css"), "utf8");
+  const doc = fs.readFileSync(path.join(ROOT, "occvm", "SPINE.md"), "utf8");
+  const { block, OPEN, CLOSE } = require("../occvm/tools/splice-spine");
+
+  const opens = html.split(OPEN).length - 1, closes = html.split(CLOSE).length - 1;
+  T("the spine is spliced exactly once", opens === 1 && closes === 1, { opens, closes });
+
+  const i = html.indexOf(OPEN), j = html.indexOf(CLOSE);
+  T("the spliced block matches occvm/spine.css", html.slice(i, j + CLOSE.length) === block(spine));
+
+  /* 1.0 is a no-op because the spine is inlined ABOVE the tool's own declarations, so the tool wins
+     every collision by ordinary cascade order (2.0 migration process section 3.2). If the block ever
+     moves below them it stops being inert and starts overriding. */
+  T("the spine sits above the tool's own :root", i >= 0 && i < html.indexOf("--sub:#1b1a22"));
+
+  /* SPINE.md section 2a enumerates what 1.0 governs. The code cannot quietly grow past the document:
+     the expected set is parsed out of the document, not restated here. */
+  const sec = doc.slice(doc.indexOf("### 2a."), doc.indexOf("### 2b."));
+  const documented = new Set((sec.match(/--[a-z0-9-]+/g) || []));
+  const declared = new Set(
+    (spine.slice(spine.indexOf(":root"), spine.indexOf("---- primitives")).match(/^\s*(--[a-z0-9-]+)\s*:/gm) || [])
+      .map(x => x.trim().replace(/\s*:$/, "")));
+  const extra = [...declared].filter(k => !documented.has(k));
+  T("the spine declares nothing SPINE.md section 2a does not list", extra.length === 0, extra);
+  T("the spine declares every token section 2a lists", [...documented].every(k => declared.has(k)),
+    [...documented].filter(k => !declared.has(k)));
+
+  /* Every primitive is namespaced, because .row/.wrap/.note already mean incompatible things in the
+     two tools (OCCVM-D11): an un-namespaced spine primitive breaks a tool on the day it is inlined. */
+  const sels = (spine.match(/^\.[a-zA-Z][\w-]*/gm) || []);
+  T("every spine primitive is namespaced .occvm-", sels.length > 0 && sels.every(x => x.startsWith(".occvm-")), sels);
+}
+
 process.exit(done());

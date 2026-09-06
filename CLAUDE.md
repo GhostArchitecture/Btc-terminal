@@ -943,3 +943,43 @@ the premium.** If the band is rejecting a large share of readings, the band is t
 Both bounds are §11 thresholds in the full sense. `VRP_TICK_REL_MAX` and `SCHEMA_SIR_MIN`/`SCHEMA_SIR_MAX` may be
 tightened at any time; **loosening either to admit more readings is tuning a filter against its own results and
 fires §11.7 clause 6.** Any change is a recorded re-registration, not an edit.
+
+---
+
+## 12. OCCVM — the shared visual system (2026-09-06)
+
+The spine this tool shares with the Ghost Codex Rhyme Instrument. `occvm/SPINE.md` is the law; the rest of
+this section is where it touches this repository.
+
+**It did not exist until now.** The OCCVM roadmap and its 2.0 migration process were both written against a
+spine document that had never been committed — `OCCVM` matched zero tracked files in either repository, and
+the laws, defects and conformance table every release cited were unrecoverable. `occvm/SPINE-AUDIT.md` is
+the measured inventory the spine was then authored from.
+
+- **`occvm/spine.css`** is spliced into `index.html` under a fence by `occvm/tools/splice-spine.js`. **Never
+  hand-edit inside the fence** — the next splice reverts it silently, exactly as §6 says about the units.
+  Re-splicing is byte-identical; `--check` verifies and CI runs it.
+- **1.0 changes nothing.** The spine is inlined above this tool's own CSS, so every value it declares is
+  shadowed by or identical to one already here. Verified: zero deltas across 270 golden values.
+- **`occvm/golden/`** is the field record the migration process assumes exists. `record.js` drives both
+  tools in Chromium at three pinned sun elevations with the clock, timezone and seed injected;
+  `verify.js` diffs. Two tiers: `tokens.json` is byte-stable and asserted on, the PNGs are for the eye and
+  **never diffed for equality** — rasterisation differs per machine. `npm run golden` / `npm run golden:verify`.
+- **`test/occvm.js`** holds the determinism seam and the spine guards. Two of its assertions deliberately
+  pin *current* behaviour, not desired: `--night` is this tool's binary step and `--elev` holds its 0.15
+  night floor. The spine's law is the opposite of both (`OCCVM-D2`, closing at 1.2), so resolving them
+  fails this harness loudly rather than drifting.
+- **`veinLayer()` reads an injected session seed** (`sessionStorage["btc.seed"]`) instead of the wall clock.
+  That closes §10.5's note that the veins reseeded per hour where §5 said per session.
+- **This repository now has CI** (`.github/workflows/ci.yml`): the harnesses, the unit suites, the
+  duplicate-definition check §7.1 required by hand, the splice-reproducibility check §6 required by hand,
+  the spine check, and a BTC-only golden diff on Chromium.
+
+**Open against this tool at 1.0:** `OCCVM-D1` (the expired `--ink --meas --bondi` block, still referenced),
+`D2` (one light incomplete), `D3` (OS-supplied numeric face), `D5` (half-installed PWA — manifest and icons
+ship with no service worker), `D6` (no mineral system; `--amethyst` is declared once and referenced zero
+times), `D8` (`--glow` is a `calc()` and never resolves to a number), `D9` (the light vector tracks the sun
+below the horizon). Each names the release that closes it in SPINE.md §6.
+
+`occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
+`TZ=America/New_York`, because Rhyme's reads the local clock.

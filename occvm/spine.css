@@ -1,0 +1,77 @@
+/* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
+ *
+ * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
+ * next splice reverts it silently, and the loss reads as a mystery bug three sessions later.
+ *
+ * 1.0 IS A NO-OP BY CONSTRUCTION. Every value here is one both tools were already carrying, measured
+ * identical at all three golden instants. The one exception is --serif, spine-governed in a single
+ * spelling; the two tools held the same five faces in the same order with different whitespace.
+ * Anything else that moves in occvm/golden after a splice is a splice bug, not a design change.
+ */
+
+:root {
+  /* OCCVM-L1 — substrate and inscription. Only the invariants are here; --sub/--sub-hi/--sub-lo/--bone
+     are derived from twilight in Rhyme and static in BTC, so they are registered (SPINE.md 2b) and
+     become spine at 1.2 when L9's ramp is unified. */
+  --edge: #0b0a10;
+  --bone-lo: #b7ad9c;
+
+  /* OCCVM-L5 — the gilt ramp marks what decides, and nothing else. */
+  --gilt-c: #7a5510;
+  --gilt-b: #d9a52c;
+  --gilt-a: #ffe9a3;
+
+  /* binding */
+  --bronze-c: #4f3a1c;
+  --bronze-b: #8f6a35;
+  --bronze-a: #d9a866;
+
+  /* seam, age */
+  --verdigris: #3f9a86;
+  --verdigris-lo: #23574c;
+
+  /* OCCVM-L7 — the serif carries section heads in both tools. The mono face is OS-supplied in both and
+     is registered, not governed, until 1.3 closes D3. */
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+}
+
+/* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
+ * Namespaced, because .row, .wrap and .note already mean incompatible things in the two tools (D11).
+ * Declared at 1.0 and used by nothing; adoption is per-surface, at the release each law names. Every
+ * var() below carries a fallback so a primitive is inert rather than broken in a tool that has not yet
+ * been given the token.
+ */
+
+/* OCCVM-L4 — cast shadow derives from the light vector. No fixed offset survives outside this rule. */
+.occvm-cast {
+  box-shadow:
+    calc(var(--lx, 0) * var(--rake, 4px)) calc(var(--ly, 1) * var(--rake, 4px))
+    calc(var(--rake, 4px) * 1.5) rgba(0, 0, 0, var(--shade-a, .6));
+}
+
+/* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
+.occvm-slab {
+  border-radius: 3px;
+  background: var(--sub, #1b1a22);
+  border: 1px solid var(--edge);
+  box-shadow:
+    inset calc(var(--lx, 0) * 1px) calc(var(--ly, 1) * 1px) 0 rgba(255, 255, 255, var(--hi-a, .12)),
+    inset calc(var(--lx, 0) * -1px) calc(var(--ly, 1) * -1px) 0 rgba(0, 0, 0, var(--cut-a, .35));
+}
+
+/* OCCVM-L1 — a hairline division, ink at its faintest. */
+.occvm-rule {
+  border: 0;
+  border-top: 1px solid rgba(236, 227, 208, .13);
+}
+
+/* OCCVM-L8 — one focus ring across the system. Adopted at 1.5. */
+.occvm-focus:focus-visible {
+  outline: 2px solid var(--gilt-b);
+  outline-offset: 2px;
+}
+
+/* OCCVM-L7 — tabular figures under a column. Adopted at 1.3. */
+.occvm-num {
+  font-variant-numeric: tabular-nums lining-nums;
+}

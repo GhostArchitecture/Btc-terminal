@@ -17,8 +17,8 @@ The roadmap opens: *"Current: **1.0** — BTC `build-20260906210313`, Rhyme `bui
 |---|---|
 | BTC at `build-20260906210313` | Deployed and repo HEAD both read `build-20260906195621`. The declared stamp exists in no commit, no artifact, no host. |
 | Rhyme at `build-20260906210925` | The deployed artifact carried **no build stamp of any kind** — `build-` matched zero times in 121,439 bytes. *Since corrected: the tool now mints one through `build.js --stamp` (§10).* |
-| A spine inlined by both tools at 1.0 | `OCCVM` appears in **zero tracked files** across both repositories. The single `git grep` hit is the substring inside the hostname `relay.ghostarchitectureoccvm.workers.dev`. |
-| Laws L1–L9, defects D1–D7, the §7 conformance table | Not in either repository. Not attached. Unrecoverable — they existed only in conversation. |
+| A spine inlined by both tools at 1.0 | `OCCVM` appeared in **zero tracked files** across both repositories — the single `git grep` hit was the substring inside `relay.ghostarchitectureoccvm.workers.dev`. *Since authored from this inventory and inlined in both: `occvm/SPINE.md`, `occvm/spine.css` (§11).* |
+| Laws L1–L9, defects D1–D7, the §7 conformance table | Not in either repository. Not attached. Unrecoverable — they existed only in conversation. *Re-authored in `occvm/SPINE.md`; the roadmap's own references to L2, L6 and L9 pinned three of the nine, and the release sequence placed the rest.* |
 
 Two further consequences of that last row, both load-bearing:
 
@@ -284,31 +284,29 @@ one. §0b should be derived from Rhyme's CI job, which is a working implementati
 
 ---
 
-## 8. What the spine has to decide
+## 8. What the spine has to decide — resolved
 
-Not proposals — the decisions this audit surfaces that cannot be deferred, each with the fact that forces it.
+Every item below is now decided in `occvm/SPINE.md`, defaulting to whatever the OCCVM roadmap already
+states or implies. Where the roadmap is silent, the derivation is named. Kept here with its resolution so
+the reasoning survives next to the fact that forced it.
 
-1. **Primitive namespacing.** `.row`, `.wrap`, `.note` collide with incompatible meanings (§4). Namespace the
-   spine's primitives or rename in the tools, before any spine CSS is written.
-2. **Law identifiers.** `L1`/`L2` are taken by BTC defect IDs (§0). Pick a distinct prefix.
-3. **`--glow`'s range and derivation.** Two non-overlapping ranges under one name (§2c). One wins, or the
-   token splits.
-4. **`--night`: step or ramp.** Binary in BTC, an 8° ramp in Rhyme (§3). Every `calc()` that reads it depends
-   on the answer.
-5. **`--elev`: scale and night floor.** ×1.4 with a 0.15 floor, or ×1.25 falling to zero (§3).
-6. **Static or dynamic substrate.** `--sub`, `--sub-hi`, `--sub-lo`, `--bone` are constants in BTC and
-   functions of twilight in Rhyme (§2b) — and Rhyme drifts `--bone` without `--bone-lo`.
-7. **Which solar implementation is canonical.** Both are correct to 0.6°; keeping two is two things to
-   maintain and two things to diverge (§3).
-8. **Whether the mineral system is spine or product.** BTC has none (§5). If it is spine, 1.4 is a port; if it
-   is product, D6 is not a defect.
-9. **What replaces 1.4's sync criterion**, given no common origin (§5).
+| # | forced by | resolution | authority |
+|---|---|---|---|
+| 1 | `.row` `.wrap` `.note` collide with incompatible meanings (§4) | every spine primitive is namespaced `.occvm-*` | the roadmap already writes `.occvm-cast` at 1.2; this generalises it |
+| 2 | `L1`/`L2` are taken by BTC defect IDs (§0) | laws are `OCCVM-L1…L9`, defects `OCCVM-D1…`, bare forms as shorthand | minimal deviation preserving the roadmap's own vocabulary |
+| 3 | `--glow`: two non-overlapping ranges, and BTC's never resolves (§2c) | every light-derived token is a **resolved scalar** written by the sundial, never a `calc()`. Rhyme's curve stands until 1.7 | 1.7 refines the night model, so it must be readable arithmetically first |
+| 4 | `--night`: step in BTC, ramp in Rhyme (§3) | the **continuous ramp**, 0 at −2° to 1 at −10° | 1.7 requires civil / nautical / astronomical dusk as distinct states; a binary step cannot express them |
+| 5 | `--elev`: ×1.4 with a 0.15 night floor, or ×1.25 to zero (§3) | Rhyme's ×1.25 to zero; **the night floor moves to `--amb`** | 1.2 ports Rhyme's six response tokens, all computed from `e`; a different `e` would make the ported tokens mean different things in each tool |
+| 6 | substrate static in BTC, derived in Rhyme (§2b) | **derived**, and a derived token derives with its whole family | 1.2's "no fixed offsets survive" and 2.0's "no hex is authored outside a material definition" both eliminate static values |
+| 7 | two solar implementations, both correct to 0.6° (§3) | **BTC's full NOAA position** is canonical; **Rhyme's derivation** of response from it is canonical | the roadmap is silent; each tool keeps its better half, and two implementations is two things to drift |
+| 8 | BTC has no mineral system (§5) | minerals are **spine**: a frozen set with fixed meanings | 1.4 states "mineral set frozen with fixed meanings (L6)"; 2.0's non-goal guard defers *properties* |
+| 9 | no common origin, so 1.4's sync criterion is unreachable (§5) | **conformance replaces sharing**: one set, one meaning, one behaviour, stored twice | the only departure from a stated roadmap exit in the spine, and it departs because the criterion is physically unreachable |
 
 ---
 
 ## 9. Status
 
-This document is an inventory, not a spine. It is committed to both repositories at identical content so the
+This document is an inventory, not a spine — `occvm/SPINE.md` is the spine, authored from it (§11). It is committed to both repositories at identical content so the
 next session starts from measured facts rather than from a baseline that was never shipped.
 
 `occvm/tools/solar-compare.js` reproduces every number in §3 (run it as
@@ -368,3 +366,29 @@ fatal by design.
 **The cross-repo seam.** `record.js` reaches the sibling `Rhyme-Instrument` clone by relative path and skips
 it with a clear message when absent. With no monorepo and no shared origin, sibling clones are the available
 arrangement; Rhyme's own CI therefore cannot run the golden diff.
+
+
+---
+
+## 11. OCCVM 1.0, constituted
+
+`occvm/SPINE.md` is the law, `occvm/spine.css` its machine-readable half, `occvm/tools/splice-spine.js`
+the fenced idempotent splice. All three are committed identically to both repositories; the splice targets
+BTC's `index.html` and Rhyme's `tome-src/20_style.css` — the source stylesheet, never the assembled
+artifact, per migration §0b#2.
+
+**1.0 changes nothing, and that is measured rather than claimed: zero deltas across all 270 golden values
+in both tools.** The spine is inlined above each tool's own CSS, so every value it declares is either
+identical to the tool's or shadowed by it — migration §1's parallel-spine pattern, where an untouched tool
+still renders because the names it references are still defined. Adoption is deleting the shadowing
+declarations, per surface, at the release whose law covers it.
+
+Guards, so the document and the code cannot drift apart: `test/occvm.js` asserts the block is spliced
+exactly once, matches `spine.css`, sits above the tool's `:root`, declares **nothing SPINE.md §2a does not
+list and everything it does**, and namespaces every primitive. Verified to bite — an undocumented token
+added to `spine.css` fails it by name. Rhyme carries the equivalent in `engine-node/test/spine.test.js`,
+and both CIs run `splice-spine.js --check`.
+
+The eleven defects in SPINE.md §6 are the roadmap's D1–D7 renumbered onto the same releases, plus four
+found by measurement: `--glow` unresolvable (D8), the night light vector (D9), Rhyme's `--bone` deriving
+without `--bone-lo` (D10), and the primitive collisions (D11, closed at 1.0 by namespacing).
