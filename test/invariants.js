@@ -243,6 +243,20 @@ function part2() {
     T("nothing is deleted — every row is still on the record", r.readsKept === 2 && r.journalKept === 2, r);
     T("a genuine cheap read late in the window is not flagged", r.genuineFlagged === false, r);
     T("the phantom's P&L is withdrawn from its arm bank and the arm is marked contaminated", r.bankAfter === 995 && r.contaminated === true, { bank: r.bankAfter, contaminated: r.contaminated });
+    /* the withdrawal must never be the thing that retires an arm: an under-water result is an artifact of sizing
+       against money the arm never had, so a contaminated arm restarts rather than tripping the bankruptcy floor */
+    const under = R(`(function(){
+      localStorage.removeItem("btc.repair"); localStorage.removeItem("btc.journal"); S.repair=null; S.journal=[]; S.simBank={}; jLoad(); S.swing={v:1,w:{}};
+      S.journal=[{arm:"all/box",tau:14.2,entry:0.03,p:0.96,base:0.024,be:0.16,pnl:900,pnlShare:30,ticker:"T",side:"NO",reason:"target",hit:true},
+                 {arm:"all/box",tau:6,entry:0.06,p:0.2,base:0.042,be:0.16,pnl:-400,pnlShare:-9,ticker:"U",side:"YES",reason:"gate",hit:false}];
+      S.simBank["all/box"].bank=850;    /* 1000 + 900 phantom - 1050 of real losses: withdrawing the phantom leaves it under water */
+      const rep=repairLedgers(); const B=S.simBank["all/box"];
+      /* would the arm still take a new position? */
+      const e={ticker:"V",side:"YES",strike:1,close:${Date.UTC(2026,8,6,14,0,0)}+600000,reads:[],graded:false,hit:null};
+      const read={t:1,tau:10,ask:0.05,p:0.5,base:0.05,be:0.16,ofi:null,maxAfter:0}; e.reads.push(read); simEnter(e,read,"V|YES",0.03);
+      return {bank:B.bank,restarted:!!B.restarted,contaminated:!!B.contaminated,rec:rep.banks["all/box"],stillTrades:!!(e.sim&&e.sim["all/box"])}; })()`);
+    T("a withdrawal that would leave an arm under water restarts it instead of retiring it", under.bank === 1000 && under.restarted === true && under.contaminated === true && under.stillTrades === true, under);
+    T("the restart records what the bank was and what was removed", under.rec && under.rec.was === 850 && under.rec.removed === 900 && under.rec.restarted === true, under.rec);
     /* only the bad ROW drops out: the affected window-side keeps scoring its remaining clean reads */
     T("stats exclude the flagged rows and keep the clean ones", r.jStats.n === 1 && r.jStats.total === -5 && r.sStats.n === 2, { journal: r.jStats.n, total: r.jStats.total, swingSides: r.sStats.n });
     T("refSnap skips a flagged snapshot and scores the clean one", r.scoredTau === 6, r.scoredTau);

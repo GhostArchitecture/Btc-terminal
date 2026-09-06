@@ -1710,10 +1710,17 @@ function repairLedgers(){
   for(const a of SIM_ARMS){
     const B=S.simBank[a.id]; if(!B) continue;
     const bad=moved[a.id]||0; if(!bad) continue;
+    const was=B.bank;
     B.bank=+(B.bank-bad).toFixed(2);          /* withdraw exactly what the phantom trades paid in */
     B.contaminated=true;                      /* later trades were still SIZED against the inflated bank, so the curve is approximate */
+    /* If the withdrawal alone drives the arm under, that figure is an artifact, not a verdict: the surviving trades
+       bought shares with money the arm never really had, so their losses are overstated by an unknowable amount.
+       Letting it stand would trip the bankruptcy floor and retire the arm — killing the very comparison the
+       simulation exists to run. Restart the bankroll instead, marked, with every trade still on the record and the
+       per-share statistics (which sizing never touched) carrying the real answer. */
+    if(B.bank<=0){ B.bank=SIM.bank0; B.restarted=out.t; }
     B.peak=Math.max(SIM.bank0,B.bank); B.dd=0;/* the drawdown path is unrecoverable once its inputs are withdrawn */
-    out.banks[a.id]={removed:+bad.toFixed(2),bank:B.bank};
+    out.banks[a.id]={removed:+bad.toFixed(2),was:+was.toFixed(2),bank:B.bank,restarted:!!B.restarted};
   }
   /* edge snapshots: the first snap of a rolled window could carry the old book's 98/99 quote.
      Hourly ladder rungs are legitimately extreme, so only the 15-minute series is judged. */
@@ -1780,7 +1787,9 @@ function renderJournal(){
   const st=journalStats();
   ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id]; const isTool=a.entry==="tool";
     const head='<tr'+(isTool?' style="background:rgba(217,165,44,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
-    const bankTxt='$'+s.bank.toFixed(2)+(s.bank<=0?' <span style="color:var(--down)">\u00b7 busted</span>':'');
+    const Bk=S.simBank[a.id]||{};
+    const bankTxt='$'+s.bank.toFixed(2)+(s.bank<=0?' <span style="color:var(--down)">\u00b7 busted</span>':'')
+      +(Bk.restarted?' <span style="color:var(--faint)">\u00b7 restarted (K1)</span>':(Bk.contaminated?' <span style="color:var(--faint)">\u00b7 curve approx (K1)</span>':''));
     if(!s.n) return head+'<td class="num">'+bankTxt+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
     return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">'+bankTxt+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
       +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--dim)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
