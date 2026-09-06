@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BTC Terminal">
-<meta name="theme-color" content="#F6FAFC">
+<meta name="theme-color" content="#1b1a22">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -14,180 +14,209 @@
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
   :root{
-    --bg-hi:#F6FAFC; --bg-lo:#D9E8F2;
-    --glass:rgba(255,255,255,.58); --glass-hi:rgba(255,255,255,.80);
-    --edge:rgba(255,255,255,.9);
-    --shadow:0 12px 32px rgba(15,46,63,.12),0 2px 8px rgba(15,46,63,.06);
-    --ink:#0F2E3F; --meas:#0F2E3F; --dim:#4A6B7E; --faint:#7D97A6;
-    --bondi:#0087A8; --bondi-deep:#006E8A;
-    --model:#0087A8; --model-dim:#5FB4C6;
-    --up:#0E9464; --down:#D6493D; --err:#D6493D; --warn:#C77F1F;
-    --rule:rgba(15,46,63,.14); --ink2:rgba(15,46,63,.08);
+    /* the tome's material, as shipped in the rhyme instrument, with ruby added for this tool */
+    --field:#09080d; --sub:#1b1a22; --sub-hi:#2c2a36; --sub-lo:#0e0d13; --edge:#0b0a10;
+    --bone:#ece3d0; --bone-lo:#b7ad9c; --bone-dim:#8e8778;
+    --gilt-a:#ffe9a3; --gilt-b:#d9a52c; --gilt-c:#7a5510;
+    --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f; --ruby-lo:#6b1a2e; --amethyst:#8d5cf0; --amethyst-lo:#4a2a8c;
+    --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
+    /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
+    --lx:.35; --ly:-.85; --elev:.55; --night:0;
+    /* legacy names kept so nothing downstream breaks */
+    --ink:var(--bone); --meas:var(--bone); --dim:var(--bone-lo); --faint:var(--bone-dim);
+    --bondi:var(--verdigris); --bondi-deep:var(--gilt-b); --model:var(--gilt-b); --model-dim:var(--gilt-c);
+    --up:var(--malachite); --down:var(--ruby); --err:var(--ruby); --warn:var(--gilt-b);
+    --rule:rgba(236,227,208,.13); --ink2:rgba(236,227,208,.07);
+    --glass:rgba(27,26,34,.74); --glass-hi:rgba(44,42,54,.86);
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,sans-serif;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --lit:rgba(255,255,255,calc(.16*var(--elev) + .05)); --shade:rgba(0,0,0,.62);
+    --glow:calc(var(--night)*.28);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:linear-gradient(180deg,var(--bg-hi) 0%,var(--bg-lo) 100%);
-    background-attachment:fixed;color:var(--ink);font-family:var(--sans)}
-  body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;
-    background:radial-gradient(60% 38% at 50% -6%,rgba(255,255,255,.9),rgba(255,255,255,0) 70%)}
-  .wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px;position:relative}
-  .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);font-family:var(--sans)}
+  html,body{background:var(--field);color:var(--bone);font-family:var(--sans)}
+  body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;
+    background:
+      radial-gradient(120% 70% at calc(50% + var(--lx)*20%) -10%, rgba(120,90,200,calc(.10*var(--elev) + .05*var(--night))) 0%, transparent 60%),
+      linear-gradient(180deg,#100e16,#09080d 40%);
+    background-attachment:fixed}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:var(--vein,none);opacity:.55}
+  .wrap{max-width:1180px;margin:0 auto;padding:14px 14px 40px;position:relative}
+  .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-dim);font-family:var(--sans)}
   .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
-  .amber{color:var(--bondi)}
-  .up{color:var(--up)} .down{color:var(--down)}
-  a{color:var(--dim)}
+  .amber{color:var(--gilt-b)}
+  .up{color:var(--malachite)} .down{color:var(--ruby)}
+  a{color:var(--gilt-b)}
 
-  .tile{background:var(--glass);border:1px solid rgba(255,255,255,.65);
-    border-radius:20px;box-shadow:var(--shadow);position:relative;overflow:hidden;
-    -webkit-backdrop-filter:blur(16px) saturate(1.35);backdrop-filter:blur(16px) saturate(1.35)}
-  .tile::before{content:"";position:absolute;left:10px;right:10px;top:0;height:1px;
-    background:linear-gradient(90deg,transparent,var(--edge),transparent);pointer-events:none}
-  @supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){
-    .tile{background:rgba(255,255,255,.88)}
-  }
+  /* slabs: obsidian glass — sheen where the light lands, bevel following the sun, self-lit at night */
+  .tile{position:relative;overflow:hidden;border-radius:20px;color:var(--bone);
+    background:
+      radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
+      radial-gradient(120% 90% at 100% 110%, rgba(63,191,126,.06) 0%, transparent 60%),
+      linear-gradient(160deg,var(--sub-hi) 0%,var(--sub) 45%,var(--sub-lo) 100%);
+    border:1px solid rgba(255,255,255,.07);
+    box-shadow:
+      inset calc(var(--lx)*1.2px) calc(var(--ly)*1.2px) 0 rgba(255,255,255,.14),
+      inset calc(var(--lx)*-1.2px) calc(var(--ly)*-1.2px) 0 var(--shade),
+      0 16px 36px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4),
+      0 0 28px rgba(63,191,126,var(--glow));
+    -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
+  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--vein,none);opacity:.5;mix-blend-mode:screen}
+  .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,calc(.22*var(--elev)+.08)),transparent)}
+  .tile > *{position:relative;z-index:1}
+  @supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){ .tile{background-color:#1b1a22} }
 
-  button{font:inherit;color:var(--bondi-deep);background:var(--glass-hi);
-    border:1px solid rgba(15,46,63,.12);border-radius:999px;padding:5px 14px;cursor:pointer;
-    letter-spacing:.08em;font-size:11.5px}
-  button:hover{background:#fff}
-  button:focus-visible{outline:2px solid var(--bondi);outline-offset:2px}
+  /* cast bronze controls; the active one carries the patina */
+  button{font:inherit;color:var(--bone);cursor:pointer;letter-spacing:.08em;font-size:11.5px;padding:6px 14px;border-radius:999px;
+    background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
+    border:1px solid rgba(0,0,0,.55);
+    box-shadow:inset 0 1px 0 rgba(255,236,190,.45), inset 0 -1px 0 rgba(0,0,0,.5), 0 2px 5px rgba(0,0,0,.5);
+    text-shadow:0 1px 0 rgba(0,0,0,.45)}
+  button:hover{filter:brightness(1.08)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--gilt-a);outline-offset:2px}
+  button[aria-pressed="true"],button.sel{background:linear-gradient(180deg,var(--verdigris) 0%,var(--verdigris-lo) 100%);color:var(--bone)}
+  button:disabled{opacity:.45;cursor:default;filter:none}
 
-  /* header */
-  header{display:flex;justify-content:space-between;align-items:center;gap:10px;
-    padding:10px 16px;margin-bottom:14px;flex-wrap:wrap}
-  header.tile{border-radius:18px}
-  .mark{font-weight:700;letter-spacing:.02em;font-size:15px}
-  .mark small{color:var(--faint);font-weight:500;letter-spacing:.18em;font-size:9px;margin-left:8px;text-transform:uppercase}
+  /* binding: brushed raw bronze, verdigris in the seam */
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;margin-bottom:14px;flex-wrap:wrap}
+  header.tile{border-radius:18px;
+    background:
+      repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px),
+      radial-gradient(60% 50% at calc(50% + var(--lx)*40%) 0%, rgba(255,236,190,calc(.22*var(--elev)+.06)) 0%, transparent 70%),
+      linear-gradient(180deg,#6a4f2b 0%,#4a3520 60%,#3a2917 100%);
+    border-color:rgba(0,0,0,.6);
+    box-shadow:inset 0 1px 0 rgba(255,236,190,.28), inset 0 -3px 0 var(--verdigris-lo), 0 14px 30px rgba(0,0,0,.6)}
+  header.tile::before{display:none}
+  .mark{font-family:var(--serif);font-weight:400;letter-spacing:.01em;font-size:19px;color:#f3e6c6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+  .mark small{color:#cdb98e;font-weight:400;letter-spacing:.18em;font-size:9px;margin-left:10px;text-transform:uppercase;font-family:var(--sans)}
   .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .pill{font-size:9.5px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;
-    border:1px solid var(--rule);background:rgba(255,255,255,.5)}
-  .pill.live{color:var(--up);border-color:rgba(14,148,100,.4)}
-  .pill.warn{color:var(--warn);border-color:rgba(199,127,31,.4)}
-  .pill.dead{color:var(--err);border-color:rgba(214,73,61,.45)}
+  .pill{font-size:9.5px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.5);
+    background:rgba(0,0,0,.28);color:#e7dcc2;box-shadow:inset 0 1px 2px rgba(0,0,0,.6), 0 1px 0 rgba(255,236,190,.15)}
+  .pill.live{color:var(--malachite)} .pill.warn{color:var(--gilt-a)} .pill.dead{color:var(--ruby)}
+  #sunpill{font-family:var(--serif);text-transform:none;letter-spacing:.02em;font-size:12px}
 
   /* spot */
   #spot{padding:16px 18px;margin-bottom:14px}
-  #px{font-size:clamp(38px,9vw,64px);font-weight:700;letter-spacing:-.02em;transition:color .5s}
-  @media (prefers-reduced-motion:no-preference){
-    #px.flash-up{color:var(--up);transition:none}
-    #px.flash-down{color:var(--down);transition:none}
-  }
+  #px{font-size:clamp(38px,9vw,64px);font-weight:600;letter-spacing:-.02em;transition:color .5s;color:var(--bone);
+    text-shadow:0 1px 0 rgba(0,0,0,.6), 0 0 22px rgba(236,227,208,calc(.15*var(--night)))}
+  @media (prefers-reduced-motion:no-preference){ #px.flash-up{color:var(--malachite);transition:none} #px.flash-down{color:var(--ruby);transition:none} }
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .chip{background:rgba(255,255,255,.55);border:1px solid rgba(15,46,63,.08);
-    border-radius:999px;padding:3px 10px;font-size:11.5px}
+  .chip{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:3px 10px;font-size:11.5px;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.6), inset calc(var(--lx)*-0.5px) calc(var(--ly)*-0.5px) 0 rgba(255,255,255,.08)}
   .chip .lbl{margin-right:6px}
 
   section{margin-top:18px}
   #viewChart section{margin-top:0}
-  .shead{display:flex;justify-content:space-between;align-items:baseline;
-    padding:0 4px 7px;margin-bottom:10px;border-bottom:1px solid var(--rule)}
-  .shead .note{font-size:10.5px;color:var(--faint)}
+  .shead{display:flex;justify-content:space-between;align-items:baseline;padding:0 4px 8px;margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,.55);
+    box-shadow:0 1px 0 rgba(255,255,255,.06)}
+  .shead .lbl{font-family:var(--serif);text-transform:none;letter-spacing:.01em;font-size:16px;color:var(--bone);text-shadow:0 1px 0 rgba(0,0,0,.6)}
+  .shead .note{font-size:10.5px;color:var(--bone-dim)}
   #viewData section{padding:14px 16px;border-radius:20px}
   #viewData .shead{padding-top:0}
 
   /* sources */
-  #srcrows .row{display:grid;grid-template-columns:16px 7.4em 1fr 5.2em 4.6em 4.2em;
-    gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--ink2);font-size:12.5px}
+  #srcrows .row{display:grid;grid-template-columns:16px 7.4em 1fr 5.2em 4.6em 4.2em;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--ink2);font-size:12.5px}
   #srcrows .row:last-child{border-bottom:0}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--faint);align-self:center}
-  .dot.ok{background:var(--up)} .dot.stale{background:var(--warn)} .dot.err{background:var(--err)}
-  .srcname{color:var(--dim)} .srcname em{font-style:normal;color:var(--faint);font-size:8.5px;letter-spacing:.12em;margin-left:5px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--bone-dim);align-self:center;box-shadow:0 0 6px currentColor}
+  .dot.ok{background:var(--malachite);color:var(--malachite)} .dot.stale{background:var(--gilt-b);color:var(--gilt-b)} .dot.err{background:var(--ruby);color:var(--ruby)}
+  .srcname{color:var(--bone-lo)} .srcname em{font-style:normal;color:var(--bone-dim);font-size:8.5px;letter-spacing:.12em;margin-left:5px}
   .r{text-align:right}
 
   /* chart tray */
   #chartbox{border-radius:22px;padding:10px 10px 4px}
-  canvas{display:block;width:100%}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;padding:8px 6px 6px;font-size:9px;
-    letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-family:var(--sans)}
+  canvas{display:block;width:100%;border-radius:12px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;padding:8px 6px 6px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--bone-dim);font-family:var(--sans)}
   .sw{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  #lockbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:0 4px 8px}
+  #lockbar .note{font-size:10px;color:var(--bone-dim);letter-spacing:.12em;text-transform:uppercase;margin-right:auto}
+  #lockSwing{background:radial-gradient(60% 60% at calc(50% - var(--lx)*30%) calc(35% + var(--ly)*20%), rgba(255,255,255,.5) 0%, transparent 50%),linear-gradient(180deg,var(--malachite),var(--malachite-lo));color:#0b0a10;text-shadow:none;font-weight:600}
+  #lockResume{display:none}
+  body.locked #lockResume{display:inline-block}
 
-  /* arming tray */
-  #armbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-    border-radius:18px;padding:12px 14px;margin-bottom:12px}
-  #armbar input{font-family:var(--mono);font-size:13px;color:var(--ink);
-    background:rgba(255,255,255,.75);border:1px solid rgba(15,46,63,.14);
-    border-radius:12px;padding:7px 12px;width:10em}
-  #armbar input::placeholder{color:var(--faint)}
-  #armbar input:focus-visible{outline:2px solid var(--bondi);outline-offset:1px}
+  /* arming tray: the tool's binding — inputs are engraved wells, ARM a malachite cabochon that shows patina when armed */
+  #armbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-radius:18px;padding:12px 14px;margin-bottom:12px}
+  #armbar input{font-family:var(--mono);font-size:13px;color:var(--bone);background:var(--sub-lo);border:1px solid rgba(0,0,0,.7);border-radius:12px;padding:7px 12px;width:10em;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.7), inset calc(var(--lx)*-0.6px) calc(var(--ly)*-0.6px) 0 rgba(255,255,255,.08)}
+  #armbar input::placeholder{color:var(--bone-dim)}
+  #armbar input:focus-visible{outline:2px solid var(--gilt-a);outline-offset:1px}
   #armbar input:disabled{opacity:.45}
-  .tgl{display:inline-flex;background:rgba(15,46,63,.06);border-radius:999px;padding:2px;gap:2px}
-  .tgl button{border:0;background:transparent;color:var(--dim);border-radius:999px;
-    padding:5px 12px;font-size:10.5px;letter-spacing:.1em}
-  .tgl button.sel{background:#fff;color:var(--bondi-deep);box-shadow:0 1px 4px rgba(15,46,63,.18)}
-  #armBtn{background:var(--bondi);border-color:var(--bondi-deep);color:#fff;font-weight:600}
-  #armBtn:hover{background:var(--bondi-deep)}
-  #armBtn:disabled{opacity:.4;cursor:default}
-  #armMsg{font-size:10.5px;color:var(--faint)}
+  .tgl{display:inline-flex;background:rgba(0,0,0,.45);border-radius:999px;padding:2px;gap:2px;box-shadow:inset 0 1px 3px rgba(0,0,0,.7)}
+  .tgl button{border:0;background:transparent;color:var(--bone-lo);border-radius:999px;padding:5px 12px;font-size:10.5px;letter-spacing:.1em;box-shadow:none;text-shadow:none}
+  .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  #armBtn{color:#0b0a10;font-weight:700;text-shadow:none;
+    background:radial-gradient(60% 60% at calc(50% - var(--lx)*30%) calc(35% + var(--ly)*20%), rgba(255,255,255,.55) 0%, transparent 55%),linear-gradient(180deg,var(--malachite) 0%,var(--malachite-lo) 100%);
+    border-color:rgba(0,0,0,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.6)}
+  #armBtn:hover{filter:brightness(1.06)}
+  #armBtn:disabled{opacity:.45}
+  #armMsg{font-size:10.5px;color:var(--bone-dim)}
   #strikeChips{display:inline-flex;gap:6px;flex-wrap:wrap}
-  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(0,135,168,.1);
-    border:1px solid rgba(0,135,168,.3);color:var(--bondi-deep)}
-  .schip:hover{background:rgba(214,73,61,.12);border-color:rgba(214,73,61,.4);color:var(--down)}
-  #armStatus{font-size:11.5px;color:var(--dim);letter-spacing:.03em}
+  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(217,165,44,.14);border:1px solid rgba(217,165,44,.45);color:var(--gilt-a);text-shadow:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+  .schip:hover{background:rgba(224,71,95,.18);border-color:rgba(224,71,95,.5);color:var(--ruby)}
+  #armStatus{font-size:11.5px;color:var(--bone-lo);letter-spacing:.03em}
   #tunebar{border-radius:16px;padding:10px 0 0;font-size:11px}
   .tgrp{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:4px 0}
   .tgrp .lbl{width:100%;margin-bottom:2px}
-  .tgrp label{display:inline-flex;align-items:center;gap:6px;color:var(--dim);font-size:10.5px;letter-spacing:.04em}
-  .tgrp input[type=range]{width:110px;accent-color:var(--bondi)}
-  .tgrp .num{min-width:3.4em;color:var(--ink);font-size:11px}
-  #kstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px}
-  #kstrip b{color:var(--ink);font-weight:600}
-  #vstrip,#swstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--dim);min-height:34px;line-height:1.7}
-  .swchip{display:inline-block;border:1px solid rgba(0,135,168,.35);border-radius:999px;padding:3px 10px;margin:2px 6px 2px 0;background:rgba(255,255,255,.6)}
-  .swchip.watch{border-color:rgba(214,146,0,.7);background:rgba(214,146,0,.10)}
-  #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;
-    font-size:12px;letter-spacing:.05em;background:var(--glass)}
-  #verdict.up{border:1px solid rgba(14,148,100,.4);color:var(--up)}
-  #verdict.down{border:1px solid rgba(214,73,61,.4);color:var(--down)}
-  #verdict.flat{border:1px solid rgba(0,135,168,.4);color:var(--bondi-deep)}
+  .tgrp label{display:inline-flex;align-items:center;gap:6px;color:var(--bone-lo);font-size:10.5px;letter-spacing:.04em}
+  .tgrp input[type=range]{width:110px;accent-color:var(--verdigris)}
+  .tgrp .num{min-width:3.4em;color:var(--bone);font-size:11px}
+  #kstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--bone-lo);min-height:34px}
+  #kstrip b{color:var(--bone);font-weight:600}
+  #vstrip,#swstrip{border-radius:16px;padding:8px 14px;margin-bottom:12px;font-size:11px;color:var(--bone-lo);min-height:34px;line-height:1.7}
+  .swchip{display:inline-block;border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:3px 10px;margin:2px 6px 2px 0;background:rgba(0,0,0,.3);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+  .swchip.watch{border-color:rgba(255,233,163,.6);background:rgba(217,165,44,.12);color:var(--gilt-a)}
+  #verdict{display:none;border-radius:16px;padding:9px 14px;margin-bottom:12px;font-size:12px;letter-spacing:.05em;background:var(--glass)}
+  #verdict.up{border:1px solid rgba(63,191,126,.45);color:var(--malachite)}
+  #verdict.down{border:1px solid rgba(224,71,95,.45);color:var(--ruby)}
+  #verdict.flat{border:1px solid rgba(217,165,44,.45);color:var(--gilt-a)}
 
-  /* tables */
-  .tblwrap{overflow-x:auto;position:relative;-webkit-overflow-scrolling:touch}
-  .tblwrap.ovf::after{content:"swipe →";position:sticky;left:calc(100% - 64px);bottom:0;display:inline-block;
-    font-family:var(--sans);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--bondi-deep);
-    background:rgba(255,255,255,.85);border:1px solid rgba(0,135,168,.3);border-radius:999px;padding:2px 8px;margin:4px 0;pointer-events:none}
-  table th:first-child,table td:first-child{position:sticky;left:0;z-index:1;background:rgba(255,255,255,.92)}
+  /* tables: weight on the swipe — momentum, verdigris scrub track, edge fade */
+  .tblwrap{overflow-x:auto;position:relative;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;scrollbar-width:thin;scrollbar-color:var(--verdigris-lo) transparent}
+  .tblwrap::-webkit-scrollbar{height:8px} .tblwrap::-webkit-scrollbar-thumb{background:linear-gradient(90deg,var(--verdigris-lo),var(--verdigris));border-radius:999px}
+  .tblwrap.ovf{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}
+  .tblwrap.ovf::after{content:"swipe →";position:sticky;left:calc(100% - 64px);bottom:0;display:inline-block;font-family:var(--sans);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--gilt-a);
+    background:rgba(14,13,19,.9);border:1px solid rgba(217,165,44,.4);border-radius:999px;padding:2px 8px;margin:4px 0;pointer-events:none}
+  table th:first-child,table td:first-child{position:sticky;left:0;z-index:1;background:linear-gradient(90deg,var(--sub) 85%,transparent)}
   #viewData section.tile .shead{cursor:pointer;user-select:none}
-  #viewData section.tile .shead .lbl::before{content:"▾";display:inline-block;width:12px;color:var(--bondi);transition:transform .15s}
+  #viewData section.tile .shead .lbl::before{content:"▾";display:inline-block;width:14px;color:var(--gilt-b);transition:transform .15s;font-family:var(--sans);font-size:11px}
   #viewData section.tile.collapsed .shead .lbl::before{transform:rotate(-90deg)}
   #viewData section.tile.collapsed > :not(.shead){display:none}
-  #viewData section.tile.collapsed .shead{margin-bottom:0;border-bottom:0;padding-bottom:2px}
+  #viewData section.tile.collapsed .shead{margin-bottom:0;border-bottom:0;padding-bottom:2px;box-shadow:none}
   #method.collapsed > p{display:none}
   #method .mhead{cursor:pointer;user-select:none}
-  #probnote{text-transform:none;letter-spacing:.02em;font-size:10.5px;color:var(--dim)}
-  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;font-family:var(--mono)}
-  th{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
-    font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule);font-family:var(--sans)}
+  #probnote{text-transform:none;letter-spacing:.02em;font-size:10.5px;color:var(--bone-lo)}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;font-family:var(--mono);color:var(--bone)}
+  th{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--bone-dim);font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--rule);font-family:var(--sans)}
   th:first-child,td:first-child{text-align:left;padding-left:2px}
   td{padding:6px 8px;text-align:right;border-bottom:1px dashed var(--ink2);white-space:nowrap}
   tr:last-child td{border-bottom:0}
-  td .sub{display:block;font-size:10px;color:var(--faint)}
-  td.model,th.model{color:var(--bondi)}
-  td.model .sub{color:var(--model-dim)}
+  td .sub{display:block;font-size:10px;color:var(--bone-dim)}
+  td.model,th.model{color:var(--gilt-a)}
+  td.model .sub{color:var(--gilt-b)}
 
-  #method{margin-top:20px;padding:14px 16px;border-radius:20px;
-    color:var(--dim);font-size:11px;max-width:none}
+  #method{margin-top:20px;padding:14px 16px;border-radius:20px;color:var(--bone-lo);font-size:11px;max-width:none}
   #method p{margin-bottom:8px}
-  #method b{color:var(--ink);font-weight:600}
-  #banner{display:none;margin-bottom:14px;border:1px solid rgba(214,73,61,.45);border-radius:16px;
-    padding:10px 14px;color:var(--err);font-size:12px;background:var(--glass)}
+  #method b{color:var(--bone);font-weight:600}
+  #banner{display:none;margin-bottom:14px;border:1px solid rgba(224,71,95,.5);border-radius:16px;padding:10px 14px;color:var(--ruby);font-size:12px;background:var(--glass)}
 
   /* page views */
   #viewData{display:none}
   body.showData #viewData{display:block}
   body.showData #viewChart{display:none}
-  #viewChart canvas{height:calc(100dvh - 250px);min-height:460px}
-  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 250px)} }
+  #viewChart canvas{height:calc(100dvh - 290px);min-height:460px}
+  @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 290px)} }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="tile">
-    <div class="mark">BTC/USD<small>PEER-VERIFIED TAPE · WINDOW INSTRUMENT</small></div>
+    <div class="mark">btc terminal<small>peer-verified tape · window instrument</small></div>
     <div class="hright">
-      <span id="clock" class="num lbl" style="color:var(--dim)">--:--:--</span>
+      <span id="sunpill" class="pill">—</span>
+      <span id="clock" class="num lbl" style="color:var(--bone-lo)">--:--:--</span>
       <span id="status" class="pill dead">INIT</span>
       <button id="viewBtn" aria-pressed="false">DATA</button>
       <button id="pauseBtn" aria-pressed="false">PAUSE</button>
@@ -219,12 +248,16 @@
     </div>
     <div id="verdict" class="num"></div>
     <div id="chartbox" class="tile">
-      <canvas id="chart" height="340"></canvas>
+      <div id="lockbar"><span class="note" id="locknote">sweep · drag on the field to lock a region · esc releases</span>
+        <button id="lockSwing" type="button" title="lock the view tight on the live window’s swing">◆ SWING</button>
+        <button id="lockResume" type="button">RESUME</button></div>
+      <canvas id="chart" height="340">
+</canvas>
       <div class="legend">
-        <span><span class="sw" style="background:var(--up)"></span>above / rising</span>
-        <span><span class="sw" style="background:var(--down)"></span>below / falling</span>
-        <span><span class="sw" style="background:var(--model)"></span>Kalshi strikes span their windows · hour heavier · settled = pip Y/N at the gate</span>
-        <span>sweep −30/+15 min, never wipes · line = leader book, constituent-verified</span>
+        <span><span class="sw" style="background:var(--malachite)"></span>malachite = the call winning / rising</span>
+        <span><span class="sw" style="background:var(--ruby)"></span>ruby = losing / falling</span>
+        <span><span class="sw" style="background:var(--gilt-b)"></span>gilt = strikes; hour heavier; settled = pip Y/N at the gate</span>
+        <span>sweep −30/+15 min, never wipes · line = leader book, constituent-verified · an active swing inverts its window · drag or SWING to lock</span>
       </div>
     </div>
     <div id="kstrip" class="tile num"></div>
@@ -383,8 +416,12 @@
         <label>adherence <input type="range" id="c_adh" min="0.5" max="2.0" step="0.05"><span class="num" id="v_adh"></span></label>
         <button id="cfgReset">RESET</button>
       </div>
+      <div class="tgrp"><span class="lbl">Light</span>
+        <button id="sunLoc" type="button">use my location</button>
+        <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">solar position computed here for Dayton by default; the coordinates stay in this browser</span>
+      </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
-        <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(15,46,63,.14);background:rgba(255,255,255,.75)"></label>
+        <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(236,227,208,.14);background:rgba(255,255,255,.75)"></label>
         <button id="ktestBtn">TEST</button>
         <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages" target="_blank" rel="noopener"><button type="button">CLOUDFLARE PAGES SETUP ↗</button></a>
         <span id="ktest" class="num" style="color:var(--faint);font-size:10.5px"></span>
@@ -516,15 +553,16 @@
       market, and separately for 15-minute windows and hourly rungs. Edge bands take one paper position per window
       at the ask, net of fee. Calibration deciles compare stated and realized rates. All ledgers persist and export
       to CSV; the verdict rule reads 15-minute windows only.</p>
-    <p><b>Chart.</b> One perpetual sweep: thirty minutes behind the cursor, thirty ahead, scrolling continuously and
-      never wiping. Kalshi’s quarter-hour gates arrive from the right, cross the cursor and leave to the left; the
-      hour gate draws heavier. Each Kalshi window carries its strike as a segment spanning only that window — the
-      15-minute strike appears when Kalshi reveals it at open, the hour’s near-money rung spans the hour — and a
-      settled window collapses to a pip at its gate, green YES or red NO, scrolling left as the record. An armed strike
-      draws dashed across its own window with the over/under fields confined to it; the live odds gauge sits at the
-      right edge and the axis pill carries the level and the odds at arming. The price line is the leader book,
-      constituent-verified. The seeded 1-minute history still feeds volatility and settlement, but it is no longer
-      drawn: only prints this session verified are shown as the line. Nothing is projected on the frame.</p>
+    <p><b>Chart.</b> One perpetual sweep on an onyx field: thirty minutes behind the cursor, fifteen ahead, never
+      wiping. Kalshi’s quarter-hour gates arrive from the right and leave to the left, the hour gate heavier; each
+      window carries its strike in gilt across its own span, and a settled window collapses to a cabochon at its gate.
+      The line is the leader book, constituent-verified: malachite while the call is winning or the price rising, ruby
+      while it is losing or falling. The strike stays in view and the domain centres on the span it shares with the
+      recent tape, leaning into the duel through the final minutes. When the tool arm opens a swing on the live
+      window, that window inverts — saturated mineral field, bone tape, full-gilt strike, every other window dimmed
+      to onyx. SWING locks the view tight on that window; dragging a rectangle on the field locks any region; RESUME
+      or Escape releases. The light on every slab, bevel and cabochon follows the sun over Dayton (or your location,
+      from Advanced), computed here every minute — the same sundial as the rhyme instrument.</p>
   </div>
   </div>
 </div>
@@ -588,6 +626,7 @@ const S={
   auto:{z:1.645,cov:null,n:0},
   via:null,
   swing:null, journal:null, simBank:null,
+  lock:null, swingActive:null, drag:null, lastMap:null,
   k:{cur:null,ob:null,sched:[],lastMkt:0,lastOb:0,lastSched:0,lastHour:0,lastUnopened:0,hour:[],hourClose:null,err:null,loadedTicker:null,quoteManual:false,busy:false,sameOrigin:false,backoffUntil:0,fails:0},
   edge:{windows:{},lastSnap:0},   // passive model-vs-market ledger keyed by Kalshi ticker
   bars:new Map(),       // minuteKey -> close (median)
@@ -1189,7 +1228,7 @@ function renderKalshi(){
     tb.innerHTML=rows.map(m=>{
       const cur=c&&m.ticker===c.ticker;
       const rc=m.result==="yes"?"var(--up)":m.result==="no"?"var(--down)":"var(--faint)";
-      return '<tr'+(cur?' style="background:rgba(0,135,168,.06)"':'')+'><td class="num" style="color:var(--dim)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span style="color:var(--bondi)">\u25cf</span>':'')+'</td>'
+      return '<tr'+(cur?' style="background:rgba(217,165,44,.06)"':'')+'><td class="num" style="color:var(--dim)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span style="color:var(--bondi)">\u25cf</span>':'')+'</td>'
         +'<td class="num">'+(m.strike?fmtUSD.format(m.strike):"TBD")+'</td>'
         +'<td class="num">'+((m.last!==null&&m.last!==undefined)?m.last.toFixed(1)+"\u00a2":"\u2014")+'</td>'
         +'<td class="num" style="color:var(--faint)">'+Math.round(m.vol).toLocaleString()+'</td>'
@@ -1376,6 +1415,59 @@ function exportCSV(){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 /* ---------------------------------------------------------------- suggested orders (Kalshi-priced, phase + hour) */
+/* ---------------------------------------------------------------- sundial (NOAA solar position; Dayton default; one light vector for the whole tool) */
+const SUN_DEF={lat:39.7589,lon:-84.1916,name:"Dayton, Ohio"};
+function solarPosition(lat,lon,date){
+  /* NOAA general solar position: returns elevation and azimuth (degrees, azimuth clockwise from north) */
+  const rad=Math.PI/180;
+  const jd=date.getTime()/86400000+2440587.5, jc=(jd-2451545)/36525;
+  const gml=(280.46646+jc*(36000.76983+jc*0.0003032))%360;
+  const gma=357.52911+jc*(35999.05029-0.0001537*jc);
+  const ecc=0.016708634-jc*(0.000042037+0.0000001267*jc);
+  const ceq=Math.sin(gma*rad)*(1.914602-jc*(0.004817+0.000014*jc))+Math.sin(2*gma*rad)*(0.019993-0.000101*jc)+Math.sin(3*gma*rad)*0.000289;
+  const tl=gml+ceq; const app=tl-0.00569-0.00478*Math.sin((125.04-1934.136*jc)*rad);
+  const mo=23+(26+((21.448-jc*(46.815+jc*(0.00059-jc*0.001813))))/60)/60; const oc=mo+0.00256*Math.cos((125.04-1934.136*jc)*rad);
+  const dec=Math.asin(Math.sin(oc*rad)*Math.sin(app*rad));
+  const y=Math.tan(oc/2*rad)**2;
+  const eqt=4*(y*Math.sin(2*gml*rad)-2*ecc*Math.sin(gma*rad)+4*ecc*y*Math.sin(gma*rad)*Math.cos(2*gml*rad)-0.5*y*y*Math.sin(4*gml*rad)-1.25*ecc*ecc*Math.sin(2*gma*rad))/rad;
+  const minutes=(date.getUTCHours()*60+date.getUTCMinutes()+date.getUTCSeconds()/60);
+  const tst=(minutes+eqt+4*lon+1440)%1440; const ha=(tst/4<0)?tst/4+180:tst/4-180;
+  const cz=Math.sin(lat*rad)*Math.sin(dec)+Math.cos(lat*rad)*Math.cos(dec)*Math.cos(ha*rad);
+  const zen=Math.acos(Math.max(-1,Math.min(1,cz)));
+  let az=Math.acos(Math.max(-1,Math.min(1,((Math.sin(lat*rad)*Math.cos(zen))-Math.sin(dec))/(Math.cos(lat*rad)*Math.sin(zen)))))/rad;
+  az=ha>0?(az+180)%360:(540-az)%360;
+  return {elev:90-zen/rad,az};
+}
+function sunTick(){
+  const loc=(S.cfg.sun&&isFinite(S.cfg.sun.lat))?S.cfg.sun:SUN_DEF;
+  const p=solarPosition(loc.lat,loc.lon,new Date());
+  const rad=Math.PI/180;
+  /* screen light vector: the tool is read north-up, so the light comes from the sun's azimuth; below the horizon the field self-lights */
+  const lx=Math.sin(p.az*rad), ly=-Math.cos(p.az*rad);
+  const elev=Math.max(0,Math.min(1,Math.sin(Math.max(0,p.elev)*rad)*1.4));
+  const night=p.elev<-2?1:0;
+  const r=document.documentElement.style;
+  r.setProperty("--lx",lx.toFixed(3)); r.setProperty("--ly",ly.toFixed(3)); r.setProperty("--elev",(night?0.15:elev).toFixed(3)); r.setProperty("--night",String(night));
+  S.sun={...p,lx,ly,elev,night,name:loc.name||"here"};
+  const pill=$("sunpill");
+  if(pill){ const dirs=["N","NE","E","SE","S","SW","W","NW"]; const d=dirs[Math.round(p.az/45)%8];
+    const phase=p.elev<-6?"night":p.elev<0?"dusk":p.elev<8?(p.az<180?"sun rise":"sun set"):p.elev>50?"sun high":(p.az<180?"morning":"afternoon");
+    pill.textContent=phase+" \u00b7 "+d+" \u00b7 "+Math.round(p.elev)+"\u00b0"; pill.title="solar position for "+S.sun.name+", computed here; nothing leaves this browser"; }
+}
+function sunUseLocation(){
+  if(!navigator.geolocation){ return; }
+  navigator.geolocation.getCurrentPosition(pos=>{ S.cfg.sun={lat:pos.coords.latitude,lon:pos.coords.longitude,name:"my location"}; saveCfg(); sunTick(); },()=>{},{timeout:8000,maximumAge:600000});
+}
+/* veins: three displaced bezier threads per session, a lit thread over a darker body, malachite on this tool */
+function veinLayer(){
+  const seed=(Date.now()/3600000|0)>>>0; const rnd=mulberry(seed);
+  let paths="";
+  for(let i=0;i<3;i++){ const y0=100+rnd()*600, x1=200+rnd()*400, y1=rnd()*800, x2=600+rnd()*400, y2=rnd()*800, y3=100+rnd()*600;
+    const d="M0 "+y0.toFixed(0)+" C "+x1.toFixed(0)+" "+y1.toFixed(0)+", "+x2.toFixed(0)+" "+y2.toFixed(0)+", 1200 "+y3.toFixed(0);
+    paths+="<path d='"+d+"' fill='none' stroke='%231c6a45' stroke-width='"+(3+rnd()*4).toFixed(1)+"' opacity='.55'/><path d='"+d+"' fill='none' stroke='%233fbf7e' stroke-width='"+(0.8+rnd()*0.8).toFixed(1)+"' opacity='.9' transform='translate(0 -1.5)'/>"; }
+  const svg="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'>"+paths+"</svg>";
+  document.documentElement.style.setProperty("--vein","url(\""+svg+"\")");
+}
 /* ---------------------------------------------------------------- swing watch (touch-35c estimator, ledger, journal) */
 const SWING={target:0.36,payout:0.35,cheapMax:0.15,paths:600};
 /* history base rate: P(reach 35c before the gate) by ask, from the spine (4,966 cheap-side reads, Aug 15-Sep 5) */
@@ -1504,6 +1596,7 @@ function simEnter(e,r,key){
     if(!simDecide(a.entry,r,e.side,key)) continue;
     const B=S.simBank[a.id]; const stake=Math.max(1,B.bank*SIM.risk); const shares=Math.max(1,Math.min(SIM.maxShares,Math.floor(stake/r.ask)));
     e.sim=e.sim||{}; e.sim[a.id]={arm:a.id,exitRule:a.exit,tIn:r.t,tau:r.tau,entry:r.ask,shares,stake:+(shares*r.ask).toFixed(2),p:r.p,base:r.base,be:r.be,ofi:r.ofi,readIdx:e.reads.length-1,open:true,peak:r.ask,armed:false,bidNow:null};
+    if(a.entry==="tool"&&!(S.swingActive&&S.swingActive.key===key)) S.swingActive={key,side:e.side,ticker:e.ticker,close:e.close,t:r.t};
   }
 }
 function simCloseOne(e,t,exit,reason,now){
@@ -1529,6 +1622,7 @@ function simUpdate(e,bid,now){
 }
 function simClose(e){
   /* the gate: whatever is still open sells at the last bid */
+  if(S.swingActive&&S.swingActive.ticker===e.ticker){ S.swingActive=null; if(S.lock&&S.lock.mode==="swing") lockRelease(); }
   if(!e.sim) return;
   for(const id of Object.keys(e.sim)){ const t=e.sim[id]; if(!t.open) continue;
     simCloseOne(e,t,(e.lastBid!==undefined&&e.lastBid!==null)?e.lastBid:0,"gate",e.close); }
@@ -1582,7 +1676,7 @@ function renderJournal(){
   const pc=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"%"; const c2=v=>(v>=0?"+":"")+v.toFixed(2)+"\u00a2"; const cents=v=>Math.round(v*100)+"\u00a2";
   const st=journalStats();
   ta.innerHTML=SIM_ARMS.map(a=>{ const s=st[a.id]; const isTool=a.entry==="tool";
-    const head='<tr'+(isTool?' style="background:rgba(0,135,168,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
+    const head='<tr'+(isTool?' style="background:rgba(217,165,44,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
     if(!s.n) return head+'<td class="num">$'+s.bank.toFixed(2)+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
     return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">$'+s.bank.toFixed(2)+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
       +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--dim)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
@@ -2210,7 +2304,9 @@ function renderSources(){
 const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
-const UPC="#0E9464", DNC="#D6493D";
+const PAL={field:"#09080d",bone:"#ece3d0",boneLo:"#b7ad9c",boneDim:"#8e8778",gilt:"#ffe9a3",giltB:"#d9a52c",giltC:"#7a5510",
+  mal:"#3fbf7e",malLo:"#1c6a45",ruby:"#e0475f",rubyLo:"#6b1a2e",verd:"#3f9a86",bronze:"#d9a866"};
+const UPC=PAL.mal, DNC=PAL.ruby;
 function niceTicks(lo,hi,anchor){
   const span=Math.max(hi-lo,1e-6);
   const steps=[0.5,1,2,5,10,20,25,50,100,200,250,500,1000,2500,5000,10000];
@@ -2237,9 +2333,9 @@ function yGrid(F,lo,hi,Y,anchor){
   const ticks=niceTicks(lo,hi,anchor);
   for(const v of ticks){
     const y=Y(v), isAnchor=anchor!==undefined&&anchor!==null&&Math.abs(v-anchor)<1e-6;
-    cx.strokeStyle=isAnchor?"rgba(0,135,168,.16)":"rgba(15,46,63,.07)";
+    cx.strokeStyle=isAnchor?"rgba(217,165,44,.16)":"rgba(236,227,208,.07)";
     cx.beginPath();cx.moveTo(F.padL,y);cx.lineTo(F.padL+F.iw,y);cx.stroke();
-    cx.fillStyle=isAnchor?"rgba(0,135,168,.85)":"#3E6274";
+    cx.fillStyle=isAnchor?"rgba(217,165,44,.85)":PAL.boneLo;
     cx.fillText("$"+Math.round(v).toLocaleString(),F.padL+F.iw+6,y+4);
   }
   cx.font="11px "+FONT();
@@ -2252,8 +2348,8 @@ function headerRow(F,leftTxt,rightTxt){
   while(leftTxt.indexOf("\u00b7")>=0 && cx.measureText(leftTxt).width+rw+22>F.iw)
     leftTxt=leftTxt.slice(0,leftTxt.lastIndexOf("\u00b7")).trim();
   if(cx.measureText(leftTxt).width+rw+22>F.iw) leftTxt="";
-  cx.fillStyle="#7D97A6"; cx.textAlign="left"; cx.fillText(leftTxt,F.padL+2,y);
-  cx.fillStyle="rgba(0,135,168,.8)"; cx.textAlign="right"; cx.fillText(rightTxt,F.padL+F.iw-4,y);
+  cx.fillStyle=PAL.boneDim; cx.textAlign="left"; cx.fillText(leftTxt,F.padL+2,y);
+  cx.fillStyle="rgba(217,165,44,.8)"; cx.textAlign="right"; cx.fillText(rightTxt,F.padL+F.iw-4,y);
   cx.textAlign="left";
 }
 /* asymmetric eased domain: expand fast, contract slow, hard-contain always */
@@ -2306,16 +2402,22 @@ function kalshiGates(t0,t1){
 function renderSweep(){
   const F=frame(); const now=Date.now();
   const BACK=30*60000, FWD=15*60000;              /* the future holds only the next gate, not dead space */
-  const t0=now-BACK, t1=now+FWD, SPAN=BACK;
-  const Xt=t=>F.padL+(t-t0)/(BACK+FWD)*F.iw, X=q=>Xt(q.t);
+  const cur=S.k.cur;
+  /* lock: swing follows the live window; rect is fixed; auto-release when the window it follows is gone */
+  if(S.lock&&S.lock.mode==="swing"&&(!cur||cur.ticker!==S.lock.ticker||now>cur.close+20000)) lockRelease();
+  let t0=now-BACK, t1=now+FWD;
+  if(S.lock&&S.lock.mode==="swing"&&cur){ t0=cur.open-30000; t1=cur.close+30000; }
+  else if(S.lock&&S.lock.mode==="rect"){ t0=S.lock.t0; t1=S.lock.t1; }
+  const SPAN=BACK;
+  const Xt=t=>F.padL+(t-t0)/(t1-t0)*F.iw, X=q=>Xt(q.t);
   const R=(S.round&&(S.round.state!=="settled"||now-S.round.settledAt<=20000))?S.round:null;
   const sk=liveStrike(R);
   /* tape in view */
   const tp=S.tape, pts=[]; let mn=Infinity,mx=-Infinity;
-  for(let i=Math.max(0,tp.length-8000);i<tp.length;i++){ const q=tp[i]; if(q.t<t0-2000) continue; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
+  for(let i=Math.max(0,tp.length-8000);i<tp.length;i++){ const q=tp[i]; if(q.t<t0-2000||q.t>t1+2000) continue; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
   const gates=kalshiGates(t0,t1);
   const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:null));
-  if(lastP===null){ cx.fillStyle="#7D97A6"; cx.font="11px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
+  if(lastP===null){ cx.fillStyle=PAL.boneDim; cx.font="11px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
   /* the strike anchors the scale: it is the thing being decided, so it holds the centre of the frame.
      the half-span is whatever contains the recent tape around it, so peaks and troughs are never clipped. */
   const RECENT=12*60000; let rmn=Infinity,rmx=-Infinity;
@@ -2326,27 +2428,45 @@ function renderSweep(){
   if(sk) anchor=sk.strike;
   else { for(const g of gates){ if(!g.result&&g.close>now&&g.series==="15m"&&g.open<=now){ anchor=g.strike; break; } } }
   if(anchor===null) anchor=(rmn+rmx)/2;
-  /* symmetric about the anchor: the greater of the two reaches, so nothing is cut off */
-  const reach=Math.max(Math.abs(rmx-anchor),Math.abs(anchor-rmn),Math.abs(lastP-anchor));
-  let half=Math.max(reach*S.cfg.pad, lastP*8e-5);
-  if(sk&&R&&R.state!=="settled"){ const tau=(R.tEnd-now)/60000, start=15-S.cfg.closeStart;
-    if(tau<=start){ const prog=Math.min(1,(start-tau)/Math.max(1,start))*S.cfg.closeStr;
-      const duel=Math.max(Math.abs(lastP-anchor)*1.9,lastP*6e-5);
-      half=half+(duel-half)*prog; } }
-  const D=easeDomain(ys,anchor,half,anchor-reach*1.02,anchor+reach*1.02);
+  /* the strike stays in view; the domain centres on the span it shares with the recent tape, so a trending price
+     does not leave half the frame empty. under a lock, the domain is the lock. */
+  let D;
+  if(S.lock&&S.lock.mode==="rect"){ D={lo:S.lock.lo,hi:S.lock.hi}; }
+  else if(S.lock&&S.lock.mode==="swing"&&cur){
+    let wlo=Infinity,whi=-Infinity; for(const q of pts){ if(q.t>=cur.open){ if(q.p<wlo)wlo=q.p; if(q.p>whi)whi=q.p; } }
+    if(!isFinite(wlo)){ wlo=lastP; whi=lastP; }
+    if(cur.strike!==null){ wlo=Math.min(wlo,cur.strike); whi=Math.max(whi,cur.strike); }
+    const c0=(wlo+whi)/2, h0=Math.max((whi-wlo)/2*1.18, lastP*4e-5);
+    D={lo:c0-h0,hi:c0+h0};
+  } else {
+    const spanLo=Math.min(rmn,anchor,lastP), spanHi=Math.max(rmx,anchor,lastP);
+    const centre=(spanLo+spanHi)/2; const reach=(spanHi-spanLo)/2;
+    let half=Math.max(reach*S.cfg.pad, lastP*8e-5);
+    if(sk&&R&&R.state!=="settled"){ const tau=(R.tEnd-now)/60000, start=15-S.cfg.closeStart;
+      if(tau<=start){ const prog=Math.min(1,(start-tau)/Math.max(1,start))*S.cfg.closeStr;
+        const duel=Math.max(Math.abs(lastP-anchor)*1.9,lastP*6e-5);
+        half=half+(duel-half)*prog; } }
+    D=easeDomain(ys,centre,half,spanLo-lastP*2e-5,spanHi+lastP*2e-5);
+  }
+  S.lastMap={t0,t1,lo:D.lo,hi:D.hi,padL:F.padL,iw:F.iw,padT:F.padT,ih:F.ih};
   const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
   cx.font="11px "+FONT();
   yGrid(F,D.lo,D.hi,Y,(sk||anchor!==null)?anchor:null);
   cx.save(); cx.beginPath(); cx.rect(F.padL,F.padT,F.iw,F.ih); cx.clip();
   /* future field; amber when a verified swing watch is on for the live window */
   const sw=(S.swing&&S.k.cur)?(function(){ try{ const st=swingStats(); if(!st.verified) return null; const sides=swingSides(now).filter(s=>s.p!==null&&s.p>s.be); return sides.length?sides:null; }catch(e){ return null; } })():null;
-  cx.fillStyle="rgba(0,135,168,.035)"; cx.fillRect(Xt(now),F.padT,F.padL+F.iw-Xt(now),F.ih);
-  if(sw){ const c=S.k.cur; cx.fillStyle="rgba(214,146,0,.10)"; cx.fillRect(Xt(Math.max(c.open,t0)),F.padT,Xt(Math.min(c.close,t1))-Xt(Math.max(c.open,t0)),F.ih);
-    cx.fillStyle="rgba(214,146,0,.9)"; cx.font="11px "+FONT(); cx.textAlign="left"; cx.fillText("\u25c6 SWING WATCH \u00b7 "+sw.map(s=>s.side+" "+Math.round(s.ask*100)+"\u00a2 touch "+Math.round(s.p*100)+"%").join(" \u00b7 "),Xt(Math.max(c.open,t0))+6,F.padT+F.ih-8); }
+  cx.fillStyle="rgba(217,165,44,.035)"; cx.fillRect(Xt(now),F.padT,F.padL+F.iw-Xt(now),F.ih);
+  const act=(S.swingActive&&cur&&S.swingActive.ticker===cur.ticker&&now<cur.close+20000)?S.swingActive:null;
+  if(act){ const xa=Xt(Math.max(cur.open,t0)), xb=Xt(Math.min(cur.close,t1));
+    cx.fillStyle="rgba(9,8,13,.55)"; cx.fillRect(F.padL,F.padT,Math.max(0,xa-F.padL),F.ih); cx.fillRect(xb,F.padT,Math.max(0,F.padL+F.iw-xb),F.ih);
+    cx.fillStyle=act.side==="YES"?"rgba(63,191,126,.20)":"rgba(224,71,95,.20)"; cx.fillRect(xa,F.padT,xb-xa,F.ih);
+    cx.fillStyle=act.side==="YES"?PAL.mal:PAL.ruby; cx.font="11px "+FONT(); cx.textAlign="left"; cx.fillText("\u25c6 SWING \u00b7 "+act.side+" \u00b7 tool arm in",xa+6,F.padT+F.ih-8); }
+  if(sw){ const c=S.k.cur; cx.fillStyle="rgba(255,233,163,.10)"; cx.fillRect(Xt(Math.max(c.open,t0)),F.padT,Xt(Math.min(c.close,t1))-Xt(Math.max(c.open,t0)),F.ih);
+    cx.fillStyle="rgba(255,233,163,.9)"; cx.font="11px "+FONT(); cx.textAlign="left"; cx.fillText("\u25c6 SWING WATCH \u00b7 "+sw.map(s=>s.side+" "+Math.round(s.ask*100)+"\u00a2 touch "+Math.round(s.p*100)+"%").join(" \u00b7 "),Xt(Math.max(c.open,t0))+6,F.padT+F.ih-8); }
   /* gates: quarter-hours light, hours heavy; labels at the foot */
   for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
     const x=Xt(t), hour=(new Date(t).getMinutes()===0);
-    cx.strokeStyle=hour?"rgba(15,46,63,.35)":"rgba(15,46,63,.14)"; cx.lineWidth=hour?1.4:1; cx.setLineDash(hour?[]:[3,4]);
+    cx.strokeStyle=hour?"rgba(236,227,208,.35)":"rgba(236,227,208,.14)"; cx.lineWidth=hour?1.4:1; cx.setLineDash(hour?[]:[3,4]);
     cx.beginPath();cx.moveTo(x,F.padT);cx.lineTo(x,F.padT+F.ih);cx.stroke(); cx.setLineDash([]);
   }
   /* Kalshi windows: strike segment across each window; settled -> ribbon pip at the gate */
@@ -2359,15 +2479,15 @@ function renderSweep(){
       const above=g.strike>D.hi;
       const row=(edgeRows[above?"top":"bot"]=(edgeRows[above?"top":"bot"]||0)+1);
       const ty=above?(F.padT+11*row):(F.padT+F.ih-11*(row-1)-3);
-      const col0=hour?"rgba(0,135,168,.9)":"rgba(0,135,168,.6)"; cx.fillStyle=col0; cx.font="10px "+FONT(); cx.textAlign="left";
+      const col0=hour?"rgba(217,165,44,.9)":"rgba(217,165,44,.6)"; cx.fillStyle=col0; cx.font="10px "+FONT(); cx.textAlign="left";
       cx.fillText((above?"\u25b2 ":"\u25bc ")+(hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,ty);
       cx.font="11px "+FONT(); continue; }
-    const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(0,135,168,.75)":"rgba(0,135,168,.55)");
+    const col=g.result?(g.result==="yes"?UPC:DNC):(hour?"rgba(217,165,44,.75)":"rgba(217,165,44,.55)");
     cx.strokeStyle=col; cx.lineWidth=hour?1.6:1.1; cx.setLineDash(g.result?[2,3]:(hour?[6,4]:[4,4]));
     if(!off){ cx.beginPath();cx.moveTo(xa,y);cx.lineTo(xb,y);cx.stroke(); } cx.setLineDash([]);
     if(off&&g.result){ cx.globalAlpha=0.45; }
     if(g.result){ cx.fillStyle=col; cx.beginPath();cx.arc(Xt(g.close),y,hour?4.5:3.5,0,7);cx.fill();
-      cx.fillStyle="#FFFFFF"; cx.font="8px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+3); cx.textAlign="left"; cx.font="11px "+FONT(); cx.globalAlpha=1; }
+      cx.fillStyle=PAL.field; cx.font="8px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+3); cx.textAlign="left"; cx.font="11px "+FONT(); cx.globalAlpha=1; }
     else if(g.close>now){ cx.fillStyle=col; cx.font="10px "+FONT(); cx.textAlign="left";
       cx.fillText((hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,y-5); cx.font="11px "+FONT(); }
   }
@@ -2378,22 +2498,22 @@ function renderSweep(){
     if(inDom){
       /* winning side of the call is green: ABOVE wins above the strike, BELOW wins below it */
       const winAbove=sk.call==="ABOVE";
-      cx.fillStyle=winAbove?"rgba(14,148,100,.07)":"rgba(214,73,61,.07)"; cx.fillRect(xa,F.padT,xb-xa,Math.max(0,yS-F.padT));
-      cx.fillStyle=winAbove?"rgba(214,73,61,.07)":"rgba(14,148,100,.07)"; cx.fillRect(xa,yS,xb-xa,Math.max(0,F.padT+F.ih-yS));
-      cx.strokeStyle="#0087A8"; cx.lineWidth=1.6; cx.setLineDash([6,4]); cx.beginPath();cx.moveTo(xa,yS);cx.lineTo(xb,yS);cx.stroke(); cx.setLineDash([]);
+      cx.fillStyle=winAbove?"rgba(63,191,126,.07)":"rgba(224,71,95,.07)"; cx.fillRect(xa,F.padT,xb-xa,Math.max(0,yS-F.padT));
+      cx.fillStyle=winAbove?"rgba(224,71,95,.07)":"rgba(63,191,126,.07)"; cx.fillRect(xa,yS,xb-xa,Math.max(0,F.padT+F.ih-yS));
+      cx.strokeStyle=act?PAL.gilt:PAL.giltB; cx.lineWidth=act?2.2:1.6; cx.setLineDash([6,4]); cx.beginPath();cx.moveTo(xa,yS);cx.lineTo(xb,yS);cx.stroke(); cx.setLineDash([]);
     }
   }
   /* the tape */
   const inDomSk=sk&&sk.strike>D.lo&&sk.strike<D.hi;
   const winning=p=>{ const above=p>=sk.strike; return (sk.call==="ABOVE")===above; };   /* green = the call is winning */
-  drawKeyedLine(pts,X,Y,(p,j)=>inDomSk?(winning(p[j].p)?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC));
-  if(pts.length){ const hd=pts[pts.length-1]; cx.fillStyle=inDomSk?(winning(hd.p)?UPC:DNC):"#0087A8"; cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill(); }
+  drawKeyedLine(pts,X,Y,(p,j)=>(act&&p[j].t>=cur.open)?PAL.bone:(inDomSk?(winning(p[j].p)?UPC:DNC):(p[j].p>=p[j-1].p?UPC:DNC)));
+  if(pts.length){ const hd=pts[pts.length-1]; cx.fillStyle=inDomSk?(winning(hd.p)?UPC:DNC):PAL.giltB; cx.beginPath();cx.arc(X(hd),Y(hd.p),3,0,7);cx.fill(); }
   /* live odds gauge + settled mark for the armed strike */
   if(sk&&R){
     const P=sk.prob;
     if(P&&R.state!=="settled"){
       const gx=F.padL+F.iw-7, gw=5, split=F.padT+(1-P.over)*F.ih;
-      const gA=(sk.call==="ABOVE")?"rgba(14,148,100,.45)":"rgba(214,73,61,.45)", gB=(sk.call==="ABOVE")?"rgba(214,73,61,.45)":"rgba(14,148,100,.45)";
+      const gA=(sk.call==="ABOVE")?"rgba(63,191,126,.45)":"rgba(224,71,95,.45)", gB=(sk.call==="ABOVE")?"rgba(224,71,95,.45)":"rgba(63,191,126,.45)";
       cx.fillStyle=gA; cx.fillRect(gx,F.padT,gw,Math.max(0,split-F.padT-1));
       cx.fillStyle=gB; cx.fillRect(gx,split+1,gw,Math.max(0,F.padT+F.ih-split-1));
       const yS=inDomSk?Y(sk.strike):(F.padT+F.ih/2);
@@ -2401,7 +2521,7 @@ function renderSweep(){
       const cAbove=(sk.call==="ABOVE")?UPC:DNC, cBelow=(sk.call==="ABOVE")?DNC:UPC;
       cx.fillStyle=cAbove; cx.fillText(Math.round(P.over*100)+"%",F.padL+F.iw-14,Math.max(F.padT+38,yS-12));
       cx.fillStyle=cBelow; cx.fillText(Math.round(P.under*100)+"%",F.padL+F.iw-14,Math.min(F.padT+F.ih-8,yS+24));
-      cx.font="10px "+FONT(); cx.fillStyle="rgba(15,46,63,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+50,yS-30));
+      cx.font="10px "+FONT(); cx.fillStyle="rgba(236,227,208,.6)"; cx.fillText((P.fit||"")+" \u00b7 settles "+mmss(R.tEnd-now),F.padL+F.iw-14,Math.max(F.padT+50,yS-30));
       cx.textAlign="left";
     }
     if(R.state==="settled"&&(sk.outcome==="UP"||sk.outcome==="DOWN")&&inDomSk){
@@ -2410,14 +2530,18 @@ function renderSweep(){
     }
   }
   /* now cursor */
-  cx.strokeStyle="rgba(15,46,63,.5)"; cx.lineWidth=1.2; cx.beginPath();cx.moveTo(Xt(now),F.padT);cx.lineTo(Xt(now),F.padT+F.ih);cx.stroke();
+  cx.strokeStyle="rgba(236,227,208,.5)"; cx.lineWidth=1.2; cx.beginPath();cx.moveTo(Xt(now),F.padT);cx.lineTo(Xt(now),F.padT+F.ih);cx.stroke();
+  if(S.drag){ const d=S.drag; cx.strokeStyle=PAL.gilt; cx.lineWidth=1; cx.setLineDash([4,3]); cx.strokeRect(Math.min(d.x0,d.x1),Math.min(d.y0,d.y1),Math.abs(d.x1-d.x0),Math.abs(d.y1-d.y0)); cx.setLineDash([]);
+    cx.fillStyle="rgba(255,233,163,.08)"; cx.fillRect(Math.min(d.x0,d.x1),Math.min(d.y0,d.y1),Math.abs(d.x1-d.x0),Math.abs(d.y1-d.y0)); }
+  if(S.lock){ cx.strokeStyle="rgba(255,233,163,.55)"; cx.lineWidth=1.5; cx.strokeRect(F.padL+0.5,F.padT+0.5,F.iw-1,F.ih-1); }
   cx.restore();
   /* foot clock at every gate, inward at the edges */
   cx.font="11px "+FONT();
-  for(let t=Math.ceil(t0/900000)*900000;t<=t1;t+=900000){
+  const step=(t1-t0)<=20*60000?60000:((t1-t0)<=50*60000?300000:900000);
+  for(let t=Math.ceil(t0/step)*step;t<=t1;t+=step){
     const x=Xt(t), hour=(new Date(t).getMinutes()===0);
     cx.textAlign=(x-30<F.padL)?"left":((x+30>F.padL+F.iw)?"right":"center");
-    cx.fillStyle=hour?"rgba(15,46,63,.8)":"rgba(0,135,168,.8)";
+    cx.fillStyle=hour?"rgba(236,227,208,.8)":"rgba(217,165,44,.8)";
     cx.fillText(timeStr(t),x+(cx.textAlign==="left"?2:cx.textAlign==="right"?-2:0),F.H-10);
   }
   cx.textAlign="left";
@@ -2425,17 +2549,17 @@ function renderSweep(){
   if(sk&&R){
     const pa=(sk.probAtArm===null||sk.probAtArm===undefined)?"\u2014":Math.round(sk.probAtArm*100)+"%";
     if(inDomSk){ const yS=Y(sk.strike), x0=F.padL+F.iw+2, w=F.padR-4;
-      cx.fillStyle="#0087A8"; cx.fillRect(x0,yS-13,w,26); cx.font="11px "+FONT(); cx.fillStyle="#FFFFFF"; cx.textAlign="left";
-      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1); cx.font="10px "+FONT(); cx.fillStyle="rgba(255,255,255,.85)";
+      cx.fillStyle=PAL.giltB; cx.fillRect(x0,yS-13,w,26); cx.font="11px "+FONT(); cx.fillStyle=PAL.field; cx.textAlign="left";
+      cx.fillText("$"+Math.round(sk.strike).toLocaleString(),x0+4,yS-1); cx.font="10px "+FONT(); cx.fillStyle="rgba(9,8,13,.8)";
       cx.fillText(pa+" "+sk.call.toLowerCase(),x0+4,yS+10); }
-    else { const above=sk.strike>D.hi; cx.font="10px "+FONT(); cx.fillStyle="rgba(0,135,168,.85)"; cx.textAlign="left";
+    else { const above=sk.strike>D.hi; cx.font="10px "+FONT(); cx.fillStyle="rgba(217,165,44,.85)"; cx.textAlign="left";
       cx.fillText((above?"\u25b2":"\u25bc")+"$"+Math.round(sk.strike).toLocaleString()+" "+pa,F.padL+F.iw+4,above?(F.padT+12):(F.padT+F.ih-6)); }
   }
   /* header */
   const nWS=EXCH.filter(id=>S.src[id].ws).length;
   const nextGate=Math.ceil(now/900000)*900000;
   const left=(R?(R.state.toUpperCase()+(sk?(" \u00b7 "+fmtUSD.format(sk.strike)+" "+sk.call+(sk.prob?(" \u00b7 "+Math.round((sk.call==="ABOVE"?sk.prob.over:sk.prob.under)*100)+"%"):"")):" \u00b7 no strike")):"IDLE")+" \u00b7 "+(S.leader||"").toUpperCase()+" \u00b7 "+nWS+"ws"+(S.idxPx?(" \u00b7 idx "+fmtUSD.format(S.idxPx)):"");
-  headerRow(F,left,"SWEEP \u221230m/+15m \u00b7 next gate "+timeStr(nextGate)+" in "+mmss(nextGate-now));
+  headerRow(F,left,S.lock?("LOCK \u00b7 "+(S.lock.mode==="swing"?"swing window":"region")+" \u00b7 esc releases"):("SWEEP \u221230m/+15m \u00b7 next gate "+timeStr(nextGate)+" in "+mmss(nextGate-now)));
 }
 function renderXTData(){
   const cur=S.xt.cur, tb=$("xtcur")&&$("xtcur").querySelector("tbody"), tl=$("xtled")&&$("xtled").querySelector("tbody");
@@ -2505,6 +2629,24 @@ $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.t
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
 $("secExpand").addEventListener("click",()=>setAllSections(false));
+function lockSwing(){ if(!S.k.cur) return; S.lock={mode:"swing",ticker:S.k.cur.ticker}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 swing window \u00b7 resume or esc releases"; }
+function lockRect(t0,t1,lo,hi){ S.lock={mode:"rect",t0,t1,lo,hi}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 region \u00b7 resume or esc releases"; }
+function lockRelease(){ S.lock=null; S.drag=null; document.body.classList.remove("locked"); $("locknote").textContent="sweep \u00b7 drag on the field to lock a region \u00b7 esc releases"; }
+$("lockSwing").addEventListener("click",lockSwing);
+$("lockResume").addEventListener("click",lockRelease);
+document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") lockRelease(); });
+(function(){ const c=$("chart"); if(!c) return;
+  const pos=ev=>{ const r=c.getBoundingClientRect(); return {x:ev.clientX-r.left,y:ev.clientY-r.top}; };
+  c.addEventListener("mousedown",ev=>{ if(ev.button!==0) return; const p=pos(ev); S.drag={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; });
+  c.addEventListener("mousemove",ev=>{ if(!S.drag) return; const p=pos(ev); S.drag.x1=p.x; S.drag.y1=p.y; });
+  const finish=()=>{ const d=S.drag, M=S.lastMap; S.drag=null; if(!d||!M) return;
+    if(Math.abs(d.x1-d.x0)<24||Math.abs(d.y1-d.y0)<12) return;
+    const xa=Math.min(d.x0,d.x1), xb=Math.max(d.x0,d.x1), ya=Math.min(d.y0,d.y1), yb=Math.max(d.y0,d.y1);
+    const tAt=x=>M.t0+(x-M.padL)/M.iw*(M.t1-M.t0), pAt=y=>M.hi-(y-M.padT)/M.ih*(M.hi-M.lo);
+    lockRect(tAt(xa),tAt(xb),pAt(yb),pAt(ya)); };
+  c.addEventListener("mouseup",finish); c.addEventListener("mouseleave",()=>{ if(S.drag) finish(); });
+})();
+$("sunLoc").addEventListener("click",sunUseLocation);
 $("secCollapse").addEventListener("click",()=>setAllSections(true));
 const SEC_DEFAULT_CLOSED={signals:1,xt:1,advanced:1,method:1};
 const SEC_KEY="btc.sections.v2";
@@ -2566,11 +2708,13 @@ setInterval(()=>{
   if((Math.floor(Date.now()/1000)%3)===0) markOverflow();
   { const an=$("autonote"); if(an) an.textContent="auto \u00b7 band z "+S.auto.z.toFixed(2)+(S.auto.cov!==null?(" (realized coverage "+Math.round(S.auto.cov*100)+"% over "+S.auto.n+")"):" (calibrating)")+" \u00b7 edge threshold 1pt net of fee"+(S.cfg.touched&&Object.keys(S.cfg.touched).length?" \u00b7 overrides: "+Object.keys(S.cfg.touched).join(", "):""); }
   if((Math.floor(Date.now()/1000)%30)===0){ try{ renderVerdict(); }catch(e){} }
+  if((Math.floor(Date.now()/1000)%60)===0){ try{ sunTick(); }catch(e){} }
 },1000);
 requestAnimationFrame(loop);
 
 (async function init(){
   loadCfg(); syncCfgUI(); ledgerLoad(); viaLoad(); swingLoad(); jLoad(); kProbeSameOrigin(); initSections();
+  try{ veinLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
@@ -2578,5 +2722,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260905223714 -->
+<!-- build-20260906004231 -->
 </html>
