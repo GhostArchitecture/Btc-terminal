@@ -1091,5 +1091,276 @@ eq("a swing read with null timestamps writes no sm",C.swingReadFields({rv60:0.00
   ok("each call returns a fresh object",a!==b);
 }
 
+
+/* ================================================================================================
+   H3 / H4 measurement layer. Two things these assertions are built to catch, because both have
+   already cost this repo data once:
+     - a fabricated value where a measurement is missing (the omit rule), and
+     - a shipped counter silently moving because a new definition rounded differently.
+   The second is why every economics assertion below compares against a VERBATIM TRANSCRIPTION of
+   viaSample's own lines with Object.is, not with a tolerance. */
+
+/* the shipped arithmetic, copied character for character out of index.html's viaSample so the test
+   fails if the unit's version ever drifts from the one the live counters use. */
+const MAKER_RATE=0.0175;
+function shippedGrade(p,c){
+  const filled=c.yb<p.yb;
+  const mid0=(p.yb+p.ya)/2, mid1=(c.yb+c.ya)/2; const adv=mid1-mid0;
+  const fee=100*MAKER_RATE*(mid0/100)*(1-mid0/100)*2;
+  return {filled:filled,spread:(p.ya-p.yb),mid0:mid0,mid1:mid1,adv:adv,fee:fee};
+}
+/* the shipped bucket line, likewise */
+function shippedBucket(ofi){ return ofi===null?"none":(ofi>0.15?"with":ofi<-0.15?"against":"none"); }
+
+console.log("\n-- H4: flow asymmetry on a graded row --");
+
+/* ---------- flowFields: the four omission codes are distinguishable ---------- */
+eq("flowFields with NO argument stamps the wiring code, not a measurement",C.flowFields().ofX,"n");
+eq("flowFields(null) says the signals object is absent",C.flowFields(null).ofX,"s");
+eq("flowFields(non-object) says the signals object is absent",C.flowFields(7).ofX,"s");
+eq("flowFields with signals but no ofi60 says THIN SAMPLE",C.flowFields({ofi60:null}).ofX,"t");
+eq("flowFields with a non-finite x says so rather than dropping it silently",C.flowFields({ofi60:{x:NaN,vol:1,n:9}}).ofX,"x");
+ok("the four codes are distinct",new Set(["n","s","t","x"]).size===4);
+{
+  const G={ofi60:{x:0.4237,vol:12.345,n:41},ofi300:{x:-0.117,vol:60,n:300}};
+  const f=C.flowFields(G);
+  eq("flowFields keys",keys(f),"of,of5,ofn,ofv");
+  eq("of is the 60s imbalance at 2dp",f.of,0.42);
+  eq("ofv is the BTC volume behind it",f.ofv,12.35);
+  eq("ofn is the print count",f.ofn,41);
+  eq("of5 is the 5-minute imbalance",f.of5,-0.12);
+  eq("a measured bundle carries NO omission code",f.ofX,undefined);
+  ok("no null ever reaches storage",JSON.stringify(f).indexOf("null")<0,JSON.stringify(f));
+}
+{
+  /* an exactly balanced tape is a READING, not an absence: 0 must survive. */
+  const f=C.flowFields({ofi60:{x:0,vol:0.9,n:7}});
+  eq("a perfectly balanced imbalance stores 0",f.of,0);
+  eq("and carries no omission code",f.ofX,undefined);
+  eq("of5 is absent when the 5-minute window was thin",f.of5,undefined);
+  eq("and its absence gets no code of its own",f.ofX,undefined);
+}
+eq("a sub-resolution ofv is still written (volume has no fabricated-zero problem)",C.flowFields({ofi60:{x:0.5,vol:0.001,n:6}}).ofv,0);
+eq("a non-finite vol is omitted, not defaulted",C.flowFields({ofi60:{x:0.5,vol:NaN,n:6}}).ofv,undefined);
+eq("a non-finite n is omitted, not defaulted",C.flowFields({ofi60:{x:0.5,vol:1,n:null}}).ofn,undefined);
+ok("each call returns a fresh bundle",C.flowFields(null)!==C.flowFields(null));
+
+/* ---------- flowSide: the tie is never broken ---------- */
+eq("positive imbalance favours YES (net buying pushes the underlying above the strike)",C.flowSide(0.3),"YES");
+eq("negative imbalance favours NO",C.flowSide(-0.3),"NO");
+eq("an exactly balanced reading favours NEITHER side",C.flowSide(0),null);
+eq("a missing reading favours neither side",C.flowSide(null),null);
+eq("a non-finite reading favours neither side",C.flowSide(NaN),null);
+ok("the smallest representable imbalance still picks a side",C.flowSide(0.01)==="YES"&&C.flowSide(-0.01)==="NO");
+
+/* ---------- the favoured side's price, from fields the row already has ---------- */
+eq("flowSideAsk reads the YES ask for YES",C.flowSideAsk("YES",47,55),47);
+eq("flowSideAsk reads the NO ask for NO",C.flowSideAsk("NO",47,55),55);
+eq("flowSideAsk with no side is null",C.flowSideAsk(null,47,55),null);
+eq("flowSideAsk with a missing ask is null, never 0",C.flowSideAsk("YES",undefined,55),null);
+eq("flowSideMidC is the stored YES mid for YES",C.flowSideMidC("YES",46.5),46.5);
+eq("flowSideMidC is its complement for NO",C.flowSideMidC("NO",46.5),53.5);
+eq("flowSideMidC with a missing mid is null",C.flowSideMidC("NO",null),null);
+ok("the two sides' mids sum to 100c exactly",C.flowSideMidC("YES",46.5)+C.flowSideMidC("NO",46.5)===100);
+ok("mid and ask differ by half the spread, so the two H4 readings are not interchangeable",
+   C.flowSideAsk("YES",47,55)!==C.flowSideMidC("YES",46.5));
+
+/* ---------- flowSideWon: the settlement truth table, void included ---------- */
+eq("YES favoured, settled yes -> won",C.flowSideWon("YES","yes"),1);
+eq("YES favoured, settled no  -> lost",C.flowSideWon("YES","no"),0);
+eq("NO favoured, settled no   -> won",C.flowSideWon("NO","no"),1);
+eq("NO favoured, settled yes  -> lost",C.flowSideWon("NO","yes"),0);
+eq("a void settlement grades NEITHER side (10.4)",C.flowSideWon("YES","void"),null);
+eq("an unsettled window grades neither side",C.flowSideWon("YES",undefined),null);
+eq("a truthy non-binary result never grades",C.flowSideWon("NO","YES"),null);
+eq("no favoured side means no score",C.flowSideWon(null,"yes"),null);
+
+/* ---------- flowBurst records a contrast and applies no threshold ---------- */
+near("flowBurst is the 60s reading minus the 5m one",C.flowBurst(0.42,-0.12),0.54,1e-9);
+eq("flowBurst is null without the 5m reading",C.flowBurst(0.42,null),null);
+eq("flowBurst is null without the 60s reading",C.flowBurst(null,-0.12),null);
+eq("a zero contrast is a reading",C.flowBurst(0.2,0.2),0);
+{
+  /* RULE 2 OF THE BRIEF: no one-sidedness threshold exists. flowBurst must be a number for every
+     input, never a boolean, a label or a verdict - the distribution is what gets recorded. */
+  const vals=[-0.9,-0.3,0,0.3,0.9].map(function(v){ return C.flowBurst(v,0); });
+  ok("flowBurst returns a magnitude at every input and classifies nothing",
+     vals.every(function(v){ return typeof v==="number"; }));
+  ok("no H4 threshold constant is defined anywhere in the unit",
+     /VRP_TICK_REL_MAX|SCHEMA_SIR|VIA_FLOW_BUCKET/.test(SRC)&&!/OFI_(MIN|MAX|THRESH)|FLOW_(MIN|THRESH)|ONE_SIDED/.test(SRC));
+}
+
+console.log("\n-- H3: per-fill maker rows --");
+
+/* ---------- the bucket is transcribed, not re-chosen ---------- */
+eq("VIA_FLOW_BUCKET is the shipped 0.15",C.R("VIA_FLOW_BUCKET"),0.15);
+eq("above the bucket is 'with'",C.viaFlowBucket(0.2),shippedBucket(0.2));
+eq("below the negative bucket is 'against'",C.viaFlowBucket(-0.2),shippedBucket(-0.2));
+eq("inside the bucket is 'none'",C.viaFlowBucket(0.1),shippedBucket(0.1));
+eq("exactly at the boundary is 'none', matching the shipped strict >",C.viaFlowBucket(0.15),shippedBucket(0.15));
+eq("exactly at the negative boundary is 'none'",C.viaFlowBucket(-0.15),shippedBucket(-0.15));
+/* the ONE deliberate difference from the shipped line, asserted so it cannot be mistaken for a bug */
+eq("an UNMEASURED imbalance is null here",C.viaFlowBucket(null),null);
+eq("where the shipped counter calls it 'none'",shippedBucket(null),"none");
+ok("the difference is confined to the unmeasured case: every measured input agrees with the shipped line",
+   [-1,-0.16,-0.15,-0.01,0,0.01,0.15,0.16,1].every(function(v){ return C.viaFlowBucket(v)===shippedBucket(v); }));
+
+/* ---------- the economics primitives are bit-identical to the shipped arithmetic ---------- */
+{
+  const p={t:T0,ticker:"KXBTC15M-26SEP0614:15",yb:42,ya:46};
+  const c={key:"15m",ticker:"KXBTC15M-26SEP0614:15",yb:41,ya:45};
+  const S1=shippedGrade(p,c), e=C.viaFillEcon(p,c,MAKER_RATE);
+  eq("viaFillEcon reproduces the shipped fill model",e.filled,S1.filled);
+  eq("...the resting mid, bit for bit",e.mid0,S1.mid0);
+  eq("...the grade mid, bit for bit",e.mid1,S1.mid1);
+  eq("...the spread captured, bit for bit",e.spread,S1.spread);
+  eq("...the adverse selection, bit for bit",e.adv,S1.adv);
+  eq("...the fee, bit for bit (UNROUNDED: rounding here would move a shipped counter)",e.fee,S1.fee);
+  ok("the fee is not a rounded number, which is the point",String(e.fee).length>4,String(e.fee));
+}
+{
+  /* the fill model is 'the best bid traded THROUGH our resting price', strictly */
+  const p={t:T0,yb:42,ya:46};
+  eq("a bid below the resting price fills",C.viaFillEcon(p,{yb:41,ya:45},MAKER_RATE).filled,true);
+  eq("a bid equal to the resting price does NOT fill",C.viaFillEcon(p,{yb:42,ya:46},MAKER_RATE).filled,false);
+  eq("a bid above the resting price does not fill",C.viaFillEcon(p,{yb:43,ya:47},MAKER_RATE).filled,false);
+}
+eq("viaFillEcon with no rate omits the whole grade rather than defaulting a fee",C.viaFillEcon({yb:42,ya:46},{yb:41,ya:45},null),null);
+eq("viaFillEcon with a broken book is null",C.viaFillEcon({yb:null,ya:46},{yb:41,ya:45},MAKER_RATE),null);
+eq("viaFillEcon with no pending post is null",C.viaFillEcon(null,{yb:41,ya:45},MAKER_RATE),null);
+eq("viaMid of a broken pair is null",C.viaMid(42,null),null);
+eq("viaSpreadC of a broken pair is null",C.viaSpreadC(null,46),null);
+eq("viaAdvC without the grade mid is null",C.viaAdvC(42,46,null),null);
+eq("viaFeeC with a negative rate is null",C.viaFeeC(42,46,-0.01),null);
+near("viaFeeC at a 50c mid is the maximum maker fee",C.viaFeeC(48,52,MAKER_RATE),100*MAKER_RATE*0.5*0.5*2,1e-12);
+ok("the fee is symmetric about 50c, as p(1-p) requires",
+   Math.abs(C.viaFeeC(18,22,MAKER_RATE)-C.viaFeeC(78,82,MAKER_RATE))<1e-12);
+
+/* ---------- the row ---------- */
+{
+  const p={t:T0,ticker:"KXBTC15M-26SEP0614:15",yb:42,ya:46};
+  const c={key:"15m",ticker:"KXBTC15M-26SEP0614:15",yb:41,ya:45,close:T0+8*MIN};
+  const fl=C.flowFields({ofi60:{x:0.4237,vol:12.345,n:41},ofi300:{x:-0.117}});
+  const e=C.viaFillEcon(p,c,MAKER_RATE);
+  const r=C.viaFillFields(p,c,T0+60000,e,fl);
+  eq("row keys",keys(r),"dt,f,k,m1,of,of5,ofn,ofv,ra,rb,t,tau,tk");
+  eq("t is the POST time, not the grade time",r.t,T0);
+  eq("dt is the elapsed seconds to the grade",r.dt,60);
+  eq("k is the series",r.k,"15m");
+  eq("tk is the ticker, so a row can be joined to its window and repaired one at a time",r.tk,"KXBTC15M-26SEP0614:15");
+  eq("f says it filled",r.f,1);
+  eq("rb is the resting price",r.rb,42);
+  eq("ra is the ask at post",r.ra,46);
+  eq("m1 is the mid at the grade",r.m1,43);
+  eq("tau is minutes from the post to the close",r.tau,8);
+  eq("the flow bundle captured AT POST TIME travels with the row",r.of,0.42);
+  ok("no null ever reaches storage",JSON.stringify(r).indexOf("null")<0,JSON.stringify(r));
+  /* and every derived quantity comes back exactly from the three stored measurements */
+  eq("the spread captured re-derives exactly from rb and ra",C.viaSpreadC(r.rb,r.ra),e.spread);
+  eq("the adverse selection re-derives exactly from rb, ra and m1",C.viaAdvC(r.rb,r.ra,r.m1),e.adv);
+  eq("the fee re-derives exactly from rb, ra and the rate",C.viaFeeC(r.rb,r.ra,MAKER_RATE),e.fee);
+  eq("and the flow bucket re-derives from the stored of",C.viaFlowBucket(r.of),"with");
+}
+{
+  /* AN UNFILLED POST IS A ROW TOO. The fill rate is half of H3's mechanism (Glosten-Milgrom: you
+     are filled precisely when the flow knows something), so rows for fills alone would delete the
+     selection channel being tested. The unfilled row is also the same-minute control. */
+  const p={t:T0,ticker:"TK",yb:42,ya:46};
+  const c={key:"15m",ticker:"TK",yb:43,ya:47};
+  const e=C.viaFillEcon(p,c,MAKER_RATE);
+  const r=C.viaFillFields(p,c,T0+60000,e,C.flowFields(null));
+  eq("an unfilled graded post still writes a row",typeof r.t,"number");
+  eq("and says so explicitly rather than by absence",r.f,0);
+  eq("the unfilled row still records how the mid moved: it is the control",r.m1,45);
+  eq("and it carries the flow omission code",r.ofX,"s");
+}
+eq("a post with no timestamp writes NO ROW: it could never be conditioned on anything",
+   keys(C.viaFillFields({yb:42,ya:46},{key:"15m",yb:41,ya:45},T0,{filled:true,mid1:43})),"");
+eq("no econ, no row",keys(C.viaFillFields({t:T0,yb:42,ya:46},{key:"15m"},T0,null)),"");
+{
+  /* tau is omitted, never invented, when the caller supplies no close - the hourly candidate today */
+  const r=C.viaFillFields({t:T0,ticker:"TK",yb:42,ya:46},{key:"hourly",yb:41,ya:45},T0+60000,
+                          C.viaFillEcon({yb:42,ya:46},{yb:41,ya:45},MAKER_RATE),C.flowFields(undefined));
+  eq("no close supplied -> no tau, rather than a fabricated one",r.tau,undefined);
+  eq("and the series says which write site it came from",r.k,"hourly");
+  eq("an unwired flow bundle is stamped as a WIRING defect, not as a quiet tape",r.ofX,"n");
+}
+{
+  const r=C.viaFillFields({t:T0,ticker:"TK",yb:42,ya:46},{key:"15m",yb:41,ya:45},null,
+                          C.viaFillEcon({yb:42,ya:46},{yb:41,ya:45},MAKER_RATE),C.flowFields(null));
+  eq("a missing grade time omits dt rather than writing 0",r.dt,undefined);
+  eq("but the row still exists, because its post time is what conditions it",r.t,T0);
+}
+
+/* ---------- viaPrune: defect S2 must not come back ---------- */
+{
+  const rows=[];
+  for(let i=0;i<10;i++) rows.push({t:T0+i*60000,tk:"X"+i});
+  const kept=C.viaPrune(rows,4);
+  eq("prune keeps the cap",kept.length,4);
+  eq("...and keeps the NEWEST rows",kept.map(function(r){ return r.tk; }).join(","),"X6,X7,X8,X9");
+  eq("under the cap nothing is dropped",C.viaPrune(rows,50).length,10);
+  eq("a non-array prunes to an empty array, never throws",C.viaPrune(null,4).length,0);
+  eq("a junk cap falls back to VIA_ROW_CAP rather than dropping everything",C.viaPrune(rows,0).length,10);
+}
+{
+  /* S2 verbatim: Kalshi tickers embed YYMMMDD, and "OCT" < "SEP" as strings, so a string-keyed
+     prune deletes the NEWEST rows at a month boundary. Prune by the row's own timestamp. */
+  const sep={t:Date.UTC(2026,8,30,23,45),tk:"KXBTC15M-26SEP3023:45"};
+  const oct={t:Date.UTC(2026,9,1,0,0),tk:"KXBTC15M-26OCT0100:00"};
+  const kept=C.viaPrune([sep,oct],1);
+  eq("the October row survives a month boundary; a string-sorted prune would have deleted it",kept[0].tk,oct.tk);
+  const byString=[sep,oct].slice().sort(function(a,b){ return a.tk<b.tk?-1:1; });
+  eq("...and a string sort really does order them the wrong way round",byString[1].tk,sep.tk);
+}
+{
+  /* out-of-order arrival must not survive as "newest by position" */
+  const kept=C.viaPrune([{t:T0+5*MIN,tk:"new"},{t:T0,tk:"old"}],1);
+  eq("prune reads the timestamp, not the array position",kept[0].tk,"new");
+}
+eq("VIA_ROW_CAP is a storage bound, and it is a plain number",typeof C.R("VIA_ROW_CAP"),"number");
+
+/* ---------- collisions and purity ---------- */
+{
+  /* SPEC 6.1's rule, extended to the new row keys. The via row is a NEW row type so it collides
+     with nothing, but the flow bundle lands on an EXISTING edge snap and must not shadow a field. */
+  const snapKeys=["t","tau","pm","qm","ya","na","pa","pd","pe","pf","pr","fit","phantom",
+                  "sm","si","xs","dy","dn","sq","sqS","sb"];
+  const flowKeys=Object.keys(C.flowFields({ofi60:{x:0.1,vol:1,n:9},ofi300:{x:0.1}})).concat(["ofX"]);
+  ok("no flow key collides with an existing edge-snap key",
+     flowKeys.every(function(k){ return snapKeys.indexOf(k)<0; }),flowKeys.join(","));
+  /* isPhantomK1 reads o.tau, o.ask ?? o.entry, o.p; the edge variant reads s.tau and s.qm */
+  ok("no flow key is one the K1 repair reads",
+     flowKeys.every(function(k){ return ["tau","ask","entry","p","qm"].indexOf(k)<0; }));
+  /* refSnap reads s.tau and s.phantom only */
+  ok("no flow key can change which snap refSnap selects",
+     flowKeys.every(function(k){ return k!=="tau"&&k!=="phantom"; }));
+}
+{
+  let threw=null;
+  try{
+    C.flowFields({ofi60:{x:0.1,vol:1,n:9}}); C.flowFields(null); C.flowFields();
+    C.flowSide(0.1); C.flowSideAsk("YES",1,2); C.flowSideMidC("NO",50); C.flowSideWon("YES","yes");
+    C.flowBurst(0.1,0.2); C.viaFlowBucket(0.2); C.viaMid(1,2); C.viaSpreadC(1,2); C.viaAdvC(1,2,3);
+    C.viaFeeC(1,2,0.0175); C.viaFillEcon({yb:1,ya:2},{yb:0,ya:1},0.0175);
+    C.viaFillFields({t:1,yb:1,ya:2},{key:"15m",yb:0,ya:1},2,{filled:true,mid1:0.5});
+    C.viaPrune([{t:1}],1);
+  }catch(e){ threw=e.message; }
+  eq("no H3/H4 entry point touches the DOM, storage, network, timers or S",threw,null);
+}
+{
+  /* THE GATE. Recording is not reporting: nothing in this unit computes, or could be mistaken for,
+     a narrative-vs-scheduled comparison. CLAUDE.md 11.5 - phase 2 does not report until its
+     detector is scored against the phase-1 calendar as a confusion matrix. */
+  const H34=["flowFields","flowSide","flowSideAsk","flowSideMidC","flowSideWon","flowBurst",
+             "viaFlowBucket","viaMid","viaSpreadC","viaAdvC","viaFeeC","viaFillEcon","viaFillFields","viaPrune"];
+  ok("every H3/H4 symbol is spliced and callable",H34.every(function(n){ return typeof C[n]==="function"; }));
+  ok("no H3/H4 symbol is a classifier or a cross-class comparison statistic",
+     !H34.some(function(n){ return /narrative|scheduled|classif|compare|split|verdict|regime|ready/i.test(n); }),
+     H34.join(","));
+  ok("and no phase-2 or shock symbol is defined here",
+     !/function\s+(shock|phase|detect)[A-Za-z]*\s*\(/.test(SRC));
+}
+
 console.log("\n"+(fails?("FAILED "+fails+" of "+ran):("all "+ran+" assertions pass")));
 process.exit(fails?1:0);

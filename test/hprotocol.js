@@ -160,7 +160,7 @@ const { T, done } = runner("h-protocol");
     const head=s=>{ const i=text.indexOf("# "+s); const line=text.slice(i).split("\\n")[1]||""; return line.split(",").length; };
     return {windows:head("windows"),swing:head("swing_reads"),journal:head("simulation_journal"),
       hasVrp:/vrp_bpm/.test(text),hasEv:/"ev_mins"/.test(text),hasDepth:/depth_yes/.test(text),hasIdent:/si_ident/.test(text)}; })()`);
-  T("the windows dataset carries its 52 columns", r.windows === 52, r.windows);
+  T("the windows dataset carries its 58 columns", r.windows === 58, r.windows);
   T("swing reads and journal rows carry the enriched columns", r.swing === 45 && r.journal === 51, { swing: r.swing, journal: r.journal });
   T("the premium, event, depth and identifiability columns are all exported", r.hasVrp && r.hasEv && r.hasDepth && r.hasIdent, r);
 }
@@ -300,6 +300,89 @@ const { T, done } = runner("h-protocol");
   T("a row carrying its own bound is judged under THAT bound, not the current constant",
     r.strictB === 0.05 && r.looseB === 0.90 && r.strict !== r.loose, r);
   T("a row with no stored bound falls back to the one in force", r.noneB === 0.20, r.noneB);
+}
+
+/* ---- H1: the reversion half detect deliberately does not measure (§11, spine H1) */
+{
+  const t = Date.UTC(2026, 3, 30, 12, 30, 0);          /* a real BEA GDP instant from the spliced calendar */
+  const r = R(`(function(){
+    const t=${t}, now=t+20*60000;
+    S.shock={v:1,rows:{}}; S.edge.windows={}; S.bars=new Map(); S.barKeys=[];
+    const k0=Math.floor(t/60000)-90; let p=100000;
+    for(let i=0;i<=110;i++){ const k=k0+i, m=k-Math.floor(t/60000);
+      if(m===0) p*=1.004; else if(m>0&&m<=5) p*=0.9994; else p*=(1+((i%2)?0.00012:-0.0001));
+      S.bars.set(k,p); S.barKeys.push(k); }
+    shockTick(now);
+    const rows=Object.values(S.shock.rows);
+    const prim=rows.filter(x=>x.exploratory===0), expl=rows.filter(x=>x.exploratory===1);
+    return {n:rows.length,nPrim:prim.length,bucket:prim[0]&&prim[0].bucketLabel,
+      ret:prim[0]&&prim[0].ret,rev:prim[0]&&prim[0].rev,revFrac:prim[0]&&prim[0].revFrac,
+      book:prim[0]&&prim[0].bookCode,ev:prim[0]&&prim[0].ev,nExpl:expl.length,err:S.shockErr||null}; })()`);
+  T("a calendar shock is measured end to end, from the release instant to a reversion", r.n > 0 && r.ret > 0, r);
+  T("exactly one horizon is primary; the rest are marked exploratory (§11.4)", r.nPrim === 1 && r.nExpl === r.n - 1, r);
+  T("the impulse is bucketed by detect's own edges, tail buckets unmerged", typeof r.bucket === "string" && /^z/.test(r.bucket), r.bucket);
+  T("a give-back is a POSITIVE reversion, so a continuation cannot hide as a zero", r.rev > 0 && r.revFrac > 0, r);
+  T("with no book snapshots the cost is stated absent, never assumed", r.book === "noquote", r.book);
+  T("the row carries the release that triggered it", r.ev === "GDP", r.ev);
+}
+{
+  /* L2's lesson, which volCloseTick learned the hard way: a shock whose bars have not arrived must be
+     RETRIED, not written off on the first tick after a reload. */
+  const t = Date.UTC(2026, 3, 30, 12, 30, 0);
+  const r = R(`(function(){
+    S.shock={v:1,rows:{}}; S.edge.windows={}; S.bars=new Map(); S.barKeys=[];
+    const k=Math.floor(${t}/60000);
+    for(let i=0;i<40;i++){ S.bars.set(k+200+i,100000); S.barKeys.push(k+200+i); }   /* buffer moved past it */
+    shockTick(${t}+20*60000);
+    const rows=Object.values(S.shock.rows);
+    return {n:rows.length,tried:rows.filter(x=>x.tried===1).length,done:rows.filter(x=>x.done===1).length}; })()`);
+  T("once the bar buffer has moved past a shock it gives up once, with its reason recorded", r.n === 0 || r.tried === r.n, r);
+  T("and nothing is recorded as measured that was not", r.done === 0, r);
+}
+
+/* ---- H3: maker economics per FILL, which a running sum could never be conditioned on */
+{
+  const now = Date.UTC(2026, 3, 30, 12, 31, 0); setNow(now);
+  const r = R(`(function(){
+    S.via={v:1,series:{},rows:[]}; S.viaPend={};
+    S.k.cur={ticker:"KXBTC15M-A",close:${now}+9*60000};
+    S.k.ob={yesBid:42,yesAsk:46,noBid:54,noAsk:58}; S.k.hourOb=null;
+    S.sig={ofi60:{x:0.31,vol:12.4,n:22},ofi300:{x:0.08}};
+    viaSample(${now});                                  /* posts */
+    S.k.ob={yesBid:40,yesAsk:45,noBid:55,noAsk:60};     /* bid moves through: a fill */
+    viaSample(${now}+70000);                            /* grades */
+    const V=S.via.series["15m"]||{};
+    const w=S.via.rows[0]||{};
+    return {rows:S.via.rows.length,fills:V.fills,posts:V.posts,
+      t:w.t,f:w.f,rb:w.rb,ra:w.ra,of:w.of,tau:w.tau,tk:w.tk}; })()`);
+  T("a graded maker post writes a per-fill ROW, not just a counter increment", r.rows === 1 && typeof r.t === "number", r);
+  T("the row carries the timestamp that makes the release split possible at all", r.t > 0 && r.tk === "KXBTC15M-A", r);
+  T("the running counters still work — this is additive, not a replacement", r.posts >= 1, r);
+  T("the flow state visible when the order was RESTED is captured, not the state after the fill", r.of === 0.31, r);
+  T("tau comes from the market's own close, and is omitted rather than invented where there is none", typeof r.tau === "number", r.tau);
+}
+
+/* ---- the CSV, where all of it becomes usable. A header is not evidence: the cells must carry values.
+   Two datasets have now shipped with columns wired to the wrong accessor, exporting blank on every row
+   while the header-only assertion passed. This checks the values. */
+{
+  const now = Date.UTC(2026, 3, 30, 12, 31, 0);
+  const r = R(`(function(){
+    S.edge.windows={}; S.roundLog=[]; S.swing={v:1,w:{}}; S.journal=[]; S.shock={v:1,rows:{}};
+    S.via={v:1,series:{},rows:[{t:${now},dt:60,k:"15m",tk:"KXBTC15M-X",f:1,rb:42,ra:46,m1:45.5,
+      tau:9.2,of:0.31,ofv:12.4,ofn:22,of5:0.08}]};
+    exportCSV();
+    const txt=window._lastBlob.text, i=txt.indexOf("# maker_fills");
+    const L=txt.slice(i).split(String.fromCharCode(10));
+    const hd=L[1].split(",").map(x=>x.replace(/"/g,"")), dv=L[2].split(",").map(x=>x.replace(/"/g,""));
+    const o={}; hd.forEach(function(h,j){ o[h]=dv[j]; });
+    return {o:o,has:{mf:txt.indexOf("# maker_fills")>=0,h1:txt.indexOf("# h1_reversal")>=0,
+      ofi:/"ofi_60s"/.test(txt)}}; })()`);
+  T("the maker-fill and H1 datasets are exported", r.has.mf && r.has.h1 && r.has.ofi, r.has);
+  T("the maker economics carry VALUES, not empty cells",
+    r.o.mid_at_post_c === "44" && r.o.spread_c === "4" && r.o.adverse_c === "1.5" && +r.o.net_c > 0, r.o);
+  T("and each row is tagged with the release it sat next to, derived at export from its own timestamp",
+    r.o.ev === "GDP" && r.o.ev_mins === "-1", r.o);
 }
 
 process.exitCode = done() ? 1 : 0;

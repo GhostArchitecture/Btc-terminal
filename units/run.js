@@ -3,7 +3,7 @@
 "use strict";
 const { spawnSync } = require("child_process");
 const path = require("path"), fs = require("fs");
-const units = ["volspace", "calendar", "detect", "schema", "prereg"];
+const units = ["volspace", "calendar", "detect", "reversal", "schema", "prereg"];
 let failed = 0;
 for (const u of units) {
   const f = path.join(__dirname, u, "test.js");

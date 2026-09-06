@@ -469,3 +469,260 @@ function swingSpreadC(ask,bid){
   if(typeof ask!=="number"||typeof bid!=="number"||!isFinite(ask)||!isFinite(bid)) return null;
   return +(100*(ask-bid)).toFixed(2);
 }
+
+/* ================================================================================================
+   H3 / H4 measurement layer -- per-fill maker rows, and the flow asymmetry on a graded row.
+   ADDED 2026-09-06. Everything below is RECORDING. Nothing below decides, highlights, sizes, enters
+   or reports. Two things in particular are NOT here and must not be added to it:
+
+     1. NO NARRATIVE-VS-SCHEDULED CLASSIFIER, and no statistic that compares the two classes.
+        A narrative shock has no calendar entry by definition, so classifying one is PHASE 2
+        (endogenously detected). CLAUDE.md 11.5 is categorical: phase 2 does not report at all until
+        its detector has been scored against the phase-1 calendar as a confusion matrix, phases are
+        never pooled, and prereg's shockStatus() already returns INVALID for a phase-2 caller with no
+        matrix. H3 (informed vs narrative maker P&L) and H4 (fade the narrative longshot) are BOTH
+        gated on that matrix.
+     2. NO ONE-SIDEDNESS THRESHOLD for H4. The spine writes "[threshold TBD]" because nobody has the
+        data to set it. Choosing one here would be exactly the tuning CLAUDE.md 4 and 11.7 clause 6
+        forbid. What is stored instead is the RAW flow asymmetry on every row, so the DISTRIBUTION
+        exists and a threshold can be pre-registered later from calibration data. VIA_FLOW_BUCKET
+        below is NOT that threshold -- see its comment.
+
+   WHAT IS NOT GATED IS RECORDING, and that is the whole reason this ships before the gate lifts: a
+   maker fill that was not recorded cannot be recovered later. The gate governs REPORTING. Stored
+   rows are not permission to report; SPEC section 10 says this again where an analyst will read it.
+
+   THE BLOCKER THIS EXISTS TO REMOVE. viaSample accumulates RUNNING SUMS per series -- posts, fills,
+   spread, adv, fee -- with no per-fill row and no timestamp. A running total cannot be conditioned
+   on anything after the fact, so maker P&L cannot be split by release type, by hour, or by anything
+   else, and H3 is unanswerable no matter how long the tool runs. CLAUDE.md 10.4b already records
+   what that shape costs: when the K1 repair had to remove poisoned fills it could not subtract them
+   from a total and had to DISCARD the entire live viability series. Rows are subtractable; totals
+   are not.
+
+   THE RELEASE TAG IS NOT STORED, deliberately, exactly as sections 2.5/2.6 above do it: the row
+   carries its own timestamp and the event tag is derived at export from the calendar as it stands
+   at export time. A stored tag would freeze a classification the calendar can still correct, and
+   the calendar is ~5% full (CLAUDE.md 8). The timestamp is what makes the split possible; the tag
+   is derived from it and costs the recorder no bytes. */
+
+/* --- flow asymmetry (H4), one bundle, two write sites ---------------------------------------- */
+/* THE INSTRUMENT ALREADY MEASURES THIS. computeSignals() produces ofi60 = {x, vol, n} -- signed
+   order-flow imbalance over 60 s, behind a thin-sample guard (>=6 prints and >=0.25 BTC, else null)
+   -- and ofi300 over 5 minutes. swingTick already stores ofi60.x on every swing read as `ofi`, and
+   viaSample already stashes it on a pending post. NOTHING HERE COMPUTES A SECOND FLOW MEASURE; this
+   copies the one that exists onto rows that can be scored against a settlement.
+
+   WHY THE EDGE SNAP IS H4's HOME. H4 asks whether the side flow favours then wins BELOW its price.
+   That needs (a) a flow reading, (b) that side's price, (c) a settled binary outcome, and (d) one
+   observation per window. The edge ledger is the only dataset with all four: w.result is the
+   settlement, s.ya/s.na/s.qm are the two sides' prices at the read, and refSnap already fixes the
+   one scored read per window (CLAUDE.md 4). A swing read has flow and price but its "outcome" is a
+   35c touch, not a settlement, so it cannot answer H4; its existing `ofi` field is left untouched.
+
+   WHAT IS STORED AND WHAT IS DERIVED. Only the flow reading is stored. Which side it favours, that
+   side's ask and mid, and whether that side won are EXACT functions of fields the row already
+   carries (design rule 2), so they are computed at export and cost zero bytes. That also means a
+   later correction to how the favoured side is defined re-derives over all history instead of
+   freezing a mistake into storage.
+
+   THE OMISSION CODE. `of` is missing NOT AT RANDOM: the thin-sample guard fires exactly when the
+   tape is quiet, and a quiet tape is the opposite of the conditions H4 is about, so a silent
+   absence would be a selection nobody could measure. ofX makes it countable, in the same spirit as
+   vrpX:
+     "n" - the caller supplied no argument at all: the write site is NOT WIRED. Never confuse this
+           with a measurement; it is a splice/wiring defect and should appear on zero rows.
+     "s" - no signals object (computeSignals returned null, or the first tick has not run).
+     "t" - signals exist but ofi60 is null: THE THIN-SAMPLE GUARD FIRED. This is a real measurement
+           of "not enough side-bearing prints to speak", not an error.
+     "x" - ofi60 exists but its x is not a finite number. Should not happen; counted rather than
+           silently dropped so that it cannot happen quietly.
+   `of5` has no code of its own: `of` present with `of5` absent says the 5-minute window was thin,
+   which is already the whole message. */
+function flowFields(G){
+  const f={};
+  if(G===undefined){ f.ofX="n"; return f; }
+  if(G===null||typeof G!=="object"){ f.ofX="s"; return f; }
+  const o=G.ofi60;
+  if(!o||typeof o!=="object"){ f.ofX="t"; return f; }
+  const x=schemaNum(o.x,2);
+  if(x===undefined){ f.ofX="x"; return f; }
+  schemaSet(f,"of",x);                       /* signed imbalance in [-1,1]; an exact 0 IS a reading */
+  schemaSet(f,"ofv",schemaNum(o.vol,2));     /* BTC behind it: +1.0 on 0.3 BTC is not +1.0 on 40 BTC */
+  schemaSet(f,"ofn",schemaNum(o.n,0));       /* prints behind it, same reason */
+  const o3=G.ofi300;
+  if(o3&&typeof o3==="object") schemaSet(f,"of5",schemaNum(o3.x,2));
+  return f;
+}
+/* which side the flow favours. Positive imbalance is net buying of BTC, which pushes the underlying
+   UP, which is the YES/above-strike side of a Kalshi BTC window (strikeProbs' `over` is P(above) and
+   qm is the YES mid). Exactly zero favours NEITHER side and returns null rather than breaking the
+   tie -- a tie broken by convention would put a fabricated side into the H4 sample. */
+function flowSide(x){
+  if(typeof x!=="number"||!isFinite(x)||x===0) return null;
+  return x>0?"YES":"NO";
+}
+/* that side's ask, in cents, from the two asks the edge snap already stores. */
+function flowSideAsk(side,ya,na){
+  const y=schemaNum(ya,2), n=schemaNum(na,2);
+  if(side==="YES") return y===undefined?null:y;
+  if(side==="NO") return n===undefined?null:n;
+  return null;
+}
+/* that side's MID, in cents, from the stored YES mid. The mid is the right price for a
+   "wins below its price" test; the ask carries half the spread and would understate the win rate
+   needed to break even. Both are exported so the test can be run either way and the difference
+   between them is visible rather than assumed. */
+function flowSideMidC(side,qm){
+  const q=schemaNum(qm,2);
+  if(q===undefined) return null;
+  if(side==="YES") return q;
+  if(side==="NO") return +(100-q).toFixed(2);
+  return null;
+}
+/* did the favoured side win. Grades on the settlement literal, and ONLY on "yes"/"no": a `void`
+   settlement is not a loss for either side and must not be scored as one (CLAUDE.md 10.4). */
+function flowSideWon(side,result){
+  if(side!=="YES"&&side!=="NO") return null;
+  if(result!=="yes"&&result!=="no") return null;
+  return ((side==="YES")===(result==="yes"))?1:0;
+}
+/* the 60 s reading against the 5 m reading, both already computed by the instrument. This is the
+   raw material for "did flow SPIKE toward one side", and it is DELIBERATELY NOT A VERDICT: no
+   threshold is applied to it here or anywhere, because the spine writes "[threshold TBD]" and the
+   data to set one does not exist yet. Record the distribution; pre-register the cut later. */
+function flowBurst(x60,x300){
+  if(typeof x60!=="number"||!isFinite(x60)) return null;
+  if(typeof x300!=="number"||!isFinite(x300)) return null;
+  return +(x60-x300).toFixed(3);
+}
+
+/* --- maker fills (H3): the per-fill row viaSample never wrote ---------------------------------- */
+/* TRANSCRIBED, NOT CHOSEN. 0.15 is the bucket boundary already shipped inside viaSample
+   (`p.ofi>0.15?"with":p.ofi<-0.15?"against":"none"`), named here so the panel and the CSV cannot
+   drift apart. IT IS NOT AN H4 THRESHOLD and must never be used as one: it is a display bucket for
+   the existing viability table, it predates this layer, and H4's one-sidedness cut is [TBD] and
+   stays [TBD]. Any analysis of the H3/H4 rows uses the raw `of`, not this bucket. */
+const VIA_FLOW_BUCKET=0.15;
+/* Storage bound, not a decision rule. viaSample grades at most one post per market per minute and
+   tracks two markets, so ~2,880 graded posts a day; 6,000 rows is ~2.1 days of buffer at roughly
+   95 bytes a row (~570 KB). SPEC section 8 already shows btc.edge alone exceeding a 5 MB origin
+   quota, so this is not free -- and CLAUDE.md 10.2 already says the CSV is the record and
+   localStorage only the buffer. EXPORT ON A SCHEDULE OR THE ROWS ARE GONE. */
+const VIA_ROW_CAP=6000;
+
+/* the shipped bucket, as a function. NOTE THE ONE DELIBERATE DIFFERENCE FROM THE SHIPPED LINE: an
+   UNMEASURED imbalance returns null here, where viaSample's counters call it "none". Conflating
+   "balanced" with "no reading" is a pre-existing flaw in the live counters and is left exactly as
+   it is (changing it would silently move a shipped panel's numbers); the CSV uses this function so
+   the unmeasured case is visible in the rows even though it is invisible in the panel. */
+function viaFlowBucket(x){
+  if(typeof x!=="number"||!isFinite(x)) return null;
+  return x>VIA_FLOW_BUCKET?"with":(x<-VIA_FLOW_BUCKET?"against":"none");
+}
+/* the four economics primitives. ONE definition each, read by the live counters (through
+   viaFillEcon) and by the CSV exporter, so a total and a row can never disagree. All UNROUNDED:
+   the live counters accumulate these exact values today and rounding here would silently move a
+   shipped number. Rounding is the exporter's job and is stated per column in SPEC section 4.6.
+   Cents throughout, matching the order book (kParseBook returns cents). */
+function viaMid(rb,ra){
+  if(typeof rb!=="number"||typeof ra!=="number"||!isFinite(rb)||!isFinite(ra)) return null;
+  return (rb+ra)/2;
+}
+function viaSpreadC(rb,ra){ return viaMid(rb,ra)===null?null:(ra-rb); }
+function viaAdvC(rb,ra,m1){
+  const m0=viaMid(rb,ra);
+  if(m0===null||typeof m1!=="number"||!isFinite(m1)) return null;
+  return m1-m0;
+}
+/* the maker fee, charged on both legs at the resting mid. `rate` is passed in rather than read off
+   a global so nothing here depends on a page constant it cannot see; a missing rate omits the fee
+   rather than defaulting one. The expression is the shipped one, character for character. */
+function viaFeeC(rb,ra,rate){
+  const m0=viaMid(rb,ra);
+  if(m0===null||typeof rate!=="number"||!isFinite(rate)||rate<0) return null;
+  return 100*rate*(m0/100)*(1-m0/100)*2;
+}
+/* the whole grade of one resting post, exactly as viaSample computes it today. p is the pending
+   post {t,ticker,yb,ya}; c is the current candidate {key,ticker,yb,ya}; rate is MAKER_RATE.
+   `filled` is the shipped fill model -- the best bid traded through our resting price -- and is
+   reproduced, not improved: this layer records what the instrument already measures. */
+function viaFillEcon(p,c,rate){
+  if(!p||!c) return null;
+  const m0=viaMid(p.yb,p.ya), m1=viaMid(c.yb,c.ya);
+  if(m0===null||m1===null) return null;
+  const fee=viaFeeC(p.yb,p.ya,rate);
+  if(fee===null) return null;
+  return {filled:c.yb<p.yb,mid0:m0,mid1:m1,spread:viaSpreadC(p.yb,p.ya),adv:viaAdvC(p.yb,p.ya,m1),fee:fee};
+}
+
+/* ONE GRADED POST -> ONE ROW.
+
+   A ROW IS WRITTEN FOR EVERY GRADED POST, FILLED OR NOT, and `f` says which. This is not padding.
+   H3's mechanism is Glosten-Milgrom adverse selection, whose whole content is that a maker gets
+   filled precisely when the flow knows something -- so the FILL RATE is half the hypothesis. Rows
+   for fills alone would give the mean P&L per fill and would silently delete the selection channel,
+   which is the thing being tested. The unfilled row is also the natural control: it records how the
+   mid moved for a maker who was NOT hit, at the same minute, on the same book.
+
+   WHAT IS STORED IS THE INPUTS, NOT THE ARITHMETIC. rb, ra and m1 are the three measurements; the
+   spread captured, the adverse selection and the fee are exact functions of them (and of the fee
+   rate) and are derived at export -- design rule 2, and the same choice sections 2.5/2.6 make for
+   the event tag and the seasonality control. The one condition attached, stated because it is real:
+   the fee re-derives under whatever MAKER_RATE is in force at export. It is a frozen page constant
+   today; if it ever changes, historical rows would re-derive under a rate that was not in force
+   when they were written, and the mitigation is one line in the export header, not a per-row field.
+
+   THE TIMESTAMP IS THE POST TIME, and that choice is load-bearing. `t` is the instant the order was
+   rested -- the decision moment, the moment the release tag has to be derived against. The grade
+   happens `dt` seconds later (viaSample grades between 55 s and 125 s after the post), so the grade
+   instant is t + dt*1000 and nothing is lost by storing the elapsed seconds instead of a second
+   absolute stamp. dt is stored because adverse selection accrues over it and a row whose elapsed
+   time is unknown cannot be compared with one whose is.
+
+   `tau` (minutes from the post to the market's close) is written ONLY when the caller supplies the
+   close on the candidate. It is not derivable from a Kalshi ticker without a parser this unit does
+   not have, and inventing one would be fabrication; its absence therefore means "the write site did
+   not supply a close", which is diagnosable from `k` because the 15-minute candidate carries one
+   and the hourly one currently does not. */
+function viaFillFields(p,c,now,econ,fl){
+  const f={};
+  if(!p||!c||!econ) return f;
+  const t=schemaNum(p.t,0);
+  /* no timestamp is not a missing field, it is a row that cannot be conditioned on anything, which
+     is the exact defect this layer exists to remove. Refuse to write it rather than write a row
+     that would silently join to no release, no hour and no control. */
+  if(t===undefined) return f;
+  schemaSet(f,"t",t);
+  if(typeof now==="number"&&isFinite(now)) schemaSet(f,"dt",schemaNum((now-p.t)/1000,0));
+  if(typeof c.key==="string"&&c.key!=="") schemaSet(f,"k",c.key);
+  /* the ticker is what lets a row be joined to its window (strike, close, settlement) and, if a K1
+     ever happens again, lets poisoned fills be removed one at a time instead of discarding a series
+     (CLAUDE.md 10.4b). It is the field whose absence cost the last repair its data. */
+  if(typeof p.ticker==="string"&&p.ticker!=="") schemaSet(f,"tk",p.ticker);
+  schemaSet(f,"f",econ.filled?1:0);
+  schemaSet(f,"rb",schemaNum(p.yb,2));
+  schemaSet(f,"ra",schemaNum(p.ya,2));
+  schemaSet(f,"m1",schemaNum(econ.mid1,3));
+  if(typeof c.close==="number"&&isFinite(c.close)) schemaSet(f,"tau",schemaNum((c.close-p.t)/60000,2));
+  /* the flow bundle is captured at POST time, not here: what a maker could see when the order was
+     rested is the state that could have informed the decision, and the state at the grade is
+     downstream of the fill itself. An absent bundle is a wiring defect and is stamped "n". */
+  return schemaPut(f,(fl&&typeof fl==="object")?fl:flowFields(undefined));
+}
+/* Oldest-first prune by the row's own timestamp. NOT by array position and NOT by any string key:
+   defect S2 pruned a ledger by string-sorted key and deleted the newest entries at a month boundary
+   because "OCT" < "SEP". Rows without a numeric t sort first and are dropped first, which cannot
+   arise because viaFillFields refuses to build one. Returns a new array; the caller assigns it. */
+function viaPrune(rows,cap){
+  if(!Array.isArray(rows)) return [];
+  const n=(typeof cap==="number"&&isFinite(cap)&&cap>=1)?Math.floor(cap):VIA_ROW_CAP;
+  if(rows.length<=n) return rows;
+  const s=rows.slice();
+  s.sort(function(a,b){
+    const at=(a&&typeof a.t==="number"&&isFinite(a.t))?a.t:-Infinity;
+    const bt=(b&&typeof b.t==="number"&&isFinite(b.t))?b.t:-Infinity;
+    return at-bt;
+  });
+  return s.slice(s.length-n);
+}

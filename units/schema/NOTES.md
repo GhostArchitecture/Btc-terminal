@@ -213,3 +213,100 @@ the spread as volatility — but it does mean both sides of a window carry the s
 redundant in the CSV. The alternative (invert the side's ask and accept the contamination) would give two
 different numbers that are each partly a spread reading. I think the mid is right and the redundancy is
 honest, but it is a judgement call and it is cheap to reverse.
+
+---
+
+# Addendum — H3 / H4 measurement layer (2026-09-06)
+
+`SPEC.md` §10–§17 is the deliverable; the block below in `code.js` is the pure glue it names.
+`node test.js` → **491 assertions, all green, exit 0** (was 370; 121 new).
+
+## New symbols in `code.js`
+
+| symbol | kind | notes |
+|---|---|---|
+| `VIA_FLOW_BUCKET` | const `0.15` | **transcribed** from the shipped `viaSample` line, not chosen here. **Not an H4 threshold.** |
+| `VIA_ROW_CAP` | const `6000` | storage bound (~2.1 days, ~570 KB), not a decision rule |
+| `flowFields(G)` | fn | the H4 bundle from `S.sig`: `{of, ofv, ofn, of5}` or an `ofX` code |
+| `flowSide(x)` | fn | `YES` / `NO` / `null`; an exact zero **never** breaks the tie |
+| `flowSideAsk(side,ya,na)` | fn | the favoured side's ask, in cents |
+| `flowSideMidC(side,qm)` | fn | the favoured side's mid — the right price for "wins below its price" |
+| `flowSideWon(side,result)` | fn | `1`/`0`/`null`; grades only on `"yes"`/`"no"` (void never scores) |
+| `flowBurst(x60,x300)` | fn | 60 s against 5 m. **A magnitude, never a verdict** |
+| `viaFlowBucket(x)` | fn | the shipped panel bucket; `null` (not `"none"`) when unmeasured — §11.9 |
+| `viaMid`, `viaSpreadC`, `viaAdvC`, `viaFeeC` | fn | the four maker-economics primitives, **unrounded** |
+| `viaFillEcon(p,c,rate)` | fn | one graded post, exactly as `viaSample` computes it today |
+| `viaFillFields(p,c,now,econ,fl)` | fn | the per-fill row bundle |
+| `viaPrune(rows,cap)` | fn | oldest-first **by `t`** — the S2 regression |
+
+Name-collision check: all 14 symbols `grep -c` **0** in `index.html` and **0** across every sibling unit.
+New row keys (`of, ofv, ofn, of5, ofX` on a snap; `t, dt, k, tk, f, rb, ra, m1, tau` on a via row) collide
+with no existing key, with nothing `isPhantomK1` reads (`tau`, `ask`/`entry`, `p`, `qm`), and with nothing
+`refSnap` reads (`tau`, `phantom`). Asserted mechanically, not reasoned about. No non-ASCII, no arrow
+functions in the new block.
+
+## The three rules, and where each one bit
+
+**1. Measurement only.** Nothing added computes, renders, highlights, sizes or decides. The two functions
+that come closest are `flowSideWon` (which scores an outcome that already happened, at export, from a
+settlement already on the row) and `viaFlowBucket` (a display bucket transcribed from shipped code).
+`renderViability` and `viaRows` are untouched — no panel gains a number and no note gains a count, even
+though §10.4b's precedent for surfacing excluded counts would have justified one.
+
+**2. Do not invent a threshold.** H4's one-sidedness cut is `[TBD]` in the spine and is `[TBD]` here.
+`flowBurst` returns a number at every input and classifies nothing; `of`, `ofv`, `ofn`, `of5` are stored
+raw so the **distribution** exists and a cut can be pre-registered later, from the calibration half, under
+§11.6's freeze. `test.js` asserts positively that no `OFI_*` / `FLOW_*` / `ONE_SIDED` constant exists
+anywhere in the unit — an inverted assertion, so adding one later fails the suite rather than passing
+silently. `VIA_FLOW_BUCKET = 0.15` is the one number that looks like a threshold and is not: it is
+`viaSample`'s own shipped bucket boundary, named so the panel and CSV cannot drift, and the SPEC says in
+two places that it must never be used as H4's cut.
+
+**3. Omit rather than fabricate.** `ofX` has four codes and they are genuinely different questions —
+`n` (write site not wired) is a **defect**, `s` (no signals object) and `t` (thin-sample guard fired) are
+**measurements**, `x` (non-finite reading) should be impossible and is counted so it cannot happen
+quietly. `tau` is omitted, never invented, when the caller supplies no market close. A post with no
+timestamp writes **no row at all** — a row that could be conditioned on nothing is the exact defect this
+layer exists to remove — and the refusal is countable for free as `V.posts − rows.length` (§11.8).
+
+## The design decisions worth arguing with
+
+- **A row for every graded post, not only for fills.** H3's mechanism is Glosten-Milgrom: a maker is
+  filled precisely when the flow knows something, so the **fill rate is half the hypothesis**. Rows for
+  fills alone would give mean P&L per fill and silently delete the selection channel being tested. Cost:
+  roughly 2,880 rows a day instead of a few hundred. I think the mechanism is worth the bytes; if the
+  quota forces a choice, dropping unfilled rows is the first cut to make and it should be made
+  deliberately, with §11.3 read first.
+- **The economics are derived, not stored.** `rb`, `ra`, `m1` are the measurements; spread, adverse
+  selection and fee are exact functions of them. This follows §2.5/§2.6 and saves ~35 B/row, but it makes
+  `fee_c` depend on whatever `MAKER_RATE` is in force **at export**. That is the same exposure `seas_*`
+  has to `SEAS`, mitigated the same way — one line in the export header (§12.3), not a per-row field.
+- **H4 lives on the edge snap, not the swing read.** The swing read already carries `ofi` but its outcome
+  is a 35¢ touch, not a settlement, so it cannot answer "did that side win below its price". The edge
+  ledger has the settlement, both sides' prices, and `refSnap`'s one-observation rule already in place.
+  The swing read's `ofi` is left untouched — no second flow measure anywhere.
+- **`flowFields` is a separate call, not a fifth parameter to `edgeSnapFields`.** A fifth parameter cannot
+  distinguish "the orchestrator did not wire it" from "`S.sig` is null", and that distinction is what
+  `ofX: "n"` versus `ofX: "s"` exists for. Two lines at the write site, zero signature churn.
+- **`viaFlowBucket(null)` returns `null` where the shipped counter says `"none"`.** The shipped line
+  conflates "balanced tape" with "no reading". I did not fix it — that would move a shipped panel's
+  numbers — but I did not reproduce it either, because the CSV is where the conflation would do real
+  damage. Every *measured* input agrees exactly, boundary included, and `test.js` pins that.
+
+## Not built, deliberately
+
+- **No narrative-vs-scheduled classifier, and no comparison statistic across the two classes.** A
+  narrative shock has no calendar entry by definition, so it is Phase 2; CLAUDE.md §11.5 says Phase 2
+  does not report until its detector is scored against the Phase-1 calendar as a confusion matrix, and
+  `shockStatus` already returns `INVALID` without one. H3 and H4 are both gated on that matrix.
+  **Recording is not gated** — a fill that was not recorded cannot be recovered — and SPEC §15 exists so
+  that nobody later mistakes stored rows for permission to report.
+- **No `# maker_fills` panel, note or count in the UI.** Export-only.
+- **No `tau` on hourly maker rows.** `K.hourOb` carries `{ticker, ob, t}` and no close; deriving one from
+  the ticker needs a `YYMMMDD` parser this unit does not have. Omitted and diagnosable from `k`, not
+  invented.
+- **No change to the hypothetical-fill model** (`c.yb < p.yb`), the 55–125 s grading window, the full-spread
+  capture convention, or the `±0.15` bucket. All transcribed. This layer records what the instrument
+  measures; it does not re-specify the maker model.
+- **No `S.via` version bump.** `viaLoad` gates on `j.v===1` and discards the ledger on mismatch (design
+  rule 4); `rows` is added inside the existing object and survives the round trip untouched.

@@ -1298,6 +1298,7 @@ function edgeSnapOne(m,now,ob){
   const sn={t:now,tau:+((m.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1),
     pa:f4(P.anl),pd:f4(P.drf),pe:f4(P.emp),pf:f4(P.flo),pr:f4(P.res),fit:P.fit};
   schemaPut(sn,edgeSnapFields(P,{q:((yb+ya)/2)/100,spread:(ya-yb)/100},m.strike,ob));   /* H protocol: vol triple + depth, omitted when not derivable */
+  schemaPut(sn,flowFields(S.sig));   /* H4: order-flow imbalance at the read. Separate call so "not wired" and "no signals" stay distinguishable. */
   w.snaps.push(sn);
   if(w.snaps.length>70) w.snaps.shift();
   return true;
@@ -1485,7 +1486,7 @@ function exportCSV(){
       nz(j.bound),j.gate||"",j.code||""]; };
   const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit",
     "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_prior_rel","si_prior_sided","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
-    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","is_ref_snap","excluded"]];
+    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","ofi_60s","ofi_vol","ofi_n","ofi_300s","ofi_omit","ofi_burst","is_ref_snap","excluded"]];
   for(const w of Object.values(S.edge.windows)){ const ref=refSnap(w);
     for(const s of w.snaps){ const E=et(s.t), H=hz(s.t);
       const spreadC=edgeSpreadC(s.qm,s.ya), misAnl=(s.pa!==null&&s.pa!==undefined)?+((s.pa*100-s.qm).toFixed(2)):"";
@@ -1494,6 +1495,8 @@ function exportCSV(){
         g(s,"sm"),g(s,"si"),g(s,"xs"),...sic(s),g(s,"dy"),g(s,"dn"),spreadC===null?"":spreadC,misAnl,
         (misAnl!==""&&spreadC)?+(Math.abs(misAnl)/spreadC).toFixed(3):"",(s.pm!==undefined&&s.pm!==null)?+((s.pm*100-s.qm).toFixed(2)):"",
         H[0],H[1],sf(s.t,w.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(w,"sr"),g(w,"srN"),g(w,"vrp"),w.vrpT?new Date(w.vrpT).toISOString():"",g(w,"vrpX"),
+        g(s,"of"),g(s,"ofv"),g(s,"ofn"),g(s,"of5"),g(s,"ofX"),
+        (s.of!==undefined&&s.of5!==undefined)?nz(flowBurst(s.of,s.of5)):"",
         (ref&&ref.t===s.t)?1:0,s.phantom||""]); } }
   const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
   for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
@@ -1515,7 +1518,38 @@ function exportCSV(){
       return [t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||"",
         g(t,"bidIn"),sc===null?"":sc,g(t,"dy"),g(t,"dn"),depthAtAsk(t.side,t.dy,t.dn)??"",g(t,"sm"),g(t,"si"),g(t,"xs"),...sic(t),
         g(t,"sr"),g(t,"vrp"),g(t,"vrpX"),H[0],H[1],sf(t.tIn,t.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier")]; }));
-  const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
+  /* H3 — one row per GRADED MAKER POST, filled or not. The unfilled posts are the control: without them the
+     fills are a selected sample. The release tag is DERIVED here from the row's own timestamp rather than
+     stored (§10.2), so an export always reads against the calendar as it stands at export time. */
+  const mf=[["post_t","grade_t","series","ticker","filled","rest_bid_c","ask_at_post_c","mid_at_post_c",
+    "mid_at_grade_c","spread_c","adverse_c","fee_c","net_c","tau_min","flow_bucket",
+    "ofi_60s","ofi_vol","ofi_n","ofi_300s","ofi_omit","hour_utc","seas_hour","ev","ev_mins","ev_tier","ev_kind"]];
+  for(const r of ((S.via&&S.via.rows)||[])){
+    const E=et(r.t), H=hz(r.t);
+    /* these take SCALARS, not the row. Passing the row returns null and every economics column exports
+       blank on every row — the same defect the H5 columns carried until it was caught (§10.2). */
+    const sp=nz(viaSpreadC(r.rb,r.ra)), ad=nz(viaAdvC(r.rb,r.ra,r.m1)), fe=nz(viaFeeC(r.rb,r.ra,MAKER_RATE));
+    mf.push([new Date(r.t).toISOString(),(typeof r.dt==="number")?new Date(r.t+r.dt*1000).toISOString():"",
+      g(r,"k"),g(r,"tk"),g(r,"f"),g(r,"rb"),g(r,"ra"),nz(viaMid(r.rb,r.ra)),g(r,"m1"),sp,ad,fe,
+      (sp!==""&&ad!==""&&fe!=="")?+(sp-ad-fe).toFixed(4):"",g(r,"tau"),nz(viaFlowBucket(r.of)),
+      g(r,"of"),g(r,"ofv"),g(r,"ofn"),g(r,"of5"),g(r,"ofX"),H[0],H[1],
+      g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(E,"evKind")]);
+  }
+  /* H1 — one row per shock per horizon. `exploratory` is 1 for every horizon but the registered primary
+     (§11.4); an exploratory row never sets anything and must never be read as a result. */
+  const hr=[["shock_t","event","ev_tier","ev_kind","horizon_min","exploratory","impulse_min","bucket",
+    "impulse_bp","z","sig_per_min_bp","sig_lagged","reversion_bp","reversion_z","reversion_frac",
+    "entry_c","exit_c","cost_rt_c","cost_basis","imp_omit","rev_omit","book_omit","ticker"]];
+  for(const r of Object.values((S.shock&&S.shock.rows)||{})){
+    hr.push([new Date(r.t).toISOString(),g(r,"ev"),g(r,"evTier"),g(r,"evKind"),g(r,"horizon"),g(r,"exploratory"),
+      g(r,"impulseMin"),g(r,"bucketLabel"),
+      (typeof r.ret==="number")?+(r.ret*1e4).toFixed(3):"",nz(r.z),
+      (typeof r.sigPerMin==="number")?+(r.sigPerMin*1e4).toFixed(4):"",g(r,"sigLagged"),
+      (typeof r.rev==="number")?+(r.rev*1e4).toFixed(3):"",nz(r.revZ),nz(r.revFrac),
+      nz(r.entryC),nz(r.exitC),nz(r.costRtC),g(r,"costBasis"),
+      r.impCode||"",r.revCode||"",r.bookCode||"",g(r,"tk")]);
+  }
+  const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)+"\n\n# maker_fills\n"+csv(mf)+"\n\n# h1_reversal\n"+csv(hr)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
@@ -1887,7 +1921,11 @@ function renderJournal(){
 /* ---------------------------------------------------------------- viability (maker economics, live) */
 const MAKER_RATE=0.0175;
 const VIA_HIST={ "15m":{spread:0.92,adv:1.68,fee:0.87,n:18485}, "hourly":{spread:1.03,adv:2.34,fee:0.87,n:1286} };
-function viaLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.via")||"null"); if(j&&j.v===1) S.via=j; }catch(e){} if(!S.via||S.via.v!==1) S.via={v:1,series:{}}; }
+function viaLoad(){ try{ const j=JSON.parse(localStorage.getItem("btc.via")||"null"); if(j&&j.v===1) S.via=j; }catch(e){} if(!S.via||S.via.v!==1) S.via={v:1,series:{}};
+  /* H3: per-fill ROWS beside the running counters. btc.via stored only sums, so maker economics could not be
+     conditioned on anything after the fact - which is why the K1 repair had to discard the whole live series
+     (§10.4b) instead of removing the poisoned fills. Inside the existing object, so the v===1 gate is untouched. */
+  if(!Array.isArray(S.via.rows)) S.via.rows=[]; }
 function viaSave(){ try{ localStorage.setItem("btc.via",JSON.stringify(S.via)); }catch(e){} }
 function viaSeries(k){ return S.via.series[k]||(S.via.series[k]={posts:0,fills:0,spread:0,adv:0,fee:0,flow:{with:{n:0,adv:0},against:{n:0,adv:0},none:{n:0,adv:0}}}); }
 function viaSample(now){
@@ -1895,22 +1933,29 @@ function viaSample(now){
   const K=S.k; if(!K.cur) return;
   S.viaPend=S.viaPend||{};
   const cands=[];
-  if(K.cur&&K.ob&&K.ob.yesBid!==null&&K.ob.yesAsk!==null) cands.push({key:"15m",ticker:K.cur.ticker,yb:K.ob.yesBid,ya:K.ob.yesAsk});
+  if(K.cur&&K.ob&&K.ob.yesBid!==null&&K.ob.yesAsk!==null) cands.push({key:"15m",ticker:K.cur.ticker,yb:K.ob.yesBid,ya:K.ob.yesAsk,close:K.cur.close});
   if(K.hourOb&&K.hourOb.ob&&K.hourOb.ob.yesBid!==null&&K.hourOb.ob.yesAsk!==null&&now-K.hourOb.t<40000) cands.push({key:"hourly",ticker:K.hourOb.ticker,yb:K.hourOb.ob.yesBid,ya:K.hourOb.ob.yesAsk});
   for(const c of cands){
     const p=S.viaPend[c.key];
     if(p&&p.ticker===c.ticker&&now-p.t>=55000&&now-p.t<=125000){
       const V=viaSeries(c.key); V.posts++;
-      const filled=c.yb<p.yb;                                  /* bid moved through our resting price */
-      if(filled){ const mid0=(p.yb+p.ya)/2, mid1=(c.yb+c.ya)/2; const adv=mid1-mid0;   /* cents */
-        const fee=100*MAKER_RATE*(mid0/100)*(1-mid0/100)*2;
-        V.fills++; V.spread+=(p.ya-p.yb); V.adv+=adv; V.fee+=fee;
+      /* viaFillEcon reproduces the arithmetic that was inlined here, bit for bit, so the running counters and
+         the per-fill row cannot drift apart. E is null only for an unusable book, which the candidate filter
+         already excludes - and such a book yields c.yb<p.yb === false today, i.e. no fill - so this is
+         behaviour-preserving. */
+      const E=viaFillEcon(p,c,MAKER_RATE);
+      if(E&&E.filled){
+        V.fills++; V.spread+=E.spread; V.adv+=E.adv; V.fee+=E.fee;
         const fk=p.ofi===null?"none":(p.ofi>0.15?"with":p.ofi<-0.15?"against":"none");
-        V.flow[fk].n++; V.flow[fk].adv+=adv; }
+        V.flow[fk].n++; V.flow[fk].adv+=E.adv; }
+      /* the row is written for a graded post whether or not it FILLED: an unfilled post is the control that
+         says what the book did while the order rested, and without it the fills are a selected sample. */
+      if(E){ const row=viaFillFields(p,c,now,E,p.fl);
+             if(row.t!==undefined){ S.via.rows.push(row); S.via.rows=viaPrune(S.via.rows,VIA_ROW_CAP); } }
       S.viaPend[c.key]=null;
     }
     if(!S.viaPend[c.key]||now-S.viaPend[c.key].t>125000||S.viaPend[c.key].ticker!==c.ticker){
-      const G=S.sig; S.viaPend[c.key]={t:now,ticker:c.ticker,yb:c.yb,ya:c.ya,ofi:(G&&G.ofi60)?G.ofi60.x:null};
+      const G=S.sig; S.viaPend[c.key]={t:now,ticker:c.ticker,yb:c.yb,ya:c.ya,ofi:(G&&G.ofi60)?G.ofi60.x:null,fl:flowFields(G)};
     }
   }
   viaSave();
@@ -4295,6 +4340,458 @@ function timeMatchedControl(t,seasTable){
   return {hourUTC:h,minuteUTC:mi,weekday:d.getUTCDay(),slot15:h*4+Math.floor(mi/15),seas:s};
 }
 
+/* ---------------- H protocol: reversal ---------------- */
+/* ---------------------------------------------------------------- H1 reversal: shock-magnitude reversion (measurement only)
+   Nothing here arms, prices, highlights, suggests or executes anything. It records. Something else,
+   much later, and only after section 11.3's time-matched controls exist, may decide.
+
+   detect/ detects a shock and SIZES it, and its own notes close with: "No reversal/H1 outcome
+   measurement. This unit detects and sizes; it does not score." THIS IS THE SCORING HALF. It re-uses
+   detect's pre-registered bucket edges through shockMagnitudeBucket() and detect's scale resolver
+   through shockScale(). It does NOT re-detect, it does NOT bin, and it defines no edge of its own.
+
+   THE CLAIM UNDER TEST, stated precisely, because "reversal exists" is not it. Roll 1984 /
+   Jegadeesh-Titman 1995 / Eross et al: reversion after a large move is real but USUALLY TOO SMALL TO
+   SURVIVE COSTS -- occasionally enough. H1 therefore lives in the TAIL of shock sizes, and the question
+   with an answer is whether mean reversion crosses ROUND-TRIP COST only in the top buckets. The
+   falsifier is that reversion is FLAT across buckets, or scales so gently it never clears cost even at
+   the largest observed shock. Both readings need cost ON THE ROW, in the same unit as the reversion it
+   is compared against, which is why revRoundTripC() lives here instead of being assumed downstream.
+
+   THE UNIT PROBLEM, which is the one thing a reader of these rows must not get wrong. There are two
+   different reversions and they are not interchangeable:
+     - TAPE reversion: BTC give-back in log-return / standardised-z units. This is the mechanism the
+       literature is about, and it is the axis detect buckets on, so it is what makes "monotonic in
+       shock size" a meaningful sentence.
+     - BOOK reversion: the move in the KALSHI contract's own price, in cents. The binary is a
+       probability, non-linear in spot, and it pins toward 0/1 as the gate approaches, so a 20 bp tape
+       give-back is worth wildly different numbers of cents at tau=12 mid-strike and at tau=2 far from
+       it -- and near the pin it can be worth nothing at all while the tape reverts perfectly.
+   BOTH are measured here and they are kept in separate fields with separate omission codes. Cost is in
+   cents, so "clears cost" is answered ON THE BOOK LEG ONLY. The tape leg never touches cost, in this
+   code or in the accumulator. See NOTES.md, which says which one the paper-sim arm would trade and why.
+
+   OMIT RATHER THAN FABRICATE. Every failure here produces a REASON CODE, never a zero, never a clamp,
+   never an Infinity. Absence is diagnosable; a default is invisible. The accumulator counts codes so an
+   exclusion is measurable rather than silent -- the same discipline vrpX enforces for H5.
+*/
+
+/* PRE-REGISTERED horizons and cost model. Fixed before a single shock-conditioned observation exists;
+   under section 11.7 clause 6 they may be tightened, never loosened to admit a result.
+
+   IMPULSE_MIN = 1. Not a choice: the spine defines shock magnitude as "BTC's move in the minute after a
+   known news timestamp". One minute is its definition, restated here as a constant instead of a literal.
+
+   REVERSION_MIN = 5, the PRIMARY horizon. The set REV_HORIZONS_MIN = [3,5,12] has BOUNDS that are
+   derived rather than picked. The floor, 3, is the shortest span carrying three one-minute returns; a
+   two-return reversion is one bar's noise wearing a horizon's name. The ceiling, 12, is arithmetic: a
+   shock landing at the very open of a KXBTC15M window leaves WINDOW_MIN minutes, the impulse consumes
+   IMPULSE_MIN of them, and the existing simulation's time-stop is T-1:30, so the tradeable span after
+   the impulse is WINDOW_MIN - IMPULSE_MIN - TIME_STOP_MIN = 12.5 minutes -- 12 is the largest whole
+   horizon inside it and 13 is outside, so a 13-minute reversion would describe a trade that could not
+   be taken. WHICH OF THE THREE IS PRIMARY IS A JUDGMENT AND IS NAMED AS ONE: 5 sits between the bounds,
+   and it is designated primary NOW, before any observation, so that reporting all three later does not
+   become three shots at one hypothesis (section 11.4 -- k counts arms whether or not they are labelled).
+   The two non-primary horizons are EXPLORATORY in section 11.4's sense and any consumer must carry that
+   word onto the row. Rows measured at different horizons are never pooled; revAccumulate refuses.
+
+   WINDOW_MIN = 15 and TIME_STOP_MIN = 1.5 are descriptions of the instrument, not tunables: the
+   KXBTC15M window length, and SIM's existing T-1:30 time-stop.
+
+   FEE_RATE = 0.07 and LEGS = 2 are the fee model. TWO legs, deliberately: H1's arm fades the impulse and
+   exits on box/trail BEFORE the gate, so it is a round trip and pays entry and exit. Section 4's
+   one-leg model applies to hold-to-settlement, which this is not. Section 7.5's per-order round-up is
+   carried by revFeeC's `rounded` form and BOTH forms are reported, because rounding 0.44c up to 1c has
+   already inverted one result in this codebase and picking one silently would hide that. */
+const REV={
+  IMPULSE_MIN:1,
+  REVERSION_MIN:5,
+  WINDOW_MIN:15,
+  TIME_STOP_MIN:1.5,
+  FEE_RATE:0.07,
+  LEGS:2,
+  /* These two deliberately RESTATE SHOCK.MAG_UNMEASURED / SHOCK.MAG_NONE rather than reading them, so
+     this unit degrades to a reason code instead of throwing when detect is absent from the splice.
+     test.js asserts the two definitions are identical, so they cannot drift apart unnoticed.
+     BUCKET_UNKNOWN is the label of a shock that fired and whose size could not be measured -- the
+     normal state after a backgrounded tab, exactly as detect's notes warn. BUCKET_NONE means no
+     impulse was even attempted (no shock key). Neither is a member of SHOCK_LABELS, so a GROUP BY
+     can never absorb an unmeasured row into a real bucket. */
+  BUCKET_UNKNOWN:"unmeasured",
+  BUCKET_NONE:"none"
+};
+const REV_HORIZONS_MIN=[3,5,12];
+
+/* Reason codes. Every one of these is a row that WAS observed and could not be measured truthfully; a
+   count of them beside any H1 table is what says how much of the sample the table describes. */
+const REV_OMIT={
+  NODETECT:"nodetect",  /* the detect unit is not present in this scope: no buckets, no scale resolver */
+  BADARG:"badarg",      /* an argument was not a usable number/array */
+  SCALE:"scale",        /* sigPerMin did not resolve to a positive per-minute scale */
+  OVERLAP:"overlap",    /* the baseline scale's sample does not end strictly before the impulse span */
+  BARS:"bars",          /* the anchor key is absent, or the span runs past the end of the buffer */
+  GAP:"gap",            /* a bar gap inside the span: not a contiguous one-minute path */
+  CLOSE:"close",        /* a non-finite or non-positive close inside the span */
+  NOFIT:"nofit",        /* impulse + reversion do not fit inside the window they would be traded in */
+  IMP0:"imp0",          /* the impulse was exactly zero: no direction to revert against, no ratio */
+  NOQUOTE:"noquote",    /* no book leg was supplied, so nothing can be said about cost */
+  QUOTE:"quote",        /* a supplied quote was outside 0..100 cents */
+  BASIS:"basis",        /* the cost basis was not declared, so the spread would be double-counted or lost */
+  NOBUCKET:"nobucket",  /* the row's shock size is unknown: it is NOT binned anywhere */
+  CAPPED:"capped",      /* the row was measured on a non-lagged (capped) scale; see detect D1 */
+  HORIZON:"horizon"     /* the row's horizons differ from the accumulator's; pooling them would be a lie */
+};
+
+/* Is detect spliced above us? Everything that buckets or resolves a scale goes through this. */
+function revHasDetect(){
+  return typeof shockMagnitudeBucket==="function"&&typeof shockScale==="function";
+}
+
+function revNum(v){ return typeof v==="number"&&isFinite(v); }
+function revInt(v){ return revNum(v)&&Math.floor(v)===v; }
+/* explicit rather than Math.sign, because the zero case is a decision here and not a rounding detail:
+   a zero impulse has no direction, so it yields no signed reversion and no ratio (REV_OMIT.IMP0). */
+function revSgn(v){ return v>0?1:(v<0?-1:0); }
+
+/* The bar whose close is the last price at or before a shock instant.
+   Bar key k covers [k*60000, (k+1)*60000) and its close is stamped at the END of that minute, so the
+   bar CONTAINING the stamp already contains part of the shock and cannot anchor it. The anchor is
+   therefore floor(t/60000) - 1, whose close lands exactly at the start of the shock's own minute, and a
+   1-minute impulse then measures the minute containing the stamp -- the spine's own definition.
+   HONEST LIMIT, the same one BASELINE.GAP_MIN carries: for a stamp landing mid-minute this concedes up
+   to one minute of resolution, and there is no way to recover it from minute bars. */
+function revShockKey(tShock){
+  if(!revNum(tShock)) return null;
+  return Math.floor(tShock/60000)-1;
+}
+
+/* Index of key k in an ascending keys array, or -1. Binary search; the array may contain gaps.
+   `len` bounds the search to the parallel region shared with `closes`, so a keys array longer than
+   closes can never return an index with no price behind it. */
+function revKeyIndex(keys,k,len){
+  if(!Array.isArray(keys)||!revNum(k)) return -1;
+  const n=(revInt(len)&&len>=0&&len<=keys.length)?len:keys.length;
+  let lo=0,hi=n-1;
+  while(lo<=hi){
+    const mid=(lo+hi)>>1, v=keys[mid];
+    if(!revNum(v)) return -1;
+    if(v===k) return mid;
+    if(v<k) lo=mid+1; else hi=mid-1;
+  }
+  return -1;
+}
+
+/* One leg: the log return from the close of bar kFrom to the close of bar kFrom+spanMin.
+   ALWAYS returns an object. `code` is null exactly when `ret` is a number; there is no null return and
+   no thrown error, because every refusal here has to be countable.
+
+   Key-anchored, not end-anchored -- which is why detect's standardisedMove() is not called for it.
+   standardisedMove measures the last windowMin minutes relative to `now` and refuses a tape staler than
+   SHOCK.STALE_MAX_MIN, both correct for a live flag and both wrong for scoring a shock that happened
+   forty minutes ago. The DISCIPLINE is copied exactly: every step must be 1 apart (computeStats' rule
+   for refusing a sleep/background gap as a one-minute return) and a non-finite or non-positive close
+   ANYWHERE in the span voids the leg, not merely at the endpoints -- the endpoints alone would still
+   compute a plausible number, and a broken bar inside means the tape was broken across the span. */
+function revLeg(keys,closes,kFrom,spanMin){
+  const out={ret:null,spanMin:null,k0:null,k1:null,p0:null,p1:null,code:REV_OMIT.BADARG};
+  if(!Array.isArray(keys)||!Array.isArray(closes)) return out;
+  if(!revNum(kFrom)||!revNum(spanMin)) return out;
+  const w=Math.round(spanMin); if(w<1) return out;
+  const n=Math.min(keys.length,closes.length); if(n<1) return out;
+  const i=revKeyIndex(keys,kFrom,n);
+  if(i<0||i+w>n-1){ out.code=REV_OMIT.BARS; return out; }
+  for(let j=i;j<=i+w;j++){
+    if(j>i&&keys[j]-keys[j-1]!==1){ out.code=REV_OMIT.GAP; return out; }
+    const c=closes[j];
+    if(!revNum(c)||c<=0){ out.code=REV_OMIT.CLOSE; return out; }
+  }
+  const p0=closes[i],p1=closes[i+w],r=Math.log(p1/p0);
+  if(!revNum(r)){ out.code=REV_OMIT.CLOSE; return out; }
+  return {ret:r,spanMin:w,k0:keys[i],k1:keys[i+w],p0:p0,p1:p1,code:null};
+}
+
+/* THE IMPULSE. The move over impulseMin minutes from the shock anchor, standardised by the SAME
+   arithmetic detect standardises with -- z = ret / (sig * sqrt(w)) -- fed by the SAME scale resolver
+   (shockScale) and bucketed by the SAME pre-registered edges (shockMagnitudeBucket). That is the point:
+   impulse and bucket cannot disagree about what "size" means, because there is one definition of size
+   and this function does not own it.
+
+   sigPerMin must be a baselineSigma() result for any row that will be pooled. A bare positive number is
+   accepted (a fixed constant scale is legitimately uncontaminated) but comes back sigLagged:false, and
+   detect's D1 applies: a scale estimated over a window containing the measured span caps |z| at
+   sqrt(60)=7.746 or 4.082 and empties the very tail buckets H1 lives in. revAccumulate refuses such a
+   row by default rather than pooling a capped z with an uncapped one.
+
+   The non-overlap rule is ENFORCED, not trusted, exactly as standardisedMove enforces it: if the scale
+   object's sample does not end strictly before the impulse span, the impulse is REFUSED (OVERLAP)
+   rather than measured on a denominator that contains its own numerator.
+
+   `bucketLabel` is ALWAYS a non-empty string, following detect's magLabel contract, so a grouping key
+   can never silently absorb an unmeasured row into a real bucket. `bucket` is null whenever the size is
+   unknown and a caller must branch on it before reading .label. */
+function revImpulse(keys,closes,kShock,sigPerMin,impulseMin){
+  const out={ret:null,z:null,absZ:null,impulseMin:null,k0:null,k1:null,p0:null,p1:null,
+             sigPerMin:null,sigLagged:null,sigMeta:null,bucket:null,bucketLabel:REV.BUCKET_UNKNOWN,
+             code:REV_OMIT.BADARG};
+  if(!revHasDetect()){ out.code=REV_OMIT.NODETECT; return out; }
+  const w=revNum(impulseMin)?Math.round(impulseMin):REV.IMPULSE_MIN;
+  if(w<1) return out;
+  const sc=shockScale(sigPerMin);
+  if(sc===null){ out.code=REV_OMIT.SCALE; return out; }
+  const leg=revLeg(keys,closes,kShock,w);
+  if(leg.code!==null){ out.code=leg.code; return out; }
+  if(sc.meta&&revNum(sc.meta.kTo)&&sc.meta.kTo>=leg.k0){ out.code=REV_OMIT.OVERLAP; return out; }
+  const z=leg.ret/(sc.sig*Math.sqrt(w));
+  if(!revNum(z)){ out.code=REV_OMIT.SCALE; return out; }
+  const absZ=Math.abs(z), b=shockMagnitudeBucket(absZ);
+  return {ret:leg.ret,z:z,absZ:absZ,impulseMin:w,k0:leg.k0,k1:leg.k1,p0:leg.p0,p1:leg.p1,
+          sigPerMin:sc.sig,sigLagged:sc.lagged===true,sigMeta:sc.meta,
+          bucket:b,bucketLabel:b===null?REV.BUCKET_UNKNOWN:b.label,code:null};
+}
+
+/* THE REVERSION. How much of the impulse is given back over the revMin minutes that FOLLOW it, measured
+   from the impulse's own end bar so the two legs abut and never overlap.
+
+   SIGN CONVENTION, which is the whole reason this function is not just another revLeg:
+       rev = -sgn(impulse.ret) * laterRet
+   so a positive `rev` is a give-back and a NEGATIVE `rev` is a continuation. A continuation is a real,
+   signed, adverse outcome and is recorded as one; nothing here folds it to zero, takes an absolute
+   value, or drops it. Averaging |reversion| would report a bounce on a market that only ever trended.
+
+   Three views of the same number, all stored, because they answer different questions:
+     rev      log-return give-back  -- the raw quantity, recoverable
+     revZ     rev / (sig*sqrt(revMin)) -- standardised, so a give-back is comparable across regimes
+     revFrac  rev / |impulse.ret|   -- the FRACTION of the impulse given back, the literature's quantity
+   revFrac is OMITTED, never Infinity and never a clamp, when the impulse is exactly zero: there is then
+   no direction to revert against and no denominator, so `rev` and `revZ` are withheld too and the raw
+   later-leg return is kept under `laterRet` so nothing measured is thrown away. Code: IMP0.
+
+   THE FIT RULE. impulseMin + revMin must fit inside the window the row would be traded in, or the
+   measurement describes a trade nobody could take. Two bounds, both enforced: the hard structural one
+   (WINDOW_MIN), and -- when the caller passes tauAtShockMin, the minutes left in the live Kalshi window
+   at the shock -- the actual one, allowing for SIM's T-1:30 time-stop. A row that does not fit is
+   REFUSED with NOFIT rather than measured and quietly compared against rows that did fit. */
+function revReversion(keys,closes,imp,revMin,tauAtShockMin){
+  const out={rev:null,revZ:null,revFrac:null,laterRet:null,cont:null,revMin:null,
+             k0:null,k1:null,p0:null,p1:null,code:REV_OMIT.BADARG};
+  if(!imp||typeof imp!=="object"||imp.code!==null||!revNum(imp.ret)||!revNum(imp.k1)) return out;
+  if(!revNum(imp.sigPerMin)||imp.sigPerMin<=0){ out.code=REV_OMIT.SCALE; return out; }
+  const h=revNum(revMin)?Math.round(revMin):REV.REVERSION_MIN;
+  if(h<1) return out;
+  const span=imp.impulseMin+h;
+  if(span>REV.WINDOW_MIN){ out.code=REV_OMIT.NOFIT; return out; }
+  if(revNum(tauAtShockMin)&&span>tauAtShockMin-REV.TIME_STOP_MIN){ out.code=REV_OMIT.NOFIT; return out; }
+  const leg=revLeg(keys,closes,imp.k1,h);
+  if(leg.code!==null){ out.code=leg.code; return out; }
+  const s=revSgn(imp.ret);
+  if(s===0){
+    return {rev:null,revZ:null,revFrac:null,laterRet:leg.ret,cont:null,revMin:h,
+            k0:leg.k0,k1:leg.k1,p0:leg.p0,p1:leg.p1,code:REV_OMIT.IMP0};
+  }
+  const rev=-s*leg.ret, revZ=rev/(imp.sigPerMin*Math.sqrt(h));
+  if(!revNum(revZ)){ out.code=REV_OMIT.SCALE; return out; }
+  return {rev:rev,revZ:revZ,revFrac:rev/Math.abs(imp.ret),laterRet:leg.ret,cont:rev<0,revMin:h,
+          k0:leg.k0,k1:leg.k1,p0:leg.p0,p1:leg.p1,code:null};
+}
+
+/* --- cost, in Kalshi cents ---------------------------------------------------------------------- */
+/* One leg's taker fee, in CENTS, for a contract priced at pC cents. This unit works in cents
+   throughout, because that is what Kalshi quotes in and what the ledgers store; index.html's kFee takes
+   dollars. The two are the same number: kFee(p) = ceil(0.07*p*(1-p)*100)/100 dollars, which in cents is
+   ceil(7*p*(1-p)) -- reproduced here rather than called so this stays a pure function of its argument
+   and the suite can pin the two against each other.
+   `rounded` true reproduces section 7.5's per-order round-up (the pessimistic, per-contract reading);
+   false is the unrounded 0.07*p*(1-p) the swing/sim journal charges. Both are reported by revRoundTripC
+   and neither is chosen here, because rounding a 0.44c fee up to 1c has already inverted a result in
+   this codebase once and a silent choice would hide that it can happen again. */
+function revFeeC(pC,rounded){
+  if(!revNum(pC)||pC<0||pC>100) return null;
+  const p=pC/100, raw=REV.FEE_RATE*p*(1-p)*100;
+  return rounded?Math.ceil(raw):raw;
+}
+
+/* Round-trip cost in cents: LEGS (=2) fees plus, when it is not already inside the measured gross, the
+   spread crossed.
+
+   THE DOUBLE-COUNT TRAP, which is why `basis` is required and is not defaulted:
+     basis "ask-bid"  the caller's gross was measured buying at the ask and selling at the bid, so the
+                      spread is ALREADY paid inside it. spreadCostC is 0 and adding spreadC would charge
+                      it twice.
+     basis "mid-mid"  the caller's gross was measured mid to mid, so the spread has NOT been paid and
+                      spreadC must be supplied and charged.
+   Anything else returns code BASIS and no cost at all. A defaulted basis would silently double or halve
+   the hurdle that decides H1's entire claim, and a wrong hurdle is worse than a missing one. */
+function revRoundTripC(entryC,exitC,spreadC,basis){
+  const out={feeC:null,feeRawC:null,spreadCostC:null,costC:null,costRawC:null,
+             legs:REV.LEGS,basis:null,code:REV_OMIT.BADARG};
+  const fIn=revFeeC(entryC,true), fOut=revFeeC(exitC,true);
+  const rIn=revFeeC(entryC,false), rOut=revFeeC(exitC,false);
+  if(fIn===null||fOut===null||rIn===null||rOut===null){ out.code=REV_OMIT.QUOTE; return out; }
+  let sp;
+  if(basis==="ask-bid") sp=0;
+  else if(basis==="mid-mid"){
+    if(!revNum(spreadC)||spreadC<0){ out.code=REV_OMIT.QUOTE; return out; }
+    sp=spreadC;
+  } else { out.code=REV_OMIT.BASIS; return out; }
+  return {feeC:fIn+fOut,feeRawC:rIn+rOut,spreadCostC:sp,costC:fIn+fOut+sp,costRawC:rIn+rOut+sp,
+          legs:REV.LEGS,basis:basis,code:null};
+}
+
+/* THE BOOK LEG: what the contract itself did, in cents, and whether that clears the round trip.
+   `entryC` is the price paid for the faded side at the end of the impulse, `exitC` the price it was
+   worth revMin later. The caller determines WHICH side that is from the sign of the impulse -- a
+   deterministic consequence of the measurement, not an entry rule, and no rule of any kind is applied
+   here. `clears` is a FACT ABOUT THIS ROW under this cost model, not a signal and not a recommendation;
+   nothing in this unit renders, highlights or aggregates it into one.
+   The rounded and unrounded fee models produce two net figures and BOTH are returned. */
+function revBookLeg(book){
+  const out={grossC:null,feeC:null,feeRawC:null,spreadCostC:null,costC:null,costRawC:null,
+             netC:null,netRawC:null,clears:null,clearsRaw:null,basis:null,code:REV_OMIT.NOQUOTE};
+  if(!book||typeof book!=="object") return out;
+  const e=book.entryC,x=book.exitC;
+  if(!revNum(e)||!revNum(x)||e<0||e>100||x<0||x>100){ out.code=REV_OMIT.QUOTE; return out; }
+  const c=revRoundTripC(e,x,book.spreadC,book.basis);
+  if(c.code!==null){ out.code=c.code; return out; }
+  const gross=x-e;
+  return {grossC:gross,feeC:c.feeC,feeRawC:c.feeRawC,spreadCostC:c.spreadCostC,
+          costC:c.costC,costRawC:c.costRawC,netC:gross-c.costC,netRawC:gross-c.costRawC,
+          clears:(gross-c.costC)>0,clearsRaw:(gross-c.costRawC)>0,basis:c.basis,code:null};
+}
+
+/* --- the composed row ---------------------------------------------------------------------------- */
+/* One shock -> one row. Keys that could not be measured are left UNDEFINED, never null and never zero,
+   so JSON.stringify drops them and a row with no reading is byte-identical to one written before this
+   unit existed -- the same backward-compatibility contract schema/ documents as THE OMIT RULE. The
+   three code fields are always present (null when that part measured cleanly).
+
+   opts: {tShock | kShock, sigPerMin, impulseMin, revMin, tauAtShockMin, book:{entryC,exitC,spreadC,basis}}
+   No default sigPerMin exists and none should: the scale is the caller's pre-registered choice and
+   silently supplying one would decide the bucketing of every row in the study. */
+function revMeasure(keys,closes,opts){
+  const o=opts||{};
+  const k=revNum(o.kShock)?Math.round(o.kShock):revShockKey(o.tShock);
+  const impMin=revNum(o.impulseMin)?Math.round(o.impulseMin):REV.IMPULSE_MIN;
+  const revMin=revNum(o.revMin)?Math.round(o.revMin):REV.REVERSION_MIN;
+  const row={kShock:revNum(k)?k:undefined,impulseMin:impMin,revMin:revMin,
+             bucketLabel:REV.BUCKET_NONE,impCode:REV_OMIT.BADARG,revCode:REV_OMIT.BADARG,
+             bookCode:REV_OMIT.NOQUOTE};
+  if(!revNum(k)) return row;
+  const imp=revImpulse(keys,closes,k,o.sigPerMin,impMin);
+  row.impCode=imp.code;
+  if(imp.code===null){
+    row.ret=imp.ret; row.z=imp.z; row.absZ=imp.absZ;
+    row.k0=imp.k0; row.k1=imp.k1; row.p0=imp.p0; row.p1=imp.p1;
+    row.sigPerMin=imp.sigPerMin; row.sigLagged=imp.sigLagged;
+    row.bucket=imp.bucket; row.bucketLabel=imp.bucketLabel;
+  } else {
+    row.bucketLabel=REV.BUCKET_UNKNOWN;
+    return row;                                    /* no impulse, no reversion and no bucket: stop here */
+  }
+  const rv=revReversion(keys,closes,imp,revMin,o.tauAtShockMin);
+  row.revCode=rv.code;
+  row.revMin=rv.revMin===null?revMin:rv.revMin;
+  if(revNum(rv.laterRet)) row.laterRet=rv.laterRet;
+  if(rv.code===null){
+    row.rev=rv.rev; row.revZ=rv.revZ; row.revFrac=rv.revFrac; row.cont=rv.cont;
+    row.rk0=rv.k0; row.rk1=rv.k1; row.rp0=rv.p0; row.rp1=rv.p1;
+  }
+  const bk=revBookLeg(o.book);
+  row.bookCode=bk.code;
+  if(bk.code===null){
+    row.grossC=bk.grossC; row.feeC=bk.feeC; row.feeRawC=bk.feeRawC; row.spreadCostC=bk.spreadCostC;
+    row.costC=bk.costC; row.costRawC=bk.costRawC; row.netC=bk.netC; row.netRawC=bk.netRawC;
+    row.clears=bk.clears; row.clearsRaw=bk.clearsRaw; row.costBasis=bk.basis;
+  }
+  return row;
+}
+
+/* --- the per-bucket accumulator ------------------------------------------------------------------- */
+/* The only thing that makes H1's monotonicity question answerable: n, mean reversion and mean cost PER
+   PRE-REGISTERED BUCKET, with the top two buckets never merged. detect keeps z4-6 and z6+ apart on
+   purpose because the tail is where the mechanism is claimed to live; merging them here would delete
+   the hypothesis one layer further down, so revBucketTable walks SHOCK_LABELS and merges nothing.
+
+   TAPE AND BOOK ARE ACCUMULATED SEPARATELY, with separate n. They are in different units and only the
+   book series is comparable with cost. A single "n" spanning both would let a bucket report a mean
+   reversion over 40 rows beside a mean cost over 3 and invite the reader to subtract them.
+
+   Rows are REFUSED, and the refusal counted, when:
+     - the bucket is unknown (NOBUCKET) -- an unsized shock is never silently binned anywhere;
+     - the scale was not lagged (CAPPED) -- detect's D1: a capped z is not comparable with an uncapped
+       one, so pooling them would flatten exactly the tail the table exists to show. Pass
+       {requireLagged:false} to build a deliberately mixed table, which is then labelled as one;
+     - the horizons differ from the ones the accumulator was opened on (HORIZON). The accumulator locks
+       to the first row's (impulseMin, revMin) precisely so that a 3-minute and a 10-minute reversion can
+       never end up in the same mean. */
+function revAccumulator(opts){
+  const o=opts||{};
+  return {impulseMin:null,revMin:null,requireLagged:o.requireLagged!==false,
+          byBucket:{},omit:{},nSeen:0,nTape:0,nBook:0};
+}
+function revOmitCount(acc,code){
+  if(!acc||!acc.omit||typeof code!=="string") return;
+  acc.omit[code]=(acc.omit[code]||0)+1;
+}
+function revBucketSlot(acc,label){
+  let b=acc.byBucket[label];
+  if(b===undefined){
+    b={label:label,nTape:0,sumRev:0,sumRevZ:0,sumRevFrac:0,
+       nBook:0,sumGrossC:0,sumCostC:0,sumCostRawC:0,sumNetC:0,nClears:0};
+    acc.byBucket[label]=b;
+  }
+  return b;
+}
+function revAccumulate(acc,row){
+  if(!acc||!row||typeof row!=="object") return acc;
+  acc.nSeen++;
+  if(row.impCode!==null){ revOmitCount(acc,row.impCode); return acc; }
+  if(!row.bucket||typeof row.bucket.label!=="string"){ revOmitCount(acc,REV_OMIT.NOBUCKET); return acc; }
+  if(acc.requireLagged&&row.sigLagged!==true){ revOmitCount(acc,REV_OMIT.CAPPED); return acc; }
+  if(acc.impulseMin===null){ acc.impulseMin=row.impulseMin; acc.revMin=row.revMin; }
+  else if(acc.impulseMin!==row.impulseMin||acc.revMin!==row.revMin){
+    revOmitCount(acc,REV_OMIT.HORIZON); return acc;
+  }
+  const b=revBucketSlot(acc,row.bucket.label);
+  if(row.revCode===null&&revNum(row.rev)&&revNum(row.revZ)&&revNum(row.revFrac)){
+    b.nTape++; acc.nTape++;
+    b.sumRev+=row.rev; b.sumRevZ+=row.revZ; b.sumRevFrac+=row.revFrac;
+  } else revOmitCount(acc,row.revCode||REV_OMIT.BADARG);
+  if(row.bookCode===null&&revNum(row.grossC)&&revNum(row.costC)&&revNum(row.netC)){
+    b.nBook++; acc.nBook++;
+    b.sumGrossC+=row.grossC; b.sumCostC+=row.costC; b.sumCostRawC+=row.costRawC; b.sumNetC+=row.netC;
+    if(row.netC>0) b.nClears++;
+  } else revOmitCount(acc,row.bookCode||REV_OMIT.NOQUOTE);
+  return acc;
+}
+/* One row per pre-registered bucket, IN ORDER, including buckets with n = 0 -- an empty tail bucket is
+   the most important cell in the table and must be visibly empty rather than missing. Means are NULL
+   when n is 0; a zero mean would read as "measured, and it was zero". Nothing is ranked, sorted by
+   result, or highlighted, and no cell is a signal: five buckets is five cells and section 7.6 applies
+   to every one of them. */
+function revBucketTable(acc){
+  if(!acc||!acc.byBucket) return [];
+  const labels=(typeof SHOCK_LABELS!=="undefined"&&Array.isArray(SHOCK_LABELS))?
+    SHOCK_LABELS.slice():Object.keys(acc.byBucket).sort();
+  /* a label the canonical list does not contain would otherwise vanish from the table -- a silent drop,
+     which is the one thing this unit is not allowed to do. Append it instead, so it is visible and
+     obviously foreign. It should never occur; if it does, something upstream invented a bucket. */
+  const seen=Object.keys(acc.byBucket);
+  for(let s2=0;s2<seen.length;s2++) if(labels.indexOf(seen[s2])<0) labels.push(seen[s2]);
+  const mean=function(s,n){ return n>0?s/n:null; };
+  const rows=[];
+  for(let i=0;i<labels.length;i++){
+    const lab=labels[i], b=acc.byBucket[lab];
+    const nT=b?b.nTape:0, nB=b?b.nBook:0;
+    rows.push({label:lab,i:i,
+      nTape:nT,meanRev:b?mean(b.sumRev,nT):null,meanRevZ:b?mean(b.sumRevZ,nT):null,
+      meanRevFrac:b?mean(b.sumRevFrac,nT):null,
+      nBook:nB,meanGrossC:b?mean(b.sumGrossC,nB):null,meanCostC:b?mean(b.sumCostC,nB):null,
+      meanCostRawC:b?mean(b.sumCostRawC,nB):null,meanNetC:b?mean(b.sumNetC,nB):null,
+      nClears:b?b.nClears:0});
+  }
+  return rows;
+}
+
 /* ---------------- H protocol: schema ---------------- */
 /* ---------------------------------------------------------------- schema: ledger enrichment (H-protocol state capture) */
 /* Pure glue for SPEC.md. Builds the OPTIONAL, NULLABLE field bundles that edgeSnapOne / swingTick /
@@ -4768,6 +5265,263 @@ function swingSpreadC(ask,bid){
   return +(100*(ask-bid)).toFixed(2);
 }
 
+/* ================================================================================================
+   H3 / H4 measurement layer -- per-fill maker rows, and the flow asymmetry on a graded row.
+   ADDED 2026-09-06. Everything below is RECORDING. Nothing below decides, highlights, sizes, enters
+   or reports. Two things in particular are NOT here and must not be added to it:
+
+     1. NO NARRATIVE-VS-SCHEDULED CLASSIFIER, and no statistic that compares the two classes.
+        A narrative shock has no calendar entry by definition, so classifying one is PHASE 2
+        (endogenously detected). CLAUDE.md 11.5 is categorical: phase 2 does not report at all until
+        its detector has been scored against the phase-1 calendar as a confusion matrix, phases are
+        never pooled, and prereg's shockStatus() already returns INVALID for a phase-2 caller with no
+        matrix. H3 (informed vs narrative maker P&L) and H4 (fade the narrative longshot) are BOTH
+        gated on that matrix.
+     2. NO ONE-SIDEDNESS THRESHOLD for H4. The spine writes "[threshold TBD]" because nobody has the
+        data to set it. Choosing one here would be exactly the tuning CLAUDE.md 4 and 11.7 clause 6
+        forbid. What is stored instead is the RAW flow asymmetry on every row, so the DISTRIBUTION
+        exists and a threshold can be pre-registered later from calibration data. VIA_FLOW_BUCKET
+        below is NOT that threshold -- see its comment.
+
+   WHAT IS NOT GATED IS RECORDING, and that is the whole reason this ships before the gate lifts: a
+   maker fill that was not recorded cannot be recovered later. The gate governs REPORTING. Stored
+   rows are not permission to report; SPEC section 10 says this again where an analyst will read it.
+
+   THE BLOCKER THIS EXISTS TO REMOVE. viaSample accumulates RUNNING SUMS per series -- posts, fills,
+   spread, adv, fee -- with no per-fill row and no timestamp. A running total cannot be conditioned
+   on anything after the fact, so maker P&L cannot be split by release type, by hour, or by anything
+   else, and H3 is unanswerable no matter how long the tool runs. CLAUDE.md 10.4b already records
+   what that shape costs: when the K1 repair had to remove poisoned fills it could not subtract them
+   from a total and had to DISCARD the entire live viability series. Rows are subtractable; totals
+   are not.
+
+   THE RELEASE TAG IS NOT STORED, deliberately, exactly as sections 2.5/2.6 above do it: the row
+   carries its own timestamp and the event tag is derived at export from the calendar as it stands
+   at export time. A stored tag would freeze a classification the calendar can still correct, and
+   the calendar is ~5% full (CLAUDE.md 8). The timestamp is what makes the split possible; the tag
+   is derived from it and costs the recorder no bytes. */
+
+/* --- flow asymmetry (H4), one bundle, two write sites ---------------------------------------- */
+/* THE INSTRUMENT ALREADY MEASURES THIS. computeSignals() produces ofi60 = {x, vol, n} -- signed
+   order-flow imbalance over 60 s, behind a thin-sample guard (>=6 prints and >=0.25 BTC, else null)
+   -- and ofi300 over 5 minutes. swingTick already stores ofi60.x on every swing read as `ofi`, and
+   viaSample already stashes it on a pending post. NOTHING HERE COMPUTES A SECOND FLOW MEASURE; this
+   copies the one that exists onto rows that can be scored against a settlement.
+
+   WHY THE EDGE SNAP IS H4's HOME. H4 asks whether the side flow favours then wins BELOW its price.
+   That needs (a) a flow reading, (b) that side's price, (c) a settled binary outcome, and (d) one
+   observation per window. The edge ledger is the only dataset with all four: w.result is the
+   settlement, s.ya/s.na/s.qm are the two sides' prices at the read, and refSnap already fixes the
+   one scored read per window (CLAUDE.md 4). A swing read has flow and price but its "outcome" is a
+   35c touch, not a settlement, so it cannot answer H4; its existing `ofi` field is left untouched.
+
+   WHAT IS STORED AND WHAT IS DERIVED. Only the flow reading is stored. Which side it favours, that
+   side's ask and mid, and whether that side won are EXACT functions of fields the row already
+   carries (design rule 2), so they are computed at export and cost zero bytes. That also means a
+   later correction to how the favoured side is defined re-derives over all history instead of
+   freezing a mistake into storage.
+
+   THE OMISSION CODE. `of` is missing NOT AT RANDOM: the thin-sample guard fires exactly when the
+   tape is quiet, and a quiet tape is the opposite of the conditions H4 is about, so a silent
+   absence would be a selection nobody could measure. ofX makes it countable, in the same spirit as
+   vrpX:
+     "n" - the caller supplied no argument at all: the write site is NOT WIRED. Never confuse this
+           with a measurement; it is a splice/wiring defect and should appear on zero rows.
+     "s" - no signals object (computeSignals returned null, or the first tick has not run).
+     "t" - signals exist but ofi60 is null: THE THIN-SAMPLE GUARD FIRED. This is a real measurement
+           of "not enough side-bearing prints to speak", not an error.
+     "x" - ofi60 exists but its x is not a finite number. Should not happen; counted rather than
+           silently dropped so that it cannot happen quietly.
+   `of5` has no code of its own: `of` present with `of5` absent says the 5-minute window was thin,
+   which is already the whole message. */
+function flowFields(G){
+  const f={};
+  if(G===undefined){ f.ofX="n"; return f; }
+  if(G===null||typeof G!=="object"){ f.ofX="s"; return f; }
+  const o=G.ofi60;
+  if(!o||typeof o!=="object"){ f.ofX="t"; return f; }
+  const x=schemaNum(o.x,2);
+  if(x===undefined){ f.ofX="x"; return f; }
+  schemaSet(f,"of",x);                       /* signed imbalance in [-1,1]; an exact 0 IS a reading */
+  schemaSet(f,"ofv",schemaNum(o.vol,2));     /* BTC behind it: +1.0 on 0.3 BTC is not +1.0 on 40 BTC */
+  schemaSet(f,"ofn",schemaNum(o.n,0));       /* prints behind it, same reason */
+  const o3=G.ofi300;
+  if(o3&&typeof o3==="object") schemaSet(f,"of5",schemaNum(o3.x,2));
+  return f;
+}
+/* which side the flow favours. Positive imbalance is net buying of BTC, which pushes the underlying
+   UP, which is the YES/above-strike side of a Kalshi BTC window (strikeProbs' `over` is P(above) and
+   qm is the YES mid). Exactly zero favours NEITHER side and returns null rather than breaking the
+   tie -- a tie broken by convention would put a fabricated side into the H4 sample. */
+function flowSide(x){
+  if(typeof x!=="number"||!isFinite(x)||x===0) return null;
+  return x>0?"YES":"NO";
+}
+/* that side's ask, in cents, from the two asks the edge snap already stores. */
+function flowSideAsk(side,ya,na){
+  const y=schemaNum(ya,2), n=schemaNum(na,2);
+  if(side==="YES") return y===undefined?null:y;
+  if(side==="NO") return n===undefined?null:n;
+  return null;
+}
+/* that side's MID, in cents, from the stored YES mid. The mid is the right price for a
+   "wins below its price" test; the ask carries half the spread and would understate the win rate
+   needed to break even. Both are exported so the test can be run either way and the difference
+   between them is visible rather than assumed. */
+function flowSideMidC(side,qm){
+  const q=schemaNum(qm,2);
+  if(q===undefined) return null;
+  if(side==="YES") return q;
+  if(side==="NO") return +(100-q).toFixed(2);
+  return null;
+}
+/* did the favoured side win. Grades on the settlement literal, and ONLY on "yes"/"no": a `void`
+   settlement is not a loss for either side and must not be scored as one (CLAUDE.md 10.4). */
+function flowSideWon(side,result){
+  if(side!=="YES"&&side!=="NO") return null;
+  if(result!=="yes"&&result!=="no") return null;
+  return ((side==="YES")===(result==="yes"))?1:0;
+}
+/* the 60 s reading against the 5 m reading, both already computed by the instrument. This is the
+   raw material for "did flow SPIKE toward one side", and it is DELIBERATELY NOT A VERDICT: no
+   threshold is applied to it here or anywhere, because the spine writes "[threshold TBD]" and the
+   data to set one does not exist yet. Record the distribution; pre-register the cut later. */
+function flowBurst(x60,x300){
+  if(typeof x60!=="number"||!isFinite(x60)) return null;
+  if(typeof x300!=="number"||!isFinite(x300)) return null;
+  return +(x60-x300).toFixed(3);
+}
+
+/* --- maker fills (H3): the per-fill row viaSample never wrote ---------------------------------- */
+/* TRANSCRIBED, NOT CHOSEN. 0.15 is the bucket boundary already shipped inside viaSample
+   (`p.ofi>0.15?"with":p.ofi<-0.15?"against":"none"`), named here so the panel and the CSV cannot
+   drift apart. IT IS NOT AN H4 THRESHOLD and must never be used as one: it is a display bucket for
+   the existing viability table, it predates this layer, and H4's one-sidedness cut is [TBD] and
+   stays [TBD]. Any analysis of the H3/H4 rows uses the raw `of`, not this bucket. */
+const VIA_FLOW_BUCKET=0.15;
+/* Storage bound, not a decision rule. viaSample grades at most one post per market per minute and
+   tracks two markets, so ~2,880 graded posts a day; 6,000 rows is ~2.1 days of buffer at roughly
+   95 bytes a row (~570 KB). SPEC section 8 already shows btc.edge alone exceeding a 5 MB origin
+   quota, so this is not free -- and CLAUDE.md 10.2 already says the CSV is the record and
+   localStorage only the buffer. EXPORT ON A SCHEDULE OR THE ROWS ARE GONE. */
+const VIA_ROW_CAP=6000;
+
+/* the shipped bucket, as a function. NOTE THE ONE DELIBERATE DIFFERENCE FROM THE SHIPPED LINE: an
+   UNMEASURED imbalance returns null here, where viaSample's counters call it "none". Conflating
+   "balanced" with "no reading" is a pre-existing flaw in the live counters and is left exactly as
+   it is (changing it would silently move a shipped panel's numbers); the CSV uses this function so
+   the unmeasured case is visible in the rows even though it is invisible in the panel. */
+function viaFlowBucket(x){
+  if(typeof x!=="number"||!isFinite(x)) return null;
+  return x>VIA_FLOW_BUCKET?"with":(x<-VIA_FLOW_BUCKET?"against":"none");
+}
+/* the four economics primitives. ONE definition each, read by the live counters (through
+   viaFillEcon) and by the CSV exporter, so a total and a row can never disagree. All UNROUNDED:
+   the live counters accumulate these exact values today and rounding here would silently move a
+   shipped number. Rounding is the exporter's job and is stated per column in SPEC section 4.6.
+   Cents throughout, matching the order book (kParseBook returns cents). */
+function viaMid(rb,ra){
+  if(typeof rb!=="number"||typeof ra!=="number"||!isFinite(rb)||!isFinite(ra)) return null;
+  return (rb+ra)/2;
+}
+function viaSpreadC(rb,ra){ return viaMid(rb,ra)===null?null:(ra-rb); }
+function viaAdvC(rb,ra,m1){
+  const m0=viaMid(rb,ra);
+  if(m0===null||typeof m1!=="number"||!isFinite(m1)) return null;
+  return m1-m0;
+}
+/* the maker fee, charged on both legs at the resting mid. `rate` is passed in rather than read off
+   a global so nothing here depends on a page constant it cannot see; a missing rate omits the fee
+   rather than defaulting one. The expression is the shipped one, character for character. */
+function viaFeeC(rb,ra,rate){
+  const m0=viaMid(rb,ra);
+  if(m0===null||typeof rate!=="number"||!isFinite(rate)||rate<0) return null;
+  return 100*rate*(m0/100)*(1-m0/100)*2;
+}
+/* the whole grade of one resting post, exactly as viaSample computes it today. p is the pending
+   post {t,ticker,yb,ya}; c is the current candidate {key,ticker,yb,ya}; rate is MAKER_RATE.
+   `filled` is the shipped fill model -- the best bid traded through our resting price -- and is
+   reproduced, not improved: this layer records what the instrument already measures. */
+function viaFillEcon(p,c,rate){
+  if(!p||!c) return null;
+  const m0=viaMid(p.yb,p.ya), m1=viaMid(c.yb,c.ya);
+  if(m0===null||m1===null) return null;
+  const fee=viaFeeC(p.yb,p.ya,rate);
+  if(fee===null) return null;
+  return {filled:c.yb<p.yb,mid0:m0,mid1:m1,spread:viaSpreadC(p.yb,p.ya),adv:viaAdvC(p.yb,p.ya,m1),fee:fee};
+}
+
+/* ONE GRADED POST -> ONE ROW.
+
+   A ROW IS WRITTEN FOR EVERY GRADED POST, FILLED OR NOT, and `f` says which. This is not padding.
+   H3's mechanism is Glosten-Milgrom adverse selection, whose whole content is that a maker gets
+   filled precisely when the flow knows something -- so the FILL RATE is half the hypothesis. Rows
+   for fills alone would give the mean P&L per fill and would silently delete the selection channel,
+   which is the thing being tested. The unfilled row is also the natural control: it records how the
+   mid moved for a maker who was NOT hit, at the same minute, on the same book.
+
+   WHAT IS STORED IS THE INPUTS, NOT THE ARITHMETIC. rb, ra and m1 are the three measurements; the
+   spread captured, the adverse selection and the fee are exact functions of them (and of the fee
+   rate) and are derived at export -- design rule 2, and the same choice sections 2.5/2.6 make for
+   the event tag and the seasonality control. The one condition attached, stated because it is real:
+   the fee re-derives under whatever MAKER_RATE is in force at export. It is a frozen page constant
+   today; if it ever changes, historical rows would re-derive under a rate that was not in force
+   when they were written, and the mitigation is one line in the export header, not a per-row field.
+
+   THE TIMESTAMP IS THE POST TIME, and that choice is load-bearing. `t` is the instant the order was
+   rested -- the decision moment, the moment the release tag has to be derived against. The grade
+   happens `dt` seconds later (viaSample grades between 55 s and 125 s after the post), so the grade
+   instant is t + dt*1000 and nothing is lost by storing the elapsed seconds instead of a second
+   absolute stamp. dt is stored because adverse selection accrues over it and a row whose elapsed
+   time is unknown cannot be compared with one whose is.
+
+   `tau` (minutes from the post to the market's close) is written ONLY when the caller supplies the
+   close on the candidate. It is not derivable from a Kalshi ticker without a parser this unit does
+   not have, and inventing one would be fabrication; its absence therefore means "the write site did
+   not supply a close", which is diagnosable from `k` because the 15-minute candidate carries one
+   and the hourly one currently does not. */
+function viaFillFields(p,c,now,econ,fl){
+  const f={};
+  if(!p||!c||!econ) return f;
+  const t=schemaNum(p.t,0);
+  /* no timestamp is not a missing field, it is a row that cannot be conditioned on anything, which
+     is the exact defect this layer exists to remove. Refuse to write it rather than write a row
+     that would silently join to no release, no hour and no control. */
+  if(t===undefined) return f;
+  schemaSet(f,"t",t);
+  if(typeof now==="number"&&isFinite(now)) schemaSet(f,"dt",schemaNum((now-p.t)/1000,0));
+  if(typeof c.key==="string"&&c.key!=="") schemaSet(f,"k",c.key);
+  /* the ticker is what lets a row be joined to its window (strike, close, settlement) and, if a K1
+     ever happens again, lets poisoned fills be removed one at a time instead of discarding a series
+     (CLAUDE.md 10.4b). It is the field whose absence cost the last repair its data. */
+  if(typeof p.ticker==="string"&&p.ticker!=="") schemaSet(f,"tk",p.ticker);
+  schemaSet(f,"f",econ.filled?1:0);
+  schemaSet(f,"rb",schemaNum(p.yb,2));
+  schemaSet(f,"ra",schemaNum(p.ya,2));
+  schemaSet(f,"m1",schemaNum(econ.mid1,3));
+  if(typeof c.close==="number"&&isFinite(c.close)) schemaSet(f,"tau",schemaNum((c.close-p.t)/60000,2));
+  /* the flow bundle is captured at POST time, not here: what a maker could see when the order was
+     rested is the state that could have informed the decision, and the state at the grade is
+     downstream of the fill itself. An absent bundle is a wiring defect and is stamped "n". */
+  return schemaPut(f,(fl&&typeof fl==="object")?fl:flowFields(undefined));
+}
+/* Oldest-first prune by the row's own timestamp. NOT by array position and NOT by any string key:
+   defect S2 pruned a ledger by string-sorted key and deleted the newest entries at a month boundary
+   because "OCT" < "SEP". Rows without a numeric t sort first and are dropped first, which cannot
+   arise because viaFillFields refuses to build one. Returns a new array; the caller assigns it. */
+function viaPrune(rows,cap){
+  if(!Array.isArray(rows)) return [];
+  const n=(typeof cap==="number"&&isFinite(cap)&&cap>=1)?Math.floor(cap):VIA_ROW_CAP;
+  if(rows.length<=n) return rows;
+  const s=rows.slice();
+  s.sort(function(a,b){
+    const at=(a&&typeof a.t==="number"&&isFinite(a.t))?a.t:-Infinity;
+    const bt=(b&&typeof b.t==="number"&&isFinite(b.t))?b.t:-Infinity;
+    return at-bt;
+  });
+  return s.slice(s.length-n);
+}
+
 /* ---------------- H protocol: prereg ---------------- */
 /* ---------------------------------------------------------------- shock programme: pre-registered evidence standard (CLAUDE.md 11)
    Machine-readable copy of the thresholds written in CLAUDE.md 11. Pure: no DOM, no storage, no clock, no fetch.
@@ -4866,6 +5620,105 @@ function shockStatus(st){
 }
 
 /* ---------------------------------------------------------------- clock / loop */
+
+/* NOTE: this pass lives BELOW the clock/loop marker on purpose. That marker is the end boundary the
+   splice tool uses for the last unit block, so anything above it is inside a unit's splice range and
+   `node units/tools/resplice.js prereg` would silently delete it (§6). Page code goes below. */
+/* ---------------------------------------------------------------- H1: the deferred shock-reversion pass
+   A shock's reversion leg lives in bars that do not exist when the shock fires, so this cannot run on the
+   1 Hz loop: it is a deferred pass, like volCloseTick, and it carries volCloseTick's L2 lesson. `tried` is
+   set ONLY when the bar buffer has moved past the shock for good, never on a failed attempt - set it early
+   and every shock that fired while the app was closed is written off unmeasured on the first tick after a
+   reload, which is exactly the bug L2 was.
+   MEASUREMENT ONLY. Nothing here decides anything, nothing renders, and there is no arm: H1's shock-size
+   percentile is [TBD] in the spine because nobody has the data to set it, and inventing one here would be
+   choosing the threshold that decides the result before the result exists (§11.7 clause 6). */
+const SHOCK_LOOKBACK_MS=6*3600000;                /* how far back a shock is still worth attempting */
+const SHOCK_SNAP_TOL_MS=45000;                    /* a book leg further than this from its target is no leg */
+
+function shockLoad(){
+  try{ const j=JSON.parse(localStorage.getItem("btc.shock")||"null"); if(j&&j.v===1) S.shock=j; }catch(e){}
+  if(!S.shock||S.shock.v!==1) S.shock={v:1,rows:{}};
+}
+/* its OWN try/catch, per L1: a quota failure on this ledger must not stop the others persisting. */
+function shockSave(){
+  try{ localStorage.setItem("btc.shock",JSON.stringify(S.shock)); }
+  catch(e){ S.ledgerErr="btc.shock: "+String(e&&e.message||e); }
+}
+
+/* The book leg is taken from the edge ledger's own snapshots, because the order book at a past instant is
+   not recoverable from anywhere else. The faded side follows from the impulse's SIGN and nothing else - an
+   up-move makes the above-strike side expensive, so a fade buys NO - which is arithmetic, not an entry rule. */
+function shockBookLeg(tEntry,tExit,sgn){
+  if(!(sgn===1||sgn===-1)) return null;
+  let best=null;
+  for(const w of Object.values(S.edge.windows||{})){
+    if(!w||!Array.isArray(w.snaps)) continue;
+    if(!(tEntry>=w.open&&tEntry<=w.close)) continue;
+    const near=t=>{ let b=null,d=Infinity;
+      for(const sn of w.snaps){ const g=Math.abs(sn.t-t); if(g<d){ d=g; b=sn; } }
+      return (b&&d<=SHOCK_SNAP_TOL_MS)?b:null; };
+    const a=near(tEntry), b=near(tExit);
+    if(!a||!b) continue;
+    /* what a snap stores is the yes ask and the mid, so the rest is arithmetic on those two */
+    const yaA=a.ya, ybA=(a.qm!==undefined&&a.qm!==null)?2*a.qm-a.ya:null;
+    const yaB=b.ya, ybB=(b.qm!==undefined&&b.qm!==null)?2*b.qm-b.ya:null;
+    if(yaA===undefined||yaA===null||ybA===null||yaB===undefined||yaB===null||ybB===null) continue;
+    /* sgn=+1 (up impulse) fades by buying NO; sgn=-1 buys YES. Enter at that side's ask, exit at its bid. */
+    const entryC=sgn===1?(100-ybA):yaA, exitC=sgn===1?(100-yaB):ybB;
+    best={entryC:entryC,exitC:exitC,basis:"ask-bid",tEntry:a.t,tExit:b.t,ticker:w.ticker};
+    break;
+  }
+  return best;
+}
+
+function shockTick(now){
+  if(typeof revMeasure!=="function"||typeof eventTag!=="function") return;
+  if(!S.shock||S.shock.v!==1) shockLoad();
+  const B=barsExcludingCurrent(); if(!B||!B.keys.length) return;      /* seed has not landed: retry next pass */
+  const last=B.keys[B.keys.length-1];
+  const bufMs=(B.keys.length?(last-B.keys[0]):0)*60000;
+  const R=S.shock.rows;
+  /* every scheduled release inside the lookback is a phase-1 shock instant, by definition of the calendar */
+  let rel=[]; try{ rel=releasesBetween(now-SHOCK_LOOKBACK_MS,now)||[]; }catch(e){ return; }
+  for(const ev of rel){
+    const t=ev.t; if(typeof t!=="number"||!isFinite(t)) continue;
+    for(const revMin of REV_HORIZONS_MIN){
+      const kShock=revShockKey(t);
+      const id=kShock+"|"+REV.IMPULSE_MIN+"|"+revMin;
+      const prev=R[id];
+      if(prev&&(prev.done||prev.tried)) continue;
+      /* not enough elapsed for the reversion leg yet - come back, do NOT record a failure */
+      if(now < t+(REV.IMPULSE_MIN+revMin+1)*60000) continue;
+      /* the baseline scale must END STRICTLY BEFORE the impulse it scales, or z is measured on a
+         denominator containing its own numerator. The unit refuses an overlap rather than trusting us. */
+      const winMin=last-kShock;
+      let sig=null;
+      try{ const bs=baselineSigma(B.keys,B.closes,now,winMin,60,1); sig=bs?bs:null; }catch(e){ sig=null; }
+      const sgn=null;
+      let row=null;
+      try{ row=revMeasure(B.keys,B.closes,{tShock:t,sigPerMin:sig,impulseMin:REV.IMPULSE_MIN,revMin:revMin,
+             tauAtShockMin:null}); }catch(e){ row=null; }
+      if(row&&row.impCode===null&&typeof row.ret==="number"){
+        const dir=row.ret>0?1:(row.ret<0?-1:0);
+        const bk=dir?shockBookLeg(t+REV.IMPULSE_MIN*60000,t+(REV.IMPULSE_MIN+revMin)*60000,dir):null;
+        if(bk){ try{ row=revMeasure(B.keys,B.closes,{tShock:t,sigPerMin:sig,impulseMin:REV.IMPULSE_MIN,
+                       revMin:revMin,tauAtShockMin:null,book:bk}); row.tk=bk.ticker;
+                     row.tEntry=bk.tEntry; row.tExit=bk.tExit; }catch(e){} }
+      }
+      if(!row) continue;
+      row.ev=ev.name; row.evTier=ev.tier; row.evKind=ev.kind; row.t=t; row.horizon=revMin;
+      /* exploratory per §11.4: exactly one horizon is primary and the others never set anything */
+      row.exploratory=(revMin===REV.REVERSION_MIN)?0:1;
+      const measured=(row.impCode===null&&row.revCode===null);
+      /* GIVE UP only once the buffer has genuinely moved past this shock - L2's lesson, not a timer */
+      const gone=(kShock<B.keys[0]);
+      if(measured){ row.done=1; R[id]=row; shockSave(); }
+      else if(gone){ row.tried=1; R[id]=row; shockSave(); }
+    }
+  }
+}
+
 $("pauseBtn").addEventListener("click",()=>{
   S.paused=!S.paused;
   $("pauseBtn").textContent=S.paused?"RESUME":"PAUSE";
@@ -4976,6 +5829,7 @@ setInterval(()=>{
   kalshiTick(Date.now());
   try{ edgeSnap(Date.now()); edgeProvisional(Date.now()); }catch(e){}
   if((Date.now()-(S.volCloseAt||0))>=20000){ S.volCloseAt=Date.now(); try{ volCloseTick(Date.now()); }catch(e){ S.volCloseErr=String(e&&e.message||e); } }
+  if((Date.now()-(S.shockAt||0))>=60000){ S.shockAt=Date.now(); try{ shockTick(Date.now()); }catch(e){ S.shockErr=String(e&&e.message||e); } }
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
@@ -4989,7 +5843,7 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad();
+  loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); shockLoad();
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
   kProbeSameOrigin(); initSections();
   try{ veinLayer(); sunTick(); }catch(e){}

@@ -730,3 +730,470 @@ Twelve stored keys, nineteen derived columns, zero changes to any existing field
 **And one line to carry away:** `vrp` is a measurement with a domain. Outside that domain it is omitted and
 the omission is counted, because at the money the quote contains almost no volatility information and a
 number computed there would be noise wearing the clothes of an opportunity. §7.6.
+
+---
+
+# Addendum — H3 / H4 measurement layer (added 2026-09-06)
+
+Sections 10–17 extend this spec. Nothing in §1–§9 changes: no existing field is renamed, no unit is
+converted, no `v` literal is touched, no CSV column is inserted or reordered. Design rules §1.1–§1.6
+govern everything below unchanged.
+
+**Read §15 before reading anything else here.** These sections build *recording*. They do not build,
+and must not be read as licensing, a narrative-vs-scheduled comparison — that comparison is gated on
+a confusion matrix that does not exist yet (CLAUDE.md §11.5).
+
+---
+
+## 10. H4 — flow asymmetry on a graded row
+
+**The hypothesis (spine §2, H4).** Right after a dramatic headline, retail buys the exciting,
+narrative-consistent side of the nearest window cheap. The check is whether order-flow imbalance
+*spikes* toward one side and whether that side then wins at a rate *below* its price.
+
+**The instrument already measures the flow.** `computeSignals` produces `ofi60 = {x, vol, n}` — signed
+order-flow imbalance over 60 s behind a thin-sample guard (≥6 prints **and** ≥0.25 BTC, else `null`) —
+and `ofi300` over five minutes. `swingTick` already stores `ofi60.x` on every swing read as `ofi`, and
+`viaSample` already stashes it on a pending post. **Nothing here computes a second flow measure.**
+This copies the one that exists onto rows that can be scored against a settlement.
+
+### 10.1 Why the edge snapshot, and not the swing read
+
+H4 needs four things together: a flow reading, the favoured side's price, a **settled binary
+outcome**, and **one observation per window**. Only `btc.edge` has all four — `w.result` is the
+settlement, `s.ya`/`s.na`/`s.qm` are the two sides' prices at the read, and `refSnap` already fixes
+the single scored read per window (CLAUDE.md §4). A swing read has flow and price but its outcome is
+a **35¢ touch**, not a settlement, so it cannot answer H4. `r.ofi` on swing reads is left exactly as
+it is; H4 is measured on `# windows`.
+
+### 10.2 New keys on `w.snaps[]` (edge snapshot)
+
+Existing keys unchanged: `t, tau, pm, qm, ya, na, pa, pd, pe, pf, pr, fit` (+ `phantom`, + §2.1's
+`sm, si, xs, dy, dn, sq, sqS, sb`).
+
+| new key | type | unit | computed from, at the write site |
+|---|---|---|---|
+| `of` | number, 2 dp | signed, [−1, 1] | `S.sig.ofi60.x` — 60-second order-flow imbalance. **An exact `0` is a reading** (a perfectly balanced tape) and is stored. |
+| `ofv` | number, 2 dp | BTC | `S.sig.ofi60.vol` — the volume behind the imbalance. `+1.0` on 0.3 BTC is not `+1.0` on 40 BTC, and the H4 cut is `[TBD]`, so the size has to be on the row for a threshold to be pre-registered from it later. |
+| `ofn` | integer | prints | `S.sig.ofi60.n` — same reason. |
+| `of5` | number, 2 dp | signed, [−1, 1] | `S.sig.ofi300.x` — the 5-minute imbalance. Present only when the 5-minute window cleared its own thin-sample guard; its absence needs no code, because `of` present with `of5` absent already says exactly that. |
+| `ofX` | string | — | why `of` was **not** written. Present exactly when `of` is absent. |
+
+**`ofX` alphabet, and why it exists.** `of` is missing **not at random**: the thin-sample guard fires
+exactly when the tape is quiet, and a quiet tape is the opposite of the condition H4 is about. A
+silent absence would be a selection nobody could measure, so it is counted, in the same spirit as
+`vrpX` (§2.2).
+
+| code | meaning |
+|---|---|
+| `n` | the caller supplied **no argument**: the write site is **not wired**. This is a splice/wiring defect and should appear on **zero** rows. Never read it as a measurement. |
+| `s` | no signals object — `computeSignals` returned `null`, or the first 1 Hz tick has not run. |
+| `t` | signals exist but `ofi60` is `null`: **the thin-sample guard fired.** A real measurement of "not enough side-bearing prints to speak", not an error. |
+| `x` | `ofi60` exists but its `x` is not finite. Should not happen; counted rather than dropped so it cannot happen quietly. |
+
+**Glue:** one additional line beside the existing enrichment in `edgeSnapOne`, **not** a signature
+change to `edgeSnapFields`:
+
+```js
+schemaPut(sn,edgeSnapFields(P,{q:((yb+ya)/2)/100,spread:(ya-yb)/100},m.strike,ob));
+schemaPut(sn,flowFields(S.sig));            /* H protocol: H4 flow asymmetry */
+```
+
+Two separate calls rather than a fifth parameter, deliberately: a fifth parameter cannot distinguish
+"the orchestrator did not wire it" from "`S.sig` is null", and that distinction is exactly what
+`ofX: "n"` versus `ofX: "s"` is for. With two calls an unwired site produces *nothing*, and a wired
+site always produces either a reading or a truthful code.
+
+### 10.3 Everything else about H4 is derived, and stored on no row
+
+Which side the flow favours, that side's ask, that side's mid, and whether that side won are **exact
+functions of fields the row already carries** (design rule 2). They are computed at export and cost
+zero bytes — and a later correction to how "the favoured side" is defined then re-derives over all
+history instead of freezing a mistake into storage.
+
+| derived | definition | note |
+|---|---|---|
+| `flowSide(of)` | `of > 0 → "YES"`, `of < 0 → "NO"`, `of === 0 → null` | Positive imbalance is net **buying** of BTC, which pushes the underlying **up**, which is the **YES / above-strike** side (`strikeProbs.over` is P(above); `qm` is the YES mid). **An exact zero favours neither side and returns `null`** — breaking the tie by convention would put a fabricated side into the H4 sample. |
+| `flowSideAsk(side, ya, na)` | the favoured side's ask, in cents | from the two asks already stored. |
+| `flowSideMidC(side, qm)` | `YES → qm`, `NO → 100 − qm` | **The mid is the right price for a "wins below its price" test**; the ask carries half the spread and would understate the win rate needed to break even. Both are exported so the test can be run either way and the difference is visible rather than assumed. |
+| `flowSideWon(side, w.result)` | `1` / `0` / `null` | grades **only** on `"yes"`/`"no"`. A `void` settlement is not a loss for either side and must never be scored as one (CLAUDE.md §10.4). |
+| `flowBurst(of, of5)` | `of − of5` | the 60 s reading against the 5 m reading, both already computed by the instrument. |
+
+### 10.4 No one-sidedness threshold exists, and none is invented here
+
+The spine writes **`[threshold TBD]`** for H4's one-sidedness cut because nobody has the data to set
+it. Choosing one here — at any value, from any reasoning — would be exactly what CLAUDE.md §4 and
+§11.7 clause 6 forbid: a threshold chosen with knowledge of, or in ignorance of, the result it will
+decide. **What is recorded instead is the raw distribution**: `of`, `ofv`, `ofn`, `of5` on every
+snap, and `flowBurst` derived from them. `flowBurst` returns a **magnitude at every input** and
+classifies nothing. A cut is pre-registered later, from calibration data, under §11.6's freeze
+discipline — and the 30-window calibration half is what it is measured on.
+
+`VIA_FLOW_BUCKET = 0.15` (§11.2) is **not** that threshold. It is a display bucket transcribed out of
+the shipped `viaSample` and it must never be used as H4's cut.
+
+---
+
+## 11. H3 — the per-fill maker row
+
+**The hypothesis (spine §2, H3).** Bartlett-O'Hara find Kalshi makers net **positive** on average;
+Bürgi-Deng-Whelan find makers lose **~10%**. H3 is that the split is regime-dependent — a scheduled
+numeric release draws informed flow first (bad for makers, Glosten-Milgrom), a narrative headline
+draws uninformed retail rushing the exciting side (good for makers).
+
+### 11.1 The blocker, and why it is the real work
+
+**The viability ledger cannot answer this, and no amount of running time will change that.**
+`viaSample` accumulates **running sums** per series — `V.posts++`, `V.fills++`, `V.spread +=`,
+`V.adv +=`, `V.fee +=` — with **no per-fill row and no timestamp**. A running total cannot be
+conditioned on anything after the fact, so maker P&L cannot be split by release type, by hour, or by
+anything else.
+
+CLAUDE.md §10.4b already records what that shape costs, in the past tense: when the K1 repair had to
+remove poisoned fills it **could not subtract them from a total** and had to **discard the entire
+live viability series**. That is the one place in the whole repair where a number was destroyed
+rather than marked. Rows are subtractable; totals are not. This section replaces the missing rows and
+**leaves the totals running unchanged**.
+
+### 11.2 Constants
+
+| const | value | what it is |
+|---|---|---|
+| `VIA_FLOW_BUCKET` | `0.15` | **Transcribed, not chosen.** The bucket boundary already shipped inside `viaSample` (`p.ofi>0.15?"with":p.ofi<-0.15?"against":"none"`), named here so the panel and the CSV cannot drift apart. **Not an H4 threshold**; see §10.4. |
+| `VIA_ROW_CAP` | `6000` | **A storage bound, not a decision rule.** `viaSample` grades at most one post per market per minute across two markets → ~2,880 graded posts/day → ~2.1 days of buffer at ~95 B/row (~570 KB). See §14. |
+
+### 11.3 A row for every graded post, filled or not
+
+**This is not padding, and recording only fills would delete the hypothesis.** H3's mechanism is
+Glosten-Milgrom adverse selection, whose entire content is that a maker is filled **precisely when
+the flow knows something**. The **fill rate** is therefore half of what is being tested. Rows for
+fills alone would yield mean P&L *per fill* and would silently drop the selection channel. The
+unfilled row is also the natural control: it records how the mid moved for a maker who was **not**
+hit, at the same minute, on the same book.
+
+`f` (1/0) carries the distinction explicitly. It is never implied by the absence of another field.
+
+### 11.4 Where the rows live, and why no version literal moves
+
+New array `S.via.rows`, inside the existing `btc.via` object. **`viaLoad` gates on `j.v === 1` and
+discards the whole ledger on mismatch** (design rule 4), so the version literal is **not touched**:
+`viaLoad` assigns the parsed object whole, so a `rows` array inside it survives a round trip, and an
+older build reading the same key simply ignores it. One additive line in `viaLoad`:
+
+```js
+if(!Array.isArray(S.via.rows)) S.via.rows=[];
+```
+
+`S.via.series` — the running counters the viability panel reads — is **untouched in shape, in
+arithmetic and in behaviour**.
+
+### 11.5 The row
+
+| key | type | unit | value |
+|---|---|---|---|
+| `t` | integer | ms | **the POST time** — the instant the order was rested. See §11.6. |
+| `dt` | integer | s | elapsed seconds from post to grade. `viaSample` grades between 55 s and 125 s after the post, so the grade instant is `t + dt*1000`; storing the elapsed seconds instead of a second absolute stamp loses nothing and costs less. Adverse selection accrues over `dt`, so a row whose elapsed time is unknown cannot be compared with one whose is. |
+| `k` | string | — | series: `"15m"` or `"hourly"`. |
+| `tk` | string | — | the Kalshi ticker. This is what lets a row be **joined to its window** (strike, close, settlement) and, if a K1 ever happens again, lets poisoned fills be removed **one at a time** instead of discarding a series. It is the field whose absence cost the last repair its data. |
+| `f` | `1` \| `0` | — | filled / not filled, always written. |
+| `rb` | number, 2 dp | cents | **the resting price** — the best bid the hypothetical order was posted at (`p.yb`). |
+| `ra` | number, 2 dp | cents | the ask at post (`p.ya`). With `rb` it gives the spread. |
+| `m1` | number, 3 dp | cents | the mid at the grade. With `rb`/`ra` it gives the adverse selection — **and on an unfilled row it is the control**, so it is written on every row, not only on fills. |
+| `tau` | number, 2 dp | minutes | minutes from the post to the market's close. **Written only when the caller supplies `close` on the candidate.** It is not derivable from a Kalshi ticker without a parser this unit does not have, and inventing one would be fabrication. Its absence is diagnosable from `k`: the 15-minute candidate carries a close (`K.cur.close`), the hourly one currently does not. |
+| `of`, `ofv`, `ofn`, `of5`, `ofX` | as §10.2 | | **the flow state at POST time** — what a maker could see when the order was rested. The state at the grade is downstream of the fill itself and is the wrong quantity. |
+
+### 11.6 The timestamp is the post time, and the release tag is not stored
+
+`t` is the **decision moment** — the instant the order was rested — and it is the instant the release
+tag has to be derived against.
+
+**The tag is not stored, deliberately, exactly as §2.5/§2.6 do it.** The row carries its own
+timestamp; `ev`/`ev_mins`/`ev_tier` are derived at export by calling the `calendar` unit's
+`eventTag(r.t)`. Three reasons, unchanged from §2.5: cost, exact derivability, and — the one that
+decides it here — **the calendar is ~5% full** (CLAUDE.md §8). A stored tag would freeze a
+classification the calendar can still correct; a derived one re-tags every historical row the moment
+a release date is added. The timestamp is what makes the split possible; the tag is derived from it
+and costs the recorder no bytes.
+
+### 11.7 What is stored is the inputs, not the arithmetic
+
+`rb`, `ra` and `m1` are the three measurements. The spread captured, the adverse selection and the
+fee are **exact functions of them** (and of the fee rate), so they are derived at export — design
+rule 2, and the same choice §2.5/§2.6 make.
+
+| quantity | definition | in `code.js` |
+|---|---|---|
+| mid at post | `(rb + ra) / 2` | `viaMid(rb,ra)` |
+| spread captured | `ra − rb` | `viaSpreadC(rb,ra)` |
+| mid movement | `m1 − mid0` | `viaAdvC(rb,ra,m1)` |
+| maker fee, both legs | `100·rate·(mid0/100)·(1 − mid0/100)·2` | `viaFeeC(rb,ra,rate)` |
+| the whole grade | all four + the fill test `c.yb < p.yb` | `viaFillEcon(p,c,rate)` |
+
+**All four return UNROUNDED values.** The live counters accumulate these exact numbers today, and
+rounding inside them would silently move a shipped panel's figures. Rounding is the exporter's job
+and is stated per column in §12.2. `test.js` compares every one of them against a **verbatim
+transcription of `viaSample`'s own lines** with `Object.is`, not with a tolerance, so a drift of one
+ulp fails the suite.
+
+**One condition attached, stated because it is real.** The fee re-derives under whatever
+`MAKER_RATE` is in force **at export time**. It is a frozen page constant today (`0.0175`). If it is
+ever changed, historical rows would re-derive under a rate that was not in force when they were
+written. The mitigation is one line in the export header (§12.3), **not** a per-row field — the same
+mitigation §2.6 applies to `SEAS`. Do not solve this problem before it exists.
+
+### 11.8 The running counters become the audit of the row builder
+
+`V.posts` counts every graded post; `S.via.rows` gains one row per graded post. **The difference
+between the two is the count of rows the builder refused to write**, and it is derivable with no new
+counter. A row is refused only when the post carries no usable timestamp — a row that could be
+conditioned on nothing, which is the exact defect this layer exists to remove — so the count should
+be zero, and if it is not, the gap says so. That is the third reason the counters stay: backward
+compatibility, the existing panel, and this.
+
+### 11.9 `viaFlowBucket` differs from the shipped line in exactly one case
+
+The shipped counter maps a **missing** `ofi` to `"none"`, conflating "balanced tape" with "no
+reading". `viaFlowBucket` returns `null` there.
+
+This is deliberate and it is the only difference: for **every measured input** the two agree exactly,
+including at the boundary (`0.15` → `"none"`, matching the shipped strict `>`), and `test.js` asserts
+that agreement across the boundary. The live counters keep their own literal — changing it would
+silently move a shipped panel's numbers — and the CSV uses `viaFlowBucket`, so the unmeasured case is
+visible in the rows even though it stays invisible in the panel. The conflation is **pre-existing and
+is left alone**; it is recorded here so nobody later reads the difference as a bug.
+
+### 11.10 Pruning is by timestamp, because of defect S2
+
+`viaPrune(rows, cap)` drops oldest-first **by the row's own `t`**. Not by array position, and never
+by a string key: defect S2 (CLAUDE.md §10.3) pruned a ledger by string-sorted key and deleted the
+**newest** entries at a month boundary, because Kalshi tickers embed `YYMMMDD` and `"OCT" < "SEP"`.
+`test.js` carries that exact month-boundary case as a regression.
+
+---
+
+## 12. CSV additions
+
+### 12.1 `# windows` — currently 52 columns, ending `excluded`
+
+Columns 53–62 are appended, in this order. Nothing is inserted, reordered or renamed.
+
+Per-row derivation, computed once in the exporter:
+
+```js
+const fs_=flowSide(s.of);
+```
+
+| # | column | value |
+|---|---|---|
+| 53 | `ofi_60s` | `s.of` |
+| 54 | `ofi_60s_vol_btc` | `s.ofv` |
+| 55 | `ofi_60s_n` | `s.ofn` |
+| 56 | `ofi_300s` | `s.of5` |
+| 57 | `ofi_burst` | `flowBurst(s.of, s.of5)` — **a magnitude, not a verdict** (§10.4) |
+| 58 | `ofi_omit` | `s.ofX` — `n`/`s`/`t`/`x`. **`GROUP BY` this before reading any H4 number**, exactly as §7.6 requires for `vrp_omit`: `of` is missing not at random. |
+| 59 | `flow_side` | `flowSide(s.of)` — `YES`/`NO`/`""` |
+| 60 | `flow_side_ask_c` | `flowSideAsk(fs_, s.ya, s.na)` |
+| 61 | `flow_side_mid_c` | `flowSideMidC(fs_, s.qm)` — **the price to test "wins below its price" against**; the ask carries half the spread |
+| 62 | `flow_side_won` | `flowSideWon(fs_, w.result)` — `1`/`0`/`""`; `""` on `void` and on unsettled windows |
+
+`is_ref_snap` (col 44) already marks the one scored read per window, so H4's one-observation rule is
+filterable in the CSV with no new column.
+
+### 12.2 New dataset `# maker_fills`
+
+Appended to the export blob **after** `# simulation_journal`. A new section, not a column change:
+the blob is already four `# name` sections and a positional parser reads them one at a time.
+
+Per-row derivations: `const m0=viaMid(r.rb,r.ra), sp=viaSpreadC(r.rb,r.ra), mv=viaAdvC(r.rb,r.ra,r.m1),
+fe=viaFeeC(r.rb,r.ra,MAKER_RATE);`
+
+| # | column | value | dp |
+|---|---|---|---|
+| 1 | `post_t` | `new Date(r.t).toISOString()` | — |
+| 2 | `elapsed_s` | `r.dt` | 0 |
+| 3 | `series` | `r.k` | — |
+| 4 | `ticker` | `r.tk` | — |
+| 5 | `filled` | `r.f` | — |
+| 6 | `rest_bid_c` | `r.rb` | 2 |
+| 7 | `ask_at_post_c` | `r.ra` | 2 |
+| 8 | `mid_at_post_c` | `m0` | 3 |
+| 9 | `mid_at_grade_c` | `r.m1` | 3 |
+| 10 | `spread_c` | `sp` | 2 |
+| 11 | `mid_move_c` | `mv` — `m1 − m0`, **signed, favourable positive** | 3 |
+| 12 | `adverse_c` | `−mv` — **the cost convention**, matching the viability panel's `adv` column | 3 |
+| 13 | `fee_c` | `fe` | 4 |
+| 14 | `net_c` | `sp − (−mv) − fe`, **written only when `filled === 1`** | 3 |
+| 15 | `tau_min` | `r.tau` | 2 |
+| 16 | `ofi_60s` | `r.of` | — |
+| 17 | `ofi_60s_vol_btc` | `r.ofv` | — |
+| 18 | `ofi_60s_n` | `r.ofn` | — |
+| 19 | `ofi_300s` | `r.of5` | — |
+| 20 | `ofi_burst` | `flowBurst(r.of, r.of5)` | 3 |
+| 21 | `ofi_omit` | `r.ofX` | — |
+| 22 | `flow_bucket` | `viaFlowBucket(r.of)` — the panel's bucket, `""` when unmeasured (§11.9) | — |
+| 23 | `hour_utc` | `utcHour(r.t)` | — |
+| 24 | `seas_hour` | `seasAt(r.t)` | — |
+| 25 | `seas_factor` | `seasFactor(r.t, r.t + r.tau*60000)`, `""` when `tau` is absent | — |
+| 26 | `ev` | `eventTag(r.t).ev` | — |
+| 27 | `ev_mins` | `eventTag(r.t).evMins` | — |
+| 28 | `ev_tier` | `eventTag(r.t).evTier` | — |
+
+**The sign trap, named so it cannot be walked into.** `V.adv` accumulates `mid1 − mid0`, in which a
+**rising** mid after a fill is **good** for the maker; `viaRows` then displays `a = −V.adv/V.fills` as
+a **cost** and computes `net = spread − a − fee`. Two conventions for one quantity already coexist in
+the shipped code. Both are exported, under two unambiguous names, and neither is "fixed" — changing
+either would change the meaning of a shipped number.
+
+**One transcribed convention, flagged not changed:** `spread_c` is the **full posted spread**
+(`ra − rb`), which is the shipped model's convention and is an **upper bound** on what a single
+resting bid actually captures. `VIA_HIST`'s backtest constants are on the same footing. This layer
+records what the instrument measures; it does not re-specify the maker model.
+
+### 12.3 Export header
+
+The header line (§4.5) gains the two constants the derived columns depend on, so a CSV stays
+self-describing about what was derived rather than stored:
+
+```
+# schema v3 · exported <ISO> · fit <FIT_VERSION> · calendar DATED=<n> rows · maker_rate <MAKER_RATE> · via_rows <S.via.rows.length>/<VIA_ROW_CAP>
+```
+
+---
+
+## 13. Call sites — exactly what changes, and nothing else
+
+All additive. Assert every anchor before replacing it (CLAUDE.md §7.2).
+
+| # | where | change |
+|---|---|---|
+| 1 | `edgeSnapOne`, immediately after the existing `schemaPut(sn, edgeSnapFields(...))` | add `schemaPut(sn,flowFields(S.sig));` — one new line, no signature change anywhere |
+| 2 | `viaLoad`, after the existing shape check | add `if(!Array.isArray(S.via.rows)) S.via.rows=[];` — **do not touch `j.v===1`** |
+| 3 | `viaSample`, the candidate push for `"15m"` | add `close:K.cur.close` to the candidate literal (gives `tau`). The `"hourly"` candidate has no close in `K.hourOb`; leave it, and `tau` is omitted rather than invented |
+| 4 | `viaSample`, the pending-post literal | add `fl:flowFields(G)` beside the existing `ofi:` field. **Leave `ofi` exactly as it is** — unrounded, straight off `G.ofi60.x` — or the `±0.15` bucket could flip on a value like `0.1549` and move the shipped panel |
+| 5 | `viaSample`, the grading branch | keep `const V=viaSeries(c.key); V.posts++;` exactly where it is. Replace the three inline arithmetic lines with `const E=viaFillEcon(p,c,MAKER_RATE);`, use `E.spread`/`E.adv`/`E.fee` for the counters under `if(E&&E.filled)`, keep the `fk` bucket literal untouched, then `if(E){ const row=viaFillFields(p,c,now,E,p.fl); if(row.t!==undefined){ S.via.rows.push(row); S.via.rows=viaPrune(S.via.rows,VIA_ROW_CAP); } }` |
+| 6 | `exportCSV` | §12.1 columns 53–62 on `# windows`; the new `# maker_fills` section from §12.2; the header line from §12.3 |
+
+**Behaviour preservation on the counters, stated precisely.** `V.posts` still increments on every
+graded post. `E` is `null` only when the book is unusable, which the candidate filter already
+prevents; and today a `null` book yields `c.yb < p.yb === false`, i.e. no fill — so `if(E && E.filled)`
+is exactly equivalent to the line it replaces. `V.spread`, `V.adv`, `V.fee` and `V.flow[fk]`
+accumulate bit-identical values, because `viaFillEcon` returns the same unrounded expressions.
+
+**Not changed, and deliberately:** `renderViability` and `viaRows`. No panel gains a number, no note
+gains a count, nothing is highlighted. See §15.
+
+---
+
+## 14. Storage cost
+
+| row | bytes | note |
+|---|---|---|
+| maker fill, filled, flow measured, 15m (with `tau`) | **~105 B** | `t,dt,k,tk,f,rb,ra,m1,tau,of,ofv,ofn,of5` |
+| maker fill, unfilled, flow thin, hourly (no `tau`) | **~72 B** | `t,dt,k,tk,f,rb,ra,m1,ofX` |
+| flow bundle on an edge snap | **+30 B** | `of,ofv,ofn,of5`; +9 B when it degrades to `ofX` |
+
+| ledger | added |
+|---|---|
+| `btc.via` at `VIA_ROW_CAP` = 6,000 rows | **~570 KB** (was ~1 KB) |
+| `btc.edge` at 1,500 windows ≈ 39,700 snaps | **+1.19 MB** |
+| **total** | **+1.76 MB** |
+
+**This lands on top of a ledger that already does not fit.** §8 measures `btc.edge` alone at 5.98 MB
+against a 5 MB origin quota *before* the §2 enrichment's +1.35 MB, and defect L1 makes a quota
+failure silent per key. **§8's cap fix (option A — trim `ledgerSave` to a byte budget, not a window
+count) is a prerequisite for the edge-snap half of this addendum**, not a follow-up. The `btc.via`
+half (+570 KB) is affordable on its own and is the half that removes the H3 blocker, so if only one
+ships, ship that one.
+
+CLAUDE.md §10.2 already states the operating rule and it is doubly binding here: **the CSV is the
+record and localStorage is only the buffer.** At 2,880 graded posts a day the maker-fill ring buffer
+holds ~2.1 days. **Export on a schedule or the rows are gone.**
+
+---
+
+## 15. THE GATE — stored rows are not permission to report
+
+**H3 and H4 are both gated, and neither may be reported until the gate lifts.**
+
+A narrative shock has **no calendar entry by definition** — that is what makes it narrative. So
+classifying one is **Phase 2, endogenously detected**, and CLAUDE.md §11.5 is categorical:
+
+- **Phase 2 does not report at all** until its detector has been scored against the Phase-1 calendar
+  over the same period, publishing **precision and recall as a confusion matrix**.
+- **Phase 1 and Phase 2 are never pooled** — separate ledgers, separate n, separate READY, no pooled
+  Brier, no pooled P&L, no combined verdict, ever.
+- `prereg`'s `shockStatus()` already returns **`INVALID`** for a Phase-2 caller with no matrix, with
+  the reason string spelled out. That refusal is the machine-readable form of this paragraph.
+
+**What is *not* gated is recording**, and that is the entire reason this ships now rather than when
+the gate lifts: **a maker fill that was not recorded cannot be recovered later.** The Kalshi book at
+14:32 UTC on a Thursday is gone the moment the poll ends. The gate governs **reporting**; the cost of
+waiting falls on **recording**; so recording starts now and reporting waits.
+
+**Nobody may read stored rows as permission to report.** Concretely, and none of these is built here:
+
+- no narrative-vs-scheduled **classifier**;
+- no **comparison statistic** across the two classes — no difference in maker P&L, no split table, no
+  ratio, in the UI or in a panel or in this file;
+- no **arm**, no entry rule, no gate on any existing arm, no sizing;
+- no **highlight**, no suggestion, no headline, no number rendered anywhere.
+
+CLAUDE.md §7.6 is the standing rule and it applies with full force: **a displayed number reads as a
+signal**, and none of this has earned that. §7.5 above says the same thing about the §2 fields. When
+the confusion matrix exists, the comparison is written **then**, against `shockStatus`, under §11.4's
+multiplicity rule (`k` arms → CI level `1 − 0.10/k`) and §11.6's chronological holdout — and every
+threshold it needs is pre-registered **before** it is computed, from the calibration half, exactly as
+§11.2a requires.
+
+---
+
+## 16. Summary — stored vs derived, H3/H4
+
+| | stored on the row | derived at export |
+|---|---|---|
+| H4 flow (edge snap) | `of`, `ofv`, `ofn`, `of5`, `ofX` | `flow_side`, `flow_side_ask_c`, `flow_side_mid_c`, `flow_side_won`, `ofi_burst` |
+| H3 maker fill (`btc.via` row) | `t`, `dt`, `k`, `tk`, `f`, `rb`, `ra`, `m1`, `tau`, + the flow bundle | `spread_c`, `mid_move_c`, `adverse_c`, `fee_c`, `net_c`, `mid_at_post_c`, `flow_bucket` |
+| event proximity | — | `ev`, `ev_mins`, `ev_tier` (from `t`, against the calendar **at export time**) |
+| seasonality control | — | `hour_utc`, `seas_hour`, `seas_factor` |
+| scoring rule | — | `is_ref_snap` (existing, col 44) |
+
+Fourteen stored keys across two row types, seventeen derived columns, **zero changes to any existing
+field, any existing counter, or any `v` literal.**
+
+---
+
+## 17. Honest caveats for H3/H4
+
+### 17.1 The maker fill is hypothetical, and always was
+`viaSample` posts no order. It records what *would* have happened to a bid resting at the best bid,
+and calls it filled when the best bid trades through that price. There is no queue position, no
+partial fill, no cancel, and no certainty that a real resting order would have been the one hit.
+**These rows measure the shipped model, at higher resolution. They do not measure execution**, and
+this instrument has no execution path.
+
+### 17.2 `spread_c` is the full posted spread
+An upper bound on what one resting bid captures (§12.2). Transcribed from the shipped model, not
+re-specified here.
+
+### 17.3 `of` is missing not at random, and the direction is knowable
+The thin-sample guard fires when the tape is quiet. Quiet tape is anti-correlated with the conditions
+H4 is about, so dropping rows with no `of` selects **toward** eventful minutes. `ofi_omit` makes the
+excluded set countable; **tabulate it before reading any H4 number**, exactly as §7.6 requires for
+`vrp_omit`.
+
+### 17.4 Two maker-fee conventions still coexist in the tool
+CLAUDE.md §10.4 §4 records it: `kFee` (ceiling to the cent, charged once) in the edge bands and the
+verdict, versus the unrounded `0.07·p(1−p)` on both legs in the swing/sim journal. `viaFeeC`
+reproduces the **viability** ledger's own third convention (`MAKER_RATE = 0.0175`, both legs,
+unrounded) because that is what the counters it must agree with use. Do not compare `fee_c` against
+`kFee` without converting.
+
+### 17.5 One graded post per market per minute is the sampling rate, not a choice made here
+`viaSample`'s 55–125 s grading window and 5 s duty gate are shipped behaviour. The rows inherit it,
+including the §10.5 caveat that a duty gate can skip a beat in a throttled tab — a missed sample, not
+a wrong one.
+
+### 17.6 Nothing here is a signal
+Every field in this addendum is measurement. None of it may drive a highlight, a suggestion, an arm
+or a headline until it has earned that in a ledger, and H3/H4 cannot even be *reported* until §15's
+gate lifts.

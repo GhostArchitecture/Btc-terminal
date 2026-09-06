@@ -5,8 +5,8 @@ calibrated probability engine, and self-grading ledgers under pre-registered dec
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
 Current deploy: `build-20260906070014` (§10's 22 fixes and the K1 ledger repair). This working copy is ahead of that
-deploy: it carries the **H-protocol measurement layer** (§11), not yet built and pushed. One file, 4,331 lines,
-~292 KB, 214 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+deploy: it carries the **H-protocol measurement layer** (§11), not yet built and pushed. One file, 5,858 lines,
+~360 KB, 269 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -24,7 +24,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ icon-{180,192,512}.png, icon-maskable-512.png, favicon-32.png, icon.png
 ├─ test/                         page harnesses (§6, §10.1)
 ├─ units/                        the H-protocol units — code, suites, specs and reviews (§6, §11)
-│   ├─ {volspace,calendar,detect,schema,prereg}/{code.js,test.js,*.md}
+│   ├─ {volspace,calendar,detect,reversal,schema,prereg}/{code.js,test.js,*.md}
 │   ├─ run.js                    runs every unit suite
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 └─ .nojekyll
@@ -129,6 +129,7 @@ provisional grades are marked and overwritten by official results, nothing is si
 | `btc.swing` | swing reads and grading |
 | `btc.journal` | simulation trades + arm bankrolls (`{v:3, t:[], bank:{}}`) |
 | `btc.round` | the live armed round, so a reload between ARM and the gate does not erase it (§10.3 R5) |
+| `btc.shock` | H1 rows: one per shock per horizon, impulse + signed reversion + round-trip cost |
 | `btc.repair` | the one-time K1 ledger repair record: rule, counts, and the viability counters it reset (§10.4b) |
 | `btc.cfg`, `btc.sections.v2` | settings, collapsed-section state |
 
@@ -225,7 +226,7 @@ Suite (`npm test`, after `npm install` for jsdom):
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
 currently **231 assertions across 5 harnesses**.
 
-`npm run test:units` runs the five H-protocol unit suites under `units/` (~1,480 assertions); `npm run test:all`
+`npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
 `node units/tools/resplice.js <unit>...`, and never patch the spliced copy, or the next splice silently reverts
 the patch. The splice is verified reproducible: re-splicing every unit from `units/` leaves `index.html`

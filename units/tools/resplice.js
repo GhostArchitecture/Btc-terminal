@@ -6,7 +6,7 @@ const REPO=path.join(__dirname,"..","..");
 const OUT=path.join(__dirname,"..");            /* the units live beside this tool, in the repo */
 const UNITS=process.argv.slice(2);
 if(!UNITS.length){ console.error("usage: resplice.js <unit> [unit...]"); process.exit(2); }
-const ORDER=["volspace","calendar","detect","schema","prereg"];
+const ORDER=["volspace","calendar","detect","reversal","schema","prereg"];
 const hdr=u=>`/* ---------------- H protocol: ${u} ---------------- */`;
 const TAIL="/* ---------------------------------------------------------------- clock / loop */";
 

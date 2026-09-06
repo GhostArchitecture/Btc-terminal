@@ -208,7 +208,7 @@ function part2() {
       const text=window._lastBlob.text; const a=document.body.children[document.body.children.length-1];
       return {v:j.v,keys:Object.keys(j),banks:Object.keys(j.bank).length,sections:(text.match(/^# (\\w+)$/mg)||[]),download:a&&a.download}; })()`);
     T("journal persists as {v:3, t, bank} with ten arm bankrolls", r.v === 3 && JSON.stringify(r.keys) === JSON.stringify(["v", "t", "bank"]) && r.banks === 10, r);
-    T("CSV export carries four datasets and a .csv filename", r.sections.length === 4 && /\.csv$/.test(r.download), r);
+    T("CSV export carries six datasets and a .csv filename", r.sections.length === 6 && /\.csv$/.test(r.download), r);
   }
 
   /* ---- ledger repair (§10.3 K1): phantom rows are marked and excluded, never deleted; the pass is idempotent */
