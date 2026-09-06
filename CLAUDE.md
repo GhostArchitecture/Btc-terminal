@@ -722,10 +722,32 @@ stays in the source, gating nothing, so the superseded bound remains visible bes
 
 The band is fixed in **standardised units, not basis points** — roughly `0.23 ≤ |x/(σ√τ)| ≤ 1.8`. In basis points
 it therefore **contracts toward the strike as τ decays**: 8–60 bp at 15 minutes, 5–35 bp at 8, 3–20 bp at 3. Two
-consequences follow and both are load-bearing. A KXBTC15M window is **born unidentified and stays unidentified at
-its own strike for its entire life**; it becomes measurable only in the ring that price has moved into. And the
-hourly KXBTCD ladder's off-the-money rungs are identified from the first poll, which makes the ladder — not the
-15-minute series — the primary venue for H5.
+consequences follow and both are load-bearing. A KXBTC15M window is **born unidentified**: at the opening instant
+`x = 0` exactly, and no reading exists at its own strike. It becomes measurable only in the ring price has moved
+into. The hourly KXBTCD ladder's off-the-money rungs, by contrast, are identified from the first poll.
+
+**But the 15-minute series is not thereby disqualified, and an early draft of this subsection wrongly concluded it
+was.** Price diffuses off the strike within a minute or two, and the standardised distance `x/(σ√τ)` it needs to
+clear is not a fixed target — `√τ` is shrinking at the same time. Simulated over 400 at-the-money 15-minute
+windows at σ = 9 bp/min with reads every 30 s and the book quoting near fair, **71.5% of reads yield a usable
+implied σ**, and the yield traces a clean arch across the window:
+
+| minutes left | 15 | 13 | 11 | 9 | 7 | 6 | 5 | 3 | 2 | 1 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| usable | 50% | 73% | 83% | 83% | 85% | **79%** | 78% | 63% | 51% | 36% |
+
+Low at the open because price has not left the strike; peaking near 85% in the middle third; falling away at the
+gate because `σ√τ → 0` faster than price diffuses, so the reading runs *past* the far edge of the band rather than
+failing to reach it. **`refSnap` — the one-observation-per-window scoring point (§4, §10.2) — sits at τ ≈ 6, which
+is inside the high-yield zone at 79%.** That alignment is luck, not design, and it should be checked again if
+`refSnap` is ever moved.
+
+Rejections split 14.6% one-sided, 13.1% tick-move-over-bound, 0.8% no root, and **0.0% implausible ratio**. Two
+caveats on that last figure, both load-bearing: the simulation drives price with the *same* σ the model uses, so
+implied ≈ model by construction and the plausibility band is barely exercised; and it quotes the book near
+model-fair with 1¢ of noise, where a real book carries a spread and can dislocate. **The live implausible rate is
+unmeasured and this figure is an optimistic bound on it** — it says the band does not reject ordinary readings,
+not that it will rarely fire.
 
 **What is stored, and what an analyst may re-derive.** A rejected reading is omitted and the omission is
 **counted** (`vrpX`), never clamped and never silently dropped. Every row carries its own measurement, not a
