@@ -1470,15 +1470,21 @@ function exportCSV(){
      move in implied sigma across one real one-cent tick, si_bound the pre-registered bound in force when the row
      was judged, and si_gate says whether the row was decided by that tick measurement or by the weaker quote-free
      prior (rows written before 2026-09-06 carry no tick and are NOT comparable with rows that do — §11.6). An
-     analyst re-filtering at another bound reads si_tick_rel and ignores si_ident; si_code says why a reading was
-     dropped, so an exclusion is never silent. si_cond is the SUPERSEDED local derivative, diagnostic only. */
+     analyst re-filtering at another bound reads si_prior_rel - the GATE's own probe, taken at the model-fair
+     quote and therefore exogenous to this row's premium. si_tick_rel is the observed-quote conditioning and is
+     a DIAGNOSTIC ONLY: it is monotone in the quote, and the quote determines vrp, so filtering on it selects on
+     the outcome (CLAUDE.md 11.8). si_code says why a reading was dropped, so an exclusion is never silent.
+     si_cond is the SUPERSEDED local derivative, diagnostic only. */
   const nz=v=>(v===null||v===undefined)?"":v;
   const sij=o=>{ try{ return (typeof siJudge==="function")?siJudge(o):null; }catch(e){ return null; } };
-  const sic=o=>{ const j=sij(o); if(!j) return ["","","","","","","",""];
+  const sic=o=>{ const j=sij(o); if(!j) return ["","","","","","","","","",""];
     const mute=(j.code==="noref"||j.code==="nosi"||j.code==="nodiag");
-    return [nz(j.sir),nz(j.relPerCent),mute?"":(j.identified?1:0),nz(j.tickRel),j.tickSided||"",nz(j.bound),j.gate||"",j.code||""]; };
+    return [nz(j.sir),nz(j.relPerCent),mute?"":(j.identified?1:0),
+      nz(j.priorRel),j.priorSided||"",           /* the GATE's own probe: exogenous, and the one to re-filter on */
+      nz(j.tickRel),j.tickSided||"",             /* this row's observed-quote conditioning: DIAGNOSTIC ONLY */
+      nz(j.bound),j.gate||"",j.code||""]; };
   const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit",
-    "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
+    "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_prior_rel","si_prior_sided","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
     "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","is_ref_snap","excluded"]];
   for(const w of Object.values(S.edge.windows)){ const ref=refSnap(w);
     for(const s of w.snaps){ const E=et(s.t), H=hz(s.t);
@@ -1495,7 +1501,7 @@ function exportCSV(){
     r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit","excluded",
-    "bid","spread_c","depth_yes","depth_no","depth_at_ask","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
+    "bid","spread_c","depth_yes","depth_no","depth_at_ask","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_prior_rel","si_prior_sided","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
     "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_omit","is_ref_read"]].concat(
     Object.values(S.swing.w).flatMap(e=>{ const clean=e.reads.filter(r=>!r.phantom); const ref=clean.length?clean[Math.floor(clean.length/2)]:null;
       return e.reads.map(r=>{ const E=et(r.t), H=hz(r.t), sc=swingSpreadC(r.ask,r.bid);
@@ -1503,7 +1509,7 @@ function exportCSV(){
           g(r,"bid"),sc===null?"":sc,g(r,"dy"),g(r,"dn"),depthAtAsk(e.side,r.dy,r.dn)??"",g(r,"sm"),g(r,"si"),g(r,"xs"),...sic(r),
           H[0],H[1],sf(r.t,e.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(e,"sr"),g(e,"srN"),g(e,"vrp"),g(e,"vrpX"),(ref&&ref.t===r.t)?1:0]; }); }));
   const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after","excluded",
-    "bid_at_entry","spread_at_entry_c","depth_yes_at_entry","depth_no_at_entry","depth_at_ask_entry","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
+    "bid_at_entry","spread_at_entry_c","depth_yes_at_entry","depth_no_at_entry","depth_at_ask_entry","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_prior_rel","si_prior_sided","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
     "sig_realized_bpm","vrp_bpm","vrp_omit","hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier"]].concat(
     S.journal.map(t=>{ const E=et(t.tIn), H=hz(t.tIn), sc=swingSpreadC(t.entry,t.bidIn);
       return [t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||"",
@@ -2844,7 +2850,7 @@ const VRP_TICK=0.01;
        10 bp      0.287    0.092                     10.1%
        20 bp      0.574    0.052                      5.4%
        35 bp      1.004    0.041                      4.2%
-       60 bp      1.721    0.064                      6.3%
+       60 bp      1.721    0.064                      6.7%
        120 bp     3.443    2.745  <- rejected        (fair value 0.0003: below the clip floor)
 
    DERIVATION of 0.20 -- it is derived, not chosen. Implied sigma exists in this unit only to be differenced
@@ -2866,6 +2872,20 @@ const VRP_TICK=0.01;
    under the old freeze retired, the count restarted at zero. It is free only because it is early, and that is the
    only reason it is free. */
 const VRP_TICK_REL_MAX=0.20;
+/* WHERE THIS BOUND IS EVALUATED IS PART OF THE REGISTRATION, added 2026-09-06 after adversarial review.
+   The bound is applied to the tick probe taken at the MODEL-FAIR quote -- sigmaIdentifiability(x, sigModel,
+   tau), which takes no quote argument -- and NEVER to a probe taken at the observed quote.
+   The reason is not stylistic. vsTickSens evaluated at the observed q is, to three significant figures, a
+   function of q alone: analytically its relative sensitivity is Dq/(phi(G)*sqrt(G^2-2x)) with G=Phi^-1(1-q),
+   in which tau does not appear at all and x enters only as 2x against G^2. Measured on this code at a fixed
+   q=0.30, `rel` moves from 5.762% to 6.052% across a 240x range in strike distance and a 1200x range in tau.
+   So a gate on it is a cut on the quote wearing an identifiability gate's clothes -- and since vrp = si - sr
+   with si monotone in q at fixed (x,tau), a cut on the quote is a cut on the premium being measured. At
+   x=+5bp, tau=15, sr=9 bp/min it keeps every reading with vrp negative and drops every reading with vrp
+   positive. That is selection on the outcome variable, and it would have handed H5 a guaranteed sign.
+   The same probe at the model-fair quote depends on (x, sigModel, tau) and nothing the market did, so its
+   verdict cannot move with the answer. impliedSigmaTick stays exported and is stored per row as a DIAGNOSTIC
+   of how well conditioned that particular inversion was. It must not be reintroduced as a gate. */
 
 /* SUPERSEDED 2026-09-06 by VRP_TICK_REL_MAX (above). Retained so the old bound stays visible beside its
    replacement rather than vanishing from the record, and because `relPerCent` is still reported as a diagnostic.
@@ -3712,7 +3732,7 @@ const SCHEMA_SIR_MIN=0.25, SCHEMA_SIR_MAX=4;
        10 bp      0.287    0.092                     10.1%
        20 bp      0.574    0.052                      5.4%
        35 bp      1.004    0.041                      4.2%
-       60 bp      1.721    0.064                      6.3%
+       60 bp      1.721    0.064                      6.7%
        120 bp     3.443    2.745  <- rejected        (fair value below the engine's clip floor)
 
    So the old gate admitted a reading whose implied sigma moves 86% on a single tick of quote. That is the
@@ -3751,6 +3771,13 @@ const SCHEMA_SIR_MIN=0.25, SCHEMA_SIR_MAX=4;
    was dropped, without re-deriving anything.
 
    THE (sq, sqS) CONTRACT. Four states, read as a pair, never one without the other:
+   CORRECTION 2026-09-06, after adversarial review. `sq` and `sqS` DO NOT GATE and never did legitimately.
+   They are a DIAGNOSTIC of how well conditioned this row's own inversion was. The gate is
+   sigmaIdentifiability(x, sigModel, tau), which takes no quote and therefore cannot select on the answer;
+   see the note above siJudge. The four states below still describe what the pair means, they just no longer
+   describe a verdict. `sb`, written beside them, is the bound in force at the WRITE, so a row keeps the
+   judgment it was made under when siJudge re-runs at export.
+
      sq absent,  sqS absent    - no tick reading: a pre-3 row, no quote, no volspace, or no si at all.
      sq present, sqS absent    - TWO-SIDED: both q+1c and q-1c inverted; sq is the LARGER of the two fractional
                                  moves. This is the only state that can pass the gate.
@@ -3853,7 +3880,10 @@ function siTickWrite(f,strike,S0,tau,q){
     if(si===undefined) return f;                 /* no root at the quote itself: nothing truthful to store */
     schemaSet(f,"si",si);
     /* a stored 0 here means "measured, below 0.0005 of itself", not "absent" - the pair (sq,sqS) says which. */
-    schemaSet(f,"sq",schemaNum(t.rel,3));
+    schemaSet(f,"sq",schemaNum(t.rel,4));
+    /* the bound in force AT THE WRITE, so siJudge (which runs at export) cannot re-judge this row under a
+       later registration -- SPEC 7.6 and CLAUDE.md 11.8 both promise exactly that. */
+    if(typeof VRP_TICK_REL_MAX==="number"&&isFinite(VRP_TICK_REL_MAX)) schemaSet(f,"sb",VRP_TICK_REL_MAX);
     if(t.sided!=="two") schemaSet(f,"sqS",t.sided==="up"?"u":(t.sided==="down"?"d":"n"));
     return f;
   }
@@ -3929,7 +3959,8 @@ function journalEntryFields(r,t){
     schemaSet(f,"sm",schemaNum(r.sm,2)); schemaSet(f,"si",schemaNum(r.si,2)); schemaSet(f,"xs",schemaNum(r.xs,3));
     /* the tick sensitivity travels with si onto the journal row for the same reason si does: a journal row
        outlives its read, and without sq the row could only ever be re-judged by the weaker quote-free prior. */
-    schemaSet(f,"sq",schemaNum(r.sq,3));
+    schemaSet(f,"sq",schemaNum(r.sq,4));
+    schemaSet(f,"sb",schemaNum(r.sb,4));
     if(r.sqS==="u"||r.sqS==="d"||r.sqS==="n") schemaSet(f,"sqS",r.sqS);
     schemaSet(f,"dy",schemaNum(r.dy,0)); schemaSet(f,"dn",schemaNum(r.dn,0));
   }
@@ -3977,7 +4008,7 @@ function journalEntryFields(r,t){
    the reason: noref | nosi | nodiag | tick | tick1 | tick0 | atm | tail | cond | impl. */
 function siJudge(ref){
   const out={si:null,sm:null,sir:null,xs:null,tau:null,relPerCent:null,tickRel:null,tickSided:null,
-             bound:null,gate:null,identified:false,ok:false,code:"noref"};
+             priorRel:null,priorSided:null,bound:null,gate:null,identified:false,ok:false,code:"noref"};
   if(!ref) return out;
   const fin=v=>typeof v==="number"&&isFinite(v);
   const si=fin(ref.si)?ref.si:null, sm=fin(ref.sm)?ref.sm:null,
@@ -3994,31 +4025,41 @@ function siJudge(ref){
     const id=sigmaIdentifiability(x,sig,tau);
     if(fin(id.relPerCent)) out.relPerCent=id.relPerCent;
   }
+  /* THE GATE IS EXOGENOUS TO THE QUOTE, AND IT HAS TO BE. See THE STORED IDENTIFIABILITY GATE at the top of
+     this unit for the full argument; the short form is that `vrp = si - sr`, and at a fixed strike and horizon
+     `si` is a monotone function of the quote, so ANY criterion that reads this row's own quote is a criterion
+     on this row's own premium. Measured at x = +5bp, tau = 15, sr = 9 bp/min, a gate on the observed-quote
+     tick keeps every reading from q=5c to q=43c (vrp -8.2bp to -1.6bp, all negative) and drops q>=45c (vrp
+     +1.4bp, +9.0bp) -- it discards positive premia and keeps negative ones, and would hand H5 a guaranteed
+     sign. sigmaIdentifiability takes (x, sigModel, tau) and no quote at all, so its verdict cannot move with
+     the answer: at that same strike and horizon it drops the whole sweep together, which is what a filter is
+     supposed to do.
+     The instrument is the same one-cent finite tick either way -- the fix is WHERE it is evaluated, not what
+     it measures. sigmaIdentifiability probes at the MODEL-FAIR quote, so it reproduces the registered band
+     exactly (86.4% at 2bp, 21.8% at 5, 12.7% at 8, 4.2% at 35, 6.7% at 60) while depending on nothing the
+     market did. */
+  out.gate="prior";
+  if(typeof sigmaIdentifiability!=="function"){ out.code="nodiag"; return out; }   /* refuse, never fall back to the quote */
+  const id=sigmaIdentifiability(x,sig,tau);
+  /* The bound is taken from the ROW when the row carries one, so a row judged under an earlier registration
+     keeps that judgment: SPEC 7.6 and CLAUDE.md 11.8 both promise rows are not retroactively re-gated, and
+     siJudge runs at EXPORT time, so reading the live constant here would silently re-judge every historical
+     row under whatever bound is current. `sb` is written beside `sq` at the write site. */
+  out.bound=fin(ref.sb)?ref.sb:(fin(id.bound)?id.bound:null);
+  out.priorRel=fin(id.tickRel)?id.tickRel:null;
+  out.priorSided=id.tickSided||null;              /* was dropped here, so a one-sided prior exported unmarked */
+  out.identified=(out.bound===null)?!!id.identified
+    :(id.tickSided==="two"&&fin(id.tickRel)&&id.tickRel<=out.bound);
+  /* The row's OWN quote-time sensitivity is kept as a DIAGNOSTIC and never consulted above. It is the honest
+     description of how well conditioned this particular inversion was, which is worth having on the record and
+     is worth nothing as a filter. */
   const hasSq=fin(ref.sq), hasSqS=(typeof ref.sqS==="string"&&ref.sqS!=="");
-  if(hasSq||hasSqS){
-    /* THE DECIDER: this row was written with the quote in hand and carries the true tick move. */
-    out.gate="tick";
-    out.tickRel=hasSq?ref.sq:null;
-    out.tickSided=hasSqS?ref.sqS:"2";             /* sq present with no marker IS the two-sided case */
-    if(typeof VRP_TICK_REL_MAX!=="number"||!isFinite(VRP_TICK_REL_MAX)){ out.code="nodiag"; return out; }
-    out.bound=VRP_TICK_REL_MAX;
-    if(out.tickSided!=="2"){ out.code=(out.tickSided==="n")?"tick0":"tick1"; return out; }
-    if(out.tickRel===null){ out.code="tick0"; return out; }   /* a two-sided marker with no number is not a pass */
-    if(!(out.tickRel<=out.bound)){ out.code="tick"; return out; }
-    out.identified=true;
-  }else{
-    /* THE FALLBACK: no stored sensitivity, so the strongest honest statement available is the quote-free
-       prior. Rows judged here are NOT comparable with rows judged by the tick, and `gate` says so. */
-    out.gate="prior";
-    if(typeof sigmaIdentifiability!=="function"){ out.code="nodiag"; return out; }
-    const id=sigmaIdentifiability(x,sig,tau);
-    if(fin(id.bound)) out.bound=id.bound;
-    if(fin(id.tickRel)) out.tickRel=id.tickRel;   /* the prior's own probe, at the MODEL-FAIR quote, not this row's */
-    out.identified=!!id.identified;
-    if(!out.identified){
-      out.code=(out.relPerCent===null&&out.tickRel===null)?"cond":(Math.abs(xs)<1?"atm":"tail");
-      return out;
-    }
+  if(hasSq||hasSqS){ out.tickRel=hasSq?ref.sq:null; out.tickSided=hasSqS?ref.sqS:"2"; out.gate="prior+tick"; }
+  if(!out.identified){
+    out.code=(out.priorRel===null&&out.relPerCent===null)?"cond"
+      :(id.tickSided&&id.tickSided!=="two")?(id.tickSided==="n"?"tick0":"tick1")
+      :(Math.abs(xs)<1?"atm":"tail");
+    return out;
   }
   if(!(out.sir>=SCHEMA_SIR_MIN&&out.sir<=SCHEMA_SIR_MAX)){ out.code="impl"; return out; }   /* identified stays true: it WAS identified, it is just not physical */
   out.ok=true; out.code="ok";

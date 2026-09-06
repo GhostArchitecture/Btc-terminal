@@ -131,8 +131,8 @@ const { T, done } = runner("h-protocol");
     const head=s=>{ const i=text.indexOf("# "+s); const line=text.slice(i).split("\\n")[1]||""; return line.split(",").length; };
     return {windows:head("windows"),swing:head("swing_reads"),journal:head("simulation_journal"),
       hasVrp:/vrp_bpm/.test(text),hasEv:/"ev_mins"/.test(text),hasDepth:/depth_yes/.test(text),hasIdent:/si_ident/.test(text)}; })()`);
-  T("the windows dataset carries its 50 columns", r.windows === 50, r.windows);
-  T("swing reads and journal rows carry the enriched columns", r.swing === 43 && r.journal === 49, { swing: r.swing, journal: r.journal });
+  T("the windows dataset carries its 52 columns", r.windows === 52, r.windows);
+  T("swing reads and journal rows carry the enriched columns", r.swing === 45 && r.journal === 51, { swing: r.swing, journal: r.journal });
   T("the premium, event, depth and identifiability columns are all exported", r.hasVrp && r.hasEv && r.hasDepth && r.hasIdent, r);
 }
 /* A header is not evidence. This asserts the decider's own numbers reach a DATA ROW: the schema dropped the
@@ -159,7 +159,7 @@ const { T, done } = runner("h-protocol");
       ident:cell("si_ident"),sided:cell("si_tick_sided")}; })()`);
   T("an identifiable strike stores the true tick sensitivity on the row itself", typeof r.sq === "number" && r.sq >= 0, { sq: r.sq, sqS: r.sqS });
   T("si_tick_rel reaches the CSV as a number, not an empty cell", r.tickRel !== "" && r.tickRel !== "__MISSING__" && isFinite(+r.tickRel), r);
-  T("si_gate records that the TICK decided this row, not the superseded prior", r.gate === "tick", r);
+  T("si_gate records that the exogenous PRIOR decided, with the row's own tick kept only as a diagnostic", r.gate === "prior+tick", r);
   T("the bound in force is exported beside the measurement, so another bound can be applied later", +r.bound === 0.2, r);
   T("a reading inside the band is marked identified with reason ok", r.ident === "1" && r.code === "ok", r);
 }
@@ -167,14 +167,14 @@ const { T, done } = runner("h-protocol");
    produces must be the one it was derived against. Measured independently here rather than taken on trust —
    every strike quoted at its OWN model-fair value, then moved by exactly one cent. */
 {
+  /* Probes the GATE itself — sigmaIdentifiability, which takes no quote and inverts at the model-fair one.
+     The earlier version of this block probed impliedSigmaTick at a fair quote it computed itself, which made
+     every band assertion a statement about a quote the live path never sees. */
   const probe = (tau) => R(`(function(){
-    const S0=100000, sig=0.0009, tau=${tau}, o={};
+    const sig=0.0009, tau=${tau}, o={};
     [0,2,5,8,10,20,35,60,98].forEach(function(bp){
-      const strike=S0*Math.exp(bp/10000), x=Math.log(strike/S0);
-      const q=1-normCdf((x+0.5*sig*sig*tau)/(sig*Math.sqrt(tau)));
-      const t=impliedSigmaTick(strike,S0,tau,q);
-      o["b"+bp]={id:t?t.identified:false,rel:(t&&t.rel!==null)?t.rel:null,sided:t?t.sided:null,
-                 xs:+(x/(sig*Math.sqrt(tau))).toFixed(3)};
+      const x=bp/10000, p=sigmaIdentifiability(x,sig,tau);
+      o["b"+bp]={id:p.identified,rel:p.tickRel,sided:p.tickSided,xs:+p.xs.toFixed(3)};
     });
     return o; })()`);
   const c = R(`[VRP_TICK_REL_MAX,VRP_TICK,VRP_REL_MAX]`);
@@ -204,6 +204,73 @@ const { T, done } = runner("h-protocol");
 
   /* A neighbour that does not invert must never score as zero sensitivity — the failure the brief called out. */
   T("a one-sided reading is rejected, not credited with the sensitivity of its surviving neighbour", l.b35.sided === "up" && l.b35.rel !== null && l.b35.rel < 0.20 && l.b35.id === false, l.b35);
+}
+
+/* THE INVARIANT THAT WAS MISSING, and whose absence let a quote-dependent gate ship and be registered as a
+   tightening. vrp = implied - realized, and at a fixed strike and horizon implied sigma is MONOTONE in the
+   quote. So any identifiability criterion that reads the row's own quote is a criterion on the row's own
+   premium: it keeps one sign and discards the other. The gate must therefore depend on the strike and the
+   horizon and NOTHING the market did. Asserted behaviourally, by sweeping the quote and requiring the verdict
+   not to move — reading the source would not have caught this. */
+{
+  const sweep = R(`(function(){
+    const S0=100000, sig=0.0009, tau=15, sr=9, o={};
+    const at=function(bp){
+      const strike=S0*Math.exp(bp/10000), x=Math.log(strike/S0);
+      const verdicts=[], premia=[];
+      [0.05,0.10,0.20,0.30,0.40,0.45,0.47,0.60,0.75,0.90].forEach(function(q){
+        const t=impliedSigmaTick(strike,S0,tau,q);
+        const f={sm:+(sig*10000).toFixed(2),tau:tau,xs:+(x/(sig*Math.sqrt(tau))).toFixed(3)};
+        if(t&&t.sig!==null){ f.si=+(t.sig*10000).toFixed(2); f.sq=+t.rel.toFixed(4);
+          if(t.sided!=="two") f.sqS=(t.sided==="up"?"u":(t.sided==="down"?"d":"n")); }
+        if(f.si===undefined) return;
+        verdicts.push(siJudge(f).identified);
+        premia.push(+(f.si-sr).toFixed(2));
+      });
+      return {verdicts:verdicts,premia:premia,
+              uniform:verdicts.length>0&&verdicts.every(function(v){ return v===verdicts[0]; })};
+    };
+    o.inBand=at(35); o.outBand=at(5); o.atm=at(0);
+    return o; })()`);
+  const anySign = (p) => p.some(v => v > 0) && p.some(v => v < 0);
+  T("a strike inside the band is identified at EVERY quote — the verdict does not track the premium",
+    sweep.inBand.uniform && sweep.inBand.verdicts[0] === true, sweep.inBand);
+  T("a strike outside the band is refused at EVERY quote, positive and negative premia alike",
+    sweep.outBand.uniform && sweep.outBand.verdicts[0] === false, sweep.outBand);
+  T("an at-the-money strike is refused at every quote, which is the KXBTC15M open",
+    sweep.atm.uniform && sweep.atm.verdicts[0] === false, sweep.atm);
+  T("the sweep really does span both signs of the premium, so uniformity is a claim and not a vacuum",
+    anySign(sweep.inBand.premia) && anySign(sweep.outBand.premia),
+    { inBand: sweep.inBand.premia, outBand: sweep.outBand.premia });
+}
+/* The observed-quote sensitivity is kept on the row, but it is a DIAGNOSTIC: it is nearly blind to the two
+   things that determine identifiability, which is precisely why it cannot gate. */
+{
+  const r = R(`(function(){ const S0=100000,o=[];
+    [[2,15],[10,15],[60,15],[120,60],[2,0.05]].forEach(function(c){
+      const t=impliedSigmaTick(S0*Math.exp(c[0]/10000),S0,c[1],0.30);
+      o.push(t&&t.rel!==null?t.rel:null); });
+    return o; })()`);
+  const span = Math.max(...r) - Math.min(...r);
+  T("at a fixed quote the observed-quote statistic barely moves across 60x in strike and 300x in tau, so it measures the quote",
+    span < 0.005, { values: r, span: span });
+  /* and the row must still carry it, or the conditioning of each reading becomes invisible */
+  T("it is nevertheless stored, so an analyst can see how well conditioned each reading was",
+    R(`(function(){ const f={}; siTickWrite(f,100350,100000,8,0.20); return typeof f.sq==="number"&&typeof f.sb==="number"; })()`), true);
+}
+/* A row keeps the bound it was judged under. siJudge runs at EXPORT time, so without this a re-registration
+   would silently re-judge every historical row — which CLAUDE.md §11.8 promises it does not. */
+{
+  const r = R(`(function(){
+    const base={si:12,sm:9,xs:0.23,tau:15};
+    const strict=siJudge(Object.assign({},base,{sb:0.05}));
+    const loose =siJudge(Object.assign({},base,{sb:0.90}));
+    const none  =siJudge(base);
+    return {strict:strict.identified,strictB:strict.bound,loose:loose.identified,looseB:loose.bound,
+            noneB:none.bound}; })()`);
+  T("a row carrying its own bound is judged under THAT bound, not the current constant",
+    r.strictB === 0.05 && r.looseB === 0.90 && r.strict !== r.loose, r);
+  T("a row with no stored bound falls back to the one in force", r.noneB === 0.20, r.noneB);
 }
 
 process.exitCode = done() ? 1 : 0;

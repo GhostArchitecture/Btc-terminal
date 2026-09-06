@@ -680,15 +680,46 @@ that, and it is a threshold of §11 in the full sense: §11.7 clause 6 governs i
 **Why the bound is needed at all.** With `x = log(strike/S0)` and `u = σ√τ`, the analytic the engine already uses
 is `p_over = 1 − Φ(x/u + u/2)`. At `x = 0` — where **every KXBTC15M window opens, by construction** — σ survives
 only in the second-order `u/2` drift term, so the price is very nearly independent of σ and the inverse is very
-nearly unbounded. Inverting anyway on an ordinary 40¢ quote yields readings like *1805 bp implied against 9 bp
-realized*: every step arithmetically correct, the output pure quote-granularity noise, presented as a colossal
-premium. That is §7.6 arriving through the tolerance rather than through the arithmetic.
+nearly unbounded. Priced at its own model-fair value, a strike 2 bp from the money moves **86.4%** in implied σ
+when the quote moves one cent, and at 1 bp one of the two neighbours has no root at all. Differencing a number
+that unstable against realized σ resolves nothing, and reporting the difference as a premium is §7.6 arriving
+through the tolerance rather than through the arithmetic.
+
+*An earlier draft of this subsection illustrated the point with a reading of 1,805 bp implied against 9 bp
+realized on an ordinary 40¢ quote, and called it quote-granularity noise. That was wrong and is corrected here:
+that inversion is* well *conditioned — about 10% per cent — and it is caught by the plausibility gate below, not
+by this one. It is a well-conditioned inversion of a misspecified model, which is a different failure needing a
+different test.*
 
 **The measured quantity.** Kalshi quotes in whole cents, so one cent is not an infinitesimal — it is the
-resolution of the instrument, the smallest observable change in the input. `impliedSigmaTick` inverts at the quote
-and at the quote ±1¢ and reports the **largest fractional change in implied σ across that real, finite tick**
+resolution of the instrument, the smallest observable change in the input. The probe inverts at a quote and at
+that quote ±1¢ and reports the **largest fractional change in implied σ across that real, finite tick**
 (`VRP_TICK = 0.01`). A neighbour that does not invert is **not** zero sensitivity: it means one tick moves the
 reading out of existence, which is evidence against identification. Such a one-sided reading never passes.
+
+**Where the probe is taken is part of the registration, and is the whole of it.** The gate is
+`sigmaIdentifiability(x, sigModel, τ)`, which takes **no quote argument** and probes at the **model-fair** quote.
+It is never `impliedSigmaTick` at the observed quote. This is not a stylistic preference:
+
+- The observed-quote statistic is, to three significant figures, **a function of the quote alone.**
+  Analytically its relative sensitivity is `Δq / (φ(G)·√(G² − 2x))` with `G = Φ⁻¹(1 − q)`: **τ does not appear at
+  all**, and `x` enters only as `2x` against `G²`. Measured on the shipped code at a fixed `q = 0.30`, it moves
+  from 5.762% to 6.052% across a **240× range in strike distance and a 1200× range in τ**. It is a cut on the
+  quote wearing an identifiability gate's clothes.
+- And a cut on the quote is **a cut on the answer**. `vrp = implied σ − realized σ`, and at fixed strike and
+  horizon implied σ is monotone in the quote. Measured at `x = +5 bp`, τ = 15, realized 9 bp/min, gating on the
+  observed quote **keeps every reading whose premium is negative** (−8.2 bp through −1.6 bp) and **drops every
+  reading whose premium is positive** (+1.4 bp, +9.0 bp). It would have handed H5 a guaranteed sign.
+
+The same probe at the model-fair quote depends on `x`, `sigModel` and `τ` and on nothing the market did, so its
+verdict cannot move with the answer: at that same strike it drops the whole quote sweep together, which is what a
+filter is supposed to do. **Selection on the outcome biases; a noisy reading only adds variance.** A
+badly-conditioned individual reading is therefore *kept*, with its conditioning recorded, not dropped.
+
+*This is a correction. The gate shipped in `899276d` read the observed quote, and was registered — wrongly — as a
+strict tightening. On real inputs it was a loosening: a strike 1 bp from the money at τ = 15, which the previous
+gate rejected at every quote, was admitted at any quote from 2¢ to 43¢. Caught by adversarial review before any
+observation existed, which is the only reason it cost nothing.*
 
 **The bound, derived not chosen.** Implied σ exists to be differenced against realized σ. Realized σ from *n*
 contiguous one-minute returns carries relative sampling error `≈ 1/√(2n)`; a 15-minute window yields at most 15
@@ -720,7 +751,10 @@ stays in the source, gating nothing, so the superseded bound remains visible bes
 | 60 bp | 1.721 | 6.7% | **accepted** |
 | 98 bp+ | 2.81+ | fair value past the clip bound | rejected |
 
-The band is fixed in **standardised units, not basis points** — roughly `0.23 ≤ |x/(σ√τ)| ≤ 1.8`. In basis points
+This band is a property of **the gate** — the fair-quote probe — and of nothing else. The observed-quote
+statistic has no band in `x/(σ√τ)` at all: free the quote and the coordinate disappears, which is exactly why it
+cannot be the gate. The band is fixed in **standardised units, not basis points** — roughly
+`0.23 ≤ |x/(σ√τ)| ≤ 1.8`. In basis points
 it therefore **contracts toward the strike as τ decays**: 8–60 bp at 15 minutes, 5–35 bp at 8, 3–20 bp at 3. Two
 consequences follow and both are load-bearing. A KXBTC15M window is **born unidentified**: at the opening instant
 `x = 0` exactly, and no reading exists at its own strike. It becomes measurable only in the ring price has moved
@@ -750,13 +784,30 @@ unmeasured and this figure is an optimistic bound on it** — it says the band d
 not that it will rarely fire.
 
 **What is stored, and what an analyst may re-derive.** A rejected reading is omitted and the omission is
-**counted** (`vrpX`), never clamped and never silently dropped. Every row carries its own measurement, not a
-verdict: `si_tick_rel` (the true fractional move across one tick), `si_tick_sided` (two-sided, one-sided u/d, or
-neither), `si_bound` (the bound in force when the row was judged), `si_gate` (`tick` = decided by the measurement,
-`prior` = decided by the weaker quote-free approximation) and `si_code` (why it was dropped). An analyst
-re-filtering at a different bound reads `si_tick_rel` and ignores `si_ident`. **Rows written under the superseded
-bound are not retroactively re-gated**; any analysis pooling old and new rows must filter on `si_tick_rel` and
-split on `si_gate`, because the two populations were not judged by the same instrument.
+**counted** (`vrpX`), never clamped and never silently dropped. Every row carries its own measurements, not a
+verdict:
+
+| column | what it is | may it be filtered on? |
+|---|---|---|
+| `si_prior_rel` | the **gate's** probe — one-cent move at the model-fair quote | **yes** — exogenous to the answer |
+| `si_prior_sided` | whether that probe was two-sided (one-sided never passes) | **yes** |
+| `si_tick_rel` | the **observed-quote** move: how well conditioned *this* inversion was | **no — see below** |
+| `si_tick_sided` | sidedness of that observed-quote probe | no |
+| `si_bound` | the bound in force **when the row was written**, stored on the row | — |
+| `si_gate` | `prior`, or `prior+tick` when the row also carries the diagnostic | — |
+| `si_code` | why the reading was dropped | — |
+
+**`si_tick_rel` is a diagnostic and must not be used as a filter.** Filtering on it re-introduces exactly the
+selection this subsection exists to prevent: it is monotone in the quote, and the quote determines the premium.
+It is on the row so that the conditioning of each reading is *visible* — for weighting, for stratified reporting,
+for knowing how noisy the sample is — not so that readings can be removed by it. The re-filtering handle is
+`si_prior_rel`.
+
+**Rows are not retroactively re-gated.** `si_bound` is written onto the row at the moment it is judged, and the
+export honours the row's own bound rather than whatever constant is current, so a row judged under one
+registration keeps that judgment forever. *This too is a correction: until this change `si_bound` reported the
+export-time constant and `si_ident` was silently recomputed under it, so the promise in this paragraph was false
+for exactly as long as it had been written down.*
 
 **The second gate, and what it censors.** Identifiability is necessary and not sufficient. A strike just *below*
 spot, quoted away from fair value, inverts **exactly** — two-sided, well inside the tick bound — to a σ orders of
