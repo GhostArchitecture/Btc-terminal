@@ -71,6 +71,12 @@ function makeCtx(){
   return ctx;
 }
 const EXPORTS="\n;({SCORE:SCORE,SC_OMIT:SC_OMIT,SC_CALLER_FIELDS:SC_CALLER_FIELDS,"+
+  "SC_VERDICT_FIELDS:SC_VERDICT_FIELDS,SC_REFUSALS:SC_REFUSALS,SC_REFUSAL_WHY:SC_REFUSAL_WHY,"+
+  "scHasOwn:scHasOwn,scRowId:scRowId,scDedupe:scDedupe,scCellKey:scCellKey,scCells:scCells,"+
+  "scClusterStat:scClusterStat,scSplitCheck:scSplitCheck,scRatchet:scRatchet,"+
+  "scAfterBoundary:scAfterBoundary,scCoverage:scCoverage,scRequiredFields:scRequiredFields,"+
+  "scMissingRequired:scMissingRequired,scIsRefusal:scIsRefusal,scRefused:scRefused,"+
+  "scMaxMonths:scMaxMonths,scRatchetStatus:scRatchetStatus,"+
   "scHasCalendar:scHasCalendar,scHasPrereg:scHasPrereg,scNum:scNum,scMean:scMean,scSdOf:scSdOf,"+
   "scSlotUtc:scSlotUtc,scWeekdayUtc:scWeekdayUtc,scQuarterUtc:scQuarterUtc,scSeriesOf:scSeriesOf,"+
   "scMatchKey:scMatchKey,scKeyEqual:scKeyEqual,scClearProbes:scClearProbes,scWindowLenMin:scWindowLenMin,"+
@@ -104,6 +110,35 @@ STUB_CTX.controlEligible=function(t){
 };
 const U=vm.runInContext(PRE+"\n"+SRC+EXPORTS,STUB_CTX,{filename:"score+prereg-stubcal.js"});
 
+/* A SEEDED RNG, INSTALLED OVER Math.random FOR ONE BLOCK AT A TIME.
+   The unit's CI is a two-stage cluster bootstrap: stage 1 is the handed-in (unseeded) bootstrapCI, stage 2 is
+   the within-cell resample inside scClusterStat. 10.5 says the resampling variation is a property of the
+   method and must not be seeded IN THE UNIT -- so it is seeded HERE, in the harness, around the assertions
+   that need a reproducible draw, and restored immediately after. Every seeded assertion below is additionally
+   run over several seeds, so none of them can be passing on a lucky one. */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+function seeded(seed,body){ const real=Math.random; Math.random=mulberry32(seed);
+  try{ return body(); } finally { Math.random=real; } }
+/* the naive, WINDOW-level bootstrap the unit used to run: kept here as the reference the cluster interval is
+   compared against, never in the unit. */
+function naiveCi(pairs,level,B){
+  const v=pairs.map(function(p){ return p.paired; });
+  return bootstrapCI(v,function(a){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]; return s/a.length; },level,B);
+}
+/* a synthetic pair of exactly the shape scPairs emits, including the cell key and the identified control set
+   the cluster bootstrap resamples. `ctrl` defaults to five distinct controls whose mean is the pair's own
+   ctrlMeanSkill, so paired = shockSkill - mean(ctrl) holds by construction. */
+function mkPair(ticker,close,paired,cell,ctrlSkills,shockSkill){
+  const cs=ctrlSkills||[0,0,0,0,0];
+  let m=0; for(let i=0;i<cs.length;i++) m+=cs[i]; m/=cs.length;
+  const ctrl=[]; for(let i=0;i<cs.length;i++) ctrl.push({id:(cell||"z")+"-ctrl"+i+"|"+i,skill:cs[i]});
+  const sk=(shockSkill===undefined)?paired+m:shockSkill;
+  return {ticker:ticker,open:close-15*MIN,close:close,cell:(cell||"15m|50|3|2026Q1"),
+    paired:paired,shockSkill:sk,ctrlMeanSkill:m,nCtrl:ctrl.length,ctrl:ctrl};
+}
+
 let pass=0,fail=0;
 function ok(name,cond,extra){ if(cond){ pass++; console.log("  ok  "+name); }
   else { fail++; console.log("  FAIL "+name+(extra===undefined?"":"  -> "+JSON.stringify(extra))); } }
@@ -112,6 +147,10 @@ function close(name,a,b,tol){ ok(name,typeof a==="number"&&Math.abs(a-b)<=(tol||
 function sect(s){ console.log("\n-- "+s); }
 
 const MIN=60000, WEEK=7*86400000;
+/* the SAMPLE (n-1) sd, from the definition, written here so an assertion about the unit's sd is not the unit
+   compared with itself. */
+function sdRef(v){ let m=0; for(let i=0;i<v.length;i++) m+=v[i]; m/=v.length;
+  let s2=0; for(let i=0;i<v.length;i++) s2+=(v[i]-m)*(v[i]-m); return Math.sqrt(s2/(v.length-1)); }
 /* Brier, from the definition. Two terms; used only where writing every literal out would be noise. */
 function brier(p,y){ return (p-y)*(p-y); }
 function skillOf(pm,qm,y){ return brier(qm/100,y)-brier(pm,y); }
@@ -327,6 +366,25 @@ sect("grading discipline");
   const noProb=mkWin("KXBTC15M-n",t,15,"yes",0.8,50);
   noProb.snaps[2].qm=null;
   eq("a snap with no market quote is not scored",U.scSkill(noProb).code,U.SC_OMIT.BAD_PROB);
+  /* S10 / 10.3 K2: Kalshi's empty-side book parses to yes_bid 0.0000 and yes_ask 1.0000 -- qm 0 and qm 100
+     exactly. A quote built from those is not a quote, and scoring one hands the market a Brier of exactly 1
+     (making the tool look unbeatable) or exactly 0 (making it look hopeless), on no information at all. */
+  eq("qm = 0 is an empty book, not a market probability of zero",
+     U.scSkill(mkWin("KXBTC15M-e0",t,15,"yes",0.8,0)).code,U.SC_OMIT.EMPTY_BOOK);
+  eq("qm = 100 is an empty book too",
+     U.scSkill(mkWin("KXBTC15M-e1",t,15,"yes",0.8,100)).code,U.SC_OMIT.EMPTY_BOOK);
+  ok("...and neither is scored",U.scSkill(mkWin("KXBTC15M-e2",t,15,"yes",0.8,0)).ok===false&&
+     U.scSkill(mkWin("KXBTC15M-e3",t,15,"yes",0.8,100)).ok===false);
+  eq("a real one-cent quote is still scored",U.scSkill(mkWin("KXBTC15M-e4",t,15,"yes",0.8,1)).ok,true);
+  eq("...and so is 99",U.scSkill(mkWin("KXBTC15M-e5",t,15,"yes",0.8,99)).ok,true);
+  /* an empty-book control is rejected by the matcher for that reason, and counted */
+  STUB_RELEASES.length=0;
+  const F=matcherFixture(false);
+  F.rows[1].snaps[2].qm=0;
+  const m=U.scMatchControls(F.shock,F.rows);
+  eq("an empty-book control is not a control",m.n,4);
+  eq("...and the rejection is counted by reason",m.rejects[U.SC_OMIT.EMPTY_BOOK],1);
+  STUB_RELEASES.length=0;
 }
 
 /* ==================================================================================================== */
@@ -416,6 +474,46 @@ sect("the 5-control minimum: recorded, unmatched, EXCLUDED from scoring");
   ok("the unmatched record carries the caveat",P.unmatched[0].known.caveat===STUB_CAVEAT);
 }
 
+sect("S4: a window is (ticker, open), and the 5-control minimum counts WINDOWS");
+{
+  STUB_RELEASES.length=0;
+  const base=Date.UTC(2026,0,7,12,30);
+  const shock=mkWin("KXBTC15M-shock",base+6*WEEK,15,"yes",0.8,50,{shock:true});
+  STUB_RELEASES.push(shock.open+5*MIN);
+  const c=[]; for(let i=0;i<3;i++) c.push(mkWin("KXBTC15M-c"+i,base+i*WEEK,15,"yes",0.7,60));
+  /* what a concatenation of two overlapping CSV exports looks like: three windows, five rows */
+  const pool=[shock].concat(c,[c[0],c[1]]);
+  eq("the pool carries five control ROWS",pool.length-1,5);
+  const m=U.scMatchControls(shock,pool);
+  eq("...but only three control WINDOWS, so the minimum is not met",m.n,3);
+  eq("...and the shock is unmatched",m.matched,false);
+  eq("...for the stated reason",m.reason,U.SC_OMIT.THIN);
+  eq("...and the duplicates are COUNTED, not silently swallowed",m.dupControls,2);
+  ok("no control window appears twice",
+     m.controls.map(function(x){ return x.ticker; }).sort().join(",")==="KXBTC15M-c0,KXBTC15M-c1,KXBTC15M-c2");
+  /* a re-exported row that is byte-identical is the same window, and a distinct OBJECT is still a duplicate */
+  const clone=JSON.parse(JSON.stringify(c[0]));
+  ok("a cloned row is a different object",clone!==c[0]);
+  eq("...and still the same window",U.scRowId(clone),U.scRowId(c[0]));
+  eq("...so it does not count twice",U.scMatchControls(shock,[shock].concat(c,[clone])).n,3);
+  /* the same identity rule the matcher already used to keep a shock out of its own control pool */
+  eq("identity is ticker and open, nothing else",U.scRowId({ticker:"T",open:5}),"T|5");
+  eq("...a row with no identity has none",U.scRowId({open:5}),null);
+  eq("...and is passed through rather than swallowed",U.scDedupe([{open:5},{open:5}]).rows.length,2);
+  /* and on the shock side: one window scored twice inflates n, ctrlTotal, the bootstrap sample and the split */
+  const F=matcherFixture(false);
+  const P1=U.scPairs(F.rows);
+  const P2=U.scPairs(F.rows.concat([F.shock]));
+  eq("the shock window scores once",P1.pairs.length,1);
+  eq("...and a duplicate of it does not score again",P2.pairs.length,1);
+  eq("...nor inflate the coverage denominator",P2.ctrlTotal,P1.ctrlTotal);
+  eq("...and the drop is counted",P2.dupRows,1);
+  const P3=U.scPairs(F.rows.concat([JSON.parse(JSON.stringify(F.shock))]));
+  eq("a cloned shock row is caught the same way",P3.pairs.length,1);
+  eq("scPairs on a clean set reports no drops",P1.dupRows,0);
+  STUB_RELEASES.length=0;
+}
+
 /* ==================================================================================================== */
 sect("11.3: the unconditional figure is not returnable on its own");
 {
@@ -460,6 +558,42 @@ sect("11.3: the unconditional figure is not returnable on its own");
   }
   eq("no export returns the unconditional shock mean when there is no controlled estimate",
      leaked.join(","),"");
+  /* AND THE HALF THAT MATTERS: a fixture where a controlled estimate genuinely EXISTS. The scan above runs on
+     a fixture where every shock window is unmatched, so `P.pairs` is empty and most of the argument sets it
+     sweeps are empty arrays -- it proves the refusal branch withholds the figure and nothing at all about the
+     branch that produces one. Two shock windows, skills +0.21 and +0.16, sharing one control set of mean 0.05:
+     paired 0.16 and 0.11, CONTROLLED estimate 0.135, UNCONDITIONAL mean 0.185. 0.185 is not equal to any
+     individual measurement anywhere in the fixture, so finding it is finding the aggregate. */
+  STUB_RELEASES.length=0;
+  const MF=matcherFixture(false);
+  const m2=mkWin("KXBTC15M-shock2",MF.shock.open+WEEK,15,"yes",0.7,50,{shock:true});
+  STUB_RELEASES.push(m2.open+5*MIN);
+  MF.rows.push(m2);
+  const MP=U.scPairs(MF.rows);
+  eq("both shock windows are matched",MP.ctrlMatched,2);
+  close("shock skills are +0.21 and +0.16",MP.pairs[0].shockSkill+MP.pairs[1].shockSkill,0.37,1e-12);
+  const MD=U.scDid(MP.pairs);
+  const CONTROLLED=0.135, UNCOND2=0.185;         /* by hand: (0.16+0.11)/2 and (0.21+0.16)/2 */
+  close("the controlled estimate is 0.135",MD.controlled,CONTROLLED,1e-12);
+  close("the unconditional one is 0.185",MD.uncontrolled,UNCOND2,1e-12);
+  ok("...and 0.185 is not any individual measurement in the fixture",
+     ![0.21,0.16,0.11,0.05,0.07,0.12,0,-0.09,0.15,0.135].some(function(x){ return Math.abs(x-UNCOND2)<1e-12; }));
+  const opts2={arms:1,pnlN:0,pnlNet:0,detPrecision:null,monthsElapsed:0,frozen:false,holdoutSpent:false};
+  const ARG2=[[MF.rows,opts2],[MF.shock,MF.rows],[MF.shock],[MP.pairs],[MP.pairs,1,null],[MF.rows],
+              [{},opts2],[m2,MF.rows],[m2]];
+  const alone=[];
+  for(const name in U){
+    if(typeof U[name]!=="function"||!/^sc/.test(name)) continue;
+    for(let a=0;a<ARG2.length;a++){
+      let r=null;
+      try{ r=U[name].apply(null,ARG2[a]); }catch(e){ continue; }
+      if(deepHas(r,UNCOND2)&&!deepHas(r,CONTROLLED)) alone.push(name+"#"+a);
+    }
+  }
+  eq("with a controlled estimate available, no export hands back the unconditional mean WITHOUT it",
+     alone.join(","),"");
+  ok("scPairs does not compute the unconditional aggregate at all",!deepHas(MP,UNCOND2));
+  ok("scDid carries it only beside the controlled estimate",deepHas(MD,UNCOND2)&&deepHas(MD,CONTROLLED));
   /* and when there IS one, the two arrive together or not at all */
   const F=matcherFixture(false);
   const P2=U.scPairs(F.rows);
@@ -509,10 +643,62 @@ sect("11.5 / section 4: what may never be pooled");
   eq("one series is fine",U.scSeriesGuard([a]).ok,true);
   eq("scPairs refuses a mixed-series set",U.scPairs([a,h]).code,U.SC_OMIT.MIXED_SERIES);
   eq("...and returns no pairs",U.scPairs([a,h]).pairs.length,0);
-  const rep=U.scReport([a,b],{arms:1,frozen:true,holdoutSpent:false,pnlN:99,pnlNet:9,monthsElapsed:1});
+  const FULL={arms:1,frozen:true,holdoutSpent:false,pnlN:99,pnlNet:9,monthsElapsed:1};
+  const rep=U.scReport([a,b],FULL);
   eq("scReport refuses a mixed-phase set",rep.code,U.SC_OMIT.MIXED_PHASE);
   eq("...and computes no difference-in-differences",rep.did,null);
   ok("...and its status is not READY",rep.status.status!=="READY",rep.status);
+  /* S7: a call 11.5 forbids outright used to report "CALIBRATING / calibration set incomplete" -- a benign
+     progress message, visible as a violation only in rep.code, which nothing surfaces. */
+  eq("...and it REPORTS the refusal, rather than answering on the window count",rep.status.status,"REFUSED");
+  eq("...naming the rule it broke",rep.status.code,U.SC_OMIT.MIXED_PHASE);
+  ok("...in words that say so",/never pooled \(11\.5\)/.test(rep.status.why),rep.status.why);
+  ok("...and never as CALIBRATING",rep.status.status!=="CALIBRATING");
+  const repS=U.scReport([a,h],FULL);
+  eq("a mixed-series call reports its refusal too",repS.status.status,"REFUSED");
+  eq("...naming section 4's split",repS.status.code,U.SC_OMIT.MIXED_SERIES);
+  /* "no shock windows yet" and "none matched yet" are progress, not violations, and stay with the judge */
+  const none=mkWin("KXBTC15M-none",base+20*WEEK,15,"yes",0.7,60);
+  const repN=U.scReport([none],FULL);
+  eq("a set with no shock windows is not a refusal",repN.status.status,"CALIBRATING");
+  eq("...it is simply nothing to score yet",repN.code,U.SC_OMIT.NO_SHOCKS);
+}
+sect("S3 / S10: the phase is required, is a NUMBER, and an absent one refuses");
+{
+  STUB_RELEASES.length=0;
+  const base=Date.UTC(2026,0,7,12,30);
+  const a=mkWin("KXBTC15M-q1",base,15,"yes",0.7,60);
+  const b=mkWin("KXBTC15M-q2",base+WEEK,15,"yes",0.7,60);
+  const noPhase=mkWin("KXBTC15M-q3",base+2*WEEK,15,"yes",0.7,60); delete noPhase.phase;
+  eq("a row set with no phase at all is refused",U.scPhaseGuard([noPhase]).ok,false);
+  eq("...with its own reason code",U.scPhaseGuard([noPhase]).code,U.SC_OMIT.NO_PHASE);
+  eq("one row missing its phase refuses the whole set",U.scPhaseGuard([a,noPhase]).ok,false);
+  eq("scPairs refuses it, rather than reporting phase null",U.scPairs([a,noPhase]).code,U.SC_OMIT.NO_PHASE);
+  eq("...and reports no phase",U.scPairs([a,noPhase]).phase,null);
+  /* THE FINDING: with phase absent, shockStatus's `if(st.phase===2)` block never ran, so a phase-2 arm with
+     no confusion matrix reached READY by OMITTING a field. */
+  const st2=U.scAssemble({phase:2,nCal:30,nHold:30,sd:0.01,dBrier:0.02,ciLo:0.01,ctrlMatched:10,ctrlTotal:10},
+    {arms:1,pnlN:30,pnlNet:1,monthsElapsed:3,frozen:true,holdoutSpent:false}).st;
+  eq("phase 2 without a confusion matrix is INVALID (11.5)",U.shockStatus(st2).status,"INVALID");
+  const stNull=U.scAssemble({phase:null,nCal:30,nHold:30,sd:0.01,dBrier:0.02,ciLo:0.01,
+    ctrlMatched:10,ctrlTotal:10},{arms:1,pnlN:30,pnlNet:1,monthsElapsed:3,frozen:true,holdoutSpent:false}).st;
+  eq("...but a NULL phase sails past that gate, which is why the gate cannot be here",
+     U.shockStatus(stNull).status,"READY");
+  const FULL={arms:1,frozen:true,holdoutSpent:false,pnlN:99,pnlNet:9,monthsElapsed:1};
+  const repNP=U.scReport([a,noPhase],FULL);
+  eq("so scReport refuses a phaseless row set outright",repNP.status.status,"REFUSED");
+  eq("...naming the absent phase",repNP.status.code,U.SC_OMIT.NO_PHASE);
+  ok("...and never reaches READY through it",repNP.status.status!=="READY");
+  /* S10: phase 1 and phase "1" pooled silently, because shockPoolGuard collects phases as object keys */
+  const strPhase=mkWin("KXBTC15M-q4",base+3*WEEK,15,"yes",0.7,60); strPhase.phase="1";
+  eq("a string phase is refused, not coerced",U.scPhaseGuard([a,strPhase]).ok,false);
+  eq("...with its own reason code",U.scPhaseGuard([a,strPhase]).code,U.SC_OMIT.BAD_PHASE);
+  eq("scPairs refuses it too",U.scPairs([a,strPhase]).code,U.SC_OMIT.BAD_PHASE);
+  eq("prereg's own guard would have pooled them, which is why the check is here",
+     U.shockPoolGuard?U.shockPoolGuard([a,strPhase]).ok:true,true);
+  const strPhase2=mkWin("KXBTC15M-q5",base+4*WEEK,15,"yes",0.7,60); strPhase2.phase="2";
+  eq("a string \"2\" cannot creep past shockStatus's === comparison either",
+     U.scPairs([strPhase2]).code,U.SC_OMIT.BAD_PHASE);
 }
 
 /* ==================================================================================================== */
@@ -548,6 +734,87 @@ sect("11.6 the holdout split: chronological, by count, and hard to move");
   const tie=[{ticker:"b",close:1,paired:0},{ticker:"a",close:1,paired:0}];
   eq("a tie is broken by ticker",U.scSplit(tie).cal[0].ticker,"a");
 }
+sect("S5: the boundary is REGISTERED, not recomputed, and the required n only ratchets up");
+{
+  /* scSplitCheck first, on stamps alone */
+  const b1={n:30,close:1000,ticker:"KXBTC15M-a"};
+  const b2={n:30,close:1900,ticker:"KXBTC15M-b"};
+  eq("an unregistered boundary is reported, not refused",U.scSplitCheck(b1,null).refuse,false);
+  ok("...and says it is unregistered",/not yet registered/.test(U.scSplitCheck(b1,null).why));
+  eq("a registered boundary that matches is accepted",U.scSplitCheck(b1,b1).registeredOk,true);
+  eq("...and not refused",U.scSplitCheck(b1,b1).refuse,false);
+  eq("a computed boundary that DIFFERS is refused",U.scSplitCheck(b2,b1).refuse,true);
+  eq("...and says which way it moved",U.scSplitCheck(b2,b1).why,"boundary window close changed");
+  eq("a registered boundary with nothing to compare against is refused",U.scSplitCheck(null,b1).refuse,true);
+  eq("garbage in the registered slot is refused",U.scSplitCheck(b1,{n:30}).refuse,true);
+  /* the ratchet, on numbers alone (11.2a: "it may only ever move up") */
+  eq("with nothing registered the computed requirement stands",U.scRatchet(80,null).effective,80);
+  eq("a LARGER registered requirement wins",U.scRatchet(44,80).effective,80);
+  eq("...and is flagged as a ratchet",U.scRatchet(44,80).ratcheted,true);
+  eq("...and the downward computation is reported, not hidden",U.scRatchet(44,80).movedDown,true);
+  eq("a larger COMPUTED requirement also wins, because it only moves up",U.scRatchet(120,80).effective,120);
+  eq("...and is not a ratchet",U.scRatchet(120,80).ratcheted,false);
+  eq("a requirement that cannot be computed falls back to the registered one",U.scRatchet(null,80).effective,80);
+  /* END TO END: ordinary control churn -- one control row ageing out of a 15-day buffer -- moves the boundary.
+     10.2 prunes btc.edge at ~15 days and section 8 puts this programme at ~15 months, so this is guaranteed. */
+  STUB_RELEASES.length=0;
+  const base=Date.UTC(2026,0,7,12,30), cps=[0.700,0.705,0.695,0.700,0.700];
+  const rows=[];
+  for(let i=0;i<35;i++){
+    const t0=base+i*15*MIN;
+    for(let j=0;j<5;j++) rows.push(mkWin("KXBTC15M-c"+i+"-"+j,t0+j*WEEK,15,"yes",cps[j],60));
+    const w=mkWin("KXBTC15M-s"+i,t0+6*WEEK,15,"yes",[0.80,0.60,0.90][i%3],60,{shock:true});
+    STUB_RELEASES.push(w.open+5*MIN); rows.push(w);
+  }
+  const OPT={arms:1,pnlN:30,pnlNet:1,monthsElapsed:6,frozen:true,holdoutSpent:false};
+  const r1=U.scReport(rows,OPT);
+  const pruned=[]; for(let i=0;i<rows.length;i++) if(rows[i].ticker!=="KXBTC15M-c0-0") pruned.push(rows[i]);
+  const r2=U.scReport(pruned,OPT);
+  ok("run 1 establishes a boundary",!!r1.split.boundary,r1.split);
+  ok("pruning ONE old control row moves it",U.scSplitStable(r1.split.boundary,r2.split.boundary).moved,
+     {a:r1.split.boundary,b:r2.split.boundary});
+  eq("...which the unit itself reports, rather than leaving it to the caller to notice",
+     U.scReport(pruned,Object.assign({},OPT,{boundary:r1.split.boundary})).boundary.moved,true);
+  const rMoved=U.scReport(pruned,Object.assign({},OPT,{boundary:r1.split.boundary}));
+  eq("...and it REFUSES rather than silently adopting the new boundary",rMoved.status.status,"REFUSED");
+  eq("...naming the rule",rMoved.status.code,U.SC_OMIT.BOUNDARY_MOVED);
+  eq("...and computes no difference-in-differences against it",rMoved.did,null);
+  eq("...and no CI",rMoved.ci,null);
+  ok("...and says 11.6 spends the holdout for it",/spends the holdout/.test(rMoved.status.why),rMoved.status.why);
+  const rOk=U.scReport(rows,Object.assign({},OPT,{boundary:r1.split.boundary}));
+  eq("the SAME rows against their own registered boundary are not refused",rOk.boundary.registeredOk,true);
+  ok("...and score normally",rOk.ok===true&&rOk.did!==null);
+  /* the required n ratchets: a registered requirement is never traded down for a smaller computed one */
+  const R=grid(120,[0.80,0.81,0.79],[0.700,0.705,0.695,0.700,0.700]);
+  seeded(5150,function(){
+    const good=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false});
+    eq("this fixture reaches READY with nothing registered",good.status.status,"READY",good.status);
+    ok("...on a computed requirement of its own",typeof good.holdN.computed==="number",good.holdN);
+    const held=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+      holdNRegistered:999});
+    eq("a REGISTERED requirement of 999 is not traded down for the computed one",held.holdN.effective,999);
+    eq("...so the same evidence reads HOLDOUT, not READY",held.status.status,"HOLDOUT");
+    ok("...against the registered requirement",/may only ever move up/.test(held.status.why),held.status.why);
+    eq("...and the status reports the registered n, not the recomputed one",held.status.holdNReq,999);
+    eq("...and the downward move is on the record",held.holdN.movedDown,true);
+    const late=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:25,frozen:true,holdoutSpent:false,
+      holdNRegistered:999});
+    eq("...and past 24 months an unreachable registered n abandons (11.7 clause 5)",late.status.status,"ABANDON");
+    const smaller=U.scReport(R.rows,{arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,
+      holdNRegistered:1});
+    eq("a registered requirement SMALLER than the computed one changes nothing",smaller.holdN.effective,
+       smaller.holdN.computed);
+    eq("...and READY still stands",smaller.status.status,"READY");
+  });
+  /* the ratchet may only tighten: a status that is already a refusal or an abandonment is untouched */
+  const abandoned={status:"ABANDON",why:"w",ciLevel:0.9,bootstrapB:200,holdNReq:30};
+  eq("the ratchet never upgrades an ABANDON",U.scRatchetStatus(abandoned,0,{effective:999},1).status,"ABANDON");
+  eq("...nor a FROZEN-PENDING",
+     U.scRatchetStatus({status:"FROZEN-PENDING",why:"w"},0,{effective:999},1).status,"FROZEN-PENDING");
+  eq("...and leaves READY alone once the registered n is reached",
+     U.scRatchetStatus({status:"READY",why:"w"},999,{effective:999},1).status,"READY");
+  STUB_RELEASES.length=0;
+}
 sect("11.2a: sd of the PAIRED difference, calibration half only");
 {
   function pairs(vals){ const a=[]; for(let i=0;i<vals.length;i++)
@@ -573,9 +840,11 @@ sect("11.4 / 11.2a: the CI level, B, and what it is taken over");
 {
   const cap=[];
   const spy=function(vals,fn,level,B){ cap.push({vals:vals.slice(),level:level,B:B,stat:fn(vals)});
-    return {lo:0.011,hi:0.09,point:fn(vals)}; };
-  const P=[{ticker:"a",close:1,paired:0.02,shockSkill:5,ctrlMeanSkill:4.98,nCtrl:5},
-           {ticker:"b",close:2,paired:0.04,shockSkill:7,ctrlMeanSkill:6.96,nCtrl:5}];
+    return {lo:0.011,hi:0.09,point:0.5}; };
+  /* two shock windows in ONE cell, sharing one five-window control set */
+  const CS=[-0.04,-0.02,0,0.02,0.04];                       /* mean 0 */
+  const P=[mkPair("a",1,0.02,"15m|50|3|2026Q1",CS,0.02),
+           mkPair("b",2,0.04,"15m|50|3|2026Q1",CS,0.04)];
   const c1=U.scCi(P,1,spy);
   close("k=1 is the 0.90 level, identical to VERDICT_RULE",c1.level,0.90,1e-12);
   eq("...and 200 resamples, 10 per tail",c1.B,200);
@@ -586,24 +855,126 @@ sect("11.4 / 11.2a: the CI level, B, and what it is taken over");
   eq("scCi uses prereg's shockBootstrapB, not its own",c20.B,U.shockBootstrapB(U.shockCiLevel(20)));
   eq("the bootstrap is handed the level scCi reports",cap[0].level,c1.level);
   eq("the bootstrap is handed B, not some other count",cap[0].B,c1.B);
-  eq("the bootstrap resamples the PAIRED differences",JSON.stringify(cap[0].vals),JSON.stringify([0.02,0.04]));
-  close("...and its statistic is their mean",cap[0].stat,0.03);
+  /* THE RESAMPLING UNIT. What reaches the bootstrap is the array of matching CELLS, not the paired column:
+     two shock windows sharing one control set are ONE resampling unit, not two. */
+  const drew=(cap[0].vals[0]&&typeof cap[0].vals[0]==="object")?cap[0].vals[0]:{};
+  eq("the bootstrap resamples CELLS, not paired values",cap[0].vals.length,1);
+  ok("...and what it resamples is a cell, not a number",typeof cap[0].vals[0]==="object",cap[0].vals[0]);
+  eq("...and the cell carries both its shock windows",(drew.shocks||[]).length,2);
+  eq("...and its whole control set with them",(drew.ctrl||[]).length,5);
+  eq("scCi says what its resampling unit is",c1.unit,"cell");
+  eq("...and how many there were",c1.cells,1);
+  eq("the point estimate is the observed mean paired difference, not a bootstrap replicate",c1.point,0.03);
   eq("the CI's lower bound is passed through untouched",c1.lo,0.011);
-  /* the analytic bootstrap: on a degenerate sample every resample is identical, so the interval is a
-     point -- true for EVERY draw, which is the only kind of bootstrap assertion an unseeded RNG allows */
-  const D=[]; for(let i=0;i<12;i++) D.push({ticker:"d"+i,close:i,paired:0.04,shockSkill:1,ctrlMeanSkill:0.96,nCtrl:5});
-  const cd=U.scCi(D,1,null);           /* null -> falls back to the page's real, unseeded bootstrapCI */
-  close("a degenerate sample gives lo == the value",cd.lo,0.04);
+  eq("a pair with no cell has no resampling unit and no interval",
+     U.scCi([{ticker:"x",close:1,paired:0.02,shockSkill:0.02}],1,spy).code,U.SC_OMIT.NO_CELL);
+  eq("...and a cell with no control set does not either",
+     U.scCi([{ticker:"x",close:1,paired:0.02,shockSkill:0.02,cell:"c",ctrl:[]}],1,spy).code,U.SC_OMIT.NO_CELL);
+  /* k is the caller's, and its absence is its own reason code -- not `no-prereg` while prereg is in scope */
+  eq("an absent k says so, and does not blame prereg",U.scCi(P,undefined,spy).code,U.SC_OMIT.NO_ARMS);
+  eq("...nor does k=0",U.scCi(P,0,spy).code,U.SC_OMIT.NO_ARMS);
+  ok("...and prereg IS present, which is what makes the old label wrong",U.scHasPrereg());
+  /* the analytic bootstrap: with every control identical AND every shock identical there is nothing left to
+     resample at either stage, so the interval is a point -- true for EVERY draw */
+  const D=[]; for(let i=0;i<12;i++) D.push(mkPair("d"+i,i,0.04,"15m|50|3|2026Q1",[0,0,0,0,0],0.04));
+  const cd=U.scCi(D,1,null);
+  close("a fully degenerate sample gives lo == the value",cd.lo,0.04);
   close("...and hi == the value",cd.hi,0.04);
   close("...and point == the value",cd.point,0.04);
-  /* strictly-positive samples: every resample mean is positive, so lo>0 for every possible draw */
-  const Pp=[]; for(let i=0;i<20;i++) Pp.push({ticker:"p"+i,close:i,paired:0.01+i/1000,shockSkill:1,ctrlMeanSkill:0,nCtrl:5});
+  /* strictly-positive samples: every possible two-stage replicate is positive, so lo>0 on every draw */
+  const Pp=[];
+  for(let i=0;i<20;i++) Pp.push(mkPair("p"+i,i,0.01+i/1000,"15m|"+i+"|3|2026Q1",[0,0,0,0,0],0.01+i/1000));
   const cp=U.scCi(Pp,1,null);
   ok("an all-positive sample has a strictly positive lower bound",cp.lo>0,cp);
   ok("lo <= point <= hi",cp.lo<=cp.point&&cp.point<=cp.hi,cp);
   eq("an empty holdout has no CI",U.scCi([],1,null).code,U.SC_OMIT.NO_MATCHED);
 }
-
+sect("S1: the CI must see the sampling error in a SHARED control mean (11.3, 11.2a)");
+{
+  /* THE REVIEWER'S FIXTURE, verbatim in shape. One matching cell. Five controls with skills
+     -0.24 -0.12 0 +0.12 +0.24 -- mean 0, sample sd 0.1897, so the standard error of that five-window mean is
+     0.0848. Seven shock windows reading identically, so every paired value is the SAME number.
+     The window-level bootstrap resamples seven copies of one value: width exactly zero, lo = +0.0341 > 0,
+     which is half of READY asserted with certainty about a quantity whose sign the data does not establish. */
+  const CS=[-0.24,-0.12,0,0.12,0.24];
+  const SH=0.0341;
+  const pairs=[];
+  for(let i=0;i<7;i++) pairs.push(mkPair("KXBTC15M-s"+i,i,SH,"15m|50|3|2026Q1",CS,SH));
+  close("every paired value is identical, so the naive resample has nothing to vary",
+        pairs[0].paired-pairs[6].paired,0);
+  const seSharedMean=U.scSdOf(CS)/Math.sqrt(5);
+  close("the sample sd of the shared control set is 0.1897",U.scSdOf(CS),0.18973665961010275,1e-12);
+  close("...so the standard error of the mean it contributes is 0.0848",seSharedMean,0.08485281,1e-7);
+  ok("...which is 2.5x the point estimate itself",seSharedMean/SH>2.4,seSharedMean/SH);
+  const widths=[],naive=[];
+  for(let sd=1;sd<=5;sd++){
+    seeded(sd*7919,function(){
+      const naiveCI=naiveCi(pairs,0.90,200);
+      const ci=U.scCi(pairs,1,bootstrapCI);
+      naive.push(naiveCI.hi-naiveCI.lo);
+      widths.push({w:ci.hi-ci.lo,lo:ci.lo,hi:ci.hi,point:ci.point});
+    });
+  }
+  ok("the WINDOW-level bootstrap returns width exactly zero on this fixture",
+     naive.every(function(w){ return w===0; }),naive);
+  ok("the CLUSTER bootstrap returns a NON-DEGENERATE interval, on every seed",
+     widths.every(function(x){ return x.w>0; }),widths);
+  ok("...and it is WIDER than the naive one, on every seed",
+     widths.every(function(x,i){ return x.w>naive[i]; }),{cluster:widths.map(function(x){return x.w;}),naive:naive});
+  ok("...wide enough to carry the shared control mean's own error",
+     widths.every(function(x){ return x.w>=seSharedMean; }),widths);
+  ok("...and it no longer asserts the sign with certainty: lo <= 0 on this fixture, on every seed",
+     widths.every(function(x){ return x.lo<=0; }),widths);
+  ok("the point estimate is unchanged by the change of resampling unit",
+     widths.every(function(x){ return Math.abs(x.point-SH)<1e-12; }),widths);
+}
+sect("S1: the cluster interval is wider than the naive one where the control means genuinely vary too");
+{
+  /* three cells, five controls each with real spread, four shock windows each. The naive bootstrap sees only
+     the spread of the paired column; the cluster one also sees the control means being estimates. */
+  const cells=[{k:"15m|50|3|2026Q1",cs:[-0.20,-0.10,0,0.10,0.20]},
+               {k:"15m|54|4|2026Q1",cs:[-0.16,-0.08,0,0.08,0.16]},
+               {k:"15m|58|5|2026Q1",cs:[-0.24,-0.12,0,0.12,0.24]}];
+  const pairs=[]; let n=0;
+  for(let i=0;i<cells.length;i++) for(let j=0;j<4;j++){
+    const v=0.02+0.004*j;
+    pairs.push(mkPair("KXBTC15M-w"+(n++),n,v,cells[i].k,cells[i].cs,v));
+  }
+  let wider=0,seeds=0;
+  for(let sd=1;sd<=5;sd++) seeded(sd*104729,function(){
+    seeds++;
+    const nv=naiveCi(pairs,0.90,200), cl=U.scCi(pairs,1,bootstrapCI);
+    if((cl.hi-cl.lo)>(nv.hi-nv.lo)) wider++;
+  });
+  eq("the cluster interval is wider than the naive one on every seed",wider,seeds);
+  seeded(20260906,function(){
+    const cl=U.scCi(pairs,1,bootstrapCI);
+    eq("twelve shock windows in three cells are THREE resampling units",cl.cells,3);
+    eq("...and n still reports the twelve windows",cl.n,12);
+  });
+}
+sect("S1: what the cluster bootstrap carries together, and what it re-estimates");
+{
+  const cells=[{key:"c1",shocks:[1,1,1],ctrl:[0,0,0,0,0]}];
+  eq("a cell whose controls are identical re-estimates the same mean every time",U.scClusterStat(cells),1);
+  const many=[{key:"c1",shocks:[1],ctrl:[-1,1]}];
+  const seen={};
+  seeded(4242,function(){ for(let i=0;i<200;i++) seen[U.scClusterStat(many)]=1; });
+  ok("a cell whose controls differ re-estimates a DIFFERENT mean across replicates",
+     Object.keys(seen).length>1,Object.keys(seen));
+  eq("...and every value it can take is 1 - (a mean of a resample of {-1,+1})",
+     Object.keys(seen).sort().join(","),"0,1,2");
+  /* the union: two shock windows in one cell must not multiply that cell's control set */
+  const CS=[0.1,0.2,0.3,0.4,0.5];
+  const two=[mkPair("a",1,0,"K",CS,0.3),mkPair("b",2,0,"K",CS,0.3)];
+  const cl=U.scCells(two);
+  eq("two shock windows in one cell are one cell",cl.cells.length,1);
+  eq("...whose control set is counted ONCE, not once per shock window",cl.cells[0].ctrl.length,5);
+  eq("...and which carries both shock windows",cl.cells[0].shocks.length,2);
+  const split=[mkPair("a",1,0,"K1",CS,0.3),mkPair("b",2,0,"K2",CS,0.3)];
+  eq("two shock windows in two cells are two cells",U.scCells(split).cells.length,2);
+  eq("scClusterStat on nothing is null, never zero",U.scClusterStat([]),null);
+}
 /* ==================================================================================================== */
 sect("assembling st: exactly fifteen fields, nothing defaulted to permissive");
 {
@@ -629,7 +1000,50 @@ sect("assembling st: exactly fifteen fields, nothing defaulted to permissive");
     ctrlMatched:10,ctrlTotal:10},{arms:1,pnlN:30,pnlNet:1,monthsElapsed:3,frozen:"true"});
   eq("a truthy-but-not-true frozen is passed through verbatim",d.st.frozen,"true");
   eq("...and shockStatus still refuses it",U.shockStatus(d.st).status,"FROZEN-PENDING");
-  eq("SC_CALLER_FIELDS names the eight the caller owns",U.SC_CALLER_FIELDS.length,7);
+  eq("SC_CALLER_FIELDS names the SEVEN fields the caller owns",U.SC_CALLER_FIELDS.length,7);
+  eq("...and the other EIGHT are measured here",Object.keys(a.st).length-U.SC_CALLER_FIELDS.length,8);
+  eq("...which is the fifteen shockStatus reads",Object.keys(a.st).length,15);
+  /* the same count, stated in the source: the comment above scAssemble had it backwards */
+  ok("code.js states the split the right way round",
+     /EIGHT are MEASURED here[\s\S]{0,200}SEVEN are the caller's/.test(SRC),
+     (SRC.match(/are MEASURED here[\s\S]{0,120}/)||[""])[0]);
+}
+sect("S6: a caller field the verdict depends on is a REFUSAL when it is missing, not a verdict");
+{
+  /* scAssemble defaults nothing -- and then the verdict used to be computed anyway. `holdoutSpent` is the
+     sharp one: 11.6's spent-holdout flag arrives at shockStatus as undefined, which is NOT true, which is the
+     value that lets the programme advance. `missing` named it and nothing acted on it. */
+  const R=grid(120,[0.80,0.81,0.79],[0.700,0.705,0.695,0.700,0.700]);
+  const FULL={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,bootstrap:null};
+  seeded(60606,function(){
+    eq("the complete call reaches a verdict",U.scReport(R.rows,FULL).status.status,"READY");
+    const drops=["holdoutSpent","monthsElapsed","arms","pnlN","pnlNet","frozen"];
+    for(let i=0;i<drops.length;i++){
+      const o={}; for(const k in FULL) if(k!==drops[i]) o[k]=FULL[k];
+      const rp=U.scReport(R.rows,o);
+      eq("omitting "+drops[i]+" refuses instead of answering",rp.status.status,"REFUSED",rp.status);
+      eq("...naming the hole",rp.status.code,U.SC_OMIT.MISSING_FIELDS);
+      ok("...and saying which field it was",rp.status.why.indexOf(drops[i])>=0,rp.status.why);
+      ok("...and it is never READY",rp.status.status!=="READY");
+      ok("...while the measurements it DID make stay on the report",rp.did!==null&&rp.split!==null);
+    }
+    /* detPrecision is required only where 11.5 requires it */
+    ok("a phase-1 call with no detPrecision is not refused for it",
+       U.scReport(R.rows,FULL).missing.indexOf("detPrecision")>=0&&
+       U.scReport(R.rows,FULL).status.status==="READY");
+    eq("...because the required set is phase-dependent",U.scRequiredFields(1).indexOf("detPrecision"),-1);
+    ok("...and phase 2 does require it",U.scRequiredFields(2).indexOf("detPrecision")>=0);
+    eq("scMissingRequired names only the fields that decide the verdict",
+       U.scMissingRequired(["detPrecision"],1).length,0);
+    eq("...and does name detPrecision at phase 2",U.scMissingRequired(["detPrecision"],2).join(","),
+       "detPrecision");
+  });
+  /* the mislabelled scCi code: `arms` missing is not prereg missing */
+  const P=[mkPair("a",1,0.02,"15m|50|3|2026Q1",[0,0,0,0,0],0.02)];
+  eq("an absent k is reported as no-arms",U.scCi(P,undefined,null).code,U.SC_OMIT.NO_ARMS);
+  ok("...and prereg is present, which is what made `no-prereg` a lie",U.scHasPrereg());
+  eq("a genuinely absent prereg still says no-prereg",ALONE.scCi([{paired:1}],1,null).code,
+     ALONE.SC_OMIT.NO_PREREG);
 }
 
 /* ==================================================================================================== */
@@ -637,13 +1051,13 @@ sect("the whole pass: a grid big enough to reach a holdout");
 /* Weekly windows at one UTC slot and weekday. Within each calendar quarter the first five are controls and
    the rest are shocks, so every shock has exactly its own quarter's five controls -- which is also how the
    quarter dimension is tested: drop it and every shock sees every quarter's controls. */
-function grid(nWeeks,shockP){
+function grid(nWeeks,shockP,ctrlP){
   STUB_RELEASES.length=0;
   const base=Date.UTC(2026,0,7,12,30);
   const byQ={},order=[];
   for(let k=0;k<nWeeks;k++){ const t=base+k*WEEK; const q=U.scQuarterUtc(t);
     if(!byQ[q]){ byQ[q]=[]; order.push(q); } byQ[q].push(t); }
-  const rows=[],shocks=[],cps=[0.7,0.8,0.6,0.5,0.9];
+  const rows=[],shocks=[],cps=ctrlP||[0.7,0.8,0.6,0.5,0.9];
   for(let i=0;i<order.length;i++){
     const ts=byQ[order[i]];
     if(ts.length<8) continue;                       /* a short quarter cannot host 5 controls and shocks */
@@ -673,11 +1087,21 @@ function grid(nWeeks,shockP){
   const wantPaired=SHOCK_P.map(function(p){ return skillOf(p,60,1)-0.05; });
   ok("every paired difference is one of the three the fixture builds",
      P.pairs.every(function(r){ return wantPaired.some(function(x){ return Math.abs(r.paired-x)<1e-12; }); }));
+  /* every pair carries the cell it was matched in, and the identified control set behind its mean */
+  ok("every pair carries its matching cell",P.pairs.every(function(r){ return typeof r.cell==="string"&&r.cell.length>0; }));
+  ok("...and the five identified controls its mean came from",
+     P.pairs.every(function(r){ return r.ctrl.length===5&&r.ctrl.every(function(c){ return typeof c.id==="string"; }); }));
+  ok("...and the cell key is the four matching dimensions, nothing else",
+     /^15m\|\d+\|\d\|\d{4}Q\d$/.test(P.pairs[0].cell),P.pairs[0].cell);
   const sp=U.scSplit(P.pairs);
   eq("calibration is 30 windows",sp.cal.length,30);
   eq("holdout is the rest",sp.hold.length,P.pairs.length-30);
   const sd=U.scSd(sp.cal);
   ok("the calibration half yields an sd",typeof sd==="number"&&sd>0,sd);
+  /* sd, from the definition, computed HERE rather than by calling the code under test */
+  const calVals=sp.cal.map(function(r){ return r.paired; });
+  close("the calibration sd is the n-1 sd of the calibration paired values, computed independently",
+        sd,sdRef(calVals),1e-15);
   const holdVals=sp.hold.map(function(r){ return r.paired; });
   const wantMean=holdVals.reduce(function(a,b){ return a+b; },0)/holdVals.length;
   const did=U.scDid(sp.hold);
@@ -690,24 +1114,69 @@ function grid(nWeeks,shockP){
   eq("the report is for phase 1",rep.st.phase,1);
   eq("nCal is the calibration count",rep.st.nCal,30);
   eq("nHold is the holdout count",rep.st.nHold,sp.hold.length);
-  close("st.sd is the calibration sd",rep.st.sd,sd);
+  close("st.sd is the calibration sd, independently derived",rep.st.sd,sdRef(calVals),1e-15);
   ok("...and NOT the sd of every pair (11.6: measured on the calibration half)",
-     Math.abs(rep.st.sd-U.scSd(P.pairs))>1e-9,{cal:rep.st.sd,all:U.scSd(P.pairs)});
+     Math.abs(rep.st.sd-sdRef(P.pairs.map(function(r){ return r.paired; })))>1e-9,rep.st.sd);
   close("st.dBrier is the holdout difference-in-differences",rep.st.dBrier,wantMean);
   const allMean=P.pairs.reduce(function(a,r){ return a+r.paired; },0)/P.pairs.length;
   ok("...and NOT the mean over every pair (11.6: READY is decided on the holdout alone)",
      Math.abs(rep.st.dBrier-allMean)>1e-9,{hold:rep.st.dBrier,all:allMean});
-  eq("st.ciLo is the bootstrap's lower bound",rep.st.ciLo,rep.ci.lo);
-  eq("coverage is 100% on this fixture",rep.st.ctrlMatched,rep.st.ctrlTotal);
+  /* ciLo is INDEPENDENTLY bounded rather than compared to rep.ci.lo, which would be tautological: every
+     paired value in the holdout is one of three known constants, so every possible bootstrap replicate --
+     naive or clustered -- lies between the smallest and largest attainable mean paired value. */
+  const loB=Math.min.apply(null,holdVals)-0.5, hiB=Math.max.apply(null,holdVals)+0.5;
+  ok("st.ciLo lies inside the range the fixture's own paired values can produce",
+     rep.st.ciLo>loB&&rep.st.ciLo<hiB,{ciLo:rep.st.ciLo,lo:loB,hi:hiB});
+  eq("coverage on the fixture that has all its controls is 100%",rep.st.ctrlMatched,rep.st.ctrlTotal);
   ok("the caveat travels with the report",rep.caveat===STUB_CAVEAT);
   ok("every scored pair carries its own known block",
      rep.split.calN===30&&P.pairs.every(function(r){ return r.known&&r.known.caveat===STUB_CAVEAT; }));
   ok("the required holdout n is reported",typeof rep.status.holdNReq==="number",rep.status);
-  /* every paired value is strictly positive here, so ciLo>0 holds for every possible bootstrap draw */
-  ok("the CI lower bound is positive for this fixture, on every draw",rep.ci.lo>0,rep.ci);
-  eq("this fixture reaches READY",rep.status.status,"READY",rep.status);
-  ok("...and READY is necessary, never sufficient",/necessary, never sufficient/.test(rep.status.why));
   ok("detPrecision is reported missing rather than invented",rep.missing.indexOf("detPrecision")>=0,rep.missing);
+
+  /* S1, ON THE REALISTIC GRID. This fixture's five controls carry a real spread (skills .07/.12/0/-.09/.15,
+     sd 0.0929, so the mean each pair is built on carries a standard error of 0.0415 -- larger than the
+     0.03 effect). Every paired value is positive, so the WINDOW-level bootstrap has a positive lower bound on
+     every possible draw and the pass used to read READY. The CLUSTER bootstrap sees the control mean for what
+     it is -- an estimate from five windows -- and the interval covers zero. */
+  let naiveLoPos=0,clusterCoversZero=0,clusterLower=0,seeds=0;
+  for(let sdi=1;sdi<=40;sdi++) seeded(sdi*1000003,function(){
+    seeds++;
+    const nv=naiveCi(sp.hold,0.90,200);
+    const cl=U.scCi(sp.hold,1,bootstrapCI);
+    if(nv.lo>0) naiveLoPos++;
+    if(cl.lo<=0) clusterCoversZero++;
+    if(cl.lo<nv.lo) clusterLower++;
+  });
+  /* the naive lower bound is positive for EVERY possible draw, not merely these seeds: every paired value in
+     this fixture is positive, so every resample mean of them is. */
+  eq("the window-level bootstrap called this fixture decisive on all 40 seeds",naiveLoPos,seeds);
+  eq("...and the cluster bootstrap is strictly less certain on all 40",clusterLower,seeds);
+  ok("...and its interval actually covers zero on most of them",clusterCoversZero>=seeds/2,
+     {coversZero:clusterCoversZero,of:seeds});
+  /* which is the whole finding at the level of the verdict: this fixture's edge (0.03) is smaller than the
+     standard error of the five-window control mean each pair is built on (0.0415), so whether it reads READY
+     is a coin flip across seeds -- where the window-level bootstrap called it READY every time. */
+  let readies=0;
+  for(let sdi=1;sdi<=20;sdi++) seeded(sdi*99991,function(){
+    if(U.scReport(G.rows,opts).status.status==="READY") readies++;
+  });
+  ok("a fixture whose control noise swamps its edge no longer reads READY every time",readies<20,readies);
+
+  /* the READY path, on a fixture whose CONTROL MEAN is precisely estimated: five controls reading nearly
+     alike, so the cluster bootstrap has little control-side variance to add, and a large tool edge. */
+  const TIGHT=[0.700,0.705,0.695,0.700,0.700];
+  const R=grid(120,[0.80,0.81,0.79],TIGHT);
+  seeded(777001,function(){
+    const rr=U.scReport(R.rows,opts);
+    eq("a fixture with a tight control set and a real edge reaches READY",rr.status.status,"READY",rr.status);
+    ok("...and READY is necessary, never sufficient",/necessary, never sufficient/.test(rr.status.why));
+    ok("...on a strictly positive cluster lower bound",rr.ci.lo>0,rr.ci);
+    ok("...taken over cells, not windows",rr.ci.unit==="cell"&&rr.ci.cells>0&&rr.ci.cells<rr.ci.n,rr.ci);
+  });
+  for(let sdi=1;sdi<=4;sdi++) seeded(sdi*31337,function(){
+    eq("...on every seed",U.scReport(R.rows,opts).status.status,"READY");
+  });
 
   /* the same grid with the tool WORSE must not read READY */
   const W=grid(120,[0.40,0.41,0.42]);
@@ -715,13 +1184,64 @@ function grid(nWeeks,shockP){
   ok("a worse-than-market tool gives a NEGATIVE dBrier",repW.st.dBrier<0,repW.st.dBrier);
   ok("...and does not read READY",repW.status.status!=="READY",repW.status);
   eq("...it abandons",repW.status.status,"ABANDON");
-
-  /* coverage below 80% abandons under 11.7 clause 3 */
-  const T=grid(120,SHOCK_P);
-  const thin=T.rows.filter(function(w){ return w.shock===true||/-c-2026Q1-/.test(w.ticker); });
-  const repT=U.scReport(thin,opts);
-  ok("stripping most controls drops coverage below 80%",repT.st.ctrlMatched/repT.st.ctrlTotal<0.8);
-  eq("...which abandons under 11.7 clause 3",repT.status.status,"ABANDON");
+}
+sect("S2: control coverage is read on the HOLDOUT ALONE (11.2)");
+{
+  /* the reviewer's fixture. 30 cells x 5 controls x 2 shocks = 60 matched shock windows, all early; then 10
+     cells with only FOUR controls and one shock each, dated after the boundary: recorded, unmatched, unscored.
+     Pooled coverage 60/70 = 0.857 PASSES. Holdout coverage 30/40 = 0.750 fails, and 11.7 clause 3 abandons. */
+  STUB_RELEASES.length=0;
+  const base=Date.UTC(2026,0,7,12,30);
+  const cps=[0.700,0.705,0.695,0.700,0.700];     /* tight, so the CI is not what decides this fixture */
+  const rows=[];
+  for(let i=0;i<30;i++){
+    const t0=base+i*15*MIN;                       /* one cell per UTC slot, same weekday and quarter */
+    for(let j=0;j<5;j++) rows.push(mkWin("KXBTC15M-c"+i+"-"+j,t0+j*WEEK,15,"yes",cps[j],60));
+    for(let k=0;k<2;k++){
+      const w=mkWin("KXBTC15M-s"+i+"-"+k,t0+(6+k)*WEEK,15,"yes",0.80,60,{shock:true});
+      STUB_RELEASES.push(w.open+5*MIN); rows.push(w);
+    }
+  }
+  for(let i=30;i<40;i++){
+    const t0=base+i*15*MIN;
+    for(let j=0;j<4;j++) rows.push(mkWin("KXBTC15M-c"+i+"-"+j,t0+j*WEEK,15,"yes",cps[j],60));
+    const w=mkWin("KXBTC15M-s"+i+"-0",t0+9*WEEK,15,"yes",0.80,60,{shock:true});
+    STUB_RELEASES.push(w.open+5*MIN); rows.push(w);
+  }
+  const opts={arms:1,pnlN:30,pnlNet:12.5,monthsElapsed:6,frozen:true,holdoutSpent:false,bootstrap:null};
+  const rep=U.scReport(rows,opts);
+  eq("70 shock windows are recorded",rep.coverage.all.total,70);
+  eq("...60 of them matched",rep.coverage.all.matched,60);
+  close("...so POOLED coverage is 0.857, which passes the 80% bar",rep.coverage.all.frac,60/70,1e-12);
+  eq("the holdout carries 40 recorded shock windows",rep.coverage.hold.total,40);
+  eq("...of which 30 are matched",rep.coverage.hold.matched,30);
+  close("...so HOLDOUT coverage is 0.750",rep.coverage.hold.frac,0.75,1e-12);
+  eq("the calibration half's own coverage is reported too",rep.coverage.cal.total,30);
+  close("...and it is perfect, which is exactly what diluted the pooled figure",rep.coverage.cal.frac,1,1e-12);
+  eq("st carries the HOLDOUT count, not the pooled one",rep.st.ctrlTotal,40);
+  eq("...and the holdout matched count",rep.st.ctrlMatched,30);
+  eq("...so 11.7 clause 3 abandons",rep.status.status,"ABANDON");
+  ok("...for the coverage reason",/coverage/.test(rep.status.why),rep.status.why);
+  /* and the counterfactual, which is the finding: the SAME fixture judged on the pooled figure reads READY */
+  const pooled=U.scAssemble({phase:rep.st.phase,nCal:rep.st.nCal,nHold:rep.st.nHold,sd:rep.st.sd,
+    dBrier:rep.st.dBrier,ciLo:rep.st.ciLo,
+    ctrlMatched:rep.coverage.all.matched,ctrlTotal:rep.coverage.all.total},opts).st;
+  eq("the pooled coverage this fixture used to hand the judge reads READY",
+     U.shockStatus(pooled).status,"READY",U.shockStatus(pooled));
+  /* the pooled figures are still reported, because the calibration half is still worth seeing */
+  eq("the pooled counts remain on the report",rep.ctrlTotal,70);
+  eq("...and so does the pooled matched count",rep.ctrlMatched,60);
+  /* BEFORE a boundary exists there is no holdout, so the gate has nothing to read -- and the calibration
+     coverage is still reported, so 11.7 clause 3's question can be asked during calibration by the caller
+     rather than answered here on a set that is not the holdout. */
+  const early=[]; for(let i=0;i<rows.length;i++) if(!/-s3\d-/.test(rows[i].ticker)) early.push(rows[i]);
+  const shortRep=U.scReport(early.slice(0,60),opts);
+  eq("with no boundary yet the holdout carries nothing",shortRep.coverage.hold.total,0);
+  eq("...so the gate reads nothing",shortRep.st.ctrlTotal,0);
+  ok("...but the calibration coverage is on the report to be read",shortRep.coverage.cal.total>0,
+     shortRep.coverage);
+  ok("...and the status is progress, not a coverage verdict",
+     shortRep.status.status==="CALIBRATING"||shortRep.status.status==="REFUSED",shortRep.status);
 }
 sect("a short calibration set cannot open a holdout");
 {
@@ -751,7 +1271,9 @@ sect("degradation: the unit alone, with no calendar and no prereg");
   eq("scCi degrades to a reason code",ALONE.scCi([{paired:1}],1,null).code,ALONE.SC_OMIT.NO_PREREG);
   const rep=ALONE.scReport([w],{arms:1});
   eq("scReport still returns a report",rep.ok,false);
-  eq("...with no status, because there is no judge",rep.status,null);
+  /* a REFUSAL needs no judge: it is this unit declining to score, not a verdict on the evidence */
+  eq("...whose status is a refusal, not a verdict",(rep.status||{}).status,"REFUSED");
+  eq("...naming the missing neighbour",(rep.status||{}).code,ALONE.SC_OMIT.NO_CALENDAR);
   ok("...and it does not throw",true);
   /* scSkill is pure arithmetic and works with no neighbours at all */
   close("scSkill still works alone",ALONE.scSkill(w).skill,0.21);

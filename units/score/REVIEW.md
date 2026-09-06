@@ -328,3 +328,359 @@ things §11.6 freezes. Fixing any of them after the splice is in service and obs
 post-freeze change that **spends the holdout** and restarts the count at zero. There is no shock-
 conditioned row anywhere yet, so right now all four are free. That will not be true again.
 
+
+---
+
+# Adversarial re-review — `units/score` — 2026-09-06 (second round)
+
+Reviewer role. **Nothing in the repository was edited**; this section is the only artefact. Working tree
+carries the previous round's fixes; `node units/score/test.js` green (453/453), `node units/run.js` green
+(7 units), `npm test` green (5 harnesses) before and after.
+
+Everything below was reproduced in a `vm` context built independently of `test.js` (same three-context
+shape: real `calendar` + real `prereg`, a controllable `controlEligible` stub, and `score` alone), with
+fixtures whose expected values are derived from CLAUDE.md §11 and written as literals. The cluster
+bootstrap was checked against a **separate reimplementation** and against an analytic standard error,
+not against the unit's own output.
+
+---
+
+## Part 1 — the ten previous findings, re-run from their original reproductions
+
+All ten are closed. Each was re-run from the symptom described in the first round, not from the diff.
+
+| # | original symptom | re-run result |
+|---|---|---|
+| 1 | 7 identical pairs in one cell → 90% CI width **exactly 0**, `lo = +0.0341` | width **0.240–0.264** over 5 seeds, `lo` −0.091 to −0.115 — the interval covers zero. `level 0.9`, `B 200` unchanged |
+| 2 | pooled coverage 0.857 → READY while holdout-only was 0.750 | `st.ctrlMatched/ctrlTotal` = **30/40**, status **ABANDON**; `rep.coverage.all` still reports the 0.857 counterfactual |
+| 3 | `phase` omitted → `st.phase null`, phase-2 gate skipped, READY | **REFUSED / `no-phase`**. `phase:1` READY, `phase:2` without `detPrecision` refused |
+| 4 | 3 control windows each duplicated satisfied the 5-minimum; a cloned shock scored twice | `n 3, matched false, dupControls 2`; cloned shock → `pairs 1, ctrlTotal 1, dupRows 1` |
+| 5 | boundary slid when one old control row was pruned | with the run-1 stamp registered: **REFUSED / `boundary-moved`**, `why "boundary window close changed"` |
+| 6 | `holdoutSpent` / `monthsElapsed` / `pnlN` absent → READY | every one of them **REFUSED / `missing-caller-fields`**; `detPrecision` at phase 1 correctly does not block |
+| 7 | mixed phase reported `CALIBRATING / calibration set incomplete` | **REFUSED / `mixed-phase`** with the §11.5 sentence; `no-matched-windows` still answers on the counts, which is right |
+| 8 | "Seven are MEASURED … eight are the caller's"; assertion named "eight" | code.js:693 reads EIGHT/SEVEN; test.js:1003 reads SEVEN; NOTES line count 902 = `wc -l` |
+| 9 | leak scan vacuous on an all-unmatched fixture; tautological assertions | rebuilt on a matched fixture, `sdRef` written independently (test.js:152), attainable-range bound for `ciLo` |
+| 10 | `qm` 0 / 100 scored | `{ok:false, code:"empty-book"}` at both ends; such a control is rejected and counted (`rejects:{"empty-book":1}`); `phase:"1"`, `phase:"2"`, `phase:true` all **REFUSED / `bad-phase`** |
+
+---
+
+## Part 2 — verification of the cluster bootstrap (S1), by independent reimplementation
+
+I wrote a second two-stage cluster bootstrap from the definition (group pairs by cell; resample cells with
+replacement; inside each drawn cell resample its own controls and its own shocks; rebuild the paired mean)
+and compared replicate distributions over 40,000 draws.
+
+- **It does resample cells, carrying each cell's controls with its shocks.** `scCells` groups on
+  `p.cell`, unions each cell's control ids once, and `scClusterStat` re-estimates the control mean inside
+  the drawn cell before subtracting. Every shock in a cell draws the same control set by construction
+  (`scMatchControls` applies identical criteria to every shock sharing a match key), so the cell's
+  unioned control list *is* each member's control set — I checked this on a mixed fixture rather than
+  assuming it.
+- **The width on the zero-width fixture is defensible.** One cell, controls {−0.24, −0.12, 0, +0.12,
+  +0.24}, seven identical shocks. The replicate is `shock − mean(resample of 5 controls)`; the population
+  variance of the controls is 0.0288, so the resample-mean sd is `sqrt(0.0288/5) = 0.0759` and a 90%
+  interval is `2 × 1.645 × 0.0759 = 0.250` wide. Measured: **0.240–0.264**. Agrees.
+- **Never narrower than naive, and the excess is the right size.** Analytic prediction
+  `Var_cluster = Var_naive + Var(control resample mean)/nCells`, checked on a 30-cell fixture with
+  large control dispersion: analytic naive sd 0.002582 / cluster 0.011832 (ratio 4.583); measured
+  0.002579 / 0.011871 (ratio **4.603**). On a fixture with small control dispersion the ratio is 1.011.
+  Across every configuration I built — 1 cell × 7 shocks, 30 cells × 1 shock, 10 cells × 3, 3 cells × 10,
+  and a deliberately lopsided 20+1+1+1+1 — the cluster replicate sd was **never below** the naive one.
+- **Degenerate shapes behave.** One cell with one shock: the interval is the within-cell control
+  resample (width 0.040 against a naive width of 0.000). Unequal cells: 0.106 against a naive 0.063.
+  With a single cell there is no between-cell variance to estimate and stage 2 alone carries the
+  interval, which is what the comment claims and what the numbers show.
+- **Level and B have not moved.** `k=1 → 0.900 / 200`, `k=7 → 0.9857142857142858 / 1400`,
+  `k=20 → 0.995 / 4000`, matching `1 − 0.10/⌊k⌋` and `⌈20/(1−level)⌉` recomputed independently. I
+  instrumented the handed-in `bootstrapFn` and confirmed it receives exactly `(cells, fn, lvl, B)` with
+  the cell objects, and that `out.point` is the deterministic mean of the observed paired values, not a
+  replicate.
+
+**The S1 fix is correct.** I could not make the cluster interval narrower than the window-level one, and
+could not make it disagree with an analytic standard error I derived myself.
+
+---
+
+## Part 3 — new findings
+
+Nine below. **Findings 1 and 2 are each independently sufficient to produce a wrong verdict**; finding 1
+produces a wrong *closure*, which §11.7 makes permanent.
+
+### 1. One unmatched window at the start of the holdout ABANDONS the programme. This is the S2 fix's own shadow
+
+**Where:** `scCoverage` (code.js:743–757) counts holdout coverage over `pairs + unmatched` after the
+boundary and hands `cov.hold` to `st` (code.js:884); `shockStatus` applies
+`ctrlTotal>0 && ctrlMatched/ctrlTotal < 0.80 → ABANDON` **before** any count check and with **no minimum
+denominator**.
+
+Finding 2 of the first round was right and the fix is right, but moving the denominator from the pooled
+set to the holdout alone made it *tiny at exactly the moment the holdout opens*. §11.2 budgets for up to
+20% unmatched; the first unmatched window to arrive before the fifth matched one closes the programme.
+
+**Concrete input.** 30 matched calibration windows (30 cells × 5 controls × 1 shock), then one shock
+window with only 4 eligible controls, dated after the boundary:
+
+```
+unmatched 1  extra matched  0 | holdout coverage 0/1  = 0.000 | nCal 30 nHold 0  -> ABANDON  control coverage below 80% (11.7 clause 3)
+unmatched 1  extra matched  3 | holdout coverage 3/4  = 0.750 | nCal 30 nHold 3  -> ABANDON  control coverage below 80% (11.7 clause 3)
+unmatched 2  extra matched 10 | holdout coverage 10/12= 0.833 | nCal 30 nHold 10 -> HOLDOUT
+unmatched 3  extra matched 30 | holdout coverage 30/33= 0.909 | nCal 30 nHold 30 -> READY
+```
+
+Under the pre-fix pooled figure the first row read 30/31 = 0.968 and passed. §11.7 clause 3 is a
+**closure** — "Closed or redesigned, and a redesign restarts the count at zero" — and §11.7 opens by
+saying each clause "closes the programme; none of them is an invitation to collect more". Against §8's
+~47 calendar events a year, the holdout spends its first months in exactly this regime, so this is not a
+corner: it fires on the ordinary first pass after calibration completes.
+
+The coverage test is a statement about the holdout **as a whole**; evaluating it on a denominator of one
+is not a conservative reading of §11.2, it is a different test. Either `score` must withhold
+`ctrlMatched`/`ctrlTotal` until the holdout denominator can carry the 80% question (the same discipline
+`scSd` already applies by returning `null` below `CAL_N`), or `prereg`'s gate needs a minimum n — and
+which of those it is, is a §11 registration decision, so it belongs before the splice.
+
+### 2. `boundary` and `holdNRegistered` are optional, so §11.6's freeze and §11.2a's ratchet are advisory — and READY is reachable with both unregistered
+
+**Where:** `scSplitCheck` (code.js:512–518) returns `refuse:false` when `registered` is null; nothing
+downstream consults `bchk.registeredOk`. `scRatchet` (code.js:535–543) returns `effective = computed`
+when `registered` is null. Neither field is in `SC_CALLER_FIELDS` or `SC_VERDICT_FIELDS`, so neither
+appears in `missing` and neither is a refusal — while `frozen`, `holdoutSpent`, `arms`, `pnlN`, `pnlNet`
+and `monthsElapsed` all are.
+
+The previous round's finding 6 established the principle: a verdict derived from a hole is worth less
+than no verdict. These are the two remaining holes, and they are the two that implement the clauses
+§11.6 and §11.2a exist for.
+
+**Concrete input A — READY with the boundary never registered.** 30 cells × 5 controls × 2 shocks, 60
+matched windows, `{arms:1, pnlN:50, pnlNet:5, monthsElapsed:6, frozen:true, holdoutSpent:false,
+bootstrap:bootstrapCI}` and **no `boundary`, no `holdNRegistered`**:
+
+```
+status READY | code null | missing ["detPrecision"]
+boundary: {"registered":null,"registeredOk":false,"moved":false,"why":"boundary computed; not yet registered by the caller","refuse":false}
+holdN:    {"computed":30,"registered":null,"effective":30,"ratcheted":false,"movedDown":false}
+```
+
+`frozen:true` and an unregistered boundary are accepted together. By the time `nCal >= 30` the 30th
+calibration window *has* been graded, which is the exact moment §11.6 says the boundary can no longer
+move — the state "boundary computed, nobody registered it, verdict READY" is one §11.6 does not admit.
+
+**Concrete input B — HOLDOUT becomes READY because the ratchet was not supplied.** 35 cells × 5 controls
+× 2 shocks (cal 30, hold 40); control skills constant within a cell at `((c%13)−6)·0.0105`, shock skill
+0.045. Then one extra control per cell arrives later at `−2×` that offset — every shock was already
+matched, so the pair list, its order and the boundary stamp are **identical**:
+
+```
+run 1 (no 6th control):        sd 0.04086  need 46  -> HOLDOUT
+run 2 (6th control, no ratchet):sd 0.02043 need 30  -> READY   dBrier 0.0474  ciLo 0.0407
+run 2 with holdNRegistered:46:  need 46             -> HOLDOUT
+```
+(stable across seeds 31/32/33.)
+
+§11.2a: "It may only ever move up." Here it moves 46 → 30 and the holdout "completes" at 40 windows on a
+requirement that was never met. The ratchet is implemented correctly; it is simply switched off by
+omission, silently, on the permissive side.
+
+### 3. `shock` is the treatment-assignment flag and the only caller field with no type discipline; a truthy-but-not-`true` value moves a window from the treatment set into its own cell's control pool
+
+**Where:** `scPairs` (code.js:412) `if(!w||w.shock!==true) continue;` and `scMatchControls`
+(code.js:326) `if(c.shock===true){ bump(SC_OMIT.IS_SHOCK); continue; }`. The two tests are exact-`true`,
+so any other truthy value falls through **both**: the window is not a shock, and it is not excluded from
+the control pool.
+
+The previous round hardened `phase` against exactly this (`bad-phase`, "1 and \"1\" must never pool"),
+and the same argument applies with more force here: `phase` only selects which gate runs, `shock`
+decides who is treated. `units/detect/code.js:244` returns `{shock:true, …}`, but `detect` is the phase-2
+source and its shape is not what the unit is defending against — a caller mapping a detector score, a
+CSV `"true"`, or a `1/0` column is.
+
+**Concrete input.** One cell, five controls at skill 0, two shock windows — one where the tool wins
+(+0.20) and one where it loses (−0.20). The honest DiD is 0.
+
+```
+clean (both shock:true)   n 2   controlled  0.00000
+shock:1 on the LOSER      n 1   controlled +0.23333
+```
+
+The losing window vanishes from `ctrlTotal` (no `unmatched` row, no reason code, nothing in `missing`)
+**and** joins the control mean, so both terms of the difference move the same way. `"true"`, `{}` and
+`[]` behave identically. This is §7.4's retroactive side-picking reachable through a type coercion, and
+unlike the §7.4 episodes it leaves no trace on the record.
+
+### 4. An unmatched shock window with a missing or non-numeric `close` is counted on the **calibration** side of the holdout coverage
+
+**Where:** `scAfterBoundary` (code.js:737–742) returns `false` unless `scNum(w.close)`, and `scCoverage`
+routes a `false` to `out.cal`. `scPairs` copies `close` verbatim into the `unmatched` row, so a shock row
+whose `close` is absent or a string is invisible to the holdout coverage count that decides the gate.
+
+**Concrete input.** 30 cells × 2 shocks matched, plus 10 unmatched shock windows dated after the
+boundary, identical except for `close`:
+
+```
+10 unmatched, well formed        holdout coverage 30/40 = 0.750 -> ABANDON
+10 unmatched, `delete w.close`   holdout coverage 30/30 = 1.000 -> READY
+10 unmatched, close = "17714..." holdout coverage 30/30 = 1.000 -> READY
+```
+
+The malformed rows are still refused as *pairs* (correctly — `scSkill` returns `bad-window`), so the
+estimate is unaffected; it is only the coverage denominator that loses them, and it loses them in the
+permissive direction. A row that cannot be placed relative to the boundary is not a calibration row; it
+is a row whose side is unknown, and §11.2's coverage figure should refuse rather than assume.
+
+### 5. Ungraded, void and no-refsnap shock windows are counted as **control-coverage** failures, so §11.7 clause 3 fires on something that is not a control-matching failure
+
+**Where:** `scPairs` (code.js:414–421) pushes any shock window whose `scSkill` fails into `unmatched`
+with its own reason code, and `scCoverage` counts every `unmatched` row against the denominator without
+consulting that code.
+
+§11.7 clause 3 closes the programme when "fewer than 80% of shock windows have 5 valid matched controls
+— the comparison this section requires cannot be built". A window that settled `void` (§10.4), a window
+still open, or a window whose only snapshots are post-gate has as many controls as any other; it simply
+is not graded yet. §11.2's own list separates the two conditions ("n ≥ 30 **graded** holdout shock
+windows" and "control coverage ≥ 80%").
+
+**Concrete input**, same 60-window fixture with 10 holdout shock windows differing only in that field:
+
+```
+10 windows result:"void"      holdout coverage 30/40 = 0.750 -> ABANDON (11.7 clause 3)
+10 windows with no `result`   holdout coverage 30/40 = 0.750 -> ABANDON (11.7 clause 3)
+10 windows, snaps all tau<0   holdout coverage 30/40 = 0.750 -> ABANDON (11.7 clause 3)
+```
+
+Ungraded windows are the normal state of a recent export — every currently-live shock window is one —
+so this compounds finding 1 rather than being independent of it: it enlarges the numerator of the false
+closure with rows that have nothing to do with control matching. The reason codes to separate them are
+already on each `unmatched` row (`ungraded`, `no-refsnap`, `thin-controls`); nothing reads them.
+
+### 6. The registered boundary stamp does not fingerprint the calibration set, so a frozen quantity can be re-derived from a changed calibration half while the check reports "unchanged"
+
+**Where:** `scSplitStable` (code.js:503–509) compares `{n, close, ticker}` only. `scSd` (code.js:549) is
+then recomputed from whatever the calibration half currently contains.
+
+The previous round's finding 5 is fixed for the case where the boundary *window* moves. The case where
+the boundary window is the same but the calibration half's **contents** changed is not detected, and
+§11.6 freezes the sd and every quantity derived from it, not the identity of the 30th window.
+
+**Concrete input.** The finding-2B fixture, with `holdNRegistered:46` correctly supplied, so the ratchet
+does its job:
+
+```
+run 1  sd 0.04086  registeredOk true  moved false  dBrier 0.04972  ciLo 0.04000  -> HOLDOUT
+run 2  sd 0.02043  registeredOk true  moved false  dBrier 0.04736  ciLo 0.04086  -> HOLDOUT
+       holdN {"computed":30,"registered":46,"effective":46,"ratcheted":true,"movedDown":true}
+```
+
+`rep.holdN.movedDown` is the *only* signal that anything changed, and it exists solely because the caller
+happened to register a required n. The calibration sd halved and both holdout numbers moved, and
+`rep.boundary` says `moved:false, registeredOk:true`. A stamp that included, say, the calibration
+half's contributing control identities would catch it; the current one cannot.
+
+### 7. `rep.ctrlMatched` / `rep.ctrlTotal` are the **pooled** figures while `rep.st.ctrlMatched` / `rep.st.ctrlTotal` are the **holdout** ones — and NOTES tells the caller to export the pooled pair
+
+**Where:** `scReport` (code.js:849) sets `rep.ctrlTotal:P.ctrlTotal, rep.ctrlMatched:P.ctrlMatched` from
+the whole recorded set, while `st` (code.js:884) receives `cov.hold.*`. `NOTES.md`'s wiring section says
+"`rep.caveat`, `rep.known`, `rep.ctrlMatched`, `rep.ctrlTotal` and every `unmatched` row belong in that
+export beside the estimate".
+
+```
+rep.ctrlMatched/ctrlTotal (POOLED):  60/65   = 0.923
+rep.st.ctrlMatched/ctrlTotal (HOLDOUT): 30/35 = 0.857
+```
+
+Two identically-named pairs on one object, differing by denominator, and the one the NOTES route into
+the CSV is the one §11.2 says is not the gate. The whole point of the S2 fix was that the pooled figure
+is not the coverage that matters; it should not be the figure that travels with the number. `rep.coverage`
+carries all three cuts correctly and is the field the export should name.
+
+### 8. `holdoutSpent` truthy-but-not-`true` reads as **not spent**
+
+`shockStatus` tests `st.holdoutSpent===true`, and `scAssemble` copies the caller's value verbatim (which
+is right — defaulting it would be worse). But `SC_VERDICT_FIELDS` only requires the field to be
+*present*, so the one value §11.6 uses to invalidate everything is accepted in any shape:
+
+```
+holdoutSpent:true    -> INVALID   (correct)
+holdoutSpent:1       -> READY
+holdoutSpent:"yes"   -> READY
+```
+
+`frozen` fails safe under the same treatment (`frozen:1` → FROZEN-PENDING) because only `=== true` opens
+the gate; `holdoutSpent` fails open. It is the mirror image of the `bad-phase` check the previous round
+added, on the field with the largest blast radius in §11.
+
+### 9. §11.2a's 80%-power figure and its at-open feasibility test are computed nowhere
+
+§11.2a: "The required holdout n is computed from it at 50% power **and reported alongside the 80%-power
+figure**, so a barely-powered design is never mistaken for a good one" — and "If the required n cannot be
+reached inside the §11.7 deadline, the programme closes at that moment rather than opening a holdout that
+arithmetically cannot finish."
+
+`scReport` calls `shockRequiredHoldN(sd, arms, 0.5)` (code.js:887) and nothing else. `rep.holdN` carries
+`{computed, registered, effective, ratcheted, movedDown}` and no `n80`; `shockFeasible` — which already
+returns `n80` and an `ok` against `maxMonths` — is never called by anything in the repository. On the
+fixture above, `n@50% = 46` and `n@80% = 120`: the 80% figure is the one that says whether the design is
+worth opening, and it is not on the report the caller is told to export.
+
+### Minor, not worth blocking on
+
+- **`scSd` on identical paired values returns 1.76e−17, not 0.** `shockRequiredHoldN` guards on
+  `sd > 0`, so the "sd not measured on the calibration half → INVALID" refusal is reachable only at exact
+  binary zero; a floating-point residue silently becomes the `holdN` floor of 30 instead.
+- **Dedupe evasion.** `(ticker, open)` is the identity, so three real controls plus two copies with
+  `open + 1` — or two copies under a renamed ticker — still give `n 5, matched true`. Both require the
+  caller to corrupt an identity Kalshi supplies verbatim, so this is a residual limitation of the chosen
+  key rather than a reachable defect; it is worth one line in NOTES beside the dedupe comment.
+- **`arms:"20"`** refuses correctly (`no-arms` → `ciLo` null → INVALID) but `rep.status.ciLevel` still
+  reports 0.995, because `shockStatus` coerces `"20" >= 1`. A refused call should not report a level.
+- **Controls straddle the split.** A cell with shocks on both sides of the boundary uses the same control
+  windows for the calibration sd and for the holdout estimate, and a control may postdate the holdout
+  shocks it is matched to (same slot/weekday/quarter, later week). §11.6 defines the split on shock
+  windows only, so the unit is following the registration — but the chronological separation it buys is
+  weaker than §11.6's prose implies, and that is a §11 sentence to sharpen, not a code change.
+- **`rep.status` is `null`** when `prereg` is absent (`scRatchetStatus` passes a null status through), so
+  the documented `rep.status.status` read throws at the call site rather than returning a reason code.
+  Unreachable under the prescribed splice order.
+
+---
+
+## What I checked and could not break, beyond Part 2
+
+1. **The sign, again.** `scSkill` returns `bMkt − bTool`; on a fixture where the tool is unambiguously
+   worse (−0.20) and one where it is unambiguously better (+0.20) the unit agrees with a DiD written from
+   §11.2 to 1e−12. The `pmFor(skill)` inverse used throughout these fixtures is built from
+   `skill = (q−y)² − (pm−y)²`, so every expected value in Part 3 is arithmetic, not measurement.
+2. **Splice hygiene, re-derived.** 49 top-level declarations, all `sc*`/`SC*`, no internal duplicates,
+   **zero collisions** with `index.html`'s declarations, zero non-ASCII bytes, zero arrow functions, zero
+   backticks outside comments, and no `document` / `localStorage` / `fetch` / timer / `S.` reference in
+   the comment-stripped source.
+3. **`refSnap` parity.** `scRefSnap` matches `index.html:1383`'s rule including the tie-break (strict
+   `<`, first snapshot wins) and the `phantom` / `tau < 0` skips, and adds a finite-`tau` guard the page
+   does not have.
+4. **Refusal completeness for the caller fields that *are* required.** Dropping each of `arms`, `pnlN`,
+   `pnlNet`, `monthsElapsed`, `frozen`, `holdoutSpent` individually refuses; `detPrecision` blocks at
+   phase 2 only. `arms:0.5`, `arms:Infinity` and `arms:"20"` all fail closed.
+5. **Mixed series, mixed phase, absent phase, string phase** are all hard refusals with the right code.
+6. **The unconditional aggregate** is still unreachable on its own: `scDid` attaches it only beside a real
+   controlled estimate, and no other export returns an aggregate at all.
+7. **Level/B/point discipline** — see Part 2.
+
+---
+
+## Verdict
+
+**NOT safe to splice.**
+
+Finding 2 is the fifth path to `READY` on evidence §11 does not permit, and it is the same shape as the
+four the first round found: a permissive default on a field the document makes mandatory. Finding 3 is a
+second one, reachable through a type coercion, and it moves the estimate itself rather than the gate.
+
+Finding 1 is the one I would fix first even though it cannot produce a false READY, because it produces a
+false **ABANDON**, and §11.7 makes that permanent and writes it into CLAUDE.md with its counts. It is also
+the clearest instance of the thing the brief warned about: the S2 fix is correct in direction and moved
+the failure to the other end of the same denominator. Whether the answer is a minimum holdout denominator
+in `score` or a minimum n in `shockStatus` is a §11 registration decision, which is precisely why it has to
+be settled before the splice makes the unit reachable — §11.6 prices it at the whole holdout afterwards.
+
+Findings 4–8 are each smaller but all sit on the same fault line: every input this unit does not police is
+policed on the permissive side. Nothing here has a shock-conditioned row behind it yet, so all nine are
+still free.

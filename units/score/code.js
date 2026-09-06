@@ -70,7 +70,14 @@ const SC_OMIT={
   NO_REFSNAP:"no-refsnap",         /* no snapshot survives refSnap's rule */
   BAD_PROB:"bad-prob",             /* pm or qm missing or out of range */
   MIXED_PHASE:"mixed-phase",       /* 11.5: phase 1 and phase 2 are never pooled */
+  NO_PHASE:"no-phase",             /* 11.5: a row set that never says which phase it is cannot be scored */
+  BAD_PHASE:"bad-phase",           /* a phase that is not a number: 1 and "1" must never pool as one key */
   MIXED_SERIES:"mixed-series",     /* section 4: 15-minute and hourly are scored separately */
+  EMPTY_BOOK:"empty-book",         /* 10.3 K2: yes_bid 0.0000 / yes_ask 1.0000 parse to qm 0 / 100 */
+  NO_ARMS:"no-arms",               /* k (11.4) not supplied: the CI level is not derivable from nothing */
+  NO_CELL:"no-cell",               /* a pair with no matching cell or no control set: no resampling unit */
+  BOUNDARY_MOVED:"boundary-moved", /* 11.6: the computed split boundary is not the registered one */
+  MISSING_FIELDS:"missing-caller-fields", /* a caller field the verdict depends on was not supplied */
   NO_SHOCKS:"no-shock-windows",
   NO_MATCHED:"no-matched-windows", /* every shock window is unmatched: there is no controlled estimate */
   THIN:"thin-controls",            /* fewer than CTRL_MIN eligible controls: recorded, unmatched, unscored */
@@ -86,7 +93,11 @@ const SC_OMIT={
 function scHasCalendar(){ return typeof controlEligible==="function"; }
 function scHasPrereg(){ return typeof shockCiLevel==="function"&&typeof shockBootstrapB==="function"; }
 
-/* ---- small numeric helpers ------------------------------------------------------------------------------ */
+/* ---- small helpers -------------------------------------------------------------------------------------- */
+/* Own-property lookup. Every grouping map in this unit is keyed by caller-supplied text -- a ticker, a cell
+   key -- and a bare `map[k]` reads Object.prototype for "constructor" or "toString", which would silently
+   merge two distinct groups or drop a window as a duplicate of nothing. */
+function scHasOwn(o,k){ return Object.prototype.hasOwnProperty.call(o,k); }
 function scNum(v){ return typeof v==="number"&&isFinite(v); }
 function scMean(a){ if(!Array.isArray(a)||!a.length) return null;
   let s=0; for(let i=0;i<a.length;i++){ if(!scNum(a[i])) return null; s+=a[i]; } return s/a.length; }
@@ -97,6 +108,39 @@ function scSdOf(a){
   const m=scMean(a); if(m===null) return null;
   let s=0; for(let i=0;i<a.length;i++) s+=(a[i]-m)*(a[i]-m);
   return Math.sqrt(s/(a.length-1));
+}
+
+/* ---- WINDOW IDENTITY, AND THE DEDUPLICATION THAT FOLLOWS FROM IT ----------------------------------------
+   A window IS (ticker, open). scMatchControls already settled that -- it uses exactly that pair to keep a shock
+   out of its own control pool -- and then did not apply it to the pool, so THREE distinct control windows, each
+   present twice, satisfied 11.3's minimum of FIVE and the shock read as matched. A duplicated shock row scored
+   the same window twice: n inflated, ctrlTotal and ctrlMatched inflated, the value duplicated into the
+   bootstrap sample (which NARROWS the interval), and the split boundary shifted.
+
+   THIS IS THE EXPECTED INPUT SHAPE, NOT AN EXOTIC ONE. 10.2 records that btc.edge prunes at 1,500 windows --
+   about 15 days -- and that for anything accumulating slower than that the CSV is the record and localStorage
+   is only the buffer; section 8 puts the shock programme at ~15 months. The real scoring input is therefore a
+   concatenation of dozens of overlapping exports, and duplicate rows are precisely what that produces.
+
+   FIRST OCCURRENCE WINS, AND EVERY DROP IS COUNTED. A silent dedupe would hide a caller concatenating two
+   DIFFERENT measurements of the same window, which is a real problem wearing a duplicate's clothes. A row with
+   no usable identity is passed through untouched rather than swallowed here -- it is refused downstream by the
+   rule that actually applies to it. */
+function scRowId(w){
+  if(!w||typeof w.ticker!=="string"||!w.ticker.length||!scNum(w.open)) return null;
+  return w.ticker+"|"+w.open;
+}
+function scDedupe(rows){
+  const out={rows:[],dropped:0};
+  if(!Array.isArray(rows)) return out;
+  const ids={};
+  for(let i=0;i<rows.length;i++){
+    const id=scRowId(rows[i]);
+    if(id===null){ out.rows.push(rows[i]); continue; }
+    if(scHasOwn(ids,id)){ out.dropped++; continue; }
+    ids[id]=1; out.rows.push(rows[i]);
+  }
+  return out;
 }
 
 /* ---- 11.3's four matching dimensions, one function each -------------------------------------------------- */
@@ -139,6 +183,12 @@ function scMatchKey(w){
 }
 function scKeyEqual(a,b){
   return !!a&&!!b&&a.series===b.series&&a.slot===b.slot&&a.dow===b.dow&&a.quarter===b.quarter;
+}
+/* The same four fields as one string. This is the MATCHING CELL: every shock window carrying this key draws
+   its controls from the same pool, so it is the unit the CI is resampled over (see scCells). */
+function scCellKey(w){
+  const k=scMatchKey(w); if(k===null) return null;
+  return k.series+"|"+k.slot+"|"+k.dow+"|"+k.quarter;
 }
 
 /* Dimension 3: NO SCHEDULED RELEASE in the control window OR IN THE TWO WINDOWS EITHER SIDE, so a control is
@@ -227,13 +277,19 @@ function scRefSnap(w){
    and edgeStatsOn's [0.01, 0.99] clip exists for its log-loss column which this does not compute. Clipping here
    would move a number that nothing else in the scoring path moves.
    Grading is on result === "yes" or "no" ONLY: 10.4 records that any truthy result used to be graded, so a
-   `void` settlement scored as a NO. A void window is UNGRADED, not a loss. */
+   `void` settlement scored as a NO. A void window is UNGRADED, not a loss.
+   qm 0 and qm 100 are REFUSED rather than scored. 10.3 K2 records that Kalshi's empty-side book parses to
+   exactly yes_bid 0.0000 / yes_ask 1.0000, and that a quote built from those two is meaningless -- the
+   recorder-side guard exists, so such a row should never reach a ledger, but this is the layer that would
+   catch one if it did, and a Brier of exactly 0 or exactly 1 against a phantom quote is the most flattering
+   and the most damning number in the file depending on which side it lands. Neither is a measurement. */
 function scSkill(w){
   if(!w||!scNum(w.open)||!scNum(w.close)) return {ok:false,code:SC_OMIT.BAD_WINDOW};
   if(w.result!=="yes"&&w.result!=="no") return {ok:false,code:SC_OMIT.UNGRADED};
   const s=scRefSnap(w); if(s===null) return {ok:false,code:SC_OMIT.NO_REFSNAP};
   const y=w.result==="yes"?1:0;
   const pt=s.pm, q=scNum(s.qm)?s.qm/100:null;
+  if(q!==null&&(s.qm<=0||s.qm>=100)) return {ok:false,code:SC_OMIT.EMPTY_BOOK};
   if(!scNum(pt)||pt<0||pt>1||q===null||q<0||q>1) return {ok:false,code:SC_OMIT.BAD_PROB};
   const bTool=(pt-y)*(pt-y), bMkt=(q-y)*(q-y);
   return {ok:true,code:null,skill:bMkt-bTool,bTool:bTool,bMkt:bMkt,y:y,tau:s.tau,t:s.t};
@@ -253,15 +309,18 @@ function scSkill(w){
    forbids that outright, and this unit makes it unreachable rather than discouraged (see scDid). Both counts
    feed ctrlMatched/ctrlTotal, which is what 11.7 clause 3's 80% coverage rule reads. */
 function scMatchControls(shock,pool){
-  const out={n:0,controls:[],matched:false,reason:null,known:null,rejects:{}};
+  const out={n:0,controls:[],matched:false,reason:null,known:null,rejects:{},dupControls:0};
   if(!scHasCalendar()){ out.reason=SC_OMIT.NO_CALENDAR; return out; }
   const key=scMatchKey(shock);
   if(key===null){ out.reason=SC_OMIT.BAD_WINDOW; return out; }
   if(!Array.isArray(pool)){ out.reason=SC_OMIT.BAD_WINDOW; return out; }
+  /* THE POOL IS DEDUPED ON (ticker, open) FIRST -- the same identity this function already uses to keep the
+     shock out of its own control set. Without it the 5-control minimum counts ROWS, not WINDOWS. */
+  const ded=scDedupe(pool); const rows=ded.rows; out.dupControls=ded.dropped;
   const bump=function(c){ out.rejects[c]=(out.rejects[c]||0)+1; };
   const seen={}, inSpan=[]; let series=null, caveat=null;
-  for(let i=0;i<pool.length;i++){
-    const c=pool[i];
+  for(let i=0;i<rows.length;i++){
+    const c=rows[i];
     if(!c||c===shock) continue;
     if(c.ticker===shock.ticker&&c.open===shock.open) continue;
     if(c.shock===true){ bump(SC_OMIT.IS_SHOCK); continue; }
@@ -291,13 +350,32 @@ function scMatchControls(shock,pool){
 /* 11.5: separate ledgers, separate n, separate READY, no pooled Brier, no pooled P&L, no combined verdict, ever.
    prereg/ ships shockPoolGuard for exactly this; it is used when present so there is one definition of "mixed
    phase" in the codebase, and restated when prereg is absent so this unit still refuses rather than merging. */
+/* PRESENCE AND TYPE ARE CHECKED HERE, BEFORE THE MIXING CHECK, and both are hard refusals.
+   An ABSENT phase used to leave `phases` empty, which scPairs turned into phase:null -- and null is not 2, so
+   shockStatus's `if(st.phase===2)` block never ran and a phase-2 arm reached READY with no confusion matrix by
+   omitting one field. 11.5 says Phase 2 "does not report at all" until its detector is scored against the
+   phase-1 calendar; a permissive default is the one thing that cannot be allowed to satisfy it, and every
+   other 11.5 dimension in this unit (mixed phase, mixed series) is already a hard refusal.
+   A NON-NUMERIC phase is refused for the same reason in a different disguise: shockPoolGuard collects phases
+   as OBJECT KEYS, so phase:1 and phase:"1" coerce to the same key and pool silently, and shockStatus compares
+   with === so a string "2" would skip the phase-2 gate as well. */
 function scPhaseGuard(rows){
-  if(!Array.isArray(rows)) return {ok:false,phases:[]};
-  if(typeof shockPoolGuard==="function"){ const g=shockPoolGuard(rows); if(g) return g; }
+  if(!Array.isArray(rows)) return {ok:false,phases:[],code:SC_OMIT.BAD_WINDOW};
+  let n=0;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    if(!r||typeof r!=="object") continue;
+    n++;
+    if(r.phase===undefined||r.phase===null) return {ok:false,phases:[],code:SC_OMIT.NO_PHASE};
+    if(typeof r.phase!=="number"||!isFinite(r.phase)) return {ok:false,phases:[],code:SC_OMIT.BAD_PHASE};
+  }
+  if(!n) return {ok:false,phases:[],code:SC_OMIT.NO_PHASE};
+  if(typeof shockPoolGuard==="function"){ const g=shockPoolGuard(rows);
+    if(g) return {ok:g.ok,phases:g.phases,code:g.ok?null:SC_OMIT.MIXED_PHASE}; }
   const ph={}; for(let i=0;i<rows.length;i++){ const r=rows[i];
     if(r&&r.phase!==undefined&&r.phase!==null) ph[r.phase]=1; }
   const ks=Object.keys(ph);
-  return {ok:ks.length<=1,phases:ks.map(Number).sort()};
+  return {ok:ks.length<=1,phases:ks.map(Number).sort(),code:ks.length<=1?null:SC_OMIT.MIXED_PHASE};
 }
 /* Section 4: the two series are scored separately. Pooling them mixes a 15-minute window whose strike is set at
    the money at open with an hourly ladder rung that has been off the money for an hour; the Brier scales are not
@@ -320,20 +398,21 @@ function scSeriesGuard(rows){
    ones is how it gets scored by accident. */
 function scPairs(rows){
   const out={ok:false,code:null,pairs:[],unmatched:[],ctrlTotal:0,ctrlMatched:0,
-    phase:null,series:null,known:null};
+    dupRows:0,phase:null,series:null,known:null};
   if(!Array.isArray(rows)||!rows.length){ out.code=SC_OMIT.NO_SHOCKS; return out; }
-  const pg=scPhaseGuard(rows); if(!pg.ok){ out.code=SC_OMIT.MIXED_PHASE; return out; }
-  const sg=scSeriesGuard(rows); if(!sg.ok){ out.code=SC_OMIT.MIXED_SERIES; return out; }
+  const ded=scDedupe(rows); const rw=ded.rows; out.dupRows=ded.dropped;
+  const pg=scPhaseGuard(rw); if(!pg.ok){ out.code=pg.code||SC_OMIT.MIXED_PHASE; return out; }
+  const sg=scSeriesGuard(rw); if(!sg.ok){ out.code=SC_OMIT.MIXED_SERIES; return out; }
   if(!scHasCalendar()){ out.code=SC_OMIT.NO_CALENDAR; return out; }
   out.phase=pg.phases.length?pg.phases[0]:null;
   out.series=sg.series.length?sg.series[0]:null;
   const seen={}, inSpan=[]; let series=null, caveat=null;
-  for(let i=0;i<rows.length;i++){
-    const w=rows[i];
+  for(let i=0;i<rw.length;i++){
+    const w=rw[i];
     if(!w||w.shock!==true) continue;
     out.ctrlTotal++;
     const sk=scSkill(w);
-    const m=scMatchControls(w,rows);
+    const m=scMatchControls(w,rw);
     if(m.known){
       if(series===null) series=m.known.series;
       if(caveat===null) caveat=m.known.caveat;
@@ -345,13 +424,20 @@ function scPairs(rows){
         code:sk.ok?m.reason:sk.code,known:m.known});
       continue;
     }
-    const cs=[]; for(let j=0;j<m.controls.length;j++) cs.push(m.controls[j].skill);
+    const cs=[], cid=[];
+    for(let j=0;j<m.controls.length;j++){
+      cs.push(m.controls[j].skill);
+      cid.push({id:scRowId(m.controls[j]),skill:m.controls[j].skill});
+    }
     const cm=scMean(cs);
     if(cm===null){ out.unmatched.push({ticker:w.ticker,open:w.open,close:w.close,nCtrl:m.n,
       code:SC_OMIT.BAD_PROB,known:m.known}); continue; }
     out.ctrlMatched++;
-    out.pairs.push({ticker:w.ticker,open:w.open,close:w.close,
-      paired:sk.skill-cm,shockSkill:sk.skill,ctrlMeanSkill:cm,nCtrl:m.n,known:m.known});
+    /* `cell` and `ctrl` are what make the CLUSTER bootstrap possible (scCells): the pair carries not just the
+       control MEAN it was built from but the identified control set that mean was estimated from, so the
+       resampler can re-estimate it instead of treating it as a constant. */
+    out.pairs.push({ticker:w.ticker,open:w.open,close:w.close,cell:scCellKey(w),
+      paired:sk.skill-cm,shockSkill:sk.skill,ctrlMeanSkill:cm,nCtrl:m.n,ctrl:cid,known:m.known});
   }
   inSpan.sort();
   out.known={series:series,inSpan:inSpan,partial:true,caveat:caveat};
@@ -405,6 +491,57 @@ function scSplitStable(a,b){
   if(a.ticker!==b.ticker) return {moved:true,why:"boundary window identity changed"};
   return {moved:false,why:"unchanged"};
 }
+/* ONCE THE BOUNDARY EXISTS IT IS AN INPUT, NOT A COMPUTATION -- and a computed boundary that disagrees with the
+   registered one is REFUSED, never silently adopted.
+
+   The comment above and NOTES.md both used to say the one remaining way the boundary moves is a BACKFILL. That
+   is false, and the error is worse than the omission it looks like: matched-ness is recomputed from the CURRENT
+   control pool on every call, so anything that changes whether an OLD shock window still has five controls
+   reshuffles the pair list and slides the count boundary. A control ageing out of a 15-day buffer does it. So
+   does a control arriving late. Measured on a 35-cell fixture, pruning exactly ONE old control row moved the
+   boundary by one window and the required holdout n from 78 to 74 -- and 11.2a says that number may only ever
+   move UP. Against 10.2's 15-day prune and section 8's ~15-month programme, control attrition is not a hazard
+   the programme might hit; it is guaranteed, repeatedly, unless the caller persists its own control ledger.
+
+   This unit is pure and can persist nothing, so the caller supplies `boundary` (the stamp scSplit returned when
+   the 30th calibration window was graded) and `holdNRegistered` (the required n written into CLAUDE.md 11.2a at
+   the same moment). Before either is registered the unit reports what it computed and says it is unregistered.
+   After, a disagreement stops the pass: 11.6 makes a boundary that moved after the holdout opened a post-freeze
+   change, which SPENDS the holdout, and that call belongs to the caller -- so this returns a refusal and a
+   reason, never a score computed against a boundary nobody registered. */
+function scSplitCheck(computed,registered){
+  const out={computed:computed||null,registered:(registered===undefined?null:registered)||null,
+    registeredOk:false,moved:false,why:null,refuse:false};
+  if(out.registered===null){
+    out.why=out.computed?"boundary computed; not yet registered by the caller":"boundary not established";
+    return out;
+  }
+  if(!scNum(out.registered.close)||!scNum(out.registered.n)||typeof out.registered.ticker!=="string"){
+    out.refuse=true; out.moved=true; out.why="the registered boundary is not a boundary stamp"; return out;
+  }
+  if(out.computed===null){
+    out.refuse=true; out.moved=true;
+    out.why="a boundary was registered but the current pair set no longer establishes one";
+    return out;
+  }
+  const st=scSplitStable(out.registered,out.computed);
+  out.moved=st.moved; out.why=st.why; out.refuse=st.moved; out.registeredOk=!st.moved;
+  return out;
+}
+/* 11.2a: the required holdout n "may only ever move up". shockRequiredHoldN is stateless -- it recomputes from
+   whatever sd this call measured -- so the ratchet lives here, over the value the caller registered. A DOWNWARD
+   computation is not an error to hide; it is reported (`movedDown`) and then ignored in favour of the registered
+   figure, which is what "may only ever move up" means operationally. */
+function scRatchet(computed,registered){
+  const out={computed:(scNum(computed)?computed:null),registered:(scNum(registered)?registered:null),
+    effective:null,ratcheted:false,movedDown:false};
+  if(out.registered===null){ out.effective=out.computed; return out; }
+  if(out.computed===null){ out.effective=out.registered; out.ratcheted=true; return out; }
+  out.effective=Math.max(out.computed,out.registered);
+  out.ratcheted=out.effective!==out.computed;
+  out.movedDown=out.computed<out.registered;
+  return out;
+}
 /* sd of the PAIRED per-window difference, measured on the CALIBRATION half alone (11.2a). Returns null below
    CAL_N -- never a value computed from a short calibration set. shockRequiredHoldN(null,...) returns null, and
    shockStatus turns a null need into INVALID, so a short calibration set cannot open a holdout through this
@@ -451,17 +588,88 @@ function scDid(pairs){
    Two-sided percentile bootstrap at level 1 - alpha/k, k = the number of arms scored in the phase, counted
    whether or not they are labelled primary. shockCiLevel and shockBootstrapB already exist in prereg/ and are
    USED, not reimplemented: the level and the resample count are section 11 thresholds and there must be exactly
-   one definition of each in the codebase.
+   one definition of each in the codebase. NEITHER MOVES HERE. The level is the level, B is B; what changed on
+   2026-09-06 is the RESAMPLING UNIT, and only that.
 
-   The bootstrap itself is the PAGE's bootstrapCI, handed in. It is deliberately UNSEEDED (10.5) -- resampling
-   variation is a property of a percentile bootstrap, not a bug -- so this unit neither seeds it nor routes
-   around it, and takes it as an argument only because a unit may not reach a page global. B comes from
-   shockBootstrapB(level) and nowhere else: the bootstrap cannot resolve a tail finer than 1/B, and 20/(1-level)
-   is what puts at least 10 resamples in each tail. */
+   THE RESAMPLING UNIT IS THE MATCHING CELL, NOT THE WINDOW. This is a statistics decision, registered now
+   because 11.6 freezes the primary statistic and changing it after the holdout opens SPENDS the holdout.
+
+   Why the window is the wrong unit. Each paired value is `shock skill - mean(control skills)`. Resampling the
+   paired column alone treats that control mean as a CONSTANT with zero sampling error. But 11.3's four
+   matching dimensions -- same UTC slot, same weekday, same quarter, same series -- partition the tape into
+   cells, and EVERY SHOCK WINDOW IN A CELL DRAWS THE SAME CONTROL SET. That is not a fixture artefact: 11.3
+   says in as many words that scheduled releases cluster on the clock and the weekday, which is exactly what
+   forces the shocks into few cells. So the control-mean term is not merely correlated across pairs -- inside a
+   cell it is LITERALLY THE SAME NUMBER, estimated from as few as five windows, and a window-level bootstrap
+   assumes an independence the matching design destroys by construction.
+   Measured on the reviewer's fixture -- one cell, five controls, seven shock windows reading alike -- the
+   window-level bootstrap returned a 90% interval of WIDTH EXACTLY ZERO with lo = +0.0341, while the standard
+   error of the single shared control mean underneath it was 0.0848: two and a half times the point estimate.
+   `shockStatus` tests `dBrier >= floor && ciLo > 0`, so that interval passed half the READY test WITH
+   CERTAINTY about a quantity the data does not establish. That is 7.4's failure mode arriving through the CI
+   instead of through the backtest.
+
+   What the cluster bootstrap does instead, in two stages, both unseeded (10.5):
+     stage 1  resample the CELLS with replacement -- this is the handed-in bootstrapCI, applied to an array of
+              cells instead of an array of numbers, so the level, B and the percentile rule are untouched;
+     stage 2  inside each drawn cell, resample ITS OWN control windows and ITS OWN shock windows with
+              replacement and rebuild the paired values from the re-estimated control mean.
+   Stage 1 alone would not fix it: with a single cell every replicate is that same cell and the interval stays
+   degenerate. Stage 2 is what puts the control mean's sampling error into the interval, which is the entire
+   point -- the cell's shock windows and its control set travel TOGETHER, so a replicate never pairs one cell's
+   shocks against another cell's controls.
+   The point estimate is NOT taken from the bootstrap. It is the deterministic mean of the observed paired
+   values; the replicate statistic is stochastic by construction and a single draw of it is not an estimate.
+
+   The rejected alternative, stated so the choice is visible: keep the window-level bootstrap and register in
+   11 that `ciLo` is conditional on the control means, declaring the omitted variance component. That is honest
+   arithmetic and a dishonest gate -- 11.2 uses `ciLo > 0` as half of READY, and a bound that conditions away
+   the dominant variance component is not evidence that the sign is established. The cluster interval is wider,
+   which is the correct direction for a bar that is supposed to be hard to clear. */
+function scCells(pairs){
+  const out={cells:[],code:null};
+  if(!Array.isArray(pairs)||!pairs.length){ out.code=SC_OMIT.NO_MATCHED; return out; }
+  const idx={}, order=[];
+  for(let i=0;i<pairs.length;i++){
+    const p=pairs[i];
+    if(!p||typeof p.cell!=="string"||!p.cell.length||!scNum(p.shockSkill)||
+       !Array.isArray(p.ctrl)||!p.ctrl.length){ out.code=SC_OMIT.NO_CELL; return out; }
+    let c;
+    if(scHasOwn(idx,p.cell)) c=idx[p.cell];
+    else { c={key:p.cell,shocks:[],ctrl:[],ids:{}}; idx[p.cell]=c; order.push(c); }
+    c.shocks.push(p.shockSkill);
+    for(let j=0;j<p.ctrl.length;j++){
+      const q=p.ctrl[j];
+      if(!q||typeof q.id!=="string"||!scNum(q.skill)){ out.code=SC_OMIT.NO_CELL; return out; }
+      if(!scHasOwn(c.ids,q.id)){ c.ids[q.id]=1; c.ctrl.push(q.skill); }   /* a control counted once per cell */
+    }
+  }
+  out.cells=order;
+  return out;
+}
+/* One replicate: stage 2. Takes the cells stage 1 drew and returns the mean paired value over every shock
+   window in them, with each cell's control mean RE-ESTIMATED from a resample of that cell's own controls.
+   Unseeded, exactly like the page's bootstrapCI (10.5): resampling variation is a property of the method. */
+function scClusterStat(cells){
+  if(!Array.isArray(cells)||!cells.length) return null;
+  let s=0,n=0;
+  for(let i=0;i<cells.length;i++){
+    const c=cells[i];
+    if(!c||!Array.isArray(c.ctrl)||!c.ctrl.length||!Array.isArray(c.shocks)||!c.shocks.length) return null;
+    let cs=0;
+    for(let j=0;j<c.ctrl.length;j++) cs+=c.ctrl[Math.floor(Math.random()*c.ctrl.length)];
+    const cm=cs/c.ctrl.length;
+    for(let j=0;j<c.shocks.length;j++){ s+=c.shocks[Math.floor(Math.random()*c.shocks.length)]-cm; n++; }
+  }
+  return n?s/n:null;
+}
 function scCi(pairs,k,bootstrapFn){
-  const out={level:null,B:null,lo:null,hi:null,point:null,n:0,code:null};
+  const out={level:null,B:null,lo:null,hi:null,point:null,n:0,cells:0,unit:"cell",code:null};
   if(!scHasPrereg()){ out.code=SC_OMIT.NO_PREREG; return out; }
-  const lvl=shockCiLevel(k); if(lvl===null){ out.code=SC_OMIT.NO_PREREG; return out; }
+  /* k is the CALLER's (11.4) and its absence is its own reason code: reporting `no-prereg` when prereg is
+     sitting right there sends a reader to the splice order for a missing argument. */
+  if(!scNum(k)||k<1){ out.code=SC_OMIT.NO_ARMS; return out; }
+  const lvl=shockCiLevel(k); if(lvl===null){ out.code=SC_OMIT.NO_ARMS; return out; }
   const B=shockBootstrapB(lvl); if(B===null){ out.code=SC_OMIT.NO_PREREG; return out; }
   out.level=lvl; out.B=B;
   const fn=(typeof bootstrapFn==="function")?bootstrapFn:
@@ -471,16 +679,20 @@ function scCi(pairs,k,bootstrapFn){
   const v=[];
   for(let i=0;i<pairs.length;i++){ const r=pairs[i];
     if(!r||!scNum(r.paired)){ out.code=SC_OMIT.BAD_PROB; return out; } v.push(r.paired); }
-  out.n=v.length;
-  const ci=fn(v,function(a){ return scMean(a); },lvl,B);
+  const cl=scCells(pairs);
+  if(cl.code!==null){ out.code=cl.code; return out; }   /* no cells, no clusters, no interval -- never a fallback */
+  out.n=v.length; out.cells=cl.cells.length;
+  const ci=fn(cl.cells,function(a){ return scClusterStat(a); },lvl,B);
   if(!ci||!scNum(ci.lo)||!scNum(ci.hi)){ out.code=SC_OMIT.BAD_PROB; return out; }
-  out.lo=ci.lo; out.hi=ci.hi; out.point=scNum(ci.point)?ci.point:scMean(v);
+  out.lo=ci.lo; out.hi=ci.hi;
+  out.point=scMean(v);   /* deterministic; ci.point is one stochastic replicate and is deliberately discarded */
   return out;
 }
 
 /* ---- assembling `st` -------------------------------------------------------------------------------------
-   Exactly the fifteen fields shockStatus reads, and no sixteenth. Seven are MEASURED here; eight are the
-   caller's and are copied VERBATIM with no defaulting whatsoever.
+   Exactly the fifteen fields shockStatus reads, and no sixteenth. EIGHT are MEASURED here -- phase, nCal,
+   nHold, sd, dBrier, ciLo, ctrlMatched, ctrlTotal -- and SEVEN are the caller's (SC_CALLER_FIELDS), copied
+   VERBATIM with no defaulting whatsoever.
 
    NOTHING IS DEFAULTED TO A PERMISSIVE VALUE, and `frozen` is the one that matters most: defaulting it to true
    opens a holdout nobody froze, which 11.6 says is the moment the evidence stops meaning anything. An absent
@@ -508,6 +720,117 @@ function scAssemble(measured,opts){
   return {st:st,missing:missing};
 }
 
+/* ---- COVERAGE, ON THE HOLDOUT ALONE (11.2) --------------------------------------------------------------
+   11.2 prefixes its whole READY list with "on the HOLDOUT set alone (11.6)", and "Control coverage >= 80%" is
+   the second item in that list. Coverage used to be counted over EVERY recorded shock window, calibration and
+   holdout together, and handed to shockStatus that way. That is not conservative: a coverage failure that lands
+   in the holdout -- which is where it matters -- is diluted by calibration windows that have already been
+   spent. Measured, on 60 matched windows plus 10 unmatched ones dated after the boundary: pooled coverage
+   0.857 PASSES and the pass reads READY, while holdout-only coverage is 0.750 and 11.7 clause 3 ABANDONS.
+   Both figures are reported -- the calibration one is still worth seeing, and so is the pooled one -- but only
+   the HOLDOUT figure reaches `st`, because that is the one the gate reads.
+   A window is on the holdout side when it sorts after the boundary stamp under scSplit's own order (close,
+   ticker), matched or not: an unmatched window is never scored, but it is RECORDED, and coverage is precisely
+   the count of what was recorded against what could be scored. With no boundary yet there is no holdout, so
+   the holdout counts are zero and shockStatus's `ctrlTotal > 0` guard skips the gate -- correct: the coverage
+   test is a holdout test and there is nothing to test yet. */
+function scAfterBoundary(w,b){
+  if(!b||!scNum(b.close)||!w||!scNum(w.close)) return false;
+  if(w.close!==b.close) return w.close>b.close;
+  const wt=(typeof w.ticker==="string")?w.ticker:"", bt=(typeof b.ticker==="string")?b.ticker:"";
+  return wt>bt;
+}
+function scCoverage(P,boundary){
+  const out={hold:{matched:0,total:0,frac:null},cal:{matched:0,total:0,frac:null},
+    all:{matched:0,total:0,frac:null}};
+  if(!P) return out;
+  const add=function(side,matched){ side.total++; if(matched) side.matched++; };
+  const walk=function(list,matched){
+    if(!Array.isArray(list)) return;
+    for(let i=0;i<list.length;i++){
+      add(out.all,matched);
+      add(scAfterBoundary(list[i],boundary)?out.hold:out.cal,matched);
+    }
+  };
+  walk(P.pairs,true); walk(P.unmatched,false);
+  const frac=function(x){ x.frac=x.total?x.matched/x.total:null; };
+  frac(out.hold); frac(out.cal); frac(out.all);
+  return out;
+}
+
+/* ---- REFUSALS: a hole in the input is not a verdict -------------------------------------------------------
+   scAssemble is scrupulous about not defaulting an absent caller field, and then the verdict used to be
+   computed anyway: omit `holdoutSpent` and shockStatus reads absent as NOT SPENT -- the value that lets the
+   programme advance -- and the pass returns READY with `missing` naming the field nobody acted on. Omit
+   `monthsElapsed` and 11.7 clause 5 cannot fire. A verdict derived from a hole is worth less than no verdict,
+   so the answer is a REFUSAL that names the hole.
+   `detPrecision` is required only at phase 2, where 11.5 demands the confusion matrix; at phase 1 it is
+   legitimately absent and is reported in `missing` without blocking anything.
+   A refusal is deliberately NOT one of shockStatus's statuses. It is not a judgment of the evidence -- it is
+   this unit declining to hand the judge an input it does not have -- and a caller switching on READY /
+   NEGATIVE / HOLDOUT / CALIBRATING / FROZEN-PENDING / ABANDON / INVALID sees an unknown string, which is safe
+   in the only direction that matters: it is not READY. */
+const SC_VERDICT_FIELDS=["arms","pnlN","pnlNet","monthsElapsed","frozen","holdoutSpent"];
+function scRequiredFields(phase){
+  const r=SC_VERDICT_FIELDS.slice();
+  if(phase===2) r.push("detPrecision");
+  return r;
+}
+function scMissingRequired(missing,phase){
+  const out=[]; if(!Array.isArray(missing)) return out;
+  const need=scRequiredFields(phase);
+  for(let i=0;i<need.length;i++) if(missing.indexOf(need[i])>=0) out.push(need[i]);
+  return out;
+}
+/* the refusals that must be REPORTED as refusals rather than answered on the window count. A mixed-phase call
+   used to come back "CALIBRATING / calibration set incomplete" -- a benign progress message for a call 11.5
+   forbids outright, which cannot reach READY but hides a caller bug indefinitely. */
+const SC_REFUSALS=[SC_OMIT.MIXED_PHASE,SC_OMIT.MIXED_SERIES,SC_OMIT.NO_PHASE,SC_OMIT.BAD_PHASE,
+  SC_OMIT.NO_CALENDAR,SC_OMIT.BOUNDARY_MOVED,SC_OMIT.MISSING_FIELDS];
+const SC_REFUSAL_WHY={
+  "mixed-phase":"phase 1 and phase 2 are never pooled (11.5): separate ledgers, separate n, separate READY",
+  "mixed-series":"15-minute and hourly windows are scored separately (section 4)",
+  "no-phase":"no row carries a phase, so 11.5's phase-2 gate cannot be applied; an absent phase is refused, never defaulted",
+  "bad-phase":"a phase that is not a number cannot be compared with === ; 1 and \"1\" must never pool (11.5)",
+  "no-calendar":"controlEligible is not in scope, so 11.3's control eligibility cannot be consulted",
+  "boundary-moved":"the calibration/holdout boundary is not the registered one (11.6); moving it after the holdout opened spends the holdout",
+  "missing-caller-fields":"a caller field the verdict depends on was not supplied; a hole is not a verdict"
+};
+function scIsRefusal(code){ return typeof code==="string"&&SC_REFUSALS.indexOf(code)>=0; }
+function scRefused(code,why,k){
+  const lvl=(scHasPrereg()&&scNum(k)&&k>=1)?shockCiLevel(k):null;
+  const B=(lvl===null)?null:shockBootstrapB(lvl);
+  return {status:"REFUSED",code:code,
+    why:(why||SC_REFUSAL_WHY[code]||"refused")+" -- no verdict is computed on this input",
+    ciLevel:lvl,bootstrapB:B,holdNReq:null};
+}
+function scMaxMonths(){
+  if(typeof SHOCK_RULE!=="object"||SHOCK_RULE===null||!scNum(SHOCK_RULE.maxMonths)) return null;
+  return SHOCK_RULE.maxMonths;
+}
+/* the 11.2a ratchet, applied to the judge's answer. shockStatus derives its own `need` from st.sd, so a
+   registered requirement larger than the one this call's sd implies has to be applied afterwards -- and it may
+   only ever tighten: a status that is already INVALID, ABANDON, FROZEN-PENDING or CALIBRATING is untouched, and
+   the only moves are READY/NEGATIVE -> HOLDOUT, or -> ABANDON when 11.7 clause 5's deadline has also passed.
+   No threshold is re-derived here; `maxMonths` is read from SHOCK_RULE, exactly as shockStatus reads it. */
+function scRatchetStatus(status,nHold,holdN,monthsElapsed){
+  if(!status||!holdN||!scNum(holdN.effective)) return status;
+  const eff=holdN.effective;
+  const out={status:status.status,why:status.why,ciLevel:status.ciLevel,bootstrapB:status.bootstrapB,
+    holdNReq:eff};
+  if(status.status!=="READY"&&status.status!=="NEGATIVE") return out;
+  if(!(scNum(nHold)&&nHold<eff)) return out;
+  const mx=scMaxMonths();
+  if(mx!==null&&scNum(monthsElapsed)&&monthsElapsed>mx){
+    out.status="ABANDON";
+    out.why="the registered holdout n was not reached inside 24 months (11.7 clause 5, against the 11.2a ratchet)";
+    return out;
+  }
+  out.status="HOLDOUT";
+  out.why="holdout incomplete against the REGISTERED required n (11.2a: it may only ever move up)";
+  return out;
+}
+
 /* ---- the whole pass ---------------------------------------------------------------------------------------
    rows: one array of window records for ONE phase and ONE series, each being an edge-ledger window
      {ticker, open, close, result, snaps} plus {phase, shock}. `shock` is the caller's -- phase 1 reads it off
@@ -524,24 +847,56 @@ function scReport(rows,opts){
   const rep={version:SCORE.version,ok:false,code:P.code,
     phase:P.phase,series:P.series,
     ctrlTotal:P.ctrlTotal,ctrlMatched:P.ctrlMatched,unmatched:P.unmatched,
+    dupRows:P.dupRows,coverage:null,
     known:P.known,caveat:(P.known&&P.known.caveat)||null,
-    split:null,sd:null,did:null,ci:null,st:null,missing:null,status:null};
+    split:null,boundary:null,sd:null,holdN:null,did:null,ci:null,st:null,missing:null,status:null};
   if(!P.ok){
     const a0=scAssemble({phase:P.phase,nCal:0,nHold:0,sd:null,dBrier:null,ciLo:null,
-      ctrlMatched:P.ctrlMatched,ctrlTotal:P.ctrlTotal},o);
-    rep.st=a0.st; rep.missing=a0.missing;
-    rep.status=(typeof shockStatus==="function")?shockStatus(a0.st):null;
+      ctrlMatched:0,ctrlTotal:0},o);
+    rep.st=a0.st; rep.missing=a0.missing; rep.coverage=scCoverage(P,null);
+    /* a REFUSAL is reported as a refusal; "no shock windows yet" and "none matched yet" are progress, and the
+       judge answers those on the counts, which is what they are. */
+    rep.status=scIsRefusal(P.code)?scRefused(P.code,null,o.arms)
+      :((typeof shockStatus==="function")?shockStatus(a0.st):null);
     return rep;
   }
   const sp=scSplit(P.pairs);
+  rep.split={calN:sp.cal.length,holdN:sp.hold.length,boundary:sp.boundary,total:sp.n};
+  /* 11.6: the boundary the caller registered wins, and a disagreement stops the pass before anything is
+     scored against a boundary nobody registered. */
+  const bchk=scSplitCheck(sp.boundary,o.boundary);
+  rep.boundary=bchk;
+  if(bchk.refuse){
+    rep.code=SC_OMIT.BOUNDARY_MOVED;
+    const ab=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:null,dBrier:null,ciLo:null,
+      ctrlMatched:0,ctrlTotal:0},o);
+    rep.st=ab.st; rep.missing=ab.missing; rep.coverage=scCoverage(P,sp.boundary);
+    rep.status=scRefused(SC_OMIT.BOUNDARY_MOVED,
+      "the calibration/holdout boundary moved ("+bchk.why+"): 11.6 makes that a post-freeze change, which "+
+      "spends the holdout, and only the caller may declare that",o.arms);
+    return rep;
+  }
+  const cov=scCoverage(P,sp.boundary);
   const sd=scSd(sp.cal);
   const did=scDid(sp.hold);
   const ci=scCi(sp.hold,o.arms,o.bootstrap);
   const a=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:sd,
-    dBrier:did.controlled,ciLo:ci.lo,ctrlMatched:P.ctrlMatched,ctrlTotal:P.ctrlTotal},o);
+    dBrier:did.controlled,ciLo:ci.lo,ctrlMatched:cov.hold.matched,ctrlTotal:cov.hold.total},o);
   rep.ok=true; rep.code=(sd===null?SC_OMIT.CAL_SHORT:null);
-  rep.split={calN:sp.cal.length,holdN:sp.hold.length,boundary:sp.boundary,total:sp.n};
-  rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=a.st; rep.missing=a.missing;
-  rep.status=(typeof shockStatus==="function")?shockStatus(a.st):null;
+  rep.coverage=cov; rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=a.st; rep.missing=a.missing;
+  const needNow=(scHasPrereg()&&typeof shockRequiredHoldN==="function"&&scNum(o.arms)&&o.arms>=1)
+    ?shockRequiredHoldN(sd,o.arms,0.5):null;
+  rep.holdN=scRatchet(needNow,o.holdNRegistered);
+  /* a caller field the verdict depends on is missing -> a refusal, not a verdict. The measurements above stay
+     on the report: they are real, and the caller needs them to see what it under-specified. */
+  const req=scMissingRequired(a.missing,P.phase);
+  if(req.length){
+    rep.code=SC_OMIT.MISSING_FIELDS;
+    rep.status=scRefused(SC_OMIT.MISSING_FIELDS,
+      "these caller fields decide the verdict and were not supplied: "+req.join(", "),o.arms);
+    return rep;
+  }
+  rep.status=scRatchetStatus((typeof shockStatus==="function")?shockStatus(a.st):null,
+    sp.hold.length,rep.holdN,o.monthsElapsed);
   return rep;
 }

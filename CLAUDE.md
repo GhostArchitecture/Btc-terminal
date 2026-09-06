@@ -564,11 +564,35 @@ A shock arm reads READY only when all of the following hold on the **holdout** s
 
 - **n ≥ 30 graded holdout shock windows**, on top of 30 calibration windows — **60 total, minimum.** §11.2a can
   raise the holdout requirement and can never lower it.
-- **Control coverage ≥ 80%**: at least 80% of recorded shock windows have ≥ 5 valid matched controls. A shock
+- **Control coverage ≥ 80%**, measured **on the holdout alone** like everything else in this list, over a
+  denominator of **graded** shock windows whose side of the split is determinable — and evaluated **only once
+  that denominator reaches 30**. Three clarifications, all registered 2026-09-06 after the scorer was built and
+  its first draft was found to close the programme on a single window:
+  *Graded*, because §11.2 lists "n ≥ 30 graded holdout shock windows" and coverage as **separate** conditions —
+  a void, still-open or unscoreable window has as many controls as any other, it simply is not graded, and
+  counting it as a matching failure fires clause 3 on something that is not one.
+  *Determinable side*, because a window that cannot be placed relative to the boundary is not a calibration
+  window; it is a window whose side is unknown, and it belongs in neither denominator.
+  *Minimum 30*, because a ratio over a denominator of one is not evidence of anything and clause 3 is a
+  **permanent closure**. Without it, the first unmatched window of a fresh holdout reads 0/1 = 0% and closes the
+  programme — measured, on the fixture that produced this registration. This is not a loosening under §11.7
+  clause 6: the bar is unchanged at 80%, and what is corrected is a test that returned the wrong answer at small
+  n. The pooled figure it replaced passed that same input at 0.968, so the false closure was introduced by
+  tightening coverage to the holdout, not inherited from the original standard.
+  At least 80% of that denominator must have ≥ 5 valid matched controls. A shock
   window with fewer than 5 controls is recorded but not scored.
 - **Δ Brier (difference-in-differences) ≥ 0.010** — the effect floor.
 - **A two-sided percentile-bootstrap CI at the level `1 − 0.10/k` excluding zero**, where *k* is the number of arms
-  scored in the phase (§11.4).
+  scored in the phase (§11.4). **The resampling unit is the matching cell, not the window** — registered
+  2026-09-06 and frozen with the rest of the primary statistic. §11.3's four matching dimensions mean every
+  shock window in a cell draws the *same* control set, so a window-level bootstrap assumes an independence the
+  matching design destroys by construction and assigns the shared control mean zero variance. Measured on the
+  fixture that produced this registration, the window-level interval had **width exactly zero with its lower
+  bound above zero** — satisfying half the READY test with certainty about a quantity the data does not
+  establish — while the standard error of the shared control mean alone was 2.5× the point estimate. The cluster
+  interval resamples cells, and within a drawn cell re-estimates that cell's control mean from its own controls,
+  so the two travel together. It is never narrower than the window-level interval, and the excess matches an
+  analytic `Var_cluster = Var_naive + Var(control resample mean)/nCells`.
 - **Paper P&L > 0 over ≥ 30 holdout entries**, fees charged as §4 charges them, per-contract rounding as §7.5
   requires.
 
@@ -592,6 +616,11 @@ recorded. The holdout size that lets a point estimate exactly equal to the 0.010
 | 0.02 | 32 | 54 | 4.3 months |
 | 0.03 | 71 | 120 | 9.6 months |
 | 0.05 | 197 | 333 | 26.6 months |
+
+**Both power figures are required output, not optional colour** (registered 2026-09-06): a report that carries
+the 50%-power required n without the 80% figure beside it is exactly the "barely-powered design mistaken for a
+good one" this subsection was written to prevent, and the at-open feasibility test against §11.7's deadline
+cannot be applied without it.
 
 **Procedure, fixed now.** `sd` is measured on the 30 calibration windows. The required holdout n is computed from
 it at 50% power and reported alongside the 80%-power figure, so a barely-powered design is never mistaken for a
@@ -747,9 +776,12 @@ Stated now, before any data. Each of these closes the programme; none of them is
    **< 0.005** — half the effect floor. Closed. Not "extended", not "re-specified".
 2. **The effect is the seasonal curve.** The unconditional shock number is positive and the control-adjusted one is
    not. The finding is `SEAS`, which is already in the model. Closed as a duplicate of a known effect.
-3. **The design cannot be executed.** Fewer than 80% of shock windows have 5 valid matched controls. The comparison
-   this section requires cannot be built, so no shock claim can be made. Closed or redesigned, and a redesign
-   restarts the count at zero.
+3. **The design cannot be executed.** Fewer than 80% of shock windows have 5 valid matched controls, **assessed
+   on the denominator §11.2 defines — graded, side-determinable, holdout, and at least 30 of them.** The
+   comparison this section requires cannot be built, so no shock claim can be made. Closed or redesigned, and a
+   redesign restarts the count at zero. **This clause may not fire below that minimum denominator:** a permanent
+   closure computed from one window is not a finding about the design, and a clause that can end the programme
+   on its first holdout window ends it before the evidence exists to judge it.
 4. **Phase 2's detector is a coin flip.** Precision against the Phase-1 calendar **< 0.50**. Phase 2 closes
    permanently; Phase 1 continues alone.
 5. **The programme runs out of clock.** **24 months** from the first recorded shock window without reaching the
