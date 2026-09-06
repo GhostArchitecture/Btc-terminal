@@ -482,8 +482,17 @@ Counts are surfaced in the swing and journal panel notes, so an excluded row is 
 
 Live-only: Kalshi's `result` enum beyond `yes`/`no`/`void` (docs.kalshi.com was egress-blocked during this audit —
 confirm the full enum before trusting the void-grading fix covers every non-binary case), whether the KXBTC15M
-expiration value is a one-minute average (the code assumes so), the 94.7% proxy agreement, the relay throttle
-behaviour, iOS safe-area rendering, and every §9 economic figure (those are ledger outputs, not code).
+expiration value is a one-minute average (the code assumes so), the 94.7% proxy agreement, iOS safe-area
+rendering, and every §9 economic figure (those are ledger outputs, not code).
+
+**Two of these closed at the `build-20260906195621` deploy.** The **relay throttle** was measured rather than
+inferred: on the same path and the same minute, both Cloudflare pools (`/api` and the Worker) returned
+`429 too_many_requests` while the **Deno pool returned 200 with live KXBTC15M data** — §8's split, confirmed.
+Note the relay's own shape while you are here: `UPSTREAM` already carries `/trade-api/v2` and `ALLOW` is
+`^/(markets|events|series)`, so the path is `/api/markets`, and `/api/trade-api/v2/markets` answers
+`403 path not allowed` — a 403 there is a malformed URL, not a broken relay. And **browser rendering** of the
+doubled-size file is confirmed: `index.html` went 2,726 → 5,858 lines between deploys, jsdom is not a browser,
+and the owner opened the deployed build and reported it running cleanly.
 
 ---
 
