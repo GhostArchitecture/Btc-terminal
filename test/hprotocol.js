@@ -88,11 +88,40 @@ const { T, done } = runner("h-protocol");
 
 /* ---- the calendar refuses to invent dates, and refuses to tag a missing timestamp */
 {
+  /* This used to assert the table was EMPTY, as a proxy for "no date was invented". The table now carries
+     rows that were RETRIEVED, so the proxy is gone and the real property is asserted instead: every row
+     names the source it came from and the date it was read. Provenance is the whole guarantee here — a row
+     without it is indistinguishable from a guess, and a guessed release does not merely go unmeasured, it
+     is recruited into the control group it should have been excluded from (§11.3). */
   const r = R(`(function(){
     const t=eventTag(null), u=eventTag(0), v=eventTag(NaN);
-    return {datedEmpty:RELEASES.DATED.length,nullTag:t&&t.ev,zeroTag:u&&u.ev,nanTag:v&&v.ev}; })()`);
-  T("the DATED release table is empty — agency dates are not invented", r.datedEmpty === 0, r);
+    const D=RELEASES.DATED;
+    const noSrc=D.filter(x=>!x.src||typeof x.src!=="string"||!x.src.length).length;
+    const noRet=D.filter(x=>!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.retrieved||"")).length;
+    const badT=D.filter(x=>typeof x.t!=="number"||!isFinite(x.t)).length;
+    return {n:D.length,noSrc,noRet,badT,nullTag:t&&t.ev,zeroTag:u&&u.ev,nanTag:v&&v.ev}; })()`);
+  T("every dated release names the source it came from", r.n > 0 && r.noSrc === 0, r);
+  T("every dated release records when that source was read", r.noRet === 0, r);
+  T("every dated release resolves to a real instant", r.badT === 0, r);
   T("a missing timestamp yields no event tag, not a confident 1970 one", !r.nullTag && !r.zeroTag && !r.nanTag, r);
+}
+{
+  /* The calendar has to actually fire, or the shock programme has no treatment group. A BEA instant is a
+     release; a quiet window is not. And the partiality caveat must travel with the verdict rather than
+     living in a document — an incomplete table means a control may hide a release nobody recorded, which
+     biases difference-in-differences TOWARD ZERO (§11.3). */
+  const r = R(`(function(){
+    const gdp=Date.UTC(2026,3,30,12,30,0);            /* BEA GDP, from the feed */
+    const hit=eventTag(gdp), quiet=eventTag(Date.UTC(2026,3,15,3,7,0));
+    const ce=controlEligible(gdp), cq=controlEligible(Date.UTC(2026,3,15,3,7,0));
+    return {hitEv:hit&&hit.ev,hitTier:hit&&hit.evTier,quietEv:quiet&&quiet.ev,
+      atRelease:ce.eligible,atReleaseWhy:ce.reason,atQuiet:cq.eligible,
+      partial:!!(cq.known&&cq.known.partial),caveat:!!(cq.known&&cq.known.caveat)}; })()`);
+  T("a known BEA release instant is tagged as an event", !!r.hitEv, r);
+  T("an unremarkable window is not", !r.quietEv, r);
+  T("a release window is refused as a time-matched control", r.atRelease === false && /release/.test(r.atReleaseWhy || ""), r);
+  T("a quiet window IS eligible — the calendar no longer refuses every window in history", r.atQuiet === true, r);
+  T("and every verdict carries the partiality caveat, so no caller can read a control as certified clean", r.partial && r.caveat, r);
 }
 {
   /* the one thing a hand-rolled DST rule must get right */

@@ -1,236 +1,226 @@
 # Filling the release calendar
 
-The table in `code.js` is **5% full** and that is fine. Run `calendarAudit()` and read `.text` to
-see exactly how full it is today. This file is how you add to it without breaking anything.
+The table in `code.js` holds **49 enumerated rows plus 2 agency corrections**, and it is nowhere
+near a full US macro calendar. Run `calendarAudit()` and read `.text` to see exactly how partial
+it is today, which series are absent entirely, and where the BLS gap sits. This file is how you
+add to it without breaking anything.
+
+---
 
 ## The one rule
 
-There are two kinds of table and you must move them **together**:
+> **If a date is not enumerated and sourced, it does not go in the table.**
 
-- `RELEASES.DATED` / `RELEASES.EXCEPTIONS` — the individual releases you know about.
-  `RELEASES.RULE` — the series this unit *generates* rather than stores.
-- `RELEASES.COVERAGE` — the periods whose schedule you have actually **checked**.
+Every row carries a `src` (the URL you read it from) and a `retrieved` (the date you read it).
+That pair *is* the provenance. There is no declaration to write, no coverage period to claim and
+no signature to sign — the previous design had all three and they are deleted; see "The deletion"
+in `NOTES.md` for why. Adding a row is the whole of adding a row.
 
-**Rows without coverage:** honest but useless. The releases are tagged, but every quiet window in
-that period stays `evCov:false` / `controlEligible → "unknown-coverage"`, so no window there can
-be used as a section 11.3 time-matched control. Nothing is wrong; nothing is gained either.
+### Never reintroduce a rule-derived series
 
-**Coverage without rows:** a lie, and the expensive kind. Declaring coverage says "I checked; if
-this unit shows no release, none happened." Every quiet-looking window in that period then becomes
-an eligible control — including the windows that held the CPI prints you did not enter. A real
-shock lands inside the control group, the baseline it is being measured against moves with it, and
-the difference-in-differences estimate is biased toward zero **invisibly**. That is a corrupted
-result, not a missing one.
+The unit used to generate payrolls as "first Friday of the month" and initial claims as "every
+Thursday". Both rules are **confidently wrong** in holiday and shutdown weeks. A wrong generated
+row is worse than a missing one in a specific and expensive way: it marks the **wrong** window
+busy and leaves the window that held the **real** print looking quiet, and that real window then
+gets recruited into a CLAUDE.md section 11.3 control group. A provenance tag on the emitted row
+cannot warn you, because it is attached to the date the rule got right in its own terms, not to
+the one it got wrong.
 
-**Coverage over a wrong rule row:** the same lie, arrived at by arithmetic instead of omission.
-`NFP` and `CLAIMS` are *generated* from `RELEASES.RULE` — first Friday, every Thursday — and both
-rules have real exceptions (BLS moves initial claims to Wednesday in weeks containing a Thursday
-federal holiday; payrolls do not always land on the first Friday). When the rule is wrong, the
-generated row marks the **wrong** window busy and leaves the window that held the **real** print
-looking quiet. That real window then enters the control group. `src:"rule"` on the emitted row
-cannot warn you about this, because it is attached to the date the rule got *right* in its own
-terms, not to the one it got wrong.
+Three rounds of adversarial review tried to police that generator with a human signature and each
+found a fresh way for the signature to outlive what it signed. The generator is gone. **Do not
+add `RELEASES.RULE` back, in any form** — not as a helper, not as a "just for claims" special
+case, not as a comment-documented convention. `test.js` section 6 asserts that every deleted
+symbol is still `undefined`, so an attempt to reintroduce one turns the suite red.
 
-That is why a `"*"` row must carry `rules:` — see "Declaring coverage" below. There is no way for
-this unit to check a rule against an agency schedule it cannot fetch, so the vouch is your
-signature, not a validation.
+If you know a series' cadence but not its dates: that is a gap, and a gap is the correct state.
+Leave it out and let `calendarAudit().absentNames` say so.
 
-So: **enter the rows first, then declare exactly the period you actually read.**
+---
 
-## Where each release type comes from
+## Which constructor to use — this is about the SOURCE, not style
 
-Open the page, read the dates off it, and enter them. Do not extrapolate a cadence from the ones
-you already have — "CPI lands mid-month", "PPI follows CPI", "ISM is early-month" are exactly the
-inferences this table exists to refuse.
+| the source publishes | use | example |
+|---|---|---|
+| an **ET wall time** ("08:30 ET", "2:00 p.m. ET") | `etToUtc(y, mo, d, hh, mm)` | `etToUtc(2026,0,13,8,30)` |
+| a **UTC instant** (a feed with `Z` or `+00:00`) | `Date.UTC(y, mo, d, hh, mm)` | `Date.UTC(2026,0,22,13,30)` |
 
-| name | agency page | time (ET) | tier | kind |
-|---|---|---|---|---|
-| `CPI` | https://www.bls.gov/schedule/news_release/cpi.htm | 08:30 | 1 | `scheduled-numeric` |
-| `PPI` | https://www.bls.gov/schedule/news_release/ppi.htm | 08:30 | 2 | `scheduled-numeric` |
-| `NFP` | https://www.bls.gov/schedule/news_release/empsit.htm | 08:30 | 1 | rule-derived; correct it with an EXCEPTION |
-| `CLAIMS` | https://www.dol.gov/ui/data.pdf schedule / BLS release calendar | 08:30 | 2 | rule-derived; correct it with an EXCEPTION |
-| `PCE`, `GDP` | https://www.bea.gov/news/schedule | 08:30 | 1 (PCE), 2 (GDP) | `scheduled-numeric` |
-| `RETAIL` | https://www.census.gov/retail/marts/www/martsdates.html | 08:30 | 2 | `scheduled-numeric` |
-| `ISM` | https://www.ismworld.org/ (Report On Business schedule) | 10:00 | 2 | `scheduled-numeric` |
-| `FOMC` | https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm | 14:00 | 1 | **`scheduled-policy`** |
-| BLS reschedules | https://www.bls.gov/schedule/ (and any lapse-in-appropriations notice) | — | — | EXCEPTIONS |
+`mo` is **0-based** in both.
 
-`FOMC` is `scheduled-policy`, not `scheduled-numeric`: a rate decision is an announcement, not a
-data print, and H3 splits informed from narrative flow by release **type**. Filing it as a print
-blurs the distinction H3 exists to test.
+A feed that publishes UTC instants has **already resolved DST**, and that is the entire reason a
+machine-readable feed beats a schedule page or a rule. Passing such an instant through `etToUtc`
+re-derives something the source had settled and can only introduce an hour of error. The BEA rows
+are pinned in `test.js` against the feed's own strings precisely so that "tidying" a `Date.UTC`
+into an `etToUtc` turns the suite red instead of shifting an hour silently.
 
-## Adding a release — worked example
+Never build `t` from an ISO string. `calDatedRowFault` rejects one, loudly, by design.
 
-You open the BLS CPI page on 2026-11-02 and read the October-reference date: **13 November 2026,
-08:30 ET**. Add to `RELEASES.DATED`:
+---
 
-```js
-{name:"CPI", kind:"scheduled-numeric", tier:1, t:etToUtc(2026,10,13,8,30),
- src:"https://www.bls.gov/schedule/news_release/cpi.htm", retrieved:"2026-11-02"},
+## Adding enumerated rows from a feed — worked example
+
+This is the BEA load, start to finish. It is the pattern to copy.
+
+**1. Fetch the feed and keep the raw bytes.**
+
+```
+curl -s "https://apps.bea.gov/API/signup/release_dates.json" -o bea.json
 ```
 
-- `t` is **epoch ms built by `etToUtc`** — never an ISO string, never a hand-computed UTC number.
-  `etToUtc(y, monthIndex, day, hh, mm)`: months are **0-based**, so November is `10`. It handles
-  EST/EDT, which is the whole reason it exists (08:30 ET is 13:30Z in winter, 12:30Z in summer).
-- `src` is the page you read. `retrieved` is the day you read it, `YYYY-MM-DD`.
-- Then run `calValidateDated()` — it must return `[]`. Anything it returns is a rejected row, with
-  the reason; a rejected row is invisible to the rest of the unit.
+**2. Read the instants out of it mechanically.** Do not retype them by eye. Generate the row
+lines from the file with a throwaway script, so a transcription slip is impossible:
 
-## Correcting a rule-derived date — worked example
+```
+python3 - <<'EOF'
+import json, datetime
+d = json.load(open('bea.json'))
+for x in sorted(set(x for x in d['Gross Domestic Product']['release_dates'] if x.startswith('2026'))):
+    t = datetime.datetime.fromisoformat(x)
+    assert t.utcoffset().total_seconds() == 0        # the feed really is UTC
+    print('{name:"GDP",kind:"scheduled-numeric",tier:1,t:Date.UTC(%d,%d,%d,%d,%d),'
+          'src:"https://apps.bea.gov/API/signup/release_dates.json",retrieved:"2026-09-06"},'
+          % (t.year, t.month-1, t.day, t.hour, t.minute))
+EOF
+```
 
-The first-Friday NFP rule and the every-Thursday claims rule are *derived*, and both have real
-exceptions (holiday weeks, shutdown reschedules). When an agency publishes a different date, do
-not edit the rule — add to `RELEASES.EXCEPTIONS`:
+**3. Deduplicate identical instants, and only those.** BEA lists `2026-06-09T12:30Z` twice for
+the trade release. One instant listed twice is **one release**. Two *different* series at the
+*same* instant (BEA publishes GDP and Personal Income and Outlays together twelve times in 2026)
+are **two releases**, and both rows stay.
+
+**4. Paste the block into `RELEASES.DATED`** with a comment naming the feed, the retrieval date,
+and anything surprising you decided not to change.
+
+**5. Pin the instants in `test.js`** against the feed's own strings, as section 6c does. This is
+the step that makes the rows re-checkable a year later without re-fetching.
+
+**6. Cross-check if a second source exists, and record what happened.** BEA's `.ics` subscription
+file was fetched as a cross-reference and turned out to cover only 2025-01 to 2025-09, so it
+could not corroborate a single 2026 date. That is written down in `NOTES.md` rather than left as
+an unstated assumption that two sources agreed.
+
+**7. If a list you were working from disagrees with the feed, the feed wins — and say so.** The
+2026 BEA dates in circulation when this load was done disagreed with the feed on five GDP dates,
+nine PCE dates and three trade dates. Every one was taken from the feed, and the disagreements
+are reported. A silent reconciliation is indistinguishable from a fabrication.
+
+---
+
+## Adding a single row by hand
 
 ```js
-{name:"NFP", was:etToUtc(2026,1,6,8,30), t:etToUtc(2026,1,11,8,30),
+{name:"CPI", kind:"scheduled-numeric", tier:1, t:etToUtc(2026,0,13,8,30),
+ src:"https://www.bls.gov/schedule/news_release/cpi.htm", retrieved:"2026-09-06"},
+```
+
+- `name` — short, stable, upper case. Reuse an existing name where the series is the same one;
+  a new spelling makes a new series and a new span.
+- `kind` — `"scheduled-numeric"` for a data print, `"scheduled-policy"` for a rate decision.
+  They are **not** interchangeable: H3 splits informed from narrative flow by release type.
+- `tier` — 1 = high BTC relevance (CPI, payrolls, FOMC, PCE, GDP); 2 = lower (claims, trade,
+  ISM, retail).
+- `src` / `retrieved` — the URL and the day you read it. Omitting them is not a fault (a correct
+  date with no URL is still a real release) but the audit counts the row as `unsourced`, and a
+  span built only from unsourced rows prints `NO SOURCE ON THESE ROWS`.
+
+**Do not guess a date.** A wrong date mislabels every window around it; a missing one leaves a
+real release unrecorded inside a window this unit will call eligible. Both are worse than an
+honest gap, and only the gap is visible.
+
+**Do not "correct" a sourced date on a hunch.** The CPI 2026-09-11 row is a Friday, which is
+atypical for BLS, and it is flagged and left alone for exactly this reason. If it turns out
+wrong, fix it as an **edit to the row with a fresh `retrieved`** — not as an exception. An
+exception records an agency correction; an unchecked transcription is not one.
+
+---
+
+## Recording an agency correction — worked example
+
+An agency moves a date it had already published:
+
+```js
+{name:"NFP", kind:"scheduled-numeric", tier:1,
+ was:etToUtc(2026,1,6,8,30), t:etToUtc(2026,1,11,8,30),
  src:"https://www.bls.gov/bls/2025-lapse-revised-release-dates.htm", retrieved:"2026-09-06",
- note:"Employment Situation, Jan 2026 ref: 2026-02-06 -> 2026-02-11 (Wed), 08:30 ET"},
+ note:"Employment Situation, Jan 2026 ref: 2026-02-06 -> 2026-02-11 (Wed), 08:30 ET"}
 ```
 
-- `was` is the date the unit would otherwise produce (build it the same way, from the rule).
-- `t` is the real date. The emitted row comes back `src:"corrected"` with `was` attached, so a
-  persisted tag reads `evSrc:"corrected"` and the correction survives into the ledger.
-- **Cancelled, not moved?** `t:null`. The release is removed and nothing is emitted. Leaving `t`
-  out entirely is a rejected row, not a cancellation — the two cases must stay distinct.
-- An exception whose `was` matches nothing still emits its release (`calendarAudit()` labels it
-  `inserts`). That is deliberate: a correction is agency evidence in its own right, and dropping
-  it would put a real release back into the control pool.
-- **One row per release, never a chain.** If the agency revises a date it has already revised
-  (X → Y, then Y → Z), do **not** add a second row: edit the existing one to X → Z. Two rows where
-  one override's `t` is another's `was` — or two rows overriding the same `was` — are **both**
-  rejected, because whichever order they are typed in decides whether the intermediate date is
-  emitted as a release that never happened. The reject says `CHAIN` and names the repair, and the
-  whole calendar refuses control windows (`controlEligible → "table-errors"`) until you collapse
-  it. This is name-scoped: two corrections that merely share an instant for *different* releases
-  are unrelated, not a chain.
-- Check with `calValidateExceptions()` — must return `[]`.
+- Any `DATED` row with the same `name` and `t === was` is **removed**.
+- The corrected row is emitted **whether or not** a base row matched. An exception is agency
+  evidence in its own right; dropping it for want of a base row would put a real print back into
+  the control pool. `calendarAudit()` reports an unmatched one as `inserts`, so an override that
+  overrides nothing is visible rather than silent.
+- **State `kind`/`tier` on the row when nothing can supply them.** Metadata falls back to the
+  removed base row, then to any `DATED` row of the same name (`calMetaFor`), then to the
+  `scheduled-numeric` / tier-2 default. The seeded payrolls correction has no base row and no
+  other payrolls row anywhere, so it carries `tier:1` explicitly — without it, payrolls would
+  emit at tier 2.
+- `t:null` means **cancelled**, not moved: the base row is removed and nothing is emitted. A
+  merely *absent* `t` is a fault, so the two cases can never be confused.
+- A shift larger than `CAL_EXC_MAX_SHIFT_MS` (45 days) is rejected: a move that large is a
+  data-entry error, not a reschedule.
 
-## Declaring coverage — worked example
+### Two things the exceptions table refuses outright
 
-Only after the rows are in. You read the **whole** 2027 CPI schedule page and entered **all twelve**
-dates on 2026-12-02:
+- **Chains.** `X -> Y` and then `Y -> Z` (what an agency produces when it revises a revision).
+  Both rows are refused, in either order, because applying half a chain leaves a release standing
+  at a date that never happened. **Collapse it into one row, `X -> Z`.**
+- **Two rows overriding the same `was`.** Both refused; keep exactly one.
 
-```js
-{name:"CPI", from:etToUtc(2027,0,1,0,0), to:etToUtc(2027,11,31,23,59)+59999,
- src:"https://www.bls.gov/schedule/news_release/cpi.htm", retrieved:"2026-12-02"},
-```
+Both refusals are loud: `calValidateExceptions()` names them, `CAL_EXC_BAD` lists them, the audit
+counts them, and `controlEligible()` returns `"table-errors"` for **every** window until they are
+fixed. That last part is deliberate — a refused row is a release this unit does not emit, and a
+release it does not emit reads as a quiet window.
 
-- `from`/`to` are **inclusive UTC ms built with `etToUtc`, exactly like a release row** — never
-  `Date.UTC`. The page you read is an ET-shaped schedule, so "2027" means 2027 **in New York**.
-  `Date.UTC(2027,0,1)` is 2026-12-31 19:00 ET and would claim five hours of a period you never
-  read. **Over-claiming is the expensive direction**: it is five hours in which a release you did
-  not enter becomes an eligible control. `+59999` carries the last second's milliseconds so the
-  final ET minute of the period is inside the claim. Read the bounds back off
-  `calendarAudit().text`, which renders them as **ET** dates — they must be the period you read.
-- `name:"CPI"` claims completeness **for CPI only**. It says nothing about PPI.
-- `name:"*"` claims the **whole calendar** is known for that period — every release of every type.
-  Only a `"*"` period can produce a control window, so `"*"` is the entry that turns the programme
-  on, and the one that costs a corrupted result if it is not literally true. Declare it only when
-  every row in the table above has been entered for that period.
+---
 
-### The vouch — mandatory on a `"*"` row
+## Coverage: there is nothing to declare
 
-A `"*"` row must also say which **generators** you checked against the agency schedule over that
-period. **A vouch is a signature on a generator specification, so you copy the rows themselves —
-not their names:**
+`calSeriesSpans()` computes, per series name, the span its own rows actually cover, the row
+count, and the sources and retrieval dates those rows carry. `coverageAt()` and
+`calCoverageSpan()` ask the same fact at an instant and over a band. Add a row and the span
+widens on the next call; remove it and the span retracts. Nothing to sign, nothing to keep in
+step, nothing that can go stale.
 
-```js
-{name:"*", from:etToUtc(2027,0,1,0,0), to:etToUtc(2027,11,31,23,59)+59999,
- rules:[{name:"NFP",   kind:"scheduled-numeric", tier:1, et:[8,30], rule:"first-friday-of-month"},
-        {name:"CLAIMS",kind:"scheduled-numeric", tier:2, et:[8,30], rule:"every-thursday"}],
- src:"https://www.bls.gov/schedule/  (+ each page in the table above)", retrieved:"2026-12-02"},
-```
+**A span is not a completeness claim.** "GDP: 2026-01-22 … 2026-12-23, 13 rows" says thirteen GDP
+dates were read off a feed and they run from January to December. It does not say those are all
+of them, and nothing in this unit can say that.
 
-- `rules` must hold **one entry per row in `RELEASES.RULE`, copied field for field** (`name`,
-  `kind`, `tier`, `et`, `rule` — the five the row already requires). Writing it means: *"I read
-  the published schedule over this period for exactly these generators, and every deviation from
-  them is in `EXCEPTIONS`."*
-- **A bare name is a rejected row.** `rules:["NFP"]` used to be the shape and it could not see the
-  row it named being edited, deleted, or joined by a second one — in all three cases the
-  signature kept reading complete while the generator had moved, and the windows holding the real
-  releases became eligible controls. The reject message says so.
-- A `"*"` row **without** `rules` is likewise rejected and grants nothing.
-- **Any change to a signed row invalidates the signature**, and `controlEligible()` refuses the
-  whole period until a human re-signs it:
+That limitation is real and directional, and the code returns it rather than hiding it:
+`controlEligible(t)` hands back `known.caveat` (`CAL_PARTIAL_CAVEAT`) on **every** answer, plus
+`known.series` and `known.inSpan`. A control window this unit accepts may still contain a release
+nobody has told the table about, which biases a difference-in-differences estimate **toward
+zero**. Record the caveat with the control. Do not let a caller read `{eligible:true}` as a
+certificate that the window is clean.
 
-  | you did this | the audit says | `controlEligible` |
-  |---|---|---|
-  | added a rule series | `NOT VOUCHED: <spec>` | `"unvouched-rule"` |
-  | edited a signed row (`rule`, `et`, `kind`, `tier`) | `SIGNATURE DOES NOT MATCH: <in force> … signed against <spec>` | `"unvouched-rule"` |
-  | removed or renamed a signed row | `STALE VOUCH: <spec> … no longer a rule series in force` | `"stale-vouch"` |
-
-  That is the intended cost of touching a generator, and re-signing is one edit: copy the rows as
-  they now stand, having actually re-read the schedule.
-- Vouches are **not** combined across entries: one entry must vouch for everything itself, exactly
-  as coverage periods are never unioned.
-- `calendarAudit().text` prints, under each `"*"` entry, how many **rule-derived (inferred)** dates
-  the claim rests on, which signatures are wrong and in which of the three ways, and **the first
-  instant inside the period that `controlEligible()` actually accepts** (or `NONE`). Read those
-  lines before you believe your own declaration.
-
-`rules` is optional on a name-scoped row: a named entry grants no control windows either way.
-- One entry per **contiguous** confirmed period. Adjacent entries are deliberately not unioned; a
-  band that straddles a seam reads as uncovered, so a gap can never be papered over by arithmetic.
-- Check with `calValidateCoverage()` — must return `[]`. `src` and `retrieved` are mandatory on a
-  coverage row: a claim that somebody checked a page, with no page, is the exact lie this
-  mechanism exists to prevent.
+---
 
 ## After every edit
 
 ```
-node test.js          # must stay green
-calendarAudit().text  # read it; the counts should say what you think you just did
+node test.js          # must print "all passed"
+node ../run.js        # every unit suite, in case something else reads this one
 ```
 
-`calendarAudit()` reports rejected rows (from all four tables), rows with no `src`, which
-overrides override something and which merely insert, the declared periods with their **ET**
-bounds, the total days of `"*"` coverage, the inferred-date count and the signature faults under
-each `"*"` entry, **the periods that cover each release name** (`COVERAGE BY NAME` — a claim
-covers a period, never "always"), and which names have no declared period anywhere.
-
-Read `controlWindowsPossible`. It is `true` only when some instant inside a declared period is
-**actually** accepted by `controlEligible()` — the audit finds that instant, hands it to the guard,
-and prints it as `controlWindowExample`, so you can re-check the claim by calling
-`controlEligible()` on it yourself. It is the single line that says whether section 11.3 has any
-controls to draw on, and it is `false` when a `"*"` period is narrower than the ±45 min exclusion
-band or has no clear gap in it, even though the period is declared and fully signed. As shipped it
-is `false` and `controlEligible()` returns false for every timestamp in history. That is the honest
-state of a 5%-full calendar, not a bug.
-
-## Adding, editing or removing a rule-derived series
-
-`RELEASES.RULE` **drives the generator** — a series you add here really does produce rows, and a
-row you edit or delete really does change or stop them.
+Then read the audit and check it says what you expect:
 
 ```js
-{name:"CLAIMS", kind:"scheduled-numeric", tier:2, et:[8,30], rule:"every-thursday"},
+console.log(calendarAudit().text);
 ```
 
-- `rule` must be one of the closed forms `every-<weekday>` or
-  `first|second|third|fourth|last-<weekday>-of-month`, lower case. Anything else is a **rejected
-  row**, and a rejected rule row is a whole release series that stops being emitted — so it takes
-  `controlEligible()` to `"table-errors"` rather than quietly generating nothing.
-- `kind`, `tier` and `et` are **mandatory** here (they are optional on a `DATED` row): a rule row
-  is a generator specification, not a transcribed fact with a missing annotation. `et` must be
-  **whole numbers** — `[8.5,30]` is a rejected row, not an 08:30 publication.
-- Only add a series whose publication rule is genuinely deterministic. If you have to squint at it,
-  it belongs in `DATED`, one dated row at a time.
+Look for, in order:
 
-**Editing or deleting a row is not a tidy-up — it is a change to what the calendar knows.**
+1. `DATED rows: N valid, 0 rejected` — a rejected row is a release that is **not emitted**, and
+   while any exists `controlEligible()` refuses every window. Fix it before anything else.
+2. The **spans**, and whether the series you just touched moved the way you expected.
+3. `ABSENT ENTIRELY` — the expected series with no row anywhere. Today: **PPI, CLAIMS, ISM,
+   RETAIL**.
+4. `THE BLS GAP` — payrolls, CPI, PPI and claims are the highest-relevance US releases for this
+   instrument, and `bls.gov` is not reachable from the environment these tables were entered in.
+   Two CPI dates and one payrolls correction are **fragments, not coverage**. If you have egress
+   that reaches bls.gov, that gap is the single most valuable thing to close, and closing it is
+   an enumeration job: open the schedule page, read the dates, enter them with the URL and the
+   date you read it.
 
-- **Deleting a series that still publishes is the worst edit available here.** Its releases vanish
-  from the calendar entirely and every window that held one reads *quiet*, which is the
-  contamination `controlEligible()` exists to prevent. If a series belongs in `DATED` instead,
-  **enter the dated rows first, then delete the rule row** — never the other way round.
-- **Editing a row in place redirects the generator.** The old day is now reported quiet and the new
-  one busy; if you were wrong about the new rule, the real print's window becomes an eligible
-  control. Change a cadence only from a page you have just read.
-- **Do not add a second row under an existing name** unless the series genuinely has two
-  publication rules. It is a separate generator and needs its own signature.
-- Every one of these invalidates any `"*"` vouch that signed the row. The unit **refuses** rather
-  than guessing: re-read the schedule for that period and re-sign the claim with the rows as they
-  now stand. Never "fix" a refusal by editing the vouch to match the table without re-reading the
-  source — that turns the signature into a copy of the thing it is supposed to check.
-- Check with `calValidateRule()` — must return `[]` — then read `calendarAudit().text` and re-sign
-  every `"*"` entry it flags.
+Finally, add the assertions. Every row set added here should be pinned in `test.js` the way the
+BEA and FOMC rows are — count, instants, tier, and source — so that a later edit that changes a
+date has to change a test on purpose.

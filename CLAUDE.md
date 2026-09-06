@@ -270,19 +270,27 @@ same failure as the missing `test/prereg.js`: recording a gap instead of closing
   is the recorder of record; the phone is for arming and viewing.
 - **Untested and only testable live:** sub-minute order flow, book depth, and dislocation as predictive features.
   These are the only remaining candidates for a real edge; everything price-path-based has been ruled out.
-- **Release calendar — built, reviewed twice, NOT spliced.** The unit (coverage declaration, exceptions,
-  `controlEligible`, audit; 440 assertions) lives under the scratchpad and is deliberately held out of
-  `index.html`. The second review found the coverage **vouch binds to a series name, not to what the generator
-  does**, so a signature that was honest when written keeps granting control eligibility after the rule row it
-  signed is edited or deleted — which reopens the contamination §11.3 exists to prevent, and which `FILLING.md`
-  walks a maintainer straight into. Latent today (no `*` declaration exists, so no window anywhere is eligible)
-  and cheapest to fix now: §11.6 says the same change after a holdout opens **spends** it. Being fixed.
-- **The calendar is ~5% full and cannot be finished here.** Agency schedule pages are blocked by this
-  environment's egress; only FOMC 2026 (all eight, sourced) and two CPI dates are loaded, plus two BLS
-  reschedules from the 2025–26 appropriations lapses — which matter beyond themselves because they **prove the
-  first-Friday payrolls rule has real exceptions in the live data period** (January 2026 payrolls printed on a
-  Wednesday). One row is flagged and unverifiable from here: CPI 2026-09-11 falls on a Friday, atypical for BLS.
-  Do not "correct" it — check it against bls.gov.
+- **Release calendar — spliced, enumerated only, deliberately simple.** 49 dated rows: BEA 2026 (GDP, PCE,
+  Trade — 39 instants from `apps.bea.gov/API/signup/release_dates.json`, retrieved 2026-09-06), the eight FOMC
+  2026 statements, two CPI dates, and two BLS reschedules from the 2025–26 appropriations lapses. Every row
+  carries its source URL and retrieval date; **that is the whole of the provenance mechanism.**
+  The unit previously generated dates from rules (first-Friday payrolls, every-Thursday claims) and gated
+  control eligibility on a human-signed coverage declaration vouching for those rules. Three adversarial review
+  rounds each found a fresh way for a signature to outlive what it signed, **all three about rule-derived rows**
+  — and the shipped state refused every window in history, so §11.3 had zero controls and the instrument
+  measured nothing. The generator and the vouch are both deleted (`units/calendar/NOTES.md` keeps the history
+  under SUPERSEDED banners). An enumerated feed has no rule to be wrong about.
+- **The calendar is partial, and that is a stated property of the measurement.** No BLS series is in it —
+  `bls.gov` blocks this environment at the origin (their own Access Denied page, not a network policy), so CPI,
+  PPI, payrolls and claims are absent except the four hand-carried rows. `controlEligible` therefore returns
+  `known` alongside its verdict — the per-series spans actually in the table, and `CAL_PARTIAL_CAVEAT` — because
+  a control window may contain a release nothing told the table about. Per §11.3 that biases
+  difference-in-differences **toward zero**, i.e. against finding an effect. Record the caveat with the result;
+  do not read a control as certified clean.
+  At 47 events a year the §11.1 arithmetic worsens: 60 graded shock windows takes **~15 months**, not 7.
+  `api.stlouisfed.org` is reachable and would supply the BLS schedules with a free FRED key.
+  One row is flagged and unverifiable from here: CPI 2026-09-11 falls on a Friday, atypical for BLS. Do not
+  "correct" it — check it against bls.gov.
 - **Open defects:** §10.3.
 
 ## 9. What "done" looks like
@@ -595,6 +603,15 @@ US DST moves the same release across that ramp twice a year. An 08:30 ET print s
 (`SEAS` 1.007) from March to November and hour 13 (1.298) from November to March — **1.29× in the table, 1.14× in
 σ, for an identical event.** A shock ledger pooled across a DST boundary is comparing two different volatility
 regimes and calling the difference an edge.
+
+**The calendar is partial, and a control is never certified clean.** `controlEligible(t)` returns `known`
+beside its verdict — the per-series spans actually in the table and `CAL_PARTIAL_CAVEAT` — because a control
+window may contain a release nothing recorded. That biases this difference-in-differences **toward zero**: it
+makes an effect harder to find, never easier, so it cannot manufacture one. **Record `known` with every scored
+window**, or the caveat is lost at the moment the number is read. The earlier design refused to score any window
+not inside a human-signed coverage declaration; it was deleted after three review rounds found the signature
+could outlive what it signed, and because refusing every window is not a safer measurement than a measured one
+with its limitation attached.
 
 **Every shock claim is stated against controls matched on all four of:**
 

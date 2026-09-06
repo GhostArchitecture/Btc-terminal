@@ -1,82 +1,138 @@
-# Unit: `calendar` — scheduled-release detector + event-proximity tag
+# Unit: `calendar` — enumerated scheduled-release table + event-proximity tag
 
-`code.js` is the exact block to splice. `node test.js` runs green (508 assertions, exit 0).
-**Second-review revision (2026-09-06)** - see "Fixes applied after the second coverage review" at
-the very end, which is the latest word and supersedes anything earlier that disagrees: a `"*"`
-coverage row's vouch is now a **signature on a generator specification** rather than a list of
-names, `calendarAudit()` reports coverage as **periods** and `controlWindowsPossible` means an
-actual window is eligible, a rule row's `et` must be whole numbers, and `controlEligible()`
-reports a broken table ahead of release proximity.
-**Coverage-review revision (2026-09-06)** - see "Fixes applied after the coverage review" at the
-end, which is the latest word and supersedes anything earlier that disagrees: `RELEASES.RULE` now
-DRIVES the generator, a `"*"` coverage row must VOUCH for the rule series it rests on, an
-order-dependent pair of `EXCEPTIONS` is refused outright, and `evCov` no longer claims to be a
-control-eligibility flag.
-**Coverage revision (2026-09-06)** - see "The coverage upgrade", which supersedes the
-older "`DATED` is empty" text below: `eventTag` now returns **five** keys (`evCov` added), the
-table carries verified FOMC/CPI rows plus agency corrections, and `controlEligible()` is a new
-**mandatory** gate for CLAUDE.md section 11.3 control selection.
-**Post-review revision** - see "Fixes applied after review": `eventTag` gained `evSrc`,
-`nearestRelease` returns an extra `src`, and caller-parameter errors (an over-wide horizon, a
-non-numeric range) **throw** instead of answering.
+`code.js` is the exact block to splice. `node test.js` runs green (**465 assertions, exit 0**).
+
+**Simplification revision (2026-09-06) — this section and "The deletion" below are the latest
+word and supersede everything after them that disagrees.** The publication-rule generator and the
+coverage-vouch mechanism built to police it have been **deleted**. What is left is an enumerated
+table of agency-published dates, a proximity tag, and a control gate that answers.
+
 Pure: no DOM, no `localStorage`, no `fetch`, no timers, no page globals. It uses **none** of the
 provided helpers (`clamp`, `normCdf`, `calSigma`, …) — the test harness deliberately stubs
-`normCdf`/`calSigma` with throwers to prove that.
+`normCdf`/`calSigma` with throwers to prove that. No non-ASCII anywhere in `code.js` (verified),
+so the `\uXXXX` convention has nothing to escape. No arrow functions, ES2019.
+
+---
+
+## The deletion (2026-09-06)
+
+### What went
+
+| deleted | what it was |
+|---|---|
+| `RELEASES.RULE` | the two rule-derived series: NFP as first-Friday, CLAIMS as every-Thursday |
+| `calRuleRows` | the day/month walk that generated dates from those rules |
+| `calParseRule`, `CAL_DOW`, `CAL_ORD`, `calDict` | the closed rule vocabulary and its prototype-free lookup tables |
+| `calRuleRowFault`, `calValidateRule`, `CAL_RULE_BAD` | validation of a generator specification |
+| `calRuleSeriesNames`, `calRuleSeriesSpecs`, `calRuleSpecKey`, `calRuleSpecLabel` | the rule-series surface a vouch was checked against |
+| `RELEASES.COVERAGE` | the hand-written coverage **declaration** |
+| `calCoverageRowFault`, `calValidateCoverage`, `calCoverageRows`, `CAL_COVERAGE_BAD` | validation of a declaration |
+| `calCoverageVouchFaults`, `calCoverageVouchGap`, `calCoverageStaleVouch`, `calCoverageAnyVouched` | **the vouch** — the signature a human wrote to say they had checked a generator against the agency schedule |
+| `calStarScan` | the audit's scan of a `"*"` period |
+| `CAL_MAX_ITER` | the generation iteration guard; there is no generator to guard |
+| refusal reasons `"unvouched-rule"`, `"stale-vouch"`, `"unknown-coverage"` | `controlEligible` no longer refuses for want of a declaration |
+
+`test.js` section 6 asserts every one of those names is `undefined`, so none of it can drift back
+in unnoticed.
+
+### Why
+
+**Every hazard the vouch existed for was a hazard of the generator.** `calRuleRows` emitted NFP
+as the first Friday of each month and CLAIMS as every Thursday. Both rules are *confidently
+wrong* in holiday and shutdown weeks — BLS moves initial claims to Wednesday in a week containing
+a Thursday federal holiday, and payrolls is not always the first Friday. `src:"rule"` could mark
+the row the rule **emitted**; it could not mark the window the rule **got wrong**, and that
+window — a real release the rule placed a day away — is precisely the one that reads quiet and
+gets recruited into a section 11.3 control group.
+
+So the declaration grew a signature: a `"*"` coverage row had to carry `rules`, a copy of the
+generator specifications its author had checked against the agency schedule. **Three rounds of
+adversarial review each found a fresh way for that signature to outlive what it signed**, and all
+three are the same hazard class:
+
+| round | the escape |
+|---|---|
+| **D1** | a bare period vouched for nothing at all; a `"*"` row over 2026 handed back `{eligible:true, reason:"ok"}` at the **real** Wednesday Thanksgiving claims print while excluding the fictional Thursday slot |
+| **R1a/b/c** | a name-shaped vouch (`rules:["NFP","CLAIMS"]`) could not see a vouched row being **edited**, **removed**, or **joined by a second row under the same name** — three ordinary maintenance edits, each starting from a signature that was true when written |
+| **R6/R7** | the force check matched by specification key while the stale check matched by **name**, so deleting one of two rows sharing a vouched name silently dropped 52 real releases with the vouch still reporting `ok`; and a signature held as a live reference into `RELEASES.RULE` (`rules: RELEASES.RULE.slice()`, which reads as a copy and which `FILLING.md` invited) could never disagree with the thing it checked, degrading to an always-true constant |
+
+Each round closed its escape and each round found another. That is the shape of a mechanism
+fighting its own premise, not of a mechanism converging. **The premise was the generator.** Drop
+it, and there is nothing left for a signature to be stale about: an enumerated date read off an
+agency feed has no rule to be wrong about, and its provenance is the `src` URL and the
+`retrieved` date already sitting on the row. No signature, no declaration, no ritual.
+
+### And it was refusing every window
+
+The vouch also had a live failure that was never a subtle one. `controlEligible()` refused any
+timestamp not inside a valid vouched `"*"` declaration, and **no `"*"` row was ever written** —
+`code.js` said so in its own comment ("THERE IS DELIBERATELY NO `"*"` ENTRY … `controlEligible()`
+currently returns false for every timestamp in history"). CLAUDE.md section 11.3 requires a
+matched control set for every shock claim. With zero eligible controls, the shock programme had
+nothing to draw on and the instrument measured nothing.
+
+**A mechanism that refuses to answer is not safer than one that answers with a stated
+limitation.** The refusal did not prevent a contaminated control group; it prevented a control
+group. The limitation is real and is now *returned by the code* instead of enforced by silence.
+
+### The honest limitation, stated and returned
+
+The table is **partial** and always will be. A control window this unit accepts may contain a
+real release nobody has told the table about. Per CLAUDE.md section 11.3 that puts a shock into
+the baseline it is being measured against, and it biases a difference-in-differences estimate
+**toward zero**.
+
+That direction is load-bearing and is why answering beats refusing: the bias is **conservative**,
+so a surviving positive result is not manufactured by it — but a **null** result cannot be read
+as "no effect" without stating how full the calendar was.
+
+`CAL_PARTIAL_CAVEAT` is that sentence as a constant. `controlEligible(t)` returns it on **every**
+answer — eligible, refused, or bad-timestamp — inside a `known` block that also carries the
+derived per-series spans in force and which of them contain `t`. A caller records the caveat and
+the spans with the control, and can re-derive later which controls were drawn under a thin
+calendar. A caller that ignores them is asserting a completeness this unit has never claimed.
+The vouch never fixed this. It only refused to talk about it.
+
+---
 
 ## What is in it
 
 | symbol | kind | notes |
 |---|---|---|
 | `CAL_HORIZON_MIN` | const `1440` | documented ±24h proximity horizon |
-| `CAL_MAX_ITER` | const `20000` | generation guard (~54y of daily walk) |
-| `nthDowUtc(y,mo,dow,n)` | fn | Nth weekday of a UTC month, 00:00 UTC |
-| `usDstBoundsUtc(y)` | fn | `{start,end}` UTC instants of the year's DST transitions |
-| `usEasternOffsetMinutes(utcMs)` | fn | `240` (EDT) or `300` (EST) |
-| `etToUtc(y,mo,d,hh,mm)` | fn | ET wall clock → epoch ms |
-| `RELEASES` | const | `{RULE:[…2…], DATED:[…10…], EXCEPTIONS:[…2…], COVERAGE:[…1…]}`; `RULE` drives the generator |
 | `CAL_T_MIN` / `CAL_T_MAX` | const | plausibility window for any instant (2009-01-01 … 2100-01-01) |
-| `CAL_MAX_SPAN_MS` | const | widest range the generator covers (~54.7 y) |
-| `CAL_MAX_HORIZON_MIN` | const | widest `horizonMin` (~27.4 y); past it `nearestRelease` refuses |
-| `CAL_DATED_BAD` | const array | malformed `DATED` rows seen by the last `releasesBetween` call |
-| `calValidTime(t)` | fn | `true` only for a plausible **number** of epoch ms |
-| `calDatedRowFault(r)` | fn | why a hand-entered row is unusable, or `null` |
-| `calValidateDated(rows?)` | fn | rejected rows as `[{i,name,why}]` — defaults to `RELEASES.DATED` |
-| `releasesBetween(t0,t1)` | fn | inclusive range, both sources, sorted by `t`, each row `src`-tagged |
-| `nearestRelease(t,horizonMin)` | fn | `{name,kind,tier,src,t,mins}` or `null` |
-| `eventTag(t,horizonMin)` | fn | `{ev,evMins,evTier,evSrc,evCov}` — 5 keys, nulls when quiet |
-| `CAL_EXC_MAX_SHIFT_MS` | const | largest legal `EXCEPTIONS` shift (45 d); bounds the generation pad |
+| `CAL_MAX_SPAN_MS` | const | widest range a query may span (~55 y) — a caller-sanity bound, not a generator guard |
+| `CAL_MAX_HORIZON_MIN` | const | widest `horizonMin` (~27.5 y); past it `nearestRelease` throws |
+| `CAL_EXC_MAX_SHIFT_MS` | const | largest legal `EXCEPTIONS` shift (45 d); bounds the query pad |
 | `CAL_CONTROL_EXCL_MIN` | const `45` | control exclusion half-width: the window plus two windows either side |
 | `CAL_EXPECTED_NAMES` | const | audit checklist of release types — never a source of dates |
+| `CAL_BLS_NAMES` | const | the four BLS series, so the audit can name the gap rather than imply it |
 | `CAL_KINDS` | const | `["scheduled-numeric","scheduled-policy"]`, validated as a closed set |
-| `CAL_EXC_BAD` / `CAL_COVERAGE_BAD` | const arrays | malformed `EXCEPTIONS` / `COVERAGE` rows from the last call |
-| `calExceptionRowFault(e)` / `calValidateExceptions(rows?)` | fn | as the `DATED` pair, for overrides |
-| `calCoverageRowFault(c)` / `calValidateCoverage(rows?)` | fn | as above, for coverage claims |
-| `calMetaFor(name)` | fn | `{kind,tier}` from whichever table describes the name, else `null` |
-| `coverageAt(t,name?)` | fn | `{covered,entries}` — is `t` inside declared coverage |
-| `calCoverageSpan(t0,t1,name?)` | fn | `{covered,entries}` — is the whole band inside ONE declaration |
-| `controlEligible(t)` | fn | `{eligible,reason}` — **the section 11.3 gate**; see below |
-| `calendarAudit()` | fn | plain summary + `.text`: how full the calendar actually is |
-| `calParseRule(str)` | fn | closed rule vocabulary → `{every}` / `{nth,dow}` / `null`; prototype-free lookup |
-| `calRuleRowFault(r)` / `calValidateRule(rows?)` | fn | as the `DATED` pair, for the generator table |
-| `CAL_RULE_BAD` | const array | malformed `RULE` rows from the last `releasesBetween` call |
-| `calRuleSeriesNames()` | fn | the rule series in force — what a `"*"` claim has to vouch for |
-| `calCoverageVouchGap(c)` | fn | rule series a coverage entry does **not** vouch for; `[]` = vouches for all |
-| `calUsableExceptions()` | fn | the `EXCEPTIONS` rows the generator will actually apply |
-| `calTablesUsable()` | fn | are `RULE`/`DATED`/`EXCEPTIONS` all clean — read by `evCov` and `controlEligible` |
+| `CAL_PARTIAL_CAVEAT` | const string | the partiality + toward-zero-bias sentence, returned by `controlEligible` and printed by the audit |
+| `CAL_DATED_BAD` / `CAL_EXC_BAD` | const arrays | malformed rows seen by the last `releasesBetween` call |
+| `RELEASES` | const | `{DATED:[…49…], EXCEPTIONS:[…2…]}` — **two tables, both enumerated** |
+| `nthDowUtc(y,mo,dow,n)` | fn | Nth weekday of a UTC month, 00:00 UTC |
+| `lastDowUtc(y,mo,dow)` | fn | last weekday of a UTC month |
+| `usDstBoundsUtc(y)` | fn | `{start,end}` UTC instants of the year's DST transitions |
+| `usEasternOffsetMinutes(utcMs)` | fn | `240` (EDT) or `300` (EST) |
+| `etToUtc(y,mo,d,hh,mm)` | fn | ET wall clock → epoch ms — **only for a source that publishes an ET wall time** |
+| `calValidTime(t)` | fn | `true` only for a plausible **number** of epoch ms |
+| `calDatedRowFault(r)` / `calValidateDated(rows?)` | fn | why a hand-entered row is unusable; rejects as `[{i,name,why}]` |
+| `calExceptionRowFault(e)` / `calValidateExceptions(rows?)` | fn | as above, for overrides, plus the order-dependent-pair check |
+| `calExceptionCrossFaults(list)` | fn | the D2 pair check: chains and duplicate `was` |
+| `calUsableExceptions()` | fn | the `EXCEPTIONS` rows the emitter will actually apply |
+| `calTablesUsable()` | fn | are `DATED`/`EXCEPTIONS` both clean — read by `evCov` and `controlEligible` |
+| `calMetaFor(name)` | fn | `{kind,tier}` from `DATED`, else `null` |
+| `calKnownInstants()` | fn | every enumerated instant the tables hold, as `{name,t,src,retrieved}` |
+| `calSeriesSpans()` | fn | **the derived coverage fact**: per name, `{name,from,to,n,srcs,retrieved}` |
+| `coverageAt(t,name?)` | fn | `{covered,entries}` — do any/this series' rows span `t` |
+| `calCoverageSpan(t0,t1,name?)` | fn | `{covered,entries}` — does ONE series' span contain the whole band |
+| `releasesBetween(t0,t1)` | fn | inclusive range, sorted by `t`, each row `src`-tagged `dated`/`corrected` |
+| `nearestRelease(t,horizonMin)` | fn | `{name,kind,tier,src,ref,retrieved,t,mins}` or `null` |
+| `eventTag(t,horizonMin)` | fn | `{ev,evMins,evTier,evSrc,evCov}` — 5 keys, nulls when quiet |
+| `controlEligible(t)` | fn | `{eligible,reason,known}` — **the section 11.3 gate**; see below |
 | `calEtDateIso(ms)` | fn | a UTC instant as the **ET** calendar date it falls on (audit rendering) |
-| `lastDowUtc(y,mo,dow)` | fn | last weekday of a UTC month — backs `last-<weekday>-of-month` |
-
-Name-collision check against `index.html`: every symbol above that appears in the deployed file
-appears **only inside the previously spliced copy of this same unit** (`index.html` 3170-3372,
-the block beginning `const CAL_HORIZON_MIN`), which the splice replaces wholesale. The single
-exception is one call site: `exportCSV` calls `eventTag(s.t)` at `index.html:1465` and writes
-`ev`/`ev_mins`/`ev_tier`. That call keeps working unchanged - the added keys are additive - but
-see the export note under the fixes below. The ten symbols added by the
-coverage review (`calParseRule`, `calRuleRowFault`, `calValidateRule`, `CAL_RULE_BAD`,
-`calRuleSeriesNames`, `calCoverageVouchGap`, `calUsableExceptions`, `calTablesUsable`,
-`calEtDateIso`, `lastDowUtc`) return **0** hits anywhere in `index.html`, inside the block or out.
-Re-run the scan before the splice; it is the only check that the block can be dropped in blind.
-No non-ASCII anywhere in `code.js` (verified), so the `\uXXXX` convention has nothing to escape.
+| `calendarAudit()` | fn | plain summary + `.text`: how full the calendar actually is |
 
 ## The DST rule, from first principles
 
@@ -87,12 +143,9 @@ US DST (Energy Policy Act of 2005, in force since 2007): **second Sunday in Marc
 - fall:   `nthDowUtc(y,10,0,1) + 6h` (02:00 EDT = 06:00 UTC)
 
 No `toLocaleString`, no timezone database, no year-specific table. Tested against independently
-known transition dates for **2023–2030** (Mar 12/Nov 5, Mar 10/Nov 3, Mar 9/Nov 2, Mar 8/Nov 1,
-Mar 14/Nov 7, Mar 12/Nov 5, Mar 11/Nov 4, Mar 10/Nov 3), plus the offset one minute either side
-of every boundary for 2023–2027.
-
-The headline requirement is asserted directly: **08:30 ET → 12:30 UTC in summer, 13:30 UTC in
-winter**, including the Thursdays/Fridays immediately before and after both transitions.
+known transition dates for **2023–2030**, plus the offset one minute either side of every
+boundary for 2023–2027. The headline requirement is asserted directly: **08:30 ET → 12:30 UTC in
+summer, 13:30 UTC in winter**, including the days immediately before and after both transitions.
 
 ### Cross-year safety
 `usEasternOffsetMinutes` looks up only the *current UTC year's* bounds. That is safe because
@@ -103,77 +156,200 @@ the neighbouring year is still classified correctly. Asserted for Jan 1 00:00Z a
 - **Ambiguous fall-back hour** (01:00–01:59 on the November Sunday, which happens twice):
   returns the **first (EDT) occurrence**. 01:30 ET → 05:30 UTC.
 - **Non-existent spring-forward gap** (02:00–02:59 on the March Sunday): no offset is
-  self-consistent; resolves **forward** via the standard offset, so 02:30 ET → 07:30 UTC = 03:30 EDT.
-Neither case can arise for the releases in this unit (08:30 ET), but a hand-entered `DATED` row
-could hit them, so the behaviour is pinned by tests rather than left to chance.
+  self-consistent; resolves **forward** via the standard offset, so 02:30 ET → 07:30 UTC.
 
-## The release table — the honest split
+### When NOT to use `etToUtc` — this is a data-provenance rule, not a style preference
+`etToUtc` converts an **ET wall time**. The Federal Reserve publishes "14:00 ET" and BLS publishes
+"08:30 ET"; those are wall times and must come through it. **BEA publishes UTC instants**, with
+DST already resolved, and that is the entire reason a machine-readable feed is preferred over a
+rule or a hand-transcribed wall clock. Passing a BEA instant through `etToUtc` would re-derive
+something the source had already settled and could only introduce an hour of error. The BEA rows
+are therefore written with `Date.UTC` and pinned in `test.js` against the feed's own strings, so
+a maintainer who "tidies" one into an `etToUtc` call turns the suite red rather than shifting an
+hour silently.
 
-### (a) `RELEASES.RULE` — computed, because the rule really is deterministic
-- **NFP** — first Friday of each month, 08:30 ET, **tier 1**
-- **CLAIMS** — every Thursday, 08:30 ET, **tier 2**
+## The tables
 
-These are generated by date arithmetic on demand, never stored.
+### `RELEASES.DATED` — 49 enumerated rows, every one sourced
 
-### (b) `RELEASES.DATED` — partial, sourced, and honest about it
+| series | rows | source | note |
+|---|---|---|---|
+| FOMC | 8 | federalreserve.gov FOMC calendars | 14:00 ET, `scheduled-policy`, tier 1; complete for 2026 (eight is the standard year, count checked) |
+| CPI | 2 | bls.gov CPI schedule | 08:30 ET, tier 1; **only two dates could be retrieved** |
+| GDP | 13 | `apps.bea.gov/API/signup/release_dates.json` | UTC instants verbatim, tier 1 |
+| PCE | 13 | same feed | UTC instants verbatim, tier 1 |
+| TRADE | 13 | same feed | UTC instants verbatim, tier 2 |
 
-**Superseded by "The coverage upgrade" below.** The table is no longer empty: it holds the eight
-2026 FOMC statement dates (complete for 2026) and the two CPI dates that could be verified, every
-row carrying the agency URL it was read from and the date it was read. Nothing was inferred,
-interpolated or extrapolated — the rest of the 2026 CPI schedule was not retrievable and is
-therefore simply absent. The original argument stands unchanged and is why the table will stay
-partial rather than be filled from memory: a fabricated CPI date silently mislabels every window
-around it and poisons the whole event-distance analysis, and it would look like a finding rather
-than a bug. What changed is that partial no longer *reads* as complete — see `RELEASES.COVERAGE`.
+The BEA rows were retrieved **2026-09-06** from
+`https://apps.bea.gov/API/signup/release_dates.json` and copied verbatim. Notes on that load:
 
-## Known limits of the rule-derived entries (NOT modelled — read this)
+- BEA's `.ics` subscription file (`bea.gov/news/schedule/ics/online-calendar-subscription.ics`)
+  was fetched as a cross-reference and covers only **2025-01 to 2025-09**, so it could not
+  corroborate a single 2026 date. The JSON feed is the sole source for every BEA row.
+- The feed lists **2026-06-09 twice** for the trade release. One instant listed twice is one
+  release; it is deduplicated to a single row.
+- BEA lists **twelve** 2026 instants under both *Gross Domestic Product* and *Personal Income and
+  Outlays*. Two releases at one instant is a fact about the schedule, not a duplicated row, and
+  `nearestRelease` breaks that tie deterministically (tier, then time, then name).
+- The 2026-01-22 PCE row is **15:00Z**, an hour BEA does not otherwise publish at in 2026. Copied
+  verbatim because the feed says so; it is the single most inviting row to "fix" and must not be.
+- **The feed disagreed with the date list this load started from, and the feed won.** The
+  disagreements were substantial and are recorded rather than quietly reconciled: **5 GDP dates,
+  9 PCE dates and 3 trade dates** were taken from the feed instead of from the list.
 
-These are real exceptions I chose to leave unhandled rather than approximate:
+  | series | dropped (list) | used (feed) |
+  |---|---|---|
+  | GDP | 03-26, 04-29, 08-27, 09-24, 12-22 | 03-13, 04-09, 04-30, 08-26, 09-30 |
+  | PCE | 02-26, 03-27, 05-29, 06-26, 07-31, 08-28, 09-25, 10-30 | 02-20, 03-13, 04-09, 05-28, 06-25, 07-30, 08-26, 09-30, 10-29 |
+  | TRADE | 03-06, 06-04, 08-05 | 03-12, 06-09, 08-04 |
 
-1. **BLS moves initial claims to Wednesday** in weeks containing a Thursday federal holiday
-   (e.g. Thanksgiving). Those weeks will be tagged one day off.
-2. **NFP is not always the first Friday.** BLS occasionally shifts it (release-schedule quirks,
-   government shutdowns, the 2013 and 2018–19 backlogs). Rare, but real.
-3. Neither exception is derivable, so modelling it would mean inventing dates — the same failure
-   mode as guessing CPI. If precision matters for a given month, add an explicit `DATED` row; a
-   `DATED` row and a rule row for the same event will both appear (the unit does not dedupe across
-   sources — see below).
-4. No federal-holiday suppression at all: if a market holiday cancels a release, the rule still
-   emits it.
+  The PCE disagreement is the largest and has an obvious shape: the feed publishes twelve of the
+  thirteen Personal Income and Outlays dates **at the same instant as the GDP release**, while the
+  list had them a day or two later. Nothing here adjudicates which is right about the real world -
+  only which is **sourced**. A silent reconciliation would be indistinguishable from a
+  fabrication, so both sides are written down.
+
+**The CPI 2026-09-11 row is a Friday**, atypical for BLS. It is flagged in `code.js`, asserted as
+a Friday in `test.js`, and **deliberately not corrected**: it is what the schedule page said when
+it was read, the 2025-2026 appropriations lapse demonstrably moved BLS dates, and changing a
+sourced date on a guess is the one thing this table forbids. Re-verify against bls.gov when
+egress allows.
+
+### `RELEASES.EXCEPTIONS` — 2 agency corrections
+
+Both come from the 2025-2026 lapses in appropriations, and both are **insertions**: there is no
+`DATED` row for either to override, because no BLS schedule could be transcribed.
+
+- **NFP** 2026-02-06 → 2026-02-11 (a Wednesday). The only payrolls date the table holds. `kind`
+  and `tier` are stated **on the row**, because there is no base row and no other payrolls row to
+  inherit them from, and payrolls is tier 1 for this instrument.
+- **CPI** 2026-02-11 → 2026-02-13. Inherits tier 1 from the other CPI rows via `calMetaFor`.
+
+An exception is agency evidence in its own right, so it emits whether or not a base row matched;
+`calendarAudit()` reports an unmatched one as an insertion so an override that overrides nothing
+is visible. `t:null` is the distinct **cancellation** form.
+
+## Coverage is derived, not declared
+
+`calSeriesSpans()` computes, for each name, the span its own enumerated rows actually cover, the
+row count, and the distinct sources and retrieval dates those rows carry. `coverageAt()` and
+`calCoverageSpan()` are the same fact asked at an instant and over a band. Nobody signs anything;
+the table describes itself, so a span **cannot go stale** — it *is* the rows. Adding a row widens
+the span on the next call, removing it retracts it, and a malformed row contributes nothing.
+
+**Read a span for exactly what it is.** "GDP: 2026-01-22 … 2026-12-23, 13 rows" says thirteen GDP
+dates were read off a feed and they run from January to December. It does **not** say those are
+all of them, and nothing in this unit can say that. A span is evidence the table was populated
+across a period, never a claim it was populated completely — which is precisely the claim the
+superseded declaration made and could not check.
+
+A name known from a single instant (payrolls) gets a **zero-width span**. That is the honest
+answer: the table knows one instant, not a period.
+
+## `eventTag().evCov` — weaker on purpose
+
+`evCov` used to mean "a human declared this period complete". It now means "the tables are usable
+**and** at least one series' rows span `t`". That is less than it used to promise and more than
+it ever delivered — as shipped, no declaration existed, so `evCov` read `false` for every
+timestamp in history.
+
+- `true` — tables usable, some series' rows straddle `t`
+- `false` — no series spans `t`, **or** a table currently holds a rejected row
+- `null` — `t` is not a usable timestamp; the whole tag is null
+
+`ev:null` with `evCov:true` means "no release *this table holds* is near `t`, and the table has
+rows either side of `t`". It does **not** mean nothing happened. A non-null `ev` with
+`evCov:false` is still a real release. The key stays because it is persisted per ledger row and
+its absence would change the CSV shape; the ruling is always re-taken by calling
+`controlEligible`.
+
+Why `evCov` goes false on a broken table: a rejected `DATED`/`EXCEPTIONS` row is a release this
+unit would otherwise have emitted, and **the failure direction is deletion**. Drop `retrieved`
+from the seeded NFP correction and the correction stops applying: the real 2026-02-11 payrolls
+print vanishes from the calendar while the window that held it would otherwise still read quiet.
+Tying `evCov` to `calTablesUsable()` is what stops that deletion from reading as quiet, and it is
+the D3 guarantee, preserved through this deletion with its regression test.
+
+## `controlEligible(t)` — the section 11.3 gate, which now answers
+
+```
+{eligible, reason, known:{series, inSpan, partial, caveat}}
+```
+
+| reason | meaning |
+|---|---|
+| `"ok"` | no release **this table knows about** is within `CAL_CONTROL_EXCL_MIN` (45) minutes either side |
+| `"release-nearby"` | a known release sits in the window or within two windows of it |
+| `"table-errors"` | `DATED` or `EXCEPTIONS` holds a rejected row, so a release this unit would emit is missing |
+| `"bad-timestamp"` | `t` is not a usable epoch-ms instant |
+
+The table check comes **before** the proximity check. The verdict is identical either way, but
+these reason strings are counted to produce section 11.3's "control coverage ≥ 80%" figure, and
+reporting a window as ordinary proximity while a table is broken makes the fault invisible in the
+one statistic meant to expose thin coverage (R4, preserved).
+
+`known` is what the table knew when the ruling was made — `series` (the derived spans), `inSpan`
+(which of them contain `t`), `partial` (always `true`), and `caveat` (`CAL_PARTIAL_CAVEAT`). It
+is returned on refusals too, so a caller logging refusals records it as well.
+
+**`{eligible:true}` is not a certificate that the window is clean.** It says no release this unit
+knows of is near `t`. Record the caveat and the spans with the control.
+
+## `calendarAudit()` — one call, and you can see how partial it is
+
+Reports the partiality **first**, then: valid/rejected/unsourced `DATED` counts and per-name
+totals; the exceptions with their effect (`overrides`/`inserts`/`cancels`); the **derived spans**
+with their sources; `absentNames` — every expected series with no row anywhere (today: **PPI,
+CLAIMS, ISM, RETAIL**); and `blsSeries`, which names the BLS gap explicitly rather than leaving a
+reader to infer it from what happens to be present.
+
+The BLS line is the important one: **bls.gov is not reachable from the environment these tables
+were entered in**, so no BLS schedule has been transcribed. What is here — two CPI dates and one
+payrolls date arriving as a shutdown correction — are fragments, not coverage. Payrolls, CPI, PPI
+and initial claims are the highest-relevance US releases for this instrument, and they are the
+ones most likely to be sitting unrecorded inside a window this unit calls eligible.
 
 ## Other deliberate choices
 
 - **`mins` sign convention:** `(release.t - t)/60000`, rounded to whole minutes. **Negative means
-  the release already happened**, as specified. Rounded because it is persisted on thousands of rows.
+  the release already happened.** Rounded because it is persisted on thousands of rows.
 - **Tie-breaking** in `nearestRelease`: exact-distance ties break to the **lower tier number**
-  (higher BTC relevance), then to the earlier release. Tested with the genuine Thu-claims /
-  Fri-NFP midpoint at 00:30Z, where NFP correctly wins, and one minute either side where pure
-  distance correctly wins instead.
-- **`horizonMin` is an optional argument**, defaulting to `CAL_HORIZON_MIN` (1440). `<= 0` or
-  non-numeric returns `null`; above `CAL_MAX_HORIZON_MIN` (~27.4 y) it throws rather than search a
-  range the generator cannot cover. Most 15-minute windows will legitimately tag as `null` under a ±24h horizon — that is
-  the correct answer, not a failure, and the orchestrator should not widen the horizon to make
-  rows "look tagged".
-- **Range endpoints are inclusive** (`t >= t0 && t <= t1`). The generator pads one UTC day either
-  side internally and then filters on exact ms, so the pad cannot leak (tested).
-- **No dedupe across sources.** If someone adds an NFP row to `DATED`, both it and the rule-derived
-  one appear. Silently dropping one would hide a data-entry mistake; surfacing both makes it visible.
-- **`kind` is always `"scheduled-numeric"`** for everything here. Unscheduled events (ETF flows,
-  exchange outages, Fed speakers) are a different kind and are out of scope for this unit.
+  (higher BTC relevance), then to the earlier release, then by **name**. The last is new and is
+  what keeps the answer deterministic at BEA's twelve joint GDP/PCE instants.
+- **`horizonMin` is optional**, defaulting to 1440. `<= 0` or non-numeric returns `null`; above
+  `CAL_MAX_HORIZON_MIN` it **throws**. Most 15-minute windows legitimately tag `null` under a
+  ±24h horizon — that is the correct answer, not a failure, and the orchestrator should not widen
+  the horizon to make rows "look tagged".
+- **Range endpoints are inclusive.** The emitter pads by the largest legal exception shift and
+  then filters on exact ms, so the pad cannot leak (tested).
+- **No dedupe across names.** Two series at one instant both appear, because that is what the
+  feed publishes.
+- **No caching/memoisation.** A caller sweeping a multi-year range should hoist `releasesBetween`
+  rather than invoke `eventTag` per row inside a tight loop.
 
 ## What I deliberately did NOT do
 
-- Did not invent any CPI/PPI/PCE/GDP/ISM/FOMC/retail-sales date.
-- Did not fetch a calendar over the network to fill `DATED` (unverifiable inside this unit, and it
-  would make a pure function impure).
-- Did not model holiday shifts for claims or NFP (see limits above).
-- Did not add any caching/memoisation. `releasesBetween` over a ±24h window walks 3 days and 1–2
-  months — trivial — but a caller sweeping a multi-year range should hoist the call rather than
-  invoke `eventTag` per row inside a tight loop.
-- Did not touch `index.html` or any repo file.
+- Did not invent any date, anywhere.
+- Did not add a series, a date or a tier beyond what the BEA feed publishes.
+- Did not "correct" the atypical CPI Friday, or the unusual 15:00Z PCE hour, or the dates where a
+  list in circulation disagreed with the feed. **The feed wins, and the disagreements are
+  reported.**
+- Did not re-derive a BEA UTC instant from an ET wall time.
+- Did not reintroduce any rule-derived series. A date that is not enumerated and sourced does not
+  go in the table.
+- Did not fetch a calendar from inside the unit (it would make a pure function impure).
+- Did not touch `index.html` or any repo file outside `units/calendar/`.
 - Did not write any order-placing logic.
 
 ---
+
+## Historical record
+
+Everything below documents the unit as it stood **before** the 2026-09-06 simplification. It is
+kept rather than deleted because the review findings are the reason the deletion happened, and
+three of them (D2, D3, R4) are guarantees that **survived** and still carry regression tests.
+Sections describing the rule generator or the coverage vouch are marked **SUPERSEDED** in place.
+
 
 ## Fixes applied after review (2026-09-06)
 
@@ -295,6 +471,9 @@ until filled by hand from the official calendars.** No date was invented here.
 ---
 
 ## The coverage upgrade (2026-09-06)
+
+> **SUPERSEDED (2026-09-06).** `RELEASES.COVERAGE` and the whole declaration mechanism described below are **deleted**. Coverage is now a DERIVED fact computed from the rows (`calSeriesSpans`), and `controlEligible()` no longer refuses for want of a declaration. Kept as the record of how the design got here; see "The deletion" at the top.
+
 
 `node test.js`: **436 assertions, exit 0** (347 at the time this section was written; the
 coverage-review fixes below added the rest). Every behaviour below was pinned by mutating the
@@ -523,6 +702,9 @@ at 14:00 ET on a Wednesday, both CPI at 08:30 ET).
 
 ### D1 [MEDIUM-HIGH] — a `"*"` declaration must now VOUCH for the rule series it rests on
 
+> **SUPERSEDED (2026-09-06).** The vouch is **deleted** along with the generator it policed. D1 is the first of the three rounds that each found a fresh way for a signature to outlive what it signed. Kept as the record of how the design got here; see "The deletion" at the top.
+
+
 **The hole.** `COVERAGE` protects against a **missing `DATED` row**. It did nothing about a
 **wrong `RULE` row**, and `RELEASES.RULE` is a generator that can be confidently wrong: BLS moves
 initial claims to Wednesday in weeks containing a Thursday federal holiday, and NFP is not always
@@ -654,6 +836,9 @@ tag is still exactly five keys.
 
 ### D4 [LOW] — `RELEASES.RULE` now drives the generator it is audited as driving
 
+> **SUPERSEDED (2026-09-06).** `RELEASES.RULE` and `calRuleRows` are **deleted**. Nothing is derived from a publication rule any more. Kept as the record of how the design got here; see "The deletion" at the top.
+
+
 `calRuleRows()` hardcoded both series and never read the table, while `calendarAudit()` reported
 the table. A maintainer adding `{name:"PPI", rule:"every-monday"}` saw PPI in the audit and got
 zero PPI rows; renaming `CLAIMS` still emitted `CLAIMS`. That compounds D1, because the audit is
@@ -734,6 +919,9 @@ FOMC instants and both CPI rows byte-identical. The only change to `RELEASES` is
 carrying the CPI 2026-09-11 flag (below).
 
 ### R1 [MEDIUM-HIGH] — a vouch is a SIGNATURE ON A GENERATOR SPECIFICATION, not a name
+
+> **SUPERSEDED (2026-09-06).** **Deleted** with the vouch. R1a/b/c is the second of the three rounds. Kept as the record of how the design got here; see "The deletion" at the top.
+
 
 **The hole.** The vouch bound to a *series name*: `calCoverageVouchGap` compared the strings in
 `c.rules` against `calRuleSeriesNames()`. Nothing tied a signature to what the vouched row
@@ -816,6 +1004,9 @@ rule table takes the suite red instead of silently re-signing itself.
 
 ### R2 [MEDIUM] — the audit reports coverage as PERIODS, and `controlWindowsPossible` is measured
 
+> **SUPERSEDED (2026-09-06).** `controlWindowsPossible`, `controlWindowExample` and `calStarScan` are **deleted** with the declaration. The audit now reports derived spans, `absentNames` and the BLS gap. Kept as the record of how the design got here; see "The deletion" at the top.
+
+
 `uncovered` was `all.filter(n => !(covNames[n] || covNames["*"]))`: it recorded only *that* a name
 appeared in some coverage row, never *when*. A `"*"` row covering **one hour** reported every
 series as covered across all of history, and the shipped FOMC-2026 row read as covering FOMC for
@@ -844,6 +1035,9 @@ mismatches**, and the audit's `controlWindowExample` is exactly the earliest eli
 (`2026-01-01T05:45:00Z`, i.e. `from + 45 min`).
 
 ### R3 [LOW] — a rule row's `et` must be whole numbers
+
+> **SUPERSEDED (2026-09-06).** **Deleted** with `calRuleRowFault` and the rule table. Kept as the record of how the design got here; see "The deletion" at the top.
+
 
 `et:[8.5,30]` validated clean and `Date.UTC` truncated the hour to 8, so the series published at a
 time nobody wrote; `et:[13.9,0]` was not caught at all. `Number.isInteger` on both elements, and
@@ -884,6 +1078,18 @@ alone; it is left alone, and this paragraph is the note.
 
 ### Preserved, and re-asserted
 
+> **SUPERSEDED (2026-09-06).** The first two bullets below are exactly what the simplification
+> removed, and reading them back is the clearest statement of why. "Not one `ok` in 29,611
+> instants" was presented as honesty; it was a mechanism refusing to answer, because no `"*"`
+> entry existed for it to answer from. Section 11.3 therefore had **zero** controls and the
+> instrument measured nothing. The sweep survives in `test.js` section 30 with its guarantee
+> inverted to the one that actually matters: **no eligible window has a known release inside the
+> exclusion band**, and **eligible windows exist**. The partiality the refusal was standing in for
+> is now returned in `known.caveat` on every answer, with its direction (toward zero) stated.
+> The third bullet still holds and is the standard this deletion was held to: nothing was
+> loosened. A threshold was not lowered - a mechanism that could not work was replaced by one
+> that states its limitation.
+
 - **No unknown-coverage window is control-eligible.** A **29,611-instant sweep of 2015–2036** on
   the shipped tables (`test.js` §30, stepping 6 h 13 min so it lands on many different slots of
   day rather than the same four) returns **only** `unknown-coverage` and `release-nearby` — not
@@ -894,3 +1100,17 @@ alone; it is left alone, and this paragraph is the note.
 - Nothing was loosened to achieve any of this: every change either adds a refusal
   (R1, R3, `evCov`) or renames a refusal more honestly (R4), and R2 makes a claim measurable that
   was previously merely asserted.
+
+### The third review (R6/R7) - recorded here, closed by deletion
+
+R6 and R7 are documented in `REVIEW-COVERAGE.md` rather than in this file. **R6:** the vouch's
+force check matched by specification key while its stale check matched by **name**, so deleting
+one of two rows sharing a vouched name silently dropped ~52 real releases a year with the vouch
+still reporting `ok` and every affected window coming back `{eligible:true, reason:"ok"}`.
+**R7:** a signature held as a live reference into `RELEASES.RULE` could never disagree with the
+thing it was checking, degrading to an always-true constant - and `FILLING.md`'s own wording
+("copy the rows you checked out of `RELEASES.RULE`") invited exactly that.
+
+Both were fixed. Both were the **same hazard class** as D1 and R1a/b/c, which is what settled the
+question: the mechanism was not converging, it was fighting its own premise. The premise was the
+generator, and the generator is now gone. See "The deletion" at the top of this file.
