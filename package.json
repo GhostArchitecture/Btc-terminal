@@ -1,0 +1,13 @@
+{
+  "name": "btc-terminal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Peer-verified BTC tape and window instrument for Kalshi's 15-minute and hourly markets. Single file, no build step; this package exists only to run the harnesses.",
+  "scripts": {
+    "test": "node test/run.js",
+    "test:defects": "node test/defects.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}
