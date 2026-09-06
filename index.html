@@ -3977,35 +3977,42 @@ function journalEntryFields(r,t){
    1-normCdf(x/u + u/2); at x = 0 sigma survives only in the second-order u/2 drift term, so the price is
    nearly independent of sigma and the inverse is nearly unbounded. The 15-minute series is therefore BORN
    UNIDENTIFIED and becomes identifiable only later in a window once price has moved off the strike; the
-   hourly KXBTCD ladder's off-the-money rungs are identified from the first poll. Inverting anyway and
-   subtracting realized sigma yields "1805 bp implied minus 9 bp realized" on an ordinary 40c quote - each
-   step correct, the output pure noise presented as a colossal premium. That is the exact failure CLAUDE.md
-   sec 7 rule 6 exists to prevent, so vrp is OMITTED there and the omission is COUNTED (vrpX), never clamped
-   and never silently dropped.
+   hourly KXBTCD ladder's off-the-money rungs are identified from the first poll. Priced at its own model-fair
+   value a strike 2bp from the money moves 86.4% in implied sigma on one cent of quote, and at 1bp one
+   neighbour has no root at all; differencing a number that unstable against realized sigma resolves nothing.
+   vrp is OMITTED there and the omission is COUNTED (vrpX), never clamped and never silently dropped.
+   (An earlier version of this comment illustrated the point with "1805 bp implied minus 9 bp realized" on a
+   40c quote and called it noise. That was wrong: that inversion is WELL conditioned, about 10% per cent. It
+   is a well-conditioned inversion of a misspecified model and is caught by test 2 below, not test 1.)
 
    Two independent tests, in order, because they catch different failures:
-     1. IDENTIFIABILITY. Preferred form, and the one in force since 2026-09-06: the row's OWN stored tick
-        sensitivity `sq` - the true largest fractional move in implied sigma across one real one-cent tick,
-        measured at the write site where the quote still existed - against volspace's pre-registered
-        VRP_TICK_REL_MAX. See THE STORED IDENTIFIABILITY GATE at the top of this unit for the re-registration,
-        the superseded bound and the derivation. A ONE-SIDED reading (sqS "u"/"d") and a reading whose
-        neighbours both fail (sqS "n") NEVER pass: a neighbour that does not invert means one tick moves the
-        reading out of existence, which is evidence against identification, not an absence of sensitivity.
-        FALLBACK, only when the row carries no `sq` at all - a row written before this change, or written
-        while the tick decider was not spliced: the quote-free prior sigmaIdentifiability(x, sigModel, tau),
-        which asks only where the strike sits in model-sigma units. It is an approximation of the decider
-        evaluated at the model-fair quote, and `gate` says which of the two ruled, so the two populations can
-        always be separated in analysis (SPEC 6, 7.6).
+     1. IDENTIFIABILITY, and it is EXOGENOUS: sigmaIdentifiability(x, sigModel, tau), which takes no quote at
+        all and probes at the MODEL-FAIR one, against volspace's pre-registered VRP_TICK_REL_MAX. The row's
+        own stored `sq`/`sqS` DO NOT participate; see the note above the gate below for why, and the top of
+        this unit for the derivation. A ONE-SIDED probe never passes: a neighbour that does not invert means
+        one tick moves the reading out of existence, which is evidence against identification, not an absence
+        of sensitivity. The bound comes from the ROW (`sb`) when it carries one, so a row is never
+        retroactively re-gated by a later registration.
      2. PLAUSIBILITY, si/sm against the pre-registered band. Necessary because identifiability does NOT catch
         the second failure: a strike just below spot quoted under 50c inverts exactly, and survives the tick
         test at both ends, to a sigma ~200x the tape's. That is model misspecification wearing an implied
         volatility's clothes. This test does look at the answer; it is labelled as such, its rejections are
         counted, and the underlying si/sm/xs/tau stay on the row so the exclusion is fully reversible.
 
-   Returns, beyond the verdict: `tickRel` and `tickSided` (the stored measurement, so a later analyst can
-   re-filter at any other bound without re-deriving), `bound` (the one in force), `gate` ("tick" | "prior"),
-   `relPerCent` (the superseded local derivative, kept as a diagnostic only - it GATES NOTHING) and `code`,
-   the reason: noref | nosi | nodiag | tick | tick1 | tick0 | atm | tail | cond | impl. */
+   Returns, beyond the verdict:
+     `priorRel`/`priorSided` - THE GATE's own probe at the model-fair quote. Exogenous to this row's premium,
+        so this is the column an analyst may legitimately re-filter on at another bound.
+     `tickRel`/`tickSided`   - this row's OBSERVED-quote conditioning, carried so the noisiness of each
+        reading is visible. DIAGNOSTIC ONLY: it is monotone in the quote and the quote determines vrp, so
+        filtering on it selects on the outcome. Do not gate on it and do not re-filter on it.
+     `bound` - the bound this row was judged under (`sb` if the row carries one, else the one in force).
+     `gate`  - "prior", or "prior+tick" when the row also carries the diagnostic. Both mean the prior ruled.
+     `relPerCent` - the superseded local derivative, diagnostic only; it GATES NOTHING.
+     `code`  - noref | nosi | nodiag | tick1 | atm | tail | cond | impl.
+        `tick1` is a one-sided prior probe. Two values the old gate could emit are now UNREACHABLE and are
+        deliberately absent: `tick` (a two-sided move past the bound is labelled atm/tail by band position)
+        and `tick0` (volspace's probe returns "two"/"up"/"down"/null and never "n" - "n" is siTickWrite's
+        storage alphabet for the ROW's marker, which no longer decides anything). */
 function siJudge(ref){
   const out={si:null,sm:null,sir:null,xs:null,tau:null,relPerCent:null,tickRel:null,tickSided:null,
              priorRel:null,priorSided:null,bound:null,gate:null,identified:false,ok:false,code:"noref"};
@@ -4091,10 +4098,12 @@ function volCloseFields(ref,keys,closes,t0,t1,minN){
     if(f.vrp!==undefined&&typeof ref.t==="number"&&isFinite(ref.t)) schemaSet(f,"vrpT",schemaNum(ref.t,0));
   }
   /* the omission is a COUNTABLE field, not a silence. Group by vrpX and the selection effect is measurable:
-     noref | nosi | nodiag | tick | tick1 | tick0 | atm | tail | cond | impl.
-     tick/tick1/tick0 come from the row's own stored one-cent sensitivity (the gate in force); atm/tail/cond
-     only from the quote-free fallback, i.e. from a row that carries no `sq`. The two are different rules and
-     the codes keep them apart, so a pooled dataset can always be split on which rule ruled. */
+     noref | nosi | nodiag | tick1 | atm | tail | cond | impl.
+     ALL of these now come from the exogenous prior - the row's own stored sensitivity contributes to no code.
+     atm/tail say where the strike sat when the two-sided probe went past the bound; tick1 says the probe was
+     one-sided; cond says no probe existed. (An earlier version of this comment told the analyst that
+     tick/tick1/tick0 came from the row's own sensitivity and atm/tail/cond from a fallback, and that a pooled
+     dataset could be split on which rule ruled. That distinction no longer exists: one rule gates.) */
   if(f.vrp===undefined) schemaSet(f,"vrpX",j.code);
   return f;
 }
