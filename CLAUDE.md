@@ -665,3 +665,68 @@ Stated now, before any data. Each of these closes the programme; none of them is
 A closure is written into this file with its date, its counts and which clause fired, and the ledgers are kept.
 Negative results are the output this instrument is for (§9); a closed shock programme with its numbers on the
 record is a finding, not a failure.
+
+### 11.8 The identifiability bound — registered 2026-09-06, re-registered the same day
+
+A variance premium is `implied σ − realized σ`. The instrument can only report one where implied σ **exists as a
+measurement** rather than as an artefact of quote granularity. This subsection registers the bound that decides
+that, and it is a threshold of §11 in the full sense: §11.7 clause 6 governs it.
+
+**Why the bound is needed at all.** With `x = log(strike/S0)` and `u = σ√τ`, the analytic the engine already uses
+is `p_over = 1 − Φ(x/u + u/2)`. At `x = 0` — where **every KXBTC15M window opens, by construction** — σ survives
+only in the second-order `u/2` drift term, so the price is very nearly independent of σ and the inverse is very
+nearly unbounded. Inverting anyway on an ordinary 40¢ quote yields readings like *1805 bp implied against 9 bp
+realized*: every step arithmetically correct, the output pure quote-granularity noise, presented as a colossal
+premium. That is §7.6 arriving through the tolerance rather than through the arithmetic.
+
+**The measured quantity.** Kalshi quotes in whole cents, so one cent is not an infinitesimal — it is the
+resolution of the instrument, the smallest observable change in the input. `impliedSigmaTick` inverts at the quote
+and at the quote ±1¢ and reports the **largest fractional change in implied σ across that real, finite tick**
+(`VRP_TICK = 0.01`). A neighbour that does not invert is **not** zero sensitivity: it means one tick moves the
+reading out of existence, which is evidence against identification. Such a one-sided reading never passes.
+
+**The bound, derived not chosen.** Implied σ exists to be differenced against realized σ. Realized σ from *n*
+contiguous one-minute returns carries relative sampling error `≈ 1/√(2n)`; a 15-minute window yields at most 15
+returns, so realized carries **~18.3%** inherent error (n=10 → 22.4%, n=30 → 12.9%, n=60 → 9.1%). If one tick of
+quote moves the implied reading by more than the error already carried by the number it will be differenced
+against, quote granularity dominates the premium and the comparison resolves nothing.
+
+> **`VRP_TICK_REL_MAX = 0.20`.** The tick-induced error in implied σ may not exceed the sampling error of the
+> realized σ it is compared against.
+
+**Re-registration, and why it is not tuning.** The superseded value was `VRP_REL_MAX = 0.5`, applied to
+`relPerCent` — the **local derivative** of implied σ with respect to the quote. That was a mis-specified
+instrument, not a mis-chosen number: the quote→σ map is convex near the money, so the derivative badly understates
+what a real finite tick does. At 2 bp from the money the derivative read 0.451 and **passed** the old gate, while
+the true one-cent move was **86.4%**. The change is a strict **tightening**, in the direction §11.7 clause 6
+permits. It is free only because **no shock-conditioned observation has been recorded and no holdout is open**;
+§11.6 is explicit that the identical edit made after a holdout opened would have **spent** it. `VRP_REL_MAX = 0.5`
+stays in the source, gating nothing, so the superseded bound remains visible beside its replacement.
+
+**The band it produces**, measured (not asserted) at σ = 9 bp/min, each strike quoted at its own model-fair value:
+
+| distance | x/(σ√τ) | one-tick move in implied σ | verdict |
+|---|---|---|---|
+| 0 bp (at the money) | 0.000 | no root exists | rejected |
+| 2 bp | 0.057 | 86.4% | rejected |
+| 5 bp | 0.143 | 21.8% | rejected (passed the old bound) |
+| 8 bp | 0.230 | 12.7% | **accepted** |
+| 10–35 bp | 0.29–1.00 | 4.2–10.1% | **accepted** |
+| 60 bp | 1.721 | 6.7% | **accepted** |
+| 98 bp+ | 2.81+ | fair value past the clip bound | rejected |
+
+The band is fixed in **standardised units, not basis points** — roughly `0.23 ≤ |x/(σ√τ)| ≤ 1.8`. In basis points
+it therefore **contracts toward the strike as τ decays**: 8–60 bp at 15 minutes, 5–35 bp at 8, 3–20 bp at 3. Two
+consequences follow and both are load-bearing. A KXBTC15M window is **born unidentified and stays unidentified at
+its own strike for its entire life**; it becomes measurable only in the ring that price has moved into. And the
+hourly KXBTCD ladder's off-the-money rungs are identified from the first poll, which makes the ladder — not the
+15-minute series — the primary venue for H5.
+
+**What is stored, and what an analyst may re-derive.** A rejected reading is omitted and the omission is
+**counted** (`vrpX`), never clamped and never silently dropped. Every row carries its own measurement, not a
+verdict: `si_tick_rel` (the true fractional move across one tick), `si_tick_sided` (two-sided, one-sided u/d, or
+neither), `si_bound` (the bound in force when the row was judged), `si_gate` (`tick` = decided by the measurement,
+`prior` = decided by the weaker quote-free approximation) and `si_code` (why it was dropped). An analyst
+re-filtering at a different bound reads `si_tick_rel` and ignores `si_ident`. **Rows written under the superseded
+bound are not retroactively re-gated**; any analysis pooling old and new rows must filter on `si_tick_rel` and
+split on `si_gate`, because the two populations were not judged by the same instrument.

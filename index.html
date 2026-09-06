@@ -1465,15 +1465,27 @@ function exportCSV(){
   const et=t=>{ try{ return eventTag(t)||{}; }catch(e){ return {}; } };
   const hz=t=>{ try{ return [utcHour(t),seasAt(t)]; }catch(e){ return ["",""]; } };
   const sf=(a,b)=>{ try{ const v=seasFactor(a,b); return (v===null||v===undefined)?"":v; }catch(e){ return ""; } };
+  /* The identifiability verdict is DERIVED at export from the row's own stored measurements, never stored twice.
+     Eight columns, because a single boolean is not enough to re-analyse from: si_tick_rel is the true fractional
+     move in implied sigma across one real one-cent tick, si_bound the pre-registered bound in force when the row
+     was judged, and si_gate says whether the row was decided by that tick measurement or by the weaker quote-free
+     prior (rows written before 2026-09-06 carry no tick and are NOT comparable with rows that do — §11.6). An
+     analyst re-filtering at another bound reads si_tick_rel and ignores si_ident; si_code says why a reading was
+     dropped, so an exclusion is never silent. si_cond is the SUPERSEDED local derivative, diagnostic only. */
+  const nz=v=>(v===null||v===undefined)?"":v;
+  const sij=o=>{ try{ return (typeof siJudge==="function")?siJudge(o):null; }catch(e){ return null; } };
+  const sic=o=>{ const j=sij(o); if(!j) return ["","","","","","","",""];
+    const mute=(j.code==="noref"||j.code==="nosi"||j.code==="nodiag");
+    return [nz(j.sir),nz(j.relPerCent),mute?"":(j.identified?1:0),nz(j.tickRel),j.tickSided||"",nz(j.bound),j.gate||"",j.code||""]; };
   const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit",
-    "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
+    "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
     "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","is_ref_snap","excluded"]];
   for(const w of Object.values(S.edge.windows)){ const ref=refSnap(w);
     for(const s of w.snaps){ const E=et(s.t), H=hz(s.t);
       const spreadC=edgeSpreadC(s.qm,s.ya), misAnl=(s.pa!==null&&s.pa!==undefined)?+((s.pa*100-s.qm).toFixed(2)):"";
       rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?(w.provSrc||"tape"):"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
         new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na,s.pr??"",s.pa??"",s.pd??"",s.pe??"",s.pf??"",s.fit||"",
-        g(s,"sm"),g(s,"si"),g(s,"xs"),g(s,"sim"),g(s,"sic"),g(s,"sid"),g(s,"dy"),g(s,"dn"),spreadC===null?"":spreadC,misAnl,
+        g(s,"sm"),g(s,"si"),g(s,"xs"),...sic(s),g(s,"dy"),g(s,"dn"),spreadC===null?"":spreadC,misAnl,
         (misAnl!==""&&spreadC)?+(Math.abs(misAnl)/spreadC).toFixed(3):"",(s.pm!==undefined&&s.pm!==null)?+((s.pm*100-s.qm).toFixed(2)):"",
         H[0],H[1],sf(s.t,w.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(w,"sr"),g(w,"srN"),g(w,"vrp"),w.vrpT?new Date(w.vrpT).toISOString():"",g(w,"vrpX"),
         (ref&&ref.t===s.t)?1:0,s.phantom||""]); } }
@@ -1483,19 +1495,19 @@ function exportCSV(){
     r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
   const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit","excluded",
-    "bid","spread_c","depth_yes","depth_no","depth_at_ask","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident",
+    "bid","spread_c","depth_yes","depth_no","depth_at_ask","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
     "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_omit","is_ref_read"]].concat(
     Object.values(S.swing.w).flatMap(e=>{ const clean=e.reads.filter(r=>!r.phantom); const ref=clean.length?clean[Math.floor(clean.length/2)]:null;
       return e.reads.map(r=>{ const E=et(r.t), H=hz(r.t), sc=swingSpreadC(r.ask,r.bid);
         return [e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??"",r.phantom||"",
-          g(r,"bid"),sc===null?"":sc,g(r,"dy"),g(r,"dn"),depthAtAsk(e.side,r.dy,r.dn)??"",g(r,"sm"),g(r,"si"),g(r,"xs"),g(r,"sim"),g(r,"sic"),g(r,"sid"),
+          g(r,"bid"),sc===null?"":sc,g(r,"dy"),g(r,"dn"),depthAtAsk(e.side,r.dy,r.dn)??"",g(r,"sm"),g(r,"si"),g(r,"xs"),...sic(r),
           H[0],H[1],sf(r.t,e.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(e,"sr"),g(e,"srN"),g(e,"vrp"),g(e,"vrpX"),(ref&&ref.t===r.t)?1:0]; }); }));
   const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after","excluded",
-    "bid_at_entry","spread_at_entry_c","depth_yes_at_entry","depth_no_at_entry","depth_at_ask_entry","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident",
+    "bid_at_entry","spread_at_entry_c","depth_yes_at_entry","depth_no_at_entry","depth_at_ask_entry","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code",
     "sig_realized_bpm","vrp_bpm","vrp_omit","hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier"]].concat(
     S.journal.map(t=>{ const E=et(t.tIn), H=hz(t.tIn), sc=swingSpreadC(t.entry,t.bidIn);
       return [t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||"",
-        g(t,"bidIn"),sc===null?"":sc,g(t,"dy"),g(t,"dn"),depthAtAsk(t.side,t.dy,t.dn)??"",g(t,"sm"),g(t,"si"),g(t,"xs"),g(t,"sim"),g(t,"sic"),g(t,"sid"),
+        g(t,"bidIn"),sc===null?"":sc,g(t,"dy"),g(t,"dn"),depthAtAsk(t.side,t.dy,t.dn)??"",g(t,"sm"),g(t,"si"),g(t,"xs"),...sic(t),
         g(t,"sr"),g(t,"vrp"),g(t,"vrpX"),H[0],H[1],sf(t.tIn,t.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier")]; }));
   const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
@@ -2809,12 +2821,55 @@ function loop(ts){
    Everything here is pure: inputs in, values out, no DOM / storage / clock. Nothing here places an order. */
 const VRP_SIG_MIN=1e-9, VRP_SIG_MAX=50, VRP_BISECT=140, VRP_TOL=2e-6, VRP_MIN_RET=10;
 const VRP_Q_LO=0.005, VRP_Q_HI=0.995;   /* the engine's clip bounds: a quote at or past them is clipped, not information */
-/* PRE-REGISTERED, DO NOT TUNE. The one judgment number in the identifiability test: a reading counts as
-   identified only when one cent of quote granularity moves the implied sigma by no more than 50% of itself.
-   Fixed before any VRP data was collected, exactly as VERDICT_RULE's thresholds were (CLAUDE.md sec 4, sec 7.6).
-   Changing it to make more readings pass would be tuning a filter against its own results; any change must be a
-   deliberate, recorded re-registration, not an edit. Callers that disagree should read `relPerCent` and `xs`
-   (both returned) and apply their own rule -- this unit sets no other threshold. */
+/* Kalshi quotes in whole cents. One cent is therefore not an infinitesimal to be differentiated through, it is the
+   RESOLUTION OF THE INSTRUMENT: the smallest observable change in the input, and so the smallest change whose effect
+   on the output can be attributed to information rather than to granularity. Every sensitivity in this unit is
+   measured across this tick, never sprinkled as a literal. */
+const VRP_TICK=0.01;
+
+/* PRE-REGISTERED, DO NOT LOOSEN. A reading counts as identified only when moving the quote by ONE REAL TICK
+   (VRP_TICK, both directions) moves the implied sigma by no more than VRP_TICK_REL_MAX of itself.
+
+   RE-REGISTRATION 2026-09-06. Superseded value: VRP_REL_MAX = 0.5, applied to `relPerCent` -- the LOCAL DERIVATIVE
+   of implied sigma with respect to the quote (vsSens). That was a mis-specified instrument, not a mis-chosen
+   number. The map from quote to implied sigma is convex near the money, so the derivative badly understates what a
+   real one-cent tick does; and since Kalshi quotes in whole cents, the derivative is not a quantity this market
+   ever exhibits. Measured on a 15-minute window at sigma 9 bp/min, each strike quoted at its own model-fair value:
+
+       distance   xs      relPerCent (old gate)      true one-cent move in implied sigma
+       0 bp       0.000   14.382                     +1c has no root at all
+       1 bp       0.029    0.931                     +1c has no root at all
+       2 bp       0.057    0.451  <- PASSED 0.5      86.4%   <- noise, admitted by the old gate
+       5 bp       0.143    0.179                     21.8%
+       10 bp      0.287    0.092                     10.1%
+       20 bp      0.574    0.052                      5.4%
+       35 bp      1.004    0.041                      4.2%
+       60 bp      1.721    0.064                      6.3%
+       120 bp     3.443    2.745  <- rejected        (fair value 0.0003: below the clip floor)
+
+   DERIVATION of 0.20 -- it is derived, not chosen. Implied sigma exists in this unit only to be differenced
+   against REALIZED sigma. Realized sigma from n contiguous one-minute returns carries relative sampling error
+   ~1/sqrt(2n): n=10 -> 22.4%, n=14 -> 18.9%, n=15 -> 18.3%, n=30 -> 12.9%, n=60 -> 9.1%. A 15-minute window
+   yields at most 15 one-minute returns, so the realized number this reading is compared against carries ~18-19%
+   inherent error no matter how clean the tape is. If one tick of quote moves the implied reading by MORE than the
+   error already carried by the realized number it is differenced against, then quote granularity dominates the
+   premium and the comparison cannot resolve anything. 0.20 is the round bound immediately above both the
+   15-return (18.3%) and the 14-return (18.9%) figures. It is not a preference; move the window length and the
+   arithmetic moves it.
+
+   DIRECTION. This is a strict TIGHTENING: 0.5 on a derivative that understated the true move, to 0.20 on the true
+   move itself. Under CLAUDE.md sec 11.7 clause 6 a threshold may be raised at any time and closes the programme if
+   it is ever lowered -- the permitted direction, and the reason the direction is stated here rather than left to
+   be inferred. NO VRP DATA HAS BEEN COLLECTED UNDER THE OLD BOUND AND NO HOLDOUT IS OPEN, so this corrects a
+   mis-specified instrument before its first observation rather than tuning a threshold against a result. Recorded
+   explicitly: had a holdout been open, sec 11.6 says this same edit would have SPENT it -- every window scored
+   under the old freeze retired, the count restarted at zero. It is free only because it is early, and that is the
+   only reason it is free. */
+const VRP_TICK_REL_MAX=0.20;
+
+/* SUPERSEDED 2026-09-06 by VRP_TICK_REL_MAX (above). Retained so the old bound stays visible beside its
+   replacement rather than vanishing from the record, and because `relPerCent` is still reported as a diagnostic.
+   It GATES NOTHING. Do not reintroduce it as a gate. */
 const VRP_REL_MAX=0.5;
 
 function vsPOver(sig,x,tau){
@@ -2845,28 +2900,28 @@ function vsBisect(x,tau,q,lo,hi){
   if(chk===null||!(Math.abs(chk-q)<=VRP_TOL)) return null;   /* never return a sigma that does not reprice the quote */
   return s;
 }
-/* conditioning: the FRACTIONAL move in the implied sigma caused by a one-cent move in q, at the solution.
-   Kalshi quotes in 1c ticks, so this is the resolution limit of the reading itself. It blows up near the
-   x>0 cap (where dp/dsig -> 0) and in the deep tails: a caller that displays sigma should show this too.
-   Not gated on -- this unit sets no thresholds; it reports the number and lets the ledger judge. */
+/* LOCAL DERIVATIVE conditioning: the fractional move in implied sigma per VRP_TICK of quote, computed from
+   dp/dsigma AT the solution. DIAGNOSTIC ONLY -- it is no longer the gate, and must not be made one again.
+   Because the quote -> sigma map is convex near the money, this systematically UNDERSTATES the move a real tick
+   produces: at a 2bp strike distance on a 15-minute window at 9 bp/min it reports 0.451 where the true one-cent
+   move is 0.864. It is retained because it is closed-form (~= VRP_TICK/(phi(xs)*|xs|), see sigmaIdentifiability) and
+   so explains the SHAPE of the identified band cheaply; the number that decides anything is vsTickSens. */
 function vsSens(sig,x,tau){
   const h=sig*1e-4;
   const a=vsPOver(sig-h,x,tau), b=vsPOver(sig+h,x,tau);
   if(a===null||b===null) return null;
   const dp=(b-a)/(2*h);
   if(!isFinite(dp)||dp===0) return null;
-  return Math.abs(0.01/dp)/sig;
+  return Math.abs(VRP_TICK/dp)/sig;
 }
-/* full diagnostic form: always returns an object, so a caller can say WHY there is no implied sigma */
-function impliedSigmaInfo(strike,S0,tau,q,branch){
-  const out={sig:null,x:null,pMax:null,sigStar:null,branch:null,relPerCent:null,reason:"ok"};
-  const fin=v=>typeof v==="number"&&isFinite(v);
-  if(!fin(strike)||!fin(S0)||!fin(tau)||!fin(q)){ out.reason="non-finite input"; return out; }
-  if(!(strike>0)||!(S0>0)){ out.reason="non-positive price"; return out; }
-  if(!(tau>0)){ out.reason="tau <= 0"; return out; }
+/* the inversion itself, in x-space, shared by impliedSigmaInfo and by the tick probe so a neighbour quote is
+   solved by EXACTLY the same code path (and the same guards) as the quote itself. Assumes x and tau already
+   validated finite with tau>0; q is re-checked here because the probe supplies q +/- VRP_TICK. */
+function vsSolveInfo(x,tau,q,branch){
+  const out={sig:null,pMax:null,sigStar:null,branch:null,reason:"ok"};
+  if(!(typeof q==="number"&&isFinite(q))){ out.reason="non-finite input"; return out; }
   if(!(q>VRP_Q_LO)||!(q<VRP_Q_HI)){ out.reason="quote at or beyond clip bounds"; return out; }
-  const x=Math.log(strike/S0), rt=Math.sqrt(tau);
-  out.x=x;
+  const rt=Math.sqrt(tau);
   if(x>0){
     const uS=Math.sqrt(2*x), pM=1-normCdf(uS);
     out.pMax=pM; out.sigStar=uS/rt;
@@ -2879,7 +2934,90 @@ function impliedSigmaInfo(strike,S0,tau,q,branch){
     out.sig=vsBisect(x,tau,q,VRP_SIG_MIN,VRP_SIG_MAX);
   }
   if(out.sig===null&&out.reason==="ok") out.reason="no root in bracket";
-  if(out.sig!==null) out.relPerCent=vsSens(out.sig,x,tau);
+  return out;
+}
+/* TRUE TICK SENSITIVITY -- the quantity VRP_TICK_REL_MAX is registered against, and the thing that decides a
+   stored reading whenever a quote exists. Inverts at q, at q+VRP_TICK and at q-VRP_TICK, and reports the LARGEST
+   fractional change in implied sigma across that real, finite, one-cent tick. No derivative anywhere.
+
+   A NEIGHBOUR THAT DOES NOT INVERT IS NOT ZERO SENSITIVITY. Near the analytic cap for a strike above spot
+   (pMax < 0.5, see the header) the +1c neighbour frequently has NO root, and in the tail a neighbour falls past
+   the engine's clip bound; at the money exactly, q+1c crosses 0.5 and no sigma reaches it. In every such case one
+   tick of quote does not merely move the reading, it moves it OUT OF EXISTENCE -- the honest sensitivity there is
+   unbounded, which is the strongest possible evidence that the reading is unidentifiable. So:
+
+     - a missing neighbour ALWAYS fails the gate (`identified:false`) and names which side is missing and why;
+     - the surviving one-sided move IS still computed and returned (`rel` with `sided:"up"` or `"down"`), because
+       hiding it would hide the magnitude -- at the money it reads 1438%, which is itself the finding;
+     - one-sided is never allowed to PASS. A one-sided pass would be the old defect wearing a new hat: reporting
+       the small half of an asymmetric move and calling the reading clean.
+
+   `sided` is "two" (both neighbours inverted, the only state that can pass), "up"/"down" (only that neighbour
+   exists, `rel` is one-sided), or null (neither). */
+function vsTickSens(x,tau,q,branch){
+  const out={identified:false,rel:null,relUp:null,relDown:null,sig:null,sigUp:null,sigDown:null,
+             sided:null,tick:VRP_TICK,bound:VRP_TICK_REL_MAX,reason:"ok"};
+  const base=vsSolveInfo(x,tau,q,branch);
+  out.sig=base.sig;
+  if(base.sig===null){ out.reason="no implied sigma at the quote: "+base.reason; return out; }
+  const up=vsSolveInfo(x,tau,q+VRP_TICK,branch), dn=vsSolveInfo(x,tau,q-VRP_TICK,branch);
+  out.sigUp=up.sig; out.sigDown=dn.sig;
+  if(up.sig!==null) out.relUp=Math.abs(up.sig-base.sig)/base.sig;
+  if(dn.sig!==null) out.relDown=Math.abs(dn.sig-base.sig)/base.sig;
+  if(up.sig!==null&&dn.sig!==null){
+    out.sided="two";
+    out.rel=Math.max(out.relUp,out.relDown);
+    if(out.rel<=VRP_TICK_REL_MAX){ out.identified=true; return out; }
+    out.reason="one tick moves implied sigma past VRP_TICK_REL_MAX";
+    return out;
+  }
+  if(up.sig!==null){ out.sided="up"; out.rel=out.relUp; out.reason="quote-1c does not invert: "+dn.reason; return out; }
+  if(dn.sig!==null){ out.sided="down"; out.rel=out.relDown; out.reason="quote+1c does not invert: "+up.reason; return out; }
+  out.reason="neither neighbour inverts: +1c "+up.reason+" / -1c "+dn.reason;
+  return out;
+}
+/* PUBLIC decider for a reading that HAS a quote. This -- not sigmaIdentifiability -- is what a caller consults
+   before storing an implied sigma. Same shape as vsTickSens plus `x`. */
+function impliedSigmaTick(strike,S0,tau,q,branch){
+  const out={identified:false,rel:null,relUp:null,relDown:null,sig:null,sigUp:null,sigDown:null,
+             sided:null,x:null,tick:VRP_TICK,bound:VRP_TICK_REL_MAX,reason:"ok"};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!fin(strike)||!fin(S0)||!fin(tau)||!fin(q)){ out.reason="non-finite input"; return out; }
+  if(!(strike>0)||!(S0>0)){ out.reason="non-positive price"; return out; }
+  if(!(tau>0)){ out.reason="tau <= 0"; return out; }
+  const x=Math.log(strike/S0);
+  if(!isFinite(x)){ out.reason="non-finite input"; return out; }
+  out.x=x;
+  const t=vsTickSens(x,tau,q,branch);
+  out.identified=t.identified; out.rel=t.rel; out.relUp=t.relUp; out.relDown=t.relDown;
+  out.sig=t.sig; out.sigUp=t.sigUp; out.sigDown=t.sigDown; out.sided=t.sided; out.reason=t.reason;
+  return out;
+}
+/* full diagnostic form: always returns an object, so a caller can say WHY there is no implied sigma.
+   Carries BOTH sensitivity numbers and one verdict:
+     relPerCent  - the legacy local derivative, diagnostic only, understates (see vsSens);
+     tickRel     - the TRUE largest fractional move across one real VRP_TICK, with tickSided / tickReason;
+     identified  - the pre-registered verdict, decided by tickRel against VRP_TICK_REL_MAX and by nothing else.
+   A caller storing this reading gates on `identified`, never on relPerCent. */
+function impliedSigmaInfo(strike,S0,tau,q,branch){
+  const out={sig:null,x:null,pMax:null,sigStar:null,branch:null,relPerCent:null,
+             identified:false,tickRel:null,tickRelUp:null,tickRelDown:null,tickSided:null,tickReason:null,
+             tick:VRP_TICK,bound:VRP_TICK_REL_MAX,reason:"ok"};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!fin(strike)||!fin(S0)||!fin(tau)||!fin(q)){ out.reason="non-finite input"; return out; }
+  if(!(strike>0)||!(S0>0)){ out.reason="non-positive price"; return out; }
+  if(!(tau>0)){ out.reason="tau <= 0"; return out; }
+  if(!(q>VRP_Q_LO)||!(q<VRP_Q_HI)){ out.reason="quote at or beyond clip bounds"; return out; }
+  const x=Math.log(strike/S0);
+  out.x=x;
+  const core=vsSolveInfo(x,tau,q,branch);
+  out.pMax=core.pMax; out.sigStar=core.sigStar; out.branch=core.branch; out.sig=core.sig;
+  if(core.reason!=="ok") out.reason=core.reason;
+  if(out.sig===null){ out.tickReason=out.reason; return out; }
+  out.relPerCent=vsSens(out.sig,x,tau);
+  const t=vsTickSens(x,tau,q,branch);
+  out.identified=t.identified; out.tickRel=t.rel; out.tickRelUp=t.relUp; out.tickRelDown=t.relDown;
+  out.tickSided=t.sided; out.tickReason=t.reason;
   return out;
 }
 /* per-minute sigma implied by the market's probability q that the window settles ABOVE strike, or null */
@@ -2920,15 +3058,27 @@ function varPremium(sigImplied,sigRealized){
   if(!(sigImplied>=0)||!(sigRealized>0)) return null;
   return {vrp:sigImplied-sigRealized, ratio:sigImplied/sigRealized};
 }
-/* IS THERE ANY VOLATILITY INFORMATION IN THIS QUOTE AT ALL?
-   Distinct from relPerCent, which is computed AFTER an inversion and describes how precisely that particular
-   sigma is pinned down. This answers the prior question -- given only where the strike sits relative to spot in
-   MODEL-sigma units, could a quote here have identified sigma in the first place -- and needs no quote to do it.
+/* THE QUOTE-FREE PRIOR: "could sigma be recovered at this strike distance AT ALL?"
+   ------------------------------------------------------------------------------------------------------------
+   THE SPLIT, EXPLICIT. Two different questions, two different functions, and they must not be confused:
 
-   Why xs = x/(sigModel*sqrt(tau)) is the deciding quantity. With u = sig*sqrt(tau), p_over = 1-normCdf(x/u+u/2),
+     sigmaIdentifiability(x, sigModel, tau)   PRIOR.   No quote needed. Asks whether a quote HERE could carry
+                                                      volatility information, using the model's OWN fair value as
+                                                      the stand-in quote. Use it BEFORE a quote exists -- to
+                                                      choose strikes, to grey out a rung, to explain a blank.
+     impliedSigmaTick(strike, S0, tau, q)     DECIDER. Needs the real quote. Asks whether THIS reading, at the
+                                                      price the market is actually showing, survives one tick.
+                                                      A STORED READING IS GATED ON THIS ONE, never on the prior.
+
+   The prior is an approximation of the decider evaluated at q = model-fair. When the market disagrees with the
+   model -- which is the entire point of measuring a variance premium -- the two can differ, and the decider wins.
+   `impliedSigmaInfo` carries the decider's verdict (`identified`) on every reading so a caller never has to
+   reach for the prior by mistake.
+   ------------------------------------------------------------------------------------------------------------
+   Why xs = x/(sigModel*sqrt(tau)) is the deciding coordinate. With u = sig*sqrt(tau), p_over = 1-normCdf(x/u+u/2),
    so evaluated at sig = sigModel (where u is ~1e-3, utterly negligible beside any xs of interest):
        d p_over / d sig * sig  =  -phi(xs + u/2) * (u/2 - xs)   ~=  phi(xs)*xs
-   and therefore relPerCent ~= 0.01/(phi(xs)*|xs|). At the money xs -> 0, that denominator -> 0, and the
+   and therefore relPerCent ~= VRP_TICK/(phi(xs)*|xs|). At the money xs -> 0, that denominator -> 0, and the
    inversion is unbounded: sigma enters an ATM binary only through the second-order -0.5*sig^2*tau drift term,
    which is precisely why an ATM binary prices near 50c almost regardless of volatility and so carries almost no
    volatility information. KXBTC15M strikes are set at the money at open, so THE 15-MINUTE SERIES IS BORN
@@ -2936,12 +3086,15 @@ function varPremium(sigImplied,sigRealized){
    KXBTCD ladder has rungs that are identified immediately. The same denominator also collapses in the far tail
    (phi decays), so the identified region is a BAND in |xs|, not a half-line.
 
-   `identified` is the pre-registered VRP_REL_MAX rule and nothing more. It is computed from vsSens at sigModel
-   -- the same conditioning function impliedSigmaInfo reports -- rather than from hardcoded xs cut points, so the
-   band edges follow from the one registered number instead of from a second set of invented constants. A caller
-   is free to ignore `identified` entirely and rule on `xs` / `relPerCent`, both of which are returned. */
+   That closed form explains the SHAPE. It does not set the verdict: `identified` is decided by the TRUE one-tick
+   move (vsTickSens at the model-fair quote) against VRP_TICK_REL_MAX, because the derivative understates a real
+   tick wherever the map is convex -- which is exactly the near-money region the band edge sits in. The derivative
+   is still returned as `relPerCent` so the two can be compared, and `qFair` is returned so the probe point is
+   never hidden. A caller is free to ignore `identified` and rule on `xs` / `tickRel` / `relPerCent`, all returned. */
 function sigmaIdentifiability(x,sigModel,tau){
-  const out={identified:false,xs:null,relPerCent:null,reason:"ok"};
+  const out={identified:false,xs:null,relPerCent:null,tickRel:null,tickRelUp:null,tickRelDown:null,
+             tickSided:null,tickReason:null,qFair:null,tick:VRP_TICK,bound:VRP_TICK_REL_MAX,
+             prior:true,reason:"ok"};
   const fin=v=>typeof v==="number"&&isFinite(v);
   if(!fin(x)||!fin(sigModel)||!fin(tau)){ out.reason="non-finite input"; return out; }
   if(!(sigModel>0)){ out.reason="sigModel <= 0"; return out; }
@@ -2949,19 +3102,25 @@ function sigmaIdentifiability(x,sigModel,tau){
   const sd=sigModel*Math.sqrt(tau);
   if(!(sd>0)||!isFinite(sd)){ out.reason="degenerate sigModel*sqrt(tau)"; return out; }
   out.xs=x/sd;
-  const rel=vsSens(sigModel,x,tau);
-  if(rel===null||!isFinite(rel)){ out.reason="conditioning undefined (dp/dsigma = 0 or non-finite)"; return out; }
-  out.relPerCent=rel;
-  if(rel<=VRP_REL_MAX){ out.identified=true; return out; }
+  out.relPerCent=vsSens(sigModel,x,tau);          /* diagnostic only; never gates */
+  const qFair=vsPOver(sigModel,x,tau);
+  if(qFair===null||!isFinite(qFair)){ out.reason="model-fair quote undefined at sigModel"; return out; }
+  out.qFair=qFair;
+  const t=vsTickSens(x,tau,qFair);
+  out.tickRel=t.rel; out.tickRelUp=t.relUp; out.tickRelDown=t.relDown;
+  out.tickSided=t.sided; out.tickReason=t.reason;
+  if(t.identified){ out.identified=true; return out; }
   /* the <1 test only LABELS which end of the band failed; it is not a threshold and changing it changes no
-     verdict -- `identified` is decided by VRP_REL_MAX alone. */
-  out.reason=(Math.abs(out.xs)<1)?"at the money: one cent of quote moves sigma more than VRP_REL_MAX"
-                                 :"deep tail: one cent of quote moves sigma more than VRP_REL_MAX";
+     verdict -- `identified` is decided by VRP_TICK_REL_MAX alone. The tick probe's own reason is appended
+     verbatim so the MECHANISM of the failure (past the bound / a neighbour that does not invert / no reading at
+     all) is never flattened into the band label. */
+  out.reason=(Math.abs(out.xs)<1?"at the money: ":"deep tail: ")+t.reason;
   return out;
 }
 /* model sigma (strikeProbs' .sigU) beside the market's implied sigma, with the standardised strike distance */
 function volTriple(P,quote,strike,S0,tau){
-  const out={sigModel:null,sigImplied:null,x:null,xs:null,ratioModel:null};
+  const out={sigModel:null,sigImplied:null,x:null,xs:null,ratioModel:null,
+             identified:false,tickRel:null,tickSided:null,tickReason:null,bound:VRP_TICK_REL_MAX};
   const fin=v=>typeof v==="number"&&isFinite(v);
   const K=fin(strike)?strike:null, s0=fin(S0)?S0:null, tu=fin(tau)?tau:null;
   if(P&&fin(P.sigU)&&P.sigU>0) out.sigModel=P.sigU;
@@ -2971,7 +3130,15 @@ function volTriple(P,quote,strike,S0,tau){
     if(sd>0&&isFinite(sd)) out.xs=out.x/sd;
   }
   const q=(quote&&fin(quote.q))?quote.q:null;
-  if(q!==null&&K!==null&&s0!==null&&tu!==null) out.sigImplied=impliedSigma(K,s0,tu,q);
+  if(q!==null&&K!==null&&s0!==null&&tu!==null){
+    const info=impliedSigmaInfo(K,s0,tu,q);
+    out.sigImplied=info.sig;
+    /* the DECIDER travels with the reading (see sigmaIdentifiability's header for the prior/decider split).
+       A caller storing sigImplied gates on `identified`; `tickRel` is the number behind it. Both are null when
+       there is no reading at all, and `identified` is false in every null case -- never undefined, never true. */
+    out.identified=info.identified; out.tickRel=info.tickRel; out.tickSided=info.tickSided;
+    out.tickReason=info.tickReason;
+  }
   /* ratioModel is the PLAUSIBILITY check that relPerCent is not. relPerCent is scale-free: it says how precisely
      the inversion pinned sigma down, never whether the level is physical. A strike below spot quoted under 50c
      is reachable in a zero-drift lognormal only at enormous vol, so it inverts exactly -- 1805 bp/min on a
@@ -3501,7 +3668,14 @@ function timeMatchedControl(t,seasTable){
      *Fields(...)  -> an object for schemaPut: absent keys are UNDEFINED (so they never reach storage).
      the analysis helpers (depthAtAsk, misRatio, edgeSpreadC, swingSpreadC, utcHour, seasAt)
                    -> NULL for "no value", because they feed the CSV, where a cell must be written. */
-const SCHEMA_VERSION=2;              /* stamped on containers and on standalone journal rows, never on a snap */
+/* SCHEMA_VERSION 3 -- was 2 until 2026-09-06. Bumped for exactly one reason: the gate that decides whether a
+   stored implied sigma may be believed changed from the LOCAL DERIVATIVE (relPerCent against VRP_REL_MAX=0.5) to
+   the TRUE ONE-CENT TICK move (against VRP_TICK_REL_MAX=0.20) -- see THE STORED IDENTIFIABILITY GATE below. A
+   container or journal row written under the old gate is not interchangeable with one written under the new
+   gate, and sv is the only thing that says which wrote it. It is NOT any ledger's `v` literal and nothing loads
+   or discards on it (SPEC design rule 4). Snaps and swing reads carry no sv, so on those the discriminator is
+   the presence of `sq`. */
+const SCHEMA_VERSION=3;              /* stamped on containers and on standalone journal rows, never on a snap */
 const SCHEMA_BP=1e4;                 /* sigma is stored as basis points of PER-MINUTE log-return sigma */
 const SCHEMA_VOL_GIVEUP_MS=300*60000;/* S.bars holds 360 minutes; past this a window's realized sigma is gone for good */
 /* PRE-REGISTERED, DO NOT TUNE. The plausibility band on si/sm - the implied sigma as a multiple of the model's
@@ -3515,6 +3689,78 @@ const SCHEMA_VOL_GIVEUP_MS=300*60000;/* S.bars holds 360 minutes; past this a wi
    edit. Nothing is destroyed by it: a failing row keeps si/sm/xs/tau, only the composite vrp is withheld and the
    withholding is counted in vrpX, so the excluded set is measurable and vrp is recomputable under any other rule. */
 const SCHEMA_SIR_MIN=0.25, SCHEMA_SIR_MAX=4;
+
+/* --- THE STORED IDENTIFIABILITY GATE: RE-REGISTERED 2026-09-06 ------------------------------------------
+   This is a RE-REGISTRATION, not an edit. The superseded bound stays visible here beside its replacement.
+
+     SUPERSEDED: sigmaIdentifiability(x, sigModel, tau).identified against VRP_REL_MAX = 0.5 -- a bound on
+                 `relPerCent`, the LOCAL DERIVATIVE of implied sigma with respect to the quote.
+     IN FORCE:   impliedSigmaTick(strike, S0, tau, q).identified against VRP_TICK_REL_MAX = 0.20 -- a bound on
+                 the TRUE largest fractional move in implied sigma across one real tick (one cent) of quote,
+                 measured by re-inverting at q+1c and at q-1c.
+
+   WHY THE OLD ONE WAS THE WRONG QUANTITY, not merely the wrong number. Kalshi quotes in whole cents, so one
+   cent IS the resolution of this instrument -- a derivative is a move this market never makes. And the map
+   from quote to implied sigma is convex near the money, so the derivative badly understates what a real tick
+   does. Measured on a 15-minute window at sigma 9 bp/min, each strike quoted at its own model-fair value:
+
+       distance   xs      relPerCent (old gate)      TRUE one-cent move in implied sigma
+       0 bp       0.000   14.382                     +1c has no root at all
+       1 bp       0.029    0.931                     +1c has no root at all (one-sided 47.5%)
+       2 bp       0.057    0.451  <- PASSED 0.5      86.4%   <- noise, admitted as a clean reading
+       5 bp       0.143    0.179                     21.8%
+       10 bp      0.287    0.092                     10.1%
+       20 bp      0.574    0.052                      5.4%
+       35 bp      1.004    0.041                      4.2%
+       60 bp      1.721    0.064                      6.3%
+       120 bp     3.443    2.745  <- rejected        (fair value below the engine's clip floor)
+
+   So the old gate admitted a reading whose implied sigma moves 86% on a single tick of quote. That is the
+   exact failure CLAUDE.md sec 7 rule 6 exists to prevent, arriving through the TOLERANCE rather than through
+   the arithmetic: every step correct, the output dominated by quote granularity, nothing in the record saying so.
+
+   WHERE 0.20 COMES FROM. It is DERIVED, and the derivation lives in volspace beside the constant itself so
+   there is exactly one definition of the number (this unit reads VRP_TICK_REL_MAX, it never restates it).
+   Implied sigma exists here only to be differenced against REALIZED sigma. Realized sigma from n contiguous
+   one-minute returns carries relative sampling error ~1/sqrt(2n) -- n=10 -> 22.4%, n=15 -> 18.3%, n=30 -> 12.9%.
+   A 15-minute window yields at most 15 returns, so the realized number carries ~18.3% inherent error. If one
+   tick of quote moves the implied reading by more than the error already carried by the number it is
+   differenced against, quote granularity dominates the premium and the comparison resolves nothing.
+
+   DIRECTION, which is the part that matters under the pre-registration rules. This is a strict TIGHTENING:
+   0.5 on a quantity that understated the move, to 0.20 on the true move itself. CLAUDE.md sec 11.7 clause 6
+   permits RAISING a threshold at any time and CLOSES the programme if one is ever lowered, so the direction is
+   stated here rather than left to be inferred. NO DATA HAS BEEN COLLECTED UNDER THE OLD BOUND AND NO HOLDOUT
+   IS OPEN: this corrects a mis-specified instrument before its first observation, it does not tune a threshold
+   against a result. Recorded explicitly: had a holdout been open, sec 11.6 says this same change would have
+   SPENT it -- every window scored under the old freeze retired and the count restarted at zero. It is free
+   only because it is early, and that is the only reason it is free.
+
+   THE SPLIT -- two questions, two functions, and they must not be confused:
+     sigmaIdentifiability(x, sigModel, tau)   PRIOR.   Quote-free: "could sigma be recovered at this strike at
+                                                       all?" Still useful, still used -- before a quote exists,
+                                                       and as the FALLBACK for a row that carries no stored tick
+                                                       sensitivity. It never decides a reading that has one.
+     impliedSigmaTick(strike, S0, tau, q)     DECIDER. Needs the real quote. It is what edgeSnapFields and
+                                                       swingReadFields consult at the write site, and what
+                                                       siJudge honours through the stored `sq`.
+
+   WHY THE SENSITIVITY IS STORED RATHER THAN RECOMPUTED. By settlement time the quote is gone -- siJudge is
+   handed a ROW, not a book -- so the tick probe can only run where the quote is, at the write site. Storing the
+   NUMBER rather than a boolean also lets a later analyst re-filter at any other bound, and see why a reading
+   was dropped, without re-deriving anything.
+
+   THE (sq, sqS) CONTRACT. Four states, read as a pair, never one without the other:
+     sq absent,  sqS absent    - no tick reading: a pre-3 row, no quote, no volspace, or no si at all.
+     sq present, sqS absent    - TWO-SIDED: both q+1c and q-1c inverted; sq is the LARGER of the two fractional
+                                 moves. This is the only state that can pass the gate.
+     sq present, sqS "u"/"d"   - ONE-SIDED: only that neighbour inverts; sq is that one-sided move. A missing
+                                 neighbour means one tick moves the reading OUT OF EXISTENCE, which is the
+                                 strongest available evidence of unidentifiability, so this NEVER passes. A
+                                 missing neighbour is not zero sensitivity and must never be read as one.
+     sq absent,  sqS "n"       - NEITHER neighbour inverts. Unbounded; never passes.
+   sqS is omitted in the two-sided case only because that is the common case and the edge ledger is already
+   over quota (SPEC sec 8): `sq` present is what says a tick reading exists, sqS is the exception marker. */
 
 /* finite -> rounded number; anything else -> undefined, so the key is omitted. */
 function schemaNum(v,dp){
@@ -3593,6 +3839,28 @@ function depthAtAsk(side,dy,dn){
   return null;
 }
 
+/* Write si and its tick sensitivity TOGETHER, from ONE inversion. The sensitivity has to describe the same
+   reading that got stored, so si is taken from the tick probe's own solution rather than from a second call.
+   No si -> no sq and no sqS: the reading does not exist at all, which is the pre-existing unattainable-quote
+   missingness (SPEC 7.2), diagnosable from xs and counted at container level as vrpX="nosi".
+   Guarded by typeof, per the unit's convention: a partial splice costs a field, not the page. With the tick
+   decider missing but impliedSigma present, si is still written and carries NO sq -- siJudge then falls back
+   to the quote-free prior, exactly as it does for a row written before this change. */
+function siTickWrite(f,strike,S0,tau,q){
+  if(typeof impliedSigmaTick==="function"){
+    const t=impliedSigmaTick(strike,S0,tau,q);
+    const si=t?sigBp(t.sig):undefined;
+    if(si===undefined) return f;                 /* no root at the quote itself: nothing truthful to store */
+    schemaSet(f,"si",si);
+    /* a stored 0 here means "measured, below 0.0005 of itself", not "absent" - the pair (sq,sqS) says which. */
+    schemaSet(f,"sq",schemaNum(t.rel,3));
+    if(t.sided!=="two") schemaSet(f,"sqS",t.sided==="up"?"u":(t.sided==="down"?"d":"n"));
+    return f;
+  }
+  if(typeof impliedSigma==="function") schemaSet(f,"si",sigBp(impliedSigma(strike,S0,tau,q)));
+  return f;
+}
+
 /* --- edge snapshot ------------------------------------------------------------------------------- */
 /* P is strikeProbs' return, which must carry the additive S0 key (SPEC 3.1); quote is the {q,spread}
    object it was handed; ob is the fresh order book, or null for the hourly ladder rungs, which
@@ -3613,10 +3881,10 @@ function edgeSnapFields(P,quote,strike,ob){
     /* si is written ONLY when sm and xs are written too. An implied sigma with nothing beside it cannot be
        judged - the reading that matters is not the level but the level relative to the model's own sigma and
        to where the strike sits (SPEC 7.6). A bare si would be a number no analyst could tell from noise, so
-       the whole reading is omitted rather than shipped unjudgeable.
-       guarded: the volspace unit may not be spliced. A missing dependency must cost a field, not the page. */
-    if(q!==null&&f.sm!==undefined&&f.xs!==undefined&&typeof impliedSigma==="function")
-      schemaSet(f,"si",sigBp(impliedSigma(strike,S0,tau,q)));
+       the whole reading is omitted rather than shipped unjudgeable. si now travels with `sq` as well, the
+       TRUE one-tick sensitivity measured at this quote - the quote is gone by settlement time, so this is the
+       only moment the gate's own quantity can be measured (see THE STORED IDENTIFIABILITY GATE). */
+    if(q!==null&&f.sm!==undefined&&f.xs!==undefined) siTickWrite(f,strike,S0,tau,q);
   }
   return schemaPut(f,bookDepth(ob));
 }
@@ -3642,9 +3910,11 @@ function swingReadFields(st,side,ob,S0,strike,now,tEnd){
       const sd=sig*Math.sqrt(tau);
       if(sd>0) schemaSet(f,"xs",schemaNum(x/sd,3));
     }
-    /* same rule as the edge snap: no si without sm and xs beside it (SPEC 7.6). */
-    if(f.sm!==undefined&&f.xs!==undefined&&typeof impliedSigma==="function")
-      schemaSet(f,"si",sigBp(impliedSigma(strike,S0,tau,q)));
+    /* same rule as the edge snap: no si without sm and xs beside it, and none without its tick sensitivity
+       when the decider is spliced (SPEC 7.6). The tick is taken on the MID, which is the quantity inverted:
+       one cent on the mid is the whole book moving a tick, i.e. the larger of the two readings a single-side
+       tick could produce, so it is the conservative probe and cannot loosen the gate. */
+    if(f.sm!==undefined&&f.xs!==undefined) siTickWrite(f,strike,S0,tau,q);
   }
   return schemaPut(f,bookDepth(ob));
 }
@@ -3657,6 +3927,10 @@ function journalEntryFields(r,t){
   const f={sv:SCHEMA_VERSION};
   if(r){
     schemaSet(f,"sm",schemaNum(r.sm,2)); schemaSet(f,"si",schemaNum(r.si,2)); schemaSet(f,"xs",schemaNum(r.xs,3));
+    /* the tick sensitivity travels with si onto the journal row for the same reason si does: a journal row
+       outlives its read, and without sq the row could only ever be re-judged by the weaker quote-free prior. */
+    schemaSet(f,"sq",schemaNum(r.sq,3));
+    if(r.sqS==="u"||r.sqS==="d"||r.sqS==="n") schemaSet(f,"sqS",r.sqS);
     schemaSet(f,"dy",schemaNum(r.dy,0)); schemaSet(f,"dn",schemaNum(r.dn,0));
   }
   if(t&&typeof t.entryBid==="number"&&isFinite(t.entryBid)) schemaSet(f,"bidIn",schemaNum(t.entryBid,3));
@@ -3679,17 +3953,31 @@ function journalEntryFields(r,t){
    and never silently dropped.
 
    Two independent tests, in order, because they catch different failures:
-     1. IDENTIFIABILITY, quote-free. sigmaIdentifiability(x, sigModel, tau) against volspace's pre-registered
-        VRP_REL_MAX. It asks only where the strike sits in model-sigma units, so it selects on the STRIKE and
-        never on the answer - gating on the conditioning of the solution instead would select on the quote's
-        own inversion and bias whatever vrp then measures.
-     2. PLAUSIBILITY, si/sm against the pre-registered band. Necessary because conditioning does NOT catch the
-        second failure: a strike just below spot quoted under 50c inverts exactly, well conditioned at both the
-        model sigma and the solution, to a sigma ~200x the tape's. That is model misspecification wearing an
-        implied volatility's clothes. This test does look at the answer; it is labelled as such, its rejections
-        are counted, and the underlying si/sm/xs/tau stay on the row so the exclusion is fully reversible. */
+     1. IDENTIFIABILITY. Preferred form, and the one in force since 2026-09-06: the row's OWN stored tick
+        sensitivity `sq` - the true largest fractional move in implied sigma across one real one-cent tick,
+        measured at the write site where the quote still existed - against volspace's pre-registered
+        VRP_TICK_REL_MAX. See THE STORED IDENTIFIABILITY GATE at the top of this unit for the re-registration,
+        the superseded bound and the derivation. A ONE-SIDED reading (sqS "u"/"d") and a reading whose
+        neighbours both fail (sqS "n") NEVER pass: a neighbour that does not invert means one tick moves the
+        reading out of existence, which is evidence against identification, not an absence of sensitivity.
+        FALLBACK, only when the row carries no `sq` at all - a row written before this change, or written
+        while the tick decider was not spliced: the quote-free prior sigmaIdentifiability(x, sigModel, tau),
+        which asks only where the strike sits in model-sigma units. It is an approximation of the decider
+        evaluated at the model-fair quote, and `gate` says which of the two ruled, so the two populations can
+        always be separated in analysis (SPEC 6, 7.6).
+     2. PLAUSIBILITY, si/sm against the pre-registered band. Necessary because identifiability does NOT catch
+        the second failure: a strike just below spot quoted under 50c inverts exactly, and survives the tick
+        test at both ends, to a sigma ~200x the tape's. That is model misspecification wearing an implied
+        volatility's clothes. This test does look at the answer; it is labelled as such, its rejections are
+        counted, and the underlying si/sm/xs/tau stay on the row so the exclusion is fully reversible.
+
+   Returns, beyond the verdict: `tickRel` and `tickSided` (the stored measurement, so a later analyst can
+   re-filter at any other bound without re-deriving), `bound` (the one in force), `gate` ("tick" | "prior"),
+   `relPerCent` (the superseded local derivative, kept as a diagnostic only - it GATES NOTHING) and `code`,
+   the reason: noref | nosi | nodiag | tick | tick1 | tick0 | atm | tail | cond | impl. */
 function siJudge(ref){
-  const out={si:null,sm:null,sir:null,xs:null,tau:null,relPerCent:null,identified:false,ok:false,code:"noref"};
+  const out={si:null,sm:null,sir:null,xs:null,tau:null,relPerCent:null,tickRel:null,tickSided:null,
+             bound:null,gate:null,identified:false,ok:false,code:"noref"};
   if(!ref) return out;
   const fin=v=>typeof v==="number"&&isFinite(v);
   const si=fin(ref.si)?ref.si:null, sm=fin(ref.sm)?ref.sm:null,
@@ -3698,16 +3986,41 @@ function siJudge(ref){
   if(si===null){ out.code="nosi"; return out; }                       /* unattainable quote, or never computed */
   if(sm===null||!(sm>0)||xs===null||tau===null||!(tau>0)){ out.code="nodiag"; return out; }  /* pre-enrichment row */
   out.sir=+(si/sm).toFixed(3);
-  if(typeof sigmaIdentifiability!=="function"){ out.code="nodiag"; return out; }
   const sig=sm/SCHEMA_BP, x=xs*sig*Math.sqrt(tau);                    /* exact inverse of how xs was written */
-  const id=sigmaIdentifiability(x,sig,tau);
-  out.relPerCent=fin(id.relPerCent)?id.relPerCent:null;
-  out.identified=!!id.identified;
-  if(!out.identified){
-    out.code=(out.relPerCent===null)?"cond":(Math.abs(xs)<1?"atm":"tail");
-    return out;
+  /* the local derivative is still reported wherever it can be computed, because SPEC 4's si_cond column is
+     defined on it and because the two numbers side by side are what make the re-registration auditable. It
+     is NOT consulted for the verdict on either path. */
+  if(typeof sigmaIdentifiability==="function"){
+    const id=sigmaIdentifiability(x,sig,tau);
+    if(fin(id.relPerCent)) out.relPerCent=id.relPerCent;
   }
-  if(!(out.sir>=SCHEMA_SIR_MIN&&out.sir<=SCHEMA_SIR_MAX)){ out.code="impl"; return out; }
+  const hasSq=fin(ref.sq), hasSqS=(typeof ref.sqS==="string"&&ref.sqS!=="");
+  if(hasSq||hasSqS){
+    /* THE DECIDER: this row was written with the quote in hand and carries the true tick move. */
+    out.gate="tick";
+    out.tickRel=hasSq?ref.sq:null;
+    out.tickSided=hasSqS?ref.sqS:"2";             /* sq present with no marker IS the two-sided case */
+    if(typeof VRP_TICK_REL_MAX!=="number"||!isFinite(VRP_TICK_REL_MAX)){ out.code="nodiag"; return out; }
+    out.bound=VRP_TICK_REL_MAX;
+    if(out.tickSided!=="2"){ out.code=(out.tickSided==="n")?"tick0":"tick1"; return out; }
+    if(out.tickRel===null){ out.code="tick0"; return out; }   /* a two-sided marker with no number is not a pass */
+    if(!(out.tickRel<=out.bound)){ out.code="tick"; return out; }
+    out.identified=true;
+  }else{
+    /* THE FALLBACK: no stored sensitivity, so the strongest honest statement available is the quote-free
+       prior. Rows judged here are NOT comparable with rows judged by the tick, and `gate` says so. */
+    out.gate="prior";
+    if(typeof sigmaIdentifiability!=="function"){ out.code="nodiag"; return out; }
+    const id=sigmaIdentifiability(x,sig,tau);
+    if(fin(id.bound)) out.bound=id.bound;
+    if(fin(id.tickRel)) out.tickRel=id.tickRel;   /* the prior's own probe, at the MODEL-FAIR quote, not this row's */
+    out.identified=!!id.identified;
+    if(!out.identified){
+      out.code=(out.relPerCent===null&&out.tickRel===null)?"cond":(Math.abs(xs)<1?"atm":"tail");
+      return out;
+    }
+  }
+  if(!(out.sir>=SCHEMA_SIR_MIN&&out.sir<=SCHEMA_SIR_MAX)){ out.code="impl"; return out; }   /* identified stays true: it WAS identified, it is just not physical */
   out.ok=true; out.code="ok";
   return out;
 }
@@ -3737,7 +4050,10 @@ function volCloseFields(ref,keys,closes,t0,t1,minN){
     if(f.vrp!==undefined&&typeof ref.t==="number"&&isFinite(ref.t)) schemaSet(f,"vrpT",schemaNum(ref.t,0));
   }
   /* the omission is a COUNTABLE field, not a silence. Group by vrpX and the selection effect is measurable:
-     noref | nosi | nodiag | atm | tail | cond | impl. */
+     noref | nosi | nodiag | tick | tick1 | tick0 | atm | tail | cond | impl.
+     tick/tick1/tick0 come from the row's own stored one-cent sensitivity (the gate in force); atm/tail/cond
+     only from the quote-free fallback, i.e. from a row that carries no `sq`. The two are different rules and
+     the codes keep them apart, so a pooled dataset can always be split on which rule ruled. */
   if(f.vrp===undefined) schemaSet(f,"vrpX",j.code);
   return f;
 }

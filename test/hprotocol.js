@@ -131,9 +131,79 @@ const { T, done } = runner("h-protocol");
     const head=s=>{ const i=text.indexOf("# "+s); const line=text.slice(i).split("\\n")[1]||""; return line.split(",").length; };
     return {windows:head("windows"),swing:head("swing_reads"),journal:head("simulation_journal"),
       hasVrp:/vrp_bpm/.test(text),hasEv:/"ev_mins"/.test(text),hasDepth:/depth_yes/.test(text),hasIdent:/si_ident/.test(text)}; })()`);
-  T("the windows dataset carries its 45 columns", r.windows === 45, r.windows);
-  T("swing reads and journal rows carry the enriched columns", r.swing === 38 && r.journal === 44, { swing: r.swing, journal: r.journal });
+  T("the windows dataset carries its 50 columns", r.windows === 50, r.windows);
+  T("swing reads and journal rows carry the enriched columns", r.swing === 43 && r.journal === 49, { swing: r.swing, journal: r.journal });
   T("the premium, event, depth and identifiability columns are all exported", r.hasVrp && r.hasEv && r.hasDepth && r.hasIdent, r);
+}
+/* A header is not evidence. This asserts the decider's own numbers reach a DATA ROW: the schema dropped the
+   sim/sic/sid fields the export still read, and the header-only assertion above passed throughout. `btc.edge`
+   holds ~15 days, so a column that exports blank is the measurement being lost, not merely hidden. */
+{
+  const now = Date.UTC(2026, 8, 6, 14, 7, 0); setNow(now);
+  const r = R(`(function(){
+    computeStats=()=>({sig:0.0009,rv60:0.0009,muFast:0,nBars:200}); S.idxPx=100000; S.lastPx=100000;
+    S.edge.windows={}; S.edge.lastSnap=0; S.roundLog=[]; S.swing={v:1,w:{}}; S.journal=[];
+    const close=${now}+8*60000;
+    /* 35bp above spot: inside the identifiable band, so this row must be judged by the tick and pass */
+    const m={ticker:"KXBTC15M-T",strike:100350,open:${now}-7*60000,close,yesBid:18,yesAsk:22,noBid:78,noAsk:82,status:"open"};
+    edgeSnapOne(m,${now},{yesBid:18,yesAsk:22,noBid:78,noAsk:82,depthYes:340,depthNo:512});
+    const snap=S.edge.windows["KXBTC15M-T"].snaps[0];
+    exportCSV();
+    const text=window._lastBlob.text;
+    const sec=text.slice(text.indexOf("# windows"));
+    const lines=sec.split("\\n");
+    const cell=(name)=>{ const h=lines[1].split(","), d=lines[2].split(","), i=h.indexOf('"'+name+'"');
+      return i<0?"__MISSING__":d[i].replace(/^"|"$/g,""); };
+    return {sq:snap.sq,sqS:snap.sqS,cols:lines[1].split(",").length,
+      tickRel:cell("si_tick_rel"),gate:cell("si_gate"),code:cell("si_code"),bound:cell("si_bound"),
+      ident:cell("si_ident"),sided:cell("si_tick_sided")}; })()`);
+  T("an identifiable strike stores the true tick sensitivity on the row itself", typeof r.sq === "number" && r.sq >= 0, { sq: r.sq, sqS: r.sqS });
+  T("si_tick_rel reaches the CSV as a number, not an empty cell", r.tickRel !== "" && r.tickRel !== "__MISSING__" && isFinite(+r.tickRel), r);
+  T("si_gate records that the TICK decided this row, not the superseded prior", r.gate === "tick", r);
+  T("the bound in force is exported beside the measurement, so another bound can be applied later", +r.bound === 0.2, r);
+  T("a reading inside the band is marked identified with reason ok", r.ident === "1" && r.code === "ok", r);
+}
+/* The bound is the whole point of the re-registration: it must be the tightened value in code, and the band it
+   produces must be the one it was derived against. Measured independently here rather than taken on trust —
+   every strike quoted at its OWN model-fair value, then moved by exactly one cent. */
+{
+  const probe = (tau) => R(`(function(){
+    const S0=100000, sig=0.0009, tau=${tau}, o={};
+    [0,2,5,8,10,20,35,60,98].forEach(function(bp){
+      const strike=S0*Math.exp(bp/10000), x=Math.log(strike/S0);
+      const q=1-normCdf((x+0.5*sig*sig*tau)/(sig*Math.sqrt(tau)));
+      const t=impliedSigmaTick(strike,S0,tau,q);
+      o["b"+bp]={id:t?t.identified:false,rel:(t&&t.rel!==null)?t.rel:null,sided:t?t.sided:null,
+                 xs:+(x/(sig*Math.sqrt(tau))).toFixed(3)};
+    });
+    return o; })()`);
+  const c = R(`[VRP_TICK_REL_MAX,VRP_TICK,VRP_REL_MAX]`);
+  T("the tick bound is the re-registered 0.20, measured across one real cent", c[0] === 0.20 && c[1] === 0.01, c);
+  T("the superseded derivative bound survives as a diagnostic but gates nothing", c[2] === 0.5, c[2]);
+
+  const w = probe(15);   /* a full 15-minute window, the horizon the bound was derived on */
+  T("at the money there is no reading at all, and the reason says so", w.b0.id === false && w.b0.rel > 5, w.b0);
+  T("2bp is REJECTED: one tick moves implied sigma ~86%", w.b2.id === false && w.b2.rel > 0.8, w.b2);
+  T("5bp is REJECTED at ~22%, having been admitted by the superseded bound", w.b5.id === false && w.b5.rel > 0.20 && w.b5.rel < 0.25, w.b5);
+  T("the 8-60bp core is ACCEPTED, every reading moving under 15% on a tick", w.b8.id && w.b10.id && w.b20.id && w.b35.id && w.b60.id && [w.b8, w.b10, w.b20, w.b35, w.b60].every(v => v.rel < 0.15), w);
+  T("the deep tail is REJECTED — fair value past the clip bound inverts to nothing", w.b98.id === false && w.b98.rel === null, w.b98);
+
+  /* The band is fixed in STANDARDISED units, so in basis points it contracts toward the strike as tau decays.
+     A KXBTC15M window is therefore unidentifiable at its own strike for its whole life, and the bp width of the
+     usable ring shrinks as the gate approaches — this is why the band cannot be stated as a fixed bp range. */
+  const l = probe(3);
+  T("the band tracks x/(sig*sqrt(tau)), not basis points: 5bp is unidentifiable at 15 min and identifiable at 3", w.b5.id === false && l.b5.id === true, { at15: w.b5, at3: l.b5 });
+  /* The inner edge is the load-bearing claim: whatever the horizon, the first identifiable strike sits at
+     roughly the same standardised distance. Asserted as a band on xs, so a change in tau cannot quietly
+     widen or narrow what counts as a reading. */
+  const inner = (p) => ["b2","b5","b8","b10","b20","b35","b60"].map(k => p[k]).filter(v => v && v.id)[0];
+  T("the first identifiable strike sits at the same standardised distance at 15 min and at 3 min",
+    inner(w).xs > 0.15 && inner(w).xs < 0.40 && inner(l).xs > 0.15 && inner(l).xs < 0.40,
+    { at15: inner(w).xs, at3: inner(l).xs });
+  T("a strike 35bp out is inside the band at 15 min and past it at 3 min", w.b35.id === true && l.b35.id === false, { at15: w.b35, at3: l.b35 });
+
+  /* A neighbour that does not invert must never score as zero sensitivity — the failure the brief called out. */
+  T("a one-sided reading is rejected, not credited with the sensitivity of its surviving neighbour", l.b35.sided === "up" && l.b35.rel !== null && l.b35.rel < 0.20 && l.b35.id === false, l.b35);
 }
 
 process.exitCode = done() ? 1 : 0;
