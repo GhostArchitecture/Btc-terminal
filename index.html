@@ -1345,7 +1345,7 @@ function edgeGrade(){
   if(changed){ ledgerSave(); renderEdge(); }
 }
 function refSnap(w){
-  let best=null; for(const s of w.snaps){ if(s.tau<0) continue; if(best===null||Math.abs(s.tau-6)<Math.abs(best.tau-6)) best=s; } return best;
+  let best=null; for(const s of w.snaps){ if(s.tau<0||s.phantom) continue; if(best===null||Math.abs(s.tau-6)<Math.abs(best.tau-6)) best=s; } return best;
 }
 function kFee(ask){ return Math.ceil(0.07*ask*(1-ask)*100)/100; }
 function edgeStatsFor(series){
@@ -1432,10 +1432,10 @@ function exportCSV(){
     r.pCallAtArm===undefined?"":r.pCallAtArm,r.quoteAtArm===undefined||r.quoteAtArm===null?"":r.quoteAtArm,r.edgeAtArm===undefined||r.edgeAtArm===null?"":r.edgeAtArm,
     r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
-  const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit"]].concat(
-    Object.values(S.swing.w).flatMap(e=>e.reads.map(r=>[e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??""])));
-  const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after"]].concat(
-    S.journal.map(t=>[t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank]));
+  const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit","excluded"]].concat(
+    Object.values(S.swing.w).flatMap(e=>e.reads.map(r=>[e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??"",r.phantom||""])));
+  const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after","excluded"]].concat(
+    S.journal.map(t=>[t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||""]));
   const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
@@ -1579,7 +1579,8 @@ function swingGrade(now){
 }
 function swingStats(){
   const E=Object.values(S.swing.w).filter(e=>e.graded&&e.reads.length);
-  const rows=[]; for(const e of E){ const r=e.reads[Math.floor(e.reads.length/2)]; rows.push({p:r.p,base:r.base,hit:r.hit,ask:r.ask,ofi:r.ofi}); }  /* one mid-life read per window-side */
+  const rows=[]; for(const e of E){ const rr=e.reads.filter(r=>!r.phantom); if(!rr.length) continue;   /* K1-flagged reads are kept on the record but never scored */
+    const r=rr[Math.floor(rr.length/2)]; rows.push({p:r.p,base:r.base,hit:r.hit,ask:r.ask,ofi:r.ofi}); }  /* one mid-life read per window-side */
   const n=rows.length; if(!n) return {n:0};
   const b=(f)=>rows.reduce((a,r)=>a+(f(r)-r.hit)**2,0)/n;
   const bm=b(r=>r.p), bb=b(r=>r.base);
@@ -1659,13 +1660,80 @@ function simClose(e){
 }
 function journalStats(){
   const out={};
-  for(const a of SIM_ARMS){ const T=S.journal.filter(t=>t.arm===a.id); const n=T.length; const B=S.simBank[a.id]||{bank:SIM.bank0,dd:0};
+  for(const a of SIM_ARMS){ const T=S.journal.filter(t=>t.arm===a.id&&!t.phantom); const n=T.length; const B=S.simBank[a.id]||{bank:SIM.bank0,dd:0};
     if(!n){ out[a.id]={n:0,bank:B.bank,dd:B.dd}; continue; }
     const wins=T.filter(t=>t.pnl>0).length, hits=T.filter(t=>t.hit).length;
     out[a.id]={n,winRate:wins/n,hitRate:hits/n,pnlShare:T.reduce((x,t)=>x+t.pnlShare,0)/n,total:+T.reduce((x,t)=>x+t.pnl,0).toFixed(2),bank:B.bank,dd:B.dd,
       be:T.reduce((x,t)=>x+t.be,0)/n,base:T.reduce((x,t)=>x+t.base,0)/n,reasons:T.reduce((m,t)=>{ m[t.reason]=(m[t.reason]||0)+1; return m; },{}),
       ci:n>=8?bootstrapCI(T.map(t=>t.pnlShare),v=>v.reduce((x,y)=>x+y,0)/v.length,0.9,300):null}; }
   return out;
+}
+/* ---------------------------------------------------------------- ledger repair (K1 phantom rows, §10.3) */
+const REPAIR_KEY="btc.repair", REPAIR_VERSION=1;
+const REPAIR_RULE="K1 stale book — a read with ≥ 13 min left on a 15-minute window whose ask is ≤ 15¢ and whose model touch probability is ≥ 50%";
+function isPhantomK1(o){
+  /* The K1 defect served the PREVIOUS window's order book for 1.6-8 s after each roll (up to 120 s under a book
+     backoff), so a read taken in that gap paired the old window's near-settled ask (1-5c) with the NEW window's
+     at-the-money strike. Two things that cannot both be true of one real book:
+       tau >= 13   the 15-minute window has just opened, and its strike is set at the money, so no side is cheap yet;
+       p >= 0.5    the model gave a <=15c side an even-or-better chance of reaching 35c — but a side is only cheap
+                   because it is far from the money, which is precisely what makes a touch unlikely.
+     A genuine read satisfies at most one. Flagged rows are kept and excluded from scoring, never deleted. */
+  if(!o) return false;
+  const tau=o.tau, ask=(o.ask!==undefined&&o.ask!==null)?o.ask:o.entry, p=o.p;
+  return tau!==undefined&&tau!==null&&tau>=13
+      && ask!==undefined&&ask!==null&&ask<=SWING.cheapMax
+      && p!==undefined&&p!==null&&p>=0.5;
+}
+function repairLedgers(){
+  let rec=null; try{ rec=JSON.parse(localStorage.getItem(REPAIR_KEY)||"null"); }catch(e){}
+  if(rec&&rec.v>=REPAIR_VERSION){ S.repair=rec; return rec; }
+  const out={v:REPAIR_VERSION,t:Date.now(),rule:REPAIR_RULE,swingReads:0,swingSides:0,simTrades:0,journalRows:0,edgeSnaps:0,banks:{},via:null};
+  /* swing reads, and the sim positions opened from them */
+  for(const key of Object.keys((S.swing&&S.swing.w)||{})){
+    const e=S.swing.w[key]; let touched=false;
+    for(const r of e.reads||[]){ if(!r.phantom&&isPhantomK1(r)){ r.phantom="K1"; out.swingReads++; touched=true; } }
+    for(const id of Object.keys(e.sim||{})){ const t=e.sim[id]; if(!t.phantom&&isPhantomK1(t)){ t.phantom="K1"; out.simTrades++; touched=true; } }
+    if(touched&&!e.phantom){ e.phantom="K1"; out.swingSides++; }
+  }
+  /* journal rows, and the bankroll each phantom row moved */
+  const moved={};
+  for(const t of S.journal||[]){
+    if(t.phantom) continue;
+    if(isPhantomK1(t)){ t.phantom="K1"; out.journalRows++; moved[t.arm]=(moved[t.arm]||0)+(t.pnl||0); }
+  }
+  for(const a of SIM_ARMS){
+    const B=S.simBank[a.id]; if(!B) continue;
+    const bad=moved[a.id]||0; if(!bad) continue;
+    B.bank=+(B.bank-bad).toFixed(2);          /* withdraw exactly what the phantom trades paid in */
+    B.contaminated=true;                      /* later trades were still SIZED against the inflated bank, so the curve is approximate */
+    B.peak=Math.max(SIM.bank0,B.bank); B.dd=0;/* the drawdown path is unrecoverable once its inputs are withdrawn */
+    out.banks[a.id]={removed:+bad.toFixed(2),bank:B.bank};
+  }
+  /* edge snapshots: the first snap of a rolled window could carry the old book's 98/99 quote.
+     Hourly ladder rungs are legitimately extreme, so only the 15-minute series is judged. */
+  for(const w of Object.values((S.edge&&S.edge.windows)||{})){
+    if(!w.ticker||!w.ticker.startsWith("KXBTC15M")) continue;
+    for(const s of w.snaps||[]){ if(!s.phantom&&s.tau>=13&&(s.qm>=90||s.qm<=10)){ s.phantom="K1"; out.edgeSnaps++; } }
+  }
+  /* viability is stored as running sums, not rows: a poisoned fill cannot be subtracted from a total.
+     The pre-repair counters are preserved in the repair record and the live series restarts clean. */
+  if(S.via&&S.via.series&&Object.keys(S.via.series).some(k=>(S.via.series[k].fills||0)>0)){
+    out.via=JSON.parse(JSON.stringify(S.via.series));
+    S.via.series={};
+  }
+  S.repair=out;
+  try{ localStorage.setItem(REPAIR_KEY,JSON.stringify(out)); }catch(e){}
+  swingSave(); jSave(); viaSave(); ledgerSave();
+  return out;
+}
+function repairNote(){
+  const r=S.repair; if(!r) return "";
+  const n=r.swingReads+r.journalRows+r.simTrades+r.edgeSnaps;
+  if(!n&&!r.via) return "";
+  return "K1 repair · "+n+" phantom row"+(n===1?"":"s")+" marked and excluded"
+    +(r.journalRows?(" · "+r.journalRows+" journal trades withdrawn from their arm banks"):"")
+    +(r.via?" · live viability counters reset (pre-repair values kept in btc.repair)":"");
 }
 function watchedSides(now){
   /* every side of the live window that has been read this window, cheap or not, until the gate */
@@ -1698,7 +1766,8 @@ function renderSwing(){
     ||'<tr><td colspan="8" style="color:var(--faint)">no side under 15\u00a2 in the live window</td></tr>';
   if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
     +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--faint)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
-  if(note) note.textContent=st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting";
+  const rnS=repairNote();
+  if(note) note.textContent=(st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting")+(rnS?(" \u00b7 "+rnS):"");
 }
 function renderJournal(){
   const ta=$("jarms")&&$("jarms").querySelector("tbody"), tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"); if(!ta||!tb) return;
@@ -1715,7 +1784,8 @@ function renderJournal(){
     ||'<tr><td colspan="12" style="color:var(--faint)">no simulated trades yet \u2014 arms enter on cheap-side reads and close by rule or at the gate</td></tr>';
   const best=SIM_ARMS.map(a=>({id:a.id,s:st[a.id]})).sort((x,y)=>y.s.bank-x.s.bank)[0];
   const tt=st["tool/trail"], ab=st["all/box"];
-  if(note) note.textContent=(tt&&tt.n)?("tool/trail $"+tt.bank.toFixed(2)+" \u00b7 "+tt.n+" trades \u00b7 win "+pc(tt.winRate)+(ab&&ab.n?(" \u00b7 all/box control $"+ab.bank.toFixed(2)):"")+" \u00b7 leading: "+best.id+" $"+best.s.bank.toFixed(2)):"collecting";
+  const rn=repairNote();
+  if(note) note.textContent=((tt&&tt.n)?("tool/trail $"+tt.bank.toFixed(2)+" \u00b7 "+tt.n+" trades \u00b7 win "+pc(tt.winRate)+(ab&&ab.n?(" \u00b7 all/box control $"+ab.bank.toFixed(2)):"")+" \u00b7 leading: "+best.id+" $"+best.s.bank.toFixed(2)):"collecting")+(rn?(" \u00b7 "+rn):"");
 }
 /* ---------------------------------------------------------------- viability (maker economics, live) */
 const MAKER_RATE=0.0175;
@@ -2760,7 +2830,9 @@ setInterval(()=>{
 requestAnimationFrame(loop);
 
 (async function init(){
-  loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); kProbeSameOrigin(); initSections();
+  loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad();
+  try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
+  kProbeSameOrigin(); initSections();
   try{ veinLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();

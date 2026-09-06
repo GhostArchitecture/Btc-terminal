@@ -4,9 +4,10 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260906004231`. This working copy is ahead of that deploy — §10 lists 22 fixes applied since,
-not yet built and pushed. One file, 2,773 lines, ~189 KB, 147 top-level functions, zero dependencies, zero build
-step. **§10 (audit addendum, 2026-09-06) corrects and extends the sections below; where they disagree, §10 wins.**
+Current deploy: `build-20260906004231`. This working copy is ahead of that deploy — §10 lists 22 fixes and a one-time
+ledger repair applied since, not yet built and pushed. One file, 2,845 lines, ~194 KB, 150 top-level functions, zero
+dependencies, zero build step. **§10 (audit addendum, 2026-09-06) corrects and extends the sections below; where
+they disagree, §10 wins.**
 
 ---
 
@@ -123,6 +124,8 @@ provisional grades are marked and overwritten by official results, nothing is si
 | `btc.via` | viability samples (maker economics) |
 | `btc.swing` | swing reads and grading |
 | `btc.journal` | simulation trades + arm bankrolls (`{v:3, t:[], bank:{}}`) |
+| `btc.round` | the live armed round, so a reload between ARM and the gate does not erase it (§10.3 R5) |
+| `btc.repair` | the one-time K1 ledger repair record: rule, counts, and the viability counters it reset (§10.4b) |
 | `btc.cfg`, `btc.sections.v2` | settings, collapsed-section state |
 
 **Scoring discipline, applied everywhere:** one observation per window (`refSnap` — the read nearest mid-window),
@@ -361,6 +364,33 @@ Also fixed, lower severity (§10.4); found but deliberately not fixed here, with
   indefinitely, since `await seed()` gates them in `init()`. Both fetches now carry an 8 s `AbortController` timeout.
 - **DATA summary mislabelled windows as "snapshots".** `nSnap` in `edgeStatsOn` is one entry per graded *window*
   (the whole point of `refSnap`), not per snapshot; the label now says "windows".
+
+### 10.4b Repairing the data K1 already wrote
+
+Fixing K1 stops new phantom rows; it does nothing about the ones already in `localStorage` on the recorder. Those
+are not cosmetic — a phantom sim trade entered at 1–5¢ and closed at the 35¢ "target" booked +$300–500 into an arm
+bankroll, which is the exact number the simulation exists to compare. `repairLedgers()` runs once at `init`,
+versioned under `btc.repair`, and is idempotent.
+
+**What it marks.** A row is flagged `phantom:"K1"` when *all three* hold: ≥ 13 minutes remain on a 15-minute
+window, the ask is ≤ 15¢, and the model's touch probability is ≥ 50%. Those three cannot describe one real book —
+a KXBTC15M strike is set at the money at open, so nothing is cheap yet; and a side is only cheap *because* it sits
+far from the money, which is what makes a touch unlikely. A genuine read satisfies at most one. The rule string is
+stored in the repair record so the criterion travels with the data.
+
+**What it does.** Flagged rows stay on the record and are excluded from scoring: `swingStats` drops flagged reads
+(but keeps a window-side's remaining clean reads), `journalStats` drops flagged trades, `refSnap` skips a flagged
+snapshot. Each phantom trade's P&L is withdrawn from its arm's bankroll, and the arm is marked `contaminated`
+because trades *after* a phantom were still position-sized against the inflated bank — the per-share statistics are
+clean, the bankroll curve is only approximate. `dd` is reset, since a drawdown path cannot be reconstructed once
+its inputs are withdrawn. Both CSV datasets gain an `excluded` column.
+
+**The exception is viability.** `btc.via` stores running sums, not rows, so a poisoned fill cannot be subtracted
+from a total. The pre-repair counters are copied into the repair record and the live series restarts empty; the
+`VIA_HIST` backtest constants are untouched. This is the one place the repair discards a number rather than
+marking it, and the discarded value is preserved verbatim.
+
+Counts are surfaced in the swing and journal panel notes, so an excluded row is visible rather than quietly gone.
 
 ### 10.5 Found but not fixed here — with reasons
 

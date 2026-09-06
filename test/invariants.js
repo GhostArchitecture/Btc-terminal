@@ -211,6 +211,45 @@ function part2() {
     T("CSV export carries four datasets and a .csv filename", r.sections.length === 4 && /\.csv$/.test(r.download), r);
   }
 
+  /* ---- ledger repair (§10.3 K1): phantom rows are marked and excluded, never deleted; the pass is idempotent */
+  {
+    const r = R(`(function(){
+      localStorage.removeItem("btc.repair"); S.repair=null;
+      /* one phantom read (13.9 min left on a 3c side the model calls a 96% touch) and one genuine one (2 min left, 5c, 12%) */
+      S.swing={v:1,w:{
+        "KXBTC15M-P|NO":{ticker:"KXBTC15M-P",side:"NO",strike:100000,close:1,graded:true,hit:true,
+          reads:[{t:1,tau:13.9,ask:0.03,p:0.963,base:0.024,be:0.16,ofi:null,maxAfter:0.48,hit:1},
+                 {t:2,tau:6.0,ask:0.05,p:0.30,base:0.042,be:0.16,ofi:null,maxAfter:0.10,hit:0}],
+          sim:{"all/box":{arm:"all/box",tau:13.9,entry:0.03,p:0.963,open:false,pnl:503.2}}},
+        "KXBTC15M-G|YES":{ticker:"KXBTC15M-G",side:"YES",strike:100000,close:1,graded:true,hit:false,
+          reads:[{t:3,tau:2.0,ask:0.05,p:0.12,base:0.042,be:0.16,ofi:null,maxAfter:0.08,hit:0}],sim:{}}}};
+      localStorage.removeItem("btc.journal"); S.journal=[]; S.simBank={}; jLoad();   /* jLoad reloads from storage, so seed the fixture after it */
+      S.journal=[{arm:"all/box",tau:13.9,entry:0.03,p:0.963,base:0.024,be:0.16,pnl:503.2,pnlShare:30.2,ticker:"KXBTC15M-P",side:"NO",reason:"target",hit:true},
+                 {arm:"all/box",tau:6.0,entry:0.05,p:0.30,base:0.042,be:0.16,pnl:-5.0,pnlShare:-5.0,ticker:"KXBTC15M-G",side:"YES",reason:"gate",hit:false}];
+      S.simBank["all/box"].bank=1498.20;
+      S.edge.windows={"KXBTC15M-P":{ticker:"KXBTC15M-P",strike:1,open:0,close:1,result:"yes",
+        snaps:[{t:1,tau:14.5,pm:0.5,qm:98,ya:99,na:2},{t:2,tau:6,pm:0.5,qm:50,ya:52,na:50}]}};
+      S.via={v:1,series:{"15m":{posts:9,fills:1,spread:2,adv:-48,fee:0.07,flow:{with:{n:0,adv:0},against:{n:0,adv:0},none:{n:1,adv:-48}}}}};
+      const first=repairLedgers();
+      const readsKept=S.swing.w["KXBTC15M-P|NO"].reads.length, journalKept=S.journal.length;
+      const bankAfter=S.simBank["all/box"].bank, contaminated=S.simBank["all/box"].contaminated;
+      const genuineFlagged=!!S.swing.w["KXBTC15M-G|YES"].reads[0].phantom;
+      const scored=refSnap(S.edge.windows["KXBTC15M-P"]);
+      const second=repairLedgers(); const bankTwice=S.simBank["all/box"].bank;
+      return {first,readsKept,journalKept,bankAfter,contaminated,genuineFlagged,scoredTau:scored&&scored.tau,
+        viaReset:Object.keys(S.via.series).length,viaKept:!!(first.via&&first.via["15m"]),repeated:second.t===first.t,bankTwice,
+        jStats:journalStats()["all/box"],sStats:swingStats()}; })()`);
+    T("the phantom read, its sim position, its journal row and the stale-quote snap are all marked", r.first.swingReads === 1 && r.first.simTrades === 1 && r.first.journalRows === 1 && r.first.edgeSnaps === 1, r.first);
+    T("nothing is deleted — every row is still on the record", r.readsKept === 2 && r.journalKept === 2, r);
+    T("a genuine cheap read late in the window is not flagged", r.genuineFlagged === false, r);
+    T("the phantom's P&L is withdrawn from its arm bank and the arm is marked contaminated", r.bankAfter === 995 && r.contaminated === true, { bank: r.bankAfter, contaminated: r.contaminated });
+    /* only the bad ROW drops out: the affected window-side keeps scoring its remaining clean reads */
+    T("stats exclude the flagged rows and keep the clean ones", r.jStats.n === 1 && r.jStats.total === -5 && r.sStats.n === 2, { journal: r.jStats.n, total: r.jStats.total, swingSides: r.sStats.n });
+    T("refSnap skips a flagged snapshot and scores the clean one", r.scoredTau === 6, r.scoredTau);
+    T("viability counters are reset but preserved in the repair record", r.viaReset === 0 && r.viaKept === true, r);
+    T("the repair is versioned and idempotent — a second pass moves no bank", r.repeated === true && r.bankTwice === 995, { repeated: r.repeated, bank: r.bankTwice });
+  }
+
   /* ---- sundial (§5): NOAA position for Dayton at the equinox */
   {
     const r = R(`(function(){ const p=solarPosition(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,17,30,0))); const n=solarPosition(SUN_DEF.lat,SUN_DEF.lon,new Date(Date.UTC(2026,8,22,5,0,0))); return {noon:p,night:n,name:SUN_DEF.name}; })()`);
