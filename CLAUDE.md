@@ -204,11 +204,26 @@ Suite (`npm test`, after `npm install` for jsdom):
   real snapshot through the live write path, that `volCloseTick` captures realized volatility before the bar buffer
   drops it (and retries rather than giving up early, per L2), that the release calendar refuses to invent dates or
   tag a missing timestamp, DST mapping, phase-1/phase-2 separation, the time-matched control, and the CSV columns.
+  It also carries **the invariant whose absence let a quote-dependent gate ship** (§11.8): the identifiability
+  verdict must be identical across a quote sweep spanning both signs of the premium, at a strike inside the band,
+  outside it, and at the money.
+- `test/prereg.js` — the §11 guard. Reads CLAUDE.md **from disk** and requires every `SHOCK_RULE` threshold and
+  every §11.8 bound to appear in the document, with the keys enumerated from the object so a threshold added to
+  the code with no document entry fails. The load-bearing values are pinned by arithmetic rather than by digit
+  presence — §11.1's shares and calendar costs and §11.2a's z/B figures and power table are parsed out of the
+  document and recomputed. It also asserts the pre-registration invariants behaviourally: gate exogeneity, READY
+  unreachable below the registered minimum n, the CI level `1 − α/k`, the bootstrap floor, phase separation, and
+  that no execution path exists. **Verified to bite:** against `899276d` it fails 6 of 77.
 - `test/defects.js` (`npm run test:defects`, informational) — one reproduction per confirmed defect in §10.3; each
   prints REPRODUCED until fixed. All 16 currently print FIXED — it is the regression guard for this audit's fixes,
   not a to-do list, until the next round of findings lands here.
 
-Always run the whole suite before a push; a change in one module has repeatedly broken another.
+Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
+currently **231 assertions across 5 harnesses**.
+
+The H-protocol units keep their own suites outside the repo, under the scratchpad (`volspace` 241, `calendar` 440,
+`detect` 229, `schema` 370, `prereg`). **The units are the source and `index.html` is the splice target** — edit a
+unit and re-splice, never patch the spliced copy, or the next splice silently reverts the patch.
 
 ---
 
@@ -244,6 +259,19 @@ Always run the whole suite before a push; a change in one module has repeatedly 
   is the recorder of record; the phone is for arming and viewing.
 - **Untested and only testable live:** sub-minute order flow, book depth, and dislocation as predictive features.
   These are the only remaining candidates for a real edge; everything price-path-based has been ruled out.
+- **Release calendar — built, reviewed twice, NOT spliced.** The unit (coverage declaration, exceptions,
+  `controlEligible`, audit; 440 assertions) lives under the scratchpad and is deliberately held out of
+  `index.html`. The second review found the coverage **vouch binds to a series name, not to what the generator
+  does**, so a signature that was honest when written keeps granting control eligibility after the rule row it
+  signed is edited or deleted — which reopens the contamination §11.3 exists to prevent, and which `FILLING.md`
+  walks a maintainer straight into. Latent today (no `*` declaration exists, so no window anywhere is eligible)
+  and cheapest to fix now: §11.6 says the same change after a holdout opens **spends** it. Being fixed.
+- **The calendar is ~5% full and cannot be finished here.** Agency schedule pages are blocked by this
+  environment's egress; only FOMC 2026 (all eight, sourced) and two CPI dates are loaded, plus two BLS
+  reschedules from the 2025–26 appropriations lapses — which matter beyond themselves because they **prove the
+  first-Friday payrolls rule has real exceptions in the live data period** (January 2026 payrolls printed on a
+  Wednesday). One row is flagged and unverifiable from here: CPI 2026-09-11 falls on a Friday, atypical for BLS.
+  Do not "correct" it — check it against bls.gov.
 - **Open defects:** §10.3.
 
 ## 9. What "done" looks like
@@ -715,6 +743,21 @@ The same probe at the model-fair quote depends on `x`, `sigModel` and `τ` and o
 verdict cannot move with the answer: at that same strike it drops the whole quote sweep together, which is what a
 filter is supposed to do. **Selection on the outcome biases; a noisy reading only adds variance.** A
 badly-conditioned individual reading is therefore *kept*, with its conditioning recorded, not dropped.
+
+**What that would have cost, measured.** One strike (+10 bp), one horizon (τ = 15), σ and realized both 9 bp/min,
+every attainable integer-cent quote, plausibility applied to all rows so the only difference is the identifiability
+filter:
+
+| | n | premium range | mean |
+|---|---|---|---|
+| all plausible rows | 34 | −6.71 → **+18.13** bp | −1.97 |
+| kept by the **superseded** gate | 31 | −6.71 → **+5.88** bp | **−3.41** |
+| kept by the gate **in force** | 34 | −6.71 → +18.13 bp | −1.97 |
+
+The superseded gate dropped three rows — at 44¢, 45¢ and 46¢, carrying **+8.50, +12.24 and +18.13 bp** — and
+**every single one had a positive premium. None from the negative side.** It truncated the top of the
+distribution, cut the maximum reportable premium by two thirds, and pushed the mean down by 1.44 bp on a quantity
+whose whole purpose is to be tested against zero. On one strike. The gate in force drops none of them.
 
 *This is a correction. The gate shipped in `899276d` read the observed quote, and was registered — wrongly — as a
 strict tightening. On real inputs it was a loosening: a strike 1 bp from the money at τ = 15, which the previous
