@@ -16,7 +16,7 @@ The roadmap opens: *"Current: **1.0** — BTC `build-20260906210313`, Rhyme `bui
 | Claim | Measured |
 |---|---|
 | BTC at `build-20260906210313` | Deployed and repo HEAD both read `build-20260906195621`. The declared stamp exists in no commit, no artifact, no host. |
-| Rhyme at `build-20260906210925` | The deployed artifact carries **no build stamp of any kind**. `build-` matches zero times in 121,439 bytes. |
+| Rhyme at `build-20260906210925` | The deployed artifact carried **no build stamp of any kind** — `build-` matched zero times in 121,439 bytes. *Since corrected: the tool now mints one through `build.js --stamp` (§10).* |
 | A spine inlined by both tools at 1.0 | `OCCVM` appears in **zero tracked files** across both repositories. The single `git grep` hit is the substring inside the hostname `relay.ghostarchitectureoccvm.workers.dev`. |
 | Laws L1–L9, defects D1–D7, the §7 conformance table | Not in either repository. Not attached. Unrecoverable — they existed only in conversation. |
 
@@ -97,9 +97,13 @@ cross-tool one, and it is the kind of thing the spine has to decide rather than 
 | `--elev` | `sin(elev)·1.4`, floored at **0.15 at night** | `sin(elev)·1.25`, falls to **0.000 at night** | **divergent**: ~11% apart in daylight, and BTC keeps a bevel at night where Rhyme goes flat |
 | `--glow` | `calc(var(--night)*.28)` — CSS-derived, **0.00 in daylight**, 0.28 at night | JS-set `0.45 + 0.25(1−e) + 0.30·night` — **never below 0.45**, 1.00 at night | **incompatible**: the two ranges do not overlap in daylight |
 
-`--glow` is the finding. Two tools, one token name, no shared range, no shared derivation. This is precisely
-the failure the 2.0 migration process §9 names as the thing it exists to prevent — *"six months later the two
-disagree about what `--sub` means"* — and it is already present, today, on a token both tools declare.
+`--glow` is the finding, and browser measurement (§10) sharpened it past "incompatible ranges". BTC's
+`--glow` *computes to the literal string* `calc(0*.28)` — a custom property is substitution-only, so it never
+resolves to a number at the token level, only where it is consumed. Rhyme's resolves to `0.68` / `0.45` / `1.00`.
+The two are not the same kind of thing: **any spine law that reads `--glow` arithmetically works in Rhyme and
+silently no-ops in BTC.** This is precisely the failure the 2.0 migration process §9 names as the thing it exists
+to prevent — *"six months later the two disagree about what `--sub` means"* — already present, today, on a token
+both tools declare.
 
 ### 2d. BTC only (28)
 
@@ -148,7 +152,12 @@ Both time bases are correct; the divergence is precision, not error. Measured at
 | 2026-09-06 | 0.865° | 0.506° |
 | 2026-12-21 | 0.077° | 0.092° |
 
-**The light direction agrees to better than 0.6° all year.** Nothing downstream of it does:
+**The light direction agrees to better than 0.6° all year — in daylight.** At night it does not agree at all,
+and this audit missed it by comparing only sun-up azimuth. Measured in-browser (§10): at 2026-09-07T04:00Z BTC
+writes `--lx -0.516, --ly -0.856`, still tracking a sun 39° below the horizon; Rhyme writes `0.000, 1.000`,
+clamping to a neutral overhead vector below −6°. Two tools, one convention, opposite night behaviour.
+
+Nothing else downstream agrees either:
 
 | instant (UTC) | BTC `--elev`, `--night`, `--glow` | Rhyme `--elev`, `--night`, `--glow` |
 |---|---|---|
@@ -256,14 +265,12 @@ one. §0b should be derived from Rhyme's CI job, which is a working implementati
 
 ## 7. Unscoped work the plans depend on
 
-- **The golden set has no instrument.** Migration §3.3, §5 and §8 require field-recorded frames at three sun
+- **The golden set had no instrument.** Migration §3.3, §5 and §8 require field-recorded frames at three sun
   elevations, diffed. BTC's harnesses are jsdom, which does not render. Rhyme's CI runs engine tests only.
-  Neither repository has a screenshot fixture, a headless renderer, or an injectable seed. Migration §4 is
-  right that determinism is *"a 1.1 requirement, not a 2.0 one"* — and the harness that makes it testable is
-  not a release anywhere in the roadmap.
-- **BTC has no CI.** No `.github` directory. Its entire push safety is a hand-run `npm test` and a
-  hand-edited build stamp. Rhyme has drift-checking CI. During a migration that touches both tools in
-  sequence, the tool with more surfaces has less protection.
+  Neither repository had a screenshot fixture, a headless renderer, or an injectable seed. **Built — see §10.**
+- **BTC had no CI.** No `.github` directory. Its entire push safety was a hand-run `npm test` and a
+  hand-edited build stamp, while Rhyme had drift-checking CI — the tool with more surfaces had less
+  protection. **Built — see §10.**
 - **2.0 Stage 2 puts a correctness invariant in the blast radius.** Migration §2 notes BTC has *"a chart
   canvas that does not take CSS at all."* It understates. Canvas colours come from `PAL`
   (`index.html:2561`), and `renderSweep`'s colour semantics are load-bearing on correctness —
@@ -271,9 +278,9 @@ one. §0b should be derived from Rhyme's CI job, which is a working implementati
   possible bug in this tool."* Two fixed defects (G1, R2b) were exactly that inversion. A resolver rewriting
   colour derivation must gate on `test/sweep.js` explicitly.
 - **One stale file.** `Rhyme-Instrument/rhyme_instrument.jsx` — 852 lines, v1.2, last touched 2026-09-03,
-  contains no `veinSVG`, is the source of nothing shipped, and sits at the repository root with the most
-  source-looking name in the tree. This is the *"project-directory copy is assumed stale"* hazard of
-  migration §3.1, in the repository, now.
+  containing no `veinSVG`, the source of nothing shipped, at the repository root under the most
+  source-looking name in the tree: the *"project-directory copy is assumed stale"* hazard of migration §3.1.
+  **Deleted — see §10.**
 
 ---
 
@@ -304,4 +311,60 @@ Not proposals — the decisions this audit surfaces that cannot be deferred, eac
 This document is an inventory, not a spine. It is committed to both repositories at identical content so the
 next session starts from measured facts rather than from a baseline that was never shipped.
 
-`occvm/tools/solar-compare.js` reproduces every number in §3.
+`occvm/tools/solar-compare.js` reproduces every number in §3 (run it as
+`TZ=America/New_York node occvm/tools/solar-compare.js` — Rhyme's `solar()` reads the local clock, so its
+output moves with the runner's timezone).
+
+---
+
+## 10. Built since this audit — the instrument, not the spine
+
+The seven decisions in §8 are unchanged and still open. What has been built is the equipment that makes each
+of them a measurable one-line edit instead of a taste argument, plus the two hygiene items §7 flagged.
+
+**`occvm/golden/` — the golden set.** `record.js` drives both tools in Chromium under three injected pins:
+the clock (a fixed instant), the timezone (`America/New_York`), and the seed (written to `sessionStorage`
+before any page script evaluates). Two tiers, and the split is deliberate: `tokens.json` carries every OCCVM
+token's computed value at each instant — pure numbers and hexes, byte-stable on any machine, and the only
+thing CI asserts on; `<case>.png` is recorded for the eye and **never diffed for equality**, because font
+rasterisation and GPU compositing differ per machine and a pixel gate would be red everywhere but the
+recording machine. `verify.js` re-records and diffs tier 1. Verified to bite: perturbing `--gilt-b` by one hex
+digit surfaces 12 values across three instants, including the `--model` and `--warn` aliases derived from it.
+Recording twice produces byte-identical manifests — migration §4's determinism requirement, demonstrated.
+
+Instants, over Dayton: `low` 2026-09-06T11:30Z (elev +3.06°, az 84.3°), `high` 2026-09-06T17:45Z (+56.40°,
+184.5°), `night` 2026-09-07T04:00Z (−39.21°).
+
+**The seed is now injected in both tools.** BTC's `veinLayer()` derived its seed from the wall clock, so it
+was neither injectable nor stable; it now reads `sessionStorage("btc.seed")`, adopting Rhyme's existing
+pattern verbatim so the spine can state one law. That also closes the divergence `Btc-terminal/CLAUDE.md`
+§10.5 recorded but did not fix — the veins reseeded per hour where §5 said per session.
+
+**BTC has CI**, mirroring Rhyme's: the harnesses, the unit suites, the duplicate-definition check
+(`CLAUDE.md` §7.1) and the splice-reproducibility check (§6), plus a `--tool btc` golden diff on Chromium.
+Rhyme is skipped there — it lives in a sibling repository that checkout does not have.
+
+**Rhyme has a build stamp** (`build.js --stamp` mints; a plain build preserves, so CI's byte-identical check
+stays strict), and `rhyme_instrument.jsx` is deleted.
+
+**Two findings surfaced from building it**, both now in §2c and §3 above: BTC's `--glow` never resolves to a
+number, and the two light vectors disagree completely at night. A third is new here:
+
+**Rhyme cannot boot without three external CDN requests.** React, ReactDOM and `babel-standalone` all come
+from cdnjs; with cdnjs unreachable the tool renders nothing — measured, not inferred, when the recorder's
+first run captured a blank page. That is roadmap 1.6's *"first paint shows the binding, not a blank frame"*,
+with a number on it. The recorder vendors those three locally, because a determinism instrument must not
+depend on a CDN.
+
+**One caveat on the instrument itself, and it cost a recording.** The first version pinned the clock with
+Playwright's `clock.install()`, which also fakes timers — React 18 schedules through them, so Rhyme never
+mounted and the recorder captured `:root` defaults as though they were live values, reporting 37 clean
+tokens for a blank page. Fixed two ways: `setFixedTime` pins only `Date`, and readiness is now a DOM
+predicate (`.binding` exists) rather than a token being non-empty, because a token can have a CSS default and
+pass while the tool's own JS never ran. A recording of a tool that never booted is worse than no recording —
+it looks like a clean baseline, and every later diff is measured against a blank page — so that check is now
+fatal by design.
+
+**The cross-repo seam.** `record.js` reaches the sibling `Rhyme-Instrument` clone by relative path and skips
+it with a clear message when absent. With no monorepo and no shared origin, sibling clones are the available
+arrangement; Rhyme's own CI therefore cannot run the golden diff.
