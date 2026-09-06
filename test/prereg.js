@@ -383,4 +383,24 @@ const BOUNDS = R(`({VRP_TICK_REL_MAX:VRP_TICK_REL_MAX,VRP_TICK:VRP_TICK,SCHEMA_S
   T("no page-scope function name suggests execution", exec.length === 0, exec);
 }
 
+/* THE SIGN OF THE PRIMARY STATISTIC. Brier is a LOSS, so "the tool is better" is a LOWER Brier, and the
+   difference-in-differences must be oriented market-minus-tool for a positive Δ to mean an edge. shockStatus
+   fires READY on dBrier >= floor AND ciLo > 0; get the orientation backwards in the scorer and READY fires on
+   the arm being WORSE than the market — the most expensive single bug available here. §11.2's definitional
+   sentence stated it backwards until 2026-09-06 while the code was always right, so this asserts BOTH that
+   the code demands the correct orientation and that the document now says so. */
+{
+  const st = (d, lo) => `shockStatus({arms:1,phase:1,ctrlTotal:100,ctrlMatched:100,nCal:30,frozen:true,` +
+    `sd:0.02,nHold:400,monthsElapsed:6,pnlN:50,pnlNet:1,holdoutSpent:false,dBrier:${d},ciLo:${lo}}).status`;
+  T("a POSITIVE control-adjusted Δ with a CI clear of zero is the only path to READY", R(st(0.02, 0.005)) === "READY", R(st(0.02, 0.005)));
+  T("a NEGATIVE Δ — the tool worse than the market — can never read READY", R(st(-0.02, -0.03)) !== "READY", R(st(-0.02, -0.03)));
+  T("a Δ below half the floor abandons rather than continuing to collect", R(st(0.002, 0.001)) === "ABANDON", R(st(0.002, 0.001)));
+  T("clearing the floor with a CI touching zero is NEGATIVE, not READY", R(st(0.02, -0.001)) === "NEGATIVE", R(st(0.02, -0.001)));
+  const doc = MD.slice(MD.indexOf("### 11.2 The bar"));
+  T("§11.2 states the subtraction as market minus tool, not the reverse",
+    /quote-implied probability \*\*minus\*\* the Brier score of the tool/.test(doc), doc.slice(0, 240));
+  T("§11.2 says out loud that a positive Δ means the tool is better",
+    /POSITIVE Δ means the tool is better/.test(doc) || /positive Δ means the tool is better/i.test(doc), true);
+}
+
 process.exitCode = done() ? 1 : 0;

@@ -543,9 +543,20 @@ conditioned on the release *class* (scheduled US macro) or not at all.
 One **primary** hypothesis per phase, one primary arm, one primary statistic, all three written into this file with
 a build stamp before the first observation of that phase is recorded. Everything else is exploratory (§11.4).
 
-**Primary statistic — difference-in-differences.** For the primary arm, the Brier score of the tool's headline
-probability minus the Brier score of the Kalshi quote-implied probability, on shock windows, *minus the same
-difference computed on that window's time-matched controls* (§11.3). Scoring is one observation per window at
+**Primary statistic — difference-in-differences.** For the primary arm, the Brier score of the Kalshi
+quote-implied probability **minus** the Brier score of the tool's headline probability, on shock windows,
+*minus the same difference computed on that window's time-matched controls* (§11.3). **Brier is a loss, so the
+subtraction is `market − tool` and a POSITIVE Δ means the tool is better** — the same orientation as §4's
+`VERDICT_RULE` and as every Δ Brier in the instrument (`brierQ − brierM`, `mk.brier − h.brier`, `bb − bm`).
+
+*This sentence was corrected on 2026-09-06; it previously read `tool − market`, which is the opposite
+orientation and made the section contradict itself. Under the old wording the paragraph below reasons that a
+market Brier of 0.1457 against a model's 0.1473 makes the model "0.0016 worse" — a **positive** number for a
+**worse** model — and then requires Δ ≥ +0.010 to read READY, i.e. demands the tool be a hundredth of a Brier
+worse than the market before the programme calls it an edge. `shockStatus` always tested the correct
+orientation, so no code was wrong and no threshold moved; the definition was. Caught by probing `shockStatus`
+directly rather than trusting the prose. It is free to fix because no shock-conditioned observation exists and
+no holdout is open (§11.6) — after a holdout opened, the identical correction would have **spent** it.* Scoring is one observation per window at
 `refSnap`, series split, exactly as §4 requires. The unconditional shock number is not the primary statistic and
 never appears without the control-adjusted one beside it.
 
