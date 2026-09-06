@@ -2,7 +2,7 @@
 "use strict";
 const { spawnSync } = require("child_process");
 const path = require("path");
-const files = ["invariants.js", "sweep.js", "page-load.js"];
+const files = ["invariants.js", "sweep.js", "page-load.js", "hprotocol.js"];
 let failed = 0;
 for (const f of files) {
   const r = spawnSync(process.execPath, [path.join(__dirname, f)], { stdio: "inherit" });

@@ -1295,8 +1295,10 @@ function edgeSnapOne(m,now,ob){
   const P=strikeProbs({strike:m.strike,tEnd:m.close,quote:{q:((yb+ya)/2)/100,spread:(ya-yb)/100}},now); if(!P) return false;
   const w=S.edge.windows[m.ticker]||(S.edge.windows[m.ticker]={ticker:m.ticker,strike:m.strike,open:m.open,close:m.close,snaps:[],result:null,expVal:null});
   const f4=v=>(v===null||v===undefined)?null:+v.toFixed(4);
-  w.snaps.push({t:now,tau:+((m.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1),
-    pa:f4(P.anl),pd:f4(P.drf),pe:f4(P.emp),pf:f4(P.flo),pr:f4(P.res),fit:P.fit});
+  const sn={t:now,tau:+((m.close-now)/60000).toFixed(2),pm:+P.over.toFixed(4),qm:+((yb+ya)/2).toFixed(1),ya:+ya.toFixed(1),na:+(na===null?(100-yb):na).toFixed(1),
+    pa:f4(P.anl),pd:f4(P.drf),pe:f4(P.emp),pf:f4(P.flo),pr:f4(P.res),fit:P.fit};
+  schemaPut(sn,edgeSnapFields(P,{q:((yb+ya)/2)/100,spread:(ya-yb)/100},m.strike,ob));   /* H protocol: vol triple + depth, omitted when not derivable */
+  w.snaps.push(sn);
   if(w.snaps.length>70) w.snaps.shift();
   return true;
 }
@@ -1332,6 +1334,39 @@ function edgeProvisional(now){
     w.result=r.avg>=w.strike?"yes":"no"; w.provisional=true; w.provSrc=r.src; w.settleAvg=+r.avg.toFixed(2); changed=true;
   }
   if(changed){ ledgerSave(); renderEdge(); renderVerdict(); }
+}
+function volCloseTick(now){
+  /* H protocol: realized volatility over a CLOSED window is unrecoverable later — S.bars keeps 360 minutes and then
+     drops what this needs. It cannot live in edgeProvisional (that skips any window already graded, and edgeGrade may
+     have graded it from Kalshi first), so it runs as its own pass. srTried is set only on give-up, never on a failed
+     attempt — L2's lesson: on a reload the 1 Hz loop runs before seed() lands, and marking tried there would lose the
+     reading permanently for every window that closed while the app was down. */
+  if(typeof volCloseFields!=="function") return;
+  let eChanged=false, sChanged=false, jChanged=false;
+  const B=barsExcludingCurrent();
+  for(const w of Object.values((S.edge&&S.edge.windows)||{})){
+    if(!w||w.sr!==undefined||w.srTried) continue;
+    if(!(w.close<now-65000)) continue;
+    const f=volCloseFields(refSnap(w),B.keys,B.closes,w.open,w.close);
+    if(f&&f.sr!==undefined){ schemaPut(w,f); eChanged=true; }
+    else if(schemaVolGiveUp(now,w.close)){ w.srTried=1; eChanged=true; }
+  }
+  for(const key of Object.keys((S.swing&&S.swing.w)||{})){
+    const e=S.swing.w[key];
+    if(!e||e.sr!==undefined||e.srTried||!e.reads||!e.reads.length) continue;
+    if(!(e.close<now-65000)) continue;
+    const clean=e.reads.filter(r=>!r.phantom);   /* same selection swingStats scores: flagged reads never referenced */
+    const ref=clean.length?clean[Math.floor(clean.length/2)]:null;
+    const f=volCloseFields(ref,B.keys,B.closes,e.close-15*60000,e.close);
+    if(f&&f.sr!==undefined){
+      schemaPut(e,f); sChanged=true;
+      for(const row of S.journal||[]){ if(row&&row.ticker===e.ticker&&row.sr===undefined){ schemaPut(row,f); jChanged=true; } }
+    }
+    else if(schemaVolGiveUp(now,e.close)){ e.srTried=1; sChanged=true; }
+  }
+  if(eChanged) ledgerSave();
+  if(sChanged) swingSave();
+  if(jChanged) jSave();
 }
 function edgeGrade(){
   let changed=false;
@@ -1423,19 +1458,45 @@ function renderEdge(){
   }).join("");
 }
 function exportCSV(){
-  const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit"]];
-  for(const w of Object.values(S.edge.windows)) for(const s of w.snaps)
-    rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?(w.provSrc||"tape"):"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
-      new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na,s.pr??"",s.pa??"",s.pd??"",s.pe??"",s.pf??"",s.fit||""]);
+  /* H protocol: every column from col 21 on is measurement for H1-H5. The event tag and the seasonality control are
+     DERIVED HERE rather than stored, so they cost no bytes on the recorder and re-tag themselves when the release
+     calendar is filled in later — an export is always read against the calendar as it stands at export time. */
+  const g=(o,k)=>(o&&o[k]!==undefined&&o[k]!==null)?o[k]:"";
+  const et=t=>{ try{ return eventTag(t)||{}; }catch(e){ return {}; } };
+  const hz=t=>{ try{ return [utcHour(t),seasAt(t)]; }catch(e){ return ["",""]; } };
+  const sf=(a,b)=>{ try{ const v=seasFactor(a,b); return (v===null||v===undefined)?"":v; }catch(e){ return ""; } };
+  const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit",
+    "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
+    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","is_ref_snap","excluded"]];
+  for(const w of Object.values(S.edge.windows)){ const ref=refSnap(w);
+    for(const s of w.snaps){ const E=et(s.t), H=hz(s.t);
+      const spreadC=edgeSpreadC(s.qm,s.ya), misAnl=(s.pa!==null&&s.pa!==undefined)?+((s.pa*100-s.qm).toFixed(2)):"";
+      rows.push([w.ticker,w.strike,new Date(w.open).toISOString(),new Date(w.close).toISOString(),w.result||"",w.result?(w.provisional?(w.provSrc||"tape"):"kalshi"):"",w.settleAvg===undefined?"":w.settleAvg,w.expVal===null||w.expVal===undefined?"":w.expVal,
+        new Date(s.t).toISOString(),s.tau,s.pm,s.qm,s.ya,s.na,s.pr??"",s.pa??"",s.pd??"",s.pe??"",s.pf??"",s.fit||"",
+        g(s,"sm"),g(s,"si"),g(s,"xs"),g(s,"sim"),g(s,"sic"),g(s,"sid"),g(s,"dy"),g(s,"dn"),spreadC===null?"":spreadC,misAnl,
+        (misAnl!==""&&spreadC)?+(Math.abs(misAnl)/spreadC).toFixed(3):"",(s.pm!==undefined&&s.pm!==null)?+((s.pm*100-s.qm).toFixed(2)):"",
+        H[0],H[1],sf(s.t,w.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(w,"sr"),g(w,"srN"),g(w,"vrp"),w.vrpT?new Date(w.vrpT).toISOString():"",g(w,"vrpX"),
+        (ref&&ref.t===s.t)?1:0,s.phantom||""]); } }
   const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
   for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
     r.pCallAtArm===undefined?"":r.pCallAtArm,r.quoteAtArm===undefined||r.quoteAtArm===null?"":r.quoteAtArm,r.edgeAtArm===undefined||r.edgeAtArm===null?"":r.edgeAtArm,
     r.probFinal===undefined||r.probFinal===null?"":r.probFinal,r.up===undefined?"":r.up,r.dn===undefined?"":r.dn,r.outcome,r.hit===null||r.hit===undefined?"":r.hit,r.kalshi?r.kalshi.result:""]);
   const csv=(a)=>a.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n");
-  const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit","excluded"]].concat(
-    Object.values(S.swing.w).flatMap(e=>e.reads.map(r=>[e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??"",r.phantom||""])));
-  const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after","excluded"]].concat(
-    S.journal.map(t=>[t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||""]));
+  const sw=[["ticker","side","strike","close","read_t","tau_min","ask","p_touch_model","base_rate","breakeven","ofi","v60","dislocation","max_bid_after","hit","excluded",
+    "bid","spread_c","depth_yes","depth_no","depth_at_ask","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident",
+    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_omit","is_ref_read"]].concat(
+    Object.values(S.swing.w).flatMap(e=>{ const clean=e.reads.filter(r=>!r.phantom); const ref=clean.length?clean[Math.floor(clean.length/2)]:null;
+      return e.reads.map(r=>{ const E=et(r.t), H=hz(r.t), sc=swingSpreadC(r.ask,r.bid);
+        return [e.ticker,e.side,e.strike,new Date(e.close).toISOString(),new Date(r.t).toISOString(),r.tau,r.ask,r.p,r.base,r.be,r.ofi??"",r.v60??"",r.disl??"",r.maxAfter,r.hit??"",r.phantom||"",
+          g(r,"bid"),sc===null?"":sc,g(r,"dy"),g(r,"dn"),depthAtAsk(e.side,r.dy,r.dn)??"",g(r,"sm"),g(r,"si"),g(r,"xs"),g(r,"sim"),g(r,"sic"),g(r,"sid"),
+          H[0],H[1],sf(r.t,e.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(e,"sr"),g(e,"srN"),g(e,"vrp"),g(e,"vrpX"),(ref&&ref.t===r.t)?1:0]; }); }));
+  const sj=[["arm","exit_rule","ticker","strike","close","side","t_in","t_out","tau_min","entry","exit","reason","shares","stake_usd","pnl_per_share_net","pnl_usd","hit_35","peak_bid","breakeven","base_rate","model_at_entry","ofi_at_entry","bank_after","excluded",
+    "bid_at_entry","spread_at_entry_c","depth_yes_at_entry","depth_no_at_entry","depth_at_ask_entry","sig_touch_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident",
+    "sig_realized_bpm","vrp_bpm","vrp_omit","hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier"]].concat(
+    S.journal.map(t=>{ const E=et(t.tIn), H=hz(t.tIn), sc=swingSpreadC(t.entry,t.bidIn);
+      return [t.arm,t.exitRule,t.ticker,t.strike,new Date(t.close).toISOString(),t.side,new Date(t.tIn).toISOString(),new Date(t.tOut).toISOString(),t.tau,t.entry,t.exit,t.reason,t.shares,t.stake,t.pnlShare.toFixed(2),t.pnl,t.hit?1:0,t.peak,t.be,t.base,t.p??"",t.ofi??"",t.bank,t.phantom||"",
+        g(t,"bidIn"),sc===null?"":sc,g(t,"dy"),g(t,"dn"),depthAtAsk(t.side,t.dy,t.dn)??"",g(t,"sm"),g(t,"si"),g(t,"xs"),g(t,"sim"),g(t,"sic"),g(t,"sid"),
+        g(t,"sr"),g(t,"vrp"),g(t,"vrpX"),H[0],H[1],sf(t.tIn,t.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier")]; }));
   const blob=new Blob(["# windows\n"+csv(rows)+"\n\n# windows_called\n"+csv(rr)+"\n\n# swing_reads\n"+csv(sw)+"\n\n# simulation_journal\n"+csv(sj)],{type:"text/csv"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
   a.download="btc-terminal-ledgers-"+new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")+".csv";
@@ -1565,9 +1626,12 @@ function swingTick(now){
   /* a read per minute per cheap side */
   if(now-(S.swing.lastRead||0)<60000) return;
   S.swing.lastRead=now;
+  const _st=computeStats();   /* once, not per side: it walks 240 bars */
   for(const s of swingSides(now)){ if(s.p===null) continue;
     const key=s.ticker+"|"+s.side; const e=S.swing.w[key]||(S.swing.w[key]={ticker:s.ticker,side:s.side,strike:s.strike,close:s.close,reads:[],graded:false,hit:null});
-    e.reads.push({t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0});
+    const rd={t:now,tau:+s.tau.toFixed(2),ask:+s.ask.toFixed(3),p:+s.p.toFixed(3),base:+s.base.toFixed(3),be:+s.be.toFixed(3),ofi:s.ofi===null?null:+s.ofi.toFixed(2),v60:s.v60===null?null:+s.v60.toFixed(1),disl:s.disl,maxAfter:0};
+    schemaPut(rd,swingReadFields(_st,s.side,K.ob,S.idxPx,s.strike,now,s.close));   /* H protocol */
+    e.reads.push(rd);
     const bidAtEntry=(s.side==="YES"?yb:nb); simEnter(e,e.reads[e.reads.length-1],key,(bidAtEntry!==null&&bidAtEntry!==undefined)?bidAtEntry/100:null); }
   swingSave();
 }
@@ -1638,6 +1702,7 @@ function simCloseOne(e,t,exit,reason,now){
   if(!t.phantom){ B.bank=+(B.bank+t.pnl).toFixed(2); if(B.bank>B.peak) B.peak=B.bank; const dd=(B.peak-B.bank)/B.peak; if(dd>B.dd) B.dd=dd; }
   const row={arm:t.arm,exitRule:t.exitRule,ticker:e.ticker,strike:e.strike,close:e.close,side:e.side,tIn:t.tIn,tOut:now,tau:t.tau,entry:t.entry,exit,reason,shares:t.shares,stake:t.stake,pnlShare:t.pnlShare,pnl:t.pnl,hit:t.hit,peak:t.peak,be:t.be,base:t.base,p:t.p,ofi:t.ofi,bank:B.bank};
   if(t.phantom) row.phantom=t.phantom;
+  schemaPut(row,journalEntryFields(e.reads&&e.reads[t.readIdx],t));   /* H protocol: carry the entry-time state onto the trade */
   S.journal.unshift(row);
 }
 function simUpdate(e,bid,now){
@@ -2034,7 +2099,7 @@ function strikeProbs(R,now){
   let over;
   if(res!==null) over=res;
   else { const arr=[anl,drf].concat(emp!==null?[emp]:[]); arr.sort((a,b)=>a-b); const n=arr.length; over=(n%2)?arr[(n-1)/2]:(arr[n/2-1]+arr[n/2])/2; }
-  return {over,under:1-over,anl,drf,emp,flo,res,tau,t:now,sigU:sig,w,fit:res!==null?FIT_VERSION:"fallback-3",
+  return {over,under:1-over,anl,drf,emp,flo,res,tau,t:now,sigU:sig,S0,w,fit:res!==null?FIT_VERSION:"fallback-3",   /* S0 travels with the reading: the H-protocol vol inversion needs the exact spot this probability was priced off */
           anch:A?{h0:A.h0,n:A.n,dispBp:A.dispBp}:null};
 }
 function armMsg(s){ $("armMsg").textContent=s; }
@@ -2721,6 +2786,1096 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
+
+/* ================================================================ H PROTOCOL — measurement layer
+   Instrumentation for the shock-conditioned hypotheses H1-H5. Measurement only: no arm, no signal, no
+   execution path. Every function here is pure and every reading is omitted rather than guessed when it
+   cannot be derived truthfully. See CLAUDE.md §11 for the pre-registered evidence standard.
+   ================================================================ */
+
+/* ---------------- H protocol: volspace ---------------- */
+/* ---------------------------------------------------------------- H5 volspace: variance premium (measurement only) */
+/* Inverts the SAME analytic fair value strikeProbs uses, for sigma:
+     p_over(sig) = 1 - normCdf( (x + 0.5*sig*sig*tau) / (sig*sqrt(tau)) ),  x = log(strike/S0), tau in MINUTES.
+   Substituting u = sig*sqrt(tau) the normCdf argument is g(u) = x/u + u/2, with dg/du = 1/2 - x/u^2:
+     x <  0 : g rises with u for every u>0, so p_over FALLS with sigma. One root for any q in (0,1).
+     x == 0 : g = u/2, so p_over falls from 0.5 (approached, never attained) to 0. A quote q >= 0.5 has
+              NO solution at all -- the -0.5*sig*sig*tau drift term puts the median below the forward.
+     x >  0 : g is U-shaped, minimum g = sqrt(2x) at u* = sqrt(2x). So p_over is NOT monotone: it rises from
+              0 to pMax = 1 - normCdf(sqrt(2x)) < 0.5 at u*, then falls back to 0. There are TWO roots for
+              q < pMax and NONE for q >= pMax. The low-sigma root is returned by default; it is the branch
+              continuous with realized-vol magnitudes (BTC per-minute sigma runs ~5-15bp, u* for a 5bp strike
+              distance is ~10x above that). Pass branch "high" for the other root.
+   Everything here is pure: inputs in, values out, no DOM / storage / clock. Nothing here places an order. */
+const VRP_SIG_MIN=1e-9, VRP_SIG_MAX=50, VRP_BISECT=140, VRP_TOL=2e-6, VRP_MIN_RET=10;
+const VRP_Q_LO=0.005, VRP_Q_HI=0.995;   /* the engine's clip bounds: a quote at or past them is clipped, not information */
+/* PRE-REGISTERED, DO NOT TUNE. The one judgment number in the identifiability test: a reading counts as
+   identified only when one cent of quote granularity moves the implied sigma by no more than 50% of itself.
+   Fixed before any VRP data was collected, exactly as VERDICT_RULE's thresholds were (CLAUDE.md sec 4, sec 7.6).
+   Changing it to make more readings pass would be tuning a filter against its own results; any change must be a
+   deliberate, recorded re-registration, not an edit. Callers that disagree should read `relPerCent` and `xs`
+   (both returned) and apply their own rule -- this unit sets no other threshold. */
+const VRP_REL_MAX=0.5;
+
+function vsPOver(sig,x,tau){
+  if(!(sig>0)||!(tau>0)) return null;
+  const sd=sig*Math.sqrt(tau);
+  if(!(sd>0)||!isFinite(sd)) return null;
+  const g=(x+0.5*sig*sig*tau)/sd;
+  if(!isFinite(g)) return null;
+  return 1-normCdf(g);
+}
+/* bisection over a bracket that must contain a sign change; same fixed-iteration shape as invNorm.
+   Returns null rather than an endpoint when the bracket does not straddle the root. */
+function vsBisect(x,tau,q,lo,hi){
+  const f=s=>{ const p=vsPOver(s,x,tau); return p===null?null:p-q; };
+  if(!(hi>lo)) return null;
+  let a=lo,b=hi; const fa0=f(a), fb0=f(b);
+  if(fa0===null||fb0===null) return null;
+  if(fa0===0) return a;
+  if(fb0===0) return b;
+  if((fa0>0)===(fb0>0)) return null;
+  let up=fa0<0;                                   /* true when f rises across the bracket */
+  for(let i=0;i<VRP_BISECT;i++){
+    const m=(a+b)/2, fm=f(m);
+    if(fm===null) return null;
+    if((fm<0)===up) a=m; else b=m;
+  }
+  const s=(a+b)/2, chk=vsPOver(s,x,tau);
+  if(chk===null||!(Math.abs(chk-q)<=VRP_TOL)) return null;   /* never return a sigma that does not reprice the quote */
+  return s;
+}
+/* conditioning: the FRACTIONAL move in the implied sigma caused by a one-cent move in q, at the solution.
+   Kalshi quotes in 1c ticks, so this is the resolution limit of the reading itself. It blows up near the
+   x>0 cap (where dp/dsig -> 0) and in the deep tails: a caller that displays sigma should show this too.
+   Not gated on -- this unit sets no thresholds; it reports the number and lets the ledger judge. */
+function vsSens(sig,x,tau){
+  const h=sig*1e-4;
+  const a=vsPOver(sig-h,x,tau), b=vsPOver(sig+h,x,tau);
+  if(a===null||b===null) return null;
+  const dp=(b-a)/(2*h);
+  if(!isFinite(dp)||dp===0) return null;
+  return Math.abs(0.01/dp)/sig;
+}
+/* full diagnostic form: always returns an object, so a caller can say WHY there is no implied sigma */
+function impliedSigmaInfo(strike,S0,tau,q,branch){
+  const out={sig:null,x:null,pMax:null,sigStar:null,branch:null,relPerCent:null,reason:"ok"};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!fin(strike)||!fin(S0)||!fin(tau)||!fin(q)){ out.reason="non-finite input"; return out; }
+  if(!(strike>0)||!(S0>0)){ out.reason="non-positive price"; return out; }
+  if(!(tau>0)){ out.reason="tau <= 0"; return out; }
+  if(!(q>VRP_Q_LO)||!(q<VRP_Q_HI)){ out.reason="quote at or beyond clip bounds"; return out; }
+  const x=Math.log(strike/S0), rt=Math.sqrt(tau);
+  out.x=x;
+  if(x>0){
+    const uS=Math.sqrt(2*x), pM=1-normCdf(uS);
+    out.pMax=pM; out.sigStar=uS/rt;
+    if(!(q<pM)){ out.reason="unattainable: p_over above strike caps at pMax"; return out; }
+    if(branch==="high"){ out.branch="high"; out.sig=vsBisect(x,tau,q,out.sigStar,VRP_SIG_MAX); }
+    else { out.branch="low"; out.sig=vsBisect(x,tau,q,VRP_SIG_MIN,out.sigStar); }
+  }else{
+    out.branch="single"; out.pMax=(x===0)?0.5:1;
+    if(x===0&&!(q<0.5)){ out.reason="unattainable: ATM p_over is strictly below 0.5 for every sigma>0"; return out; }
+    out.sig=vsBisect(x,tau,q,VRP_SIG_MIN,VRP_SIG_MAX);
+  }
+  if(out.sig===null&&out.reason==="ok") out.reason="no root in bracket";
+  if(out.sig!==null) out.relPerCent=vsSens(out.sig,x,tau);
+  return out;
+}
+/* per-minute sigma implied by the market's probability q that the window settles ABOVE strike, or null */
+function impliedSigma(strike,S0,tau,q,branch){ return impliedSigmaInfo(strike,S0,tau,q,branch).sig; }
+
+/* realized per-minute sigma over [t0,t1] from minute bars. Contiguity rule is the codebase's: a return counts
+   only when consecutive bar keys differ by exactly 1 -- a sleep/background gap is not a one-minute return.
+   Zero-mean sum-of-squares, matching computeStats' rv60. Bar keys are Math.floor(ms/60000). */
+function realizedSigmaInfo(keys,closes,t0,t1,minN){
+  const need=(typeof minN==="number"&&isFinite(minN)&&minN>=2)?Math.floor(minN):VRP_MIN_RET;
+  const out={sig:null,n:0,dropped:0,invalid:0,k0:null,k1:null,need:need,reason:"ok"};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!keys||!closes||!keys.length||keys.length!==closes.length){ out.reason="no bars"; return out; }
+  if(!fin(t0)||!fin(t1)||!(t1>t0)){ out.reason="bad window"; return out; }
+  const k0=Math.floor(t0/60000), k1=Math.floor(t1/60000);
+  out.k0=k0; out.k1=k1;
+  const r=[]; let pk=null, pc=null;
+  for(let i=0;i<keys.length;i++){
+    const k=keys[i], c=closes[i];
+    if(!fin(k)||!fin(c)||!(c>0)){ out.invalid++; if(pk!==null) out.dropped++; pk=null; pc=null; continue; }  /* `invalid` counts unusable entries; `dropped` counts BROKEN RETURNS. An all-junk array is thin data with invalid===keys.length, not merely a short window (M1). */
+    if(k<k0||k>k1) continue;
+    if(pk!==null){ if(k-pk===1) r.push(Math.log(c/pc)); else out.dropped++; }
+    pk=k; pc=c;
+  }
+  out.n=r.length;
+  if(r.length<need){ out.reason=(out.invalid===keys.length)?"no valid closes (every entry invalid)":"too few contiguous 1-minute returns"; return out; }
+  let s=0; for(let i=0;i<r.length;i++) s+=r[i]*r[i];
+  out.sig=Math.sqrt(s/r.length);
+  return out;
+}
+function realizedSigma(keys,closes,t0,t1,minN){ return realizedSigmaInfo(keys,closes,t0,t1,minN).sig; }
+
+/* vrp>0 means the market priced more volatility than the tape realized (premium available to a seller).
+   Both inputs are per-minute sigmas; ratio is undefined at zero realized vol, so that returns null. */
+function varPremium(sigImplied,sigRealized){
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!fin(sigImplied)||!fin(sigRealized)) return null;
+  if(!(sigImplied>=0)||!(sigRealized>0)) return null;
+  return {vrp:sigImplied-sigRealized, ratio:sigImplied/sigRealized};
+}
+/* IS THERE ANY VOLATILITY INFORMATION IN THIS QUOTE AT ALL?
+   Distinct from relPerCent, which is computed AFTER an inversion and describes how precisely that particular
+   sigma is pinned down. This answers the prior question -- given only where the strike sits relative to spot in
+   MODEL-sigma units, could a quote here have identified sigma in the first place -- and needs no quote to do it.
+
+   Why xs = x/(sigModel*sqrt(tau)) is the deciding quantity. With u = sig*sqrt(tau), p_over = 1-normCdf(x/u+u/2),
+   so evaluated at sig = sigModel (where u is ~1e-3, utterly negligible beside any xs of interest):
+       d p_over / d sig * sig  =  -phi(xs + u/2) * (u/2 - xs)   ~=  phi(xs)*xs
+   and therefore relPerCent ~= 0.01/(phi(xs)*|xs|). At the money xs -> 0, that denominator -> 0, and the
+   inversion is unbounded: sigma enters an ATM binary only through the second-order -0.5*sig^2*tau drift term,
+   which is precisely why an ATM binary prices near 50c almost regardless of volatility and so carries almost no
+   volatility information. KXBTC15M strikes are set at the money at open, so THE 15-MINUTE SERIES IS BORN
+   UNIDENTIFIED and only becomes identifiable later in the window once price has moved off the strike; the hourly
+   KXBTCD ladder has rungs that are identified immediately. The same denominator also collapses in the far tail
+   (phi decays), so the identified region is a BAND in |xs|, not a half-line.
+
+   `identified` is the pre-registered VRP_REL_MAX rule and nothing more. It is computed from vsSens at sigModel
+   -- the same conditioning function impliedSigmaInfo reports -- rather than from hardcoded xs cut points, so the
+   band edges follow from the one registered number instead of from a second set of invented constants. A caller
+   is free to ignore `identified` entirely and rule on `xs` / `relPerCent`, both of which are returned. */
+function sigmaIdentifiability(x,sigModel,tau){
+  const out={identified:false,xs:null,relPerCent:null,reason:"ok"};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  if(!fin(x)||!fin(sigModel)||!fin(tau)){ out.reason="non-finite input"; return out; }
+  if(!(sigModel>0)){ out.reason="sigModel <= 0"; return out; }
+  if(!(tau>0)){ out.reason="tau <= 0"; return out; }
+  const sd=sigModel*Math.sqrt(tau);
+  if(!(sd>0)||!isFinite(sd)){ out.reason="degenerate sigModel*sqrt(tau)"; return out; }
+  out.xs=x/sd;
+  const rel=vsSens(sigModel,x,tau);
+  if(rel===null||!isFinite(rel)){ out.reason="conditioning undefined (dp/dsigma = 0 or non-finite)"; return out; }
+  out.relPerCent=rel;
+  if(rel<=VRP_REL_MAX){ out.identified=true; return out; }
+  /* the <1 test only LABELS which end of the band failed; it is not a threshold and changing it changes no
+     verdict -- `identified` is decided by VRP_REL_MAX alone. */
+  out.reason=(Math.abs(out.xs)<1)?"at the money: one cent of quote moves sigma more than VRP_REL_MAX"
+                                 :"deep tail: one cent of quote moves sigma more than VRP_REL_MAX";
+  return out;
+}
+/* model sigma (strikeProbs' .sigU) beside the market's implied sigma, with the standardised strike distance */
+function volTriple(P,quote,strike,S0,tau){
+  const out={sigModel:null,sigImplied:null,x:null,xs:null,ratioModel:null};
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  const K=fin(strike)?strike:null, s0=fin(S0)?S0:null, tu=fin(tau)?tau:null;
+  if(P&&fin(P.sigU)&&P.sigU>0) out.sigModel=P.sigU;
+  if(K!==null&&s0!==null&&K>0&&s0>0) out.x=Math.log(K/s0);
+  if(out.x!==null&&out.sigModel!==null&&tu!==null&&tu>0){
+    const sd=out.sigModel*Math.sqrt(tu);
+    if(sd>0&&isFinite(sd)) out.xs=out.x/sd;
+  }
+  const q=(quote&&fin(quote.q))?quote.q:null;
+  if(q!==null&&K!==null&&s0!==null&&tu!==null) out.sigImplied=impliedSigma(K,s0,tu,q);
+  /* ratioModel is the PLAUSIBILITY check that relPerCent is not. relPerCent is scale-free: it says how precisely
+     the inversion pinned sigma down, never whether the level is physical. A strike below spot quoted under 50c
+     is reachable in a zero-drift lognormal only at enormous vol, so it inverts exactly -- 1805 bp/min on a
+     -10bp strike at an ordinary 40c quote, reported with a comfortable 10%/cent -- and a panel wiring
+     varPremium straight through would render that as a colossal variance premium against a ~9 bp/min tape.
+     ratioModel makes it unmissable: that reading is 200x the model's own volatility. It is not implied vol at
+     all, it is model misspecification, and 200 is the number that says so. No threshold here -- pure arithmetic
+     on two fields already present; the ledger decides what ratio is too much. */
+  if(out.sigImplied!==null&&out.sigModel!==null) out.ratioModel=out.sigImplied/out.sigModel;
+  return out;
+}
+
+/* ---------------- H protocol: calendar ---------------- */
+/* ===== calendar: scheduled-release detector + event-proximity tag =====
+   All wall-clock reasoning is US Eastern; every time this unit stores or returns is UTC ms.
+   No Date parsing, no toLocaleString, no timezone database - pure UTC arithmetic, because
+   this codebase already shipped one bug where a calendar setter floored in the local zone.
+
+   Two rules govern every failure path here, because these tags get persisted on thousands of
+   ledger rows and analysed by event distance months later:
+     - BAD DATA never produces a tag. A missing/corrupt timestamp returns the all-null tag -
+       deliberately indistinguishable from a genuinely quiet window, because the only safe thing
+       to say about a row with no clock is nothing. What must be impossible is the reverse: a
+       confident "CLAIMS, 810 minutes away" falling out of a null.
+     - BAD CALLER PARAMETERS throw. A horizon wider than the generator can cover, or a
+       non-numeric range, is a programmer error and refuses loudly rather than returning a
+       truncated list that looks like an answer. */
+
+const CAL_HORIZON_MIN=1440;   /* +/- 24h: the documented proximity horizon for nearestRelease/eventTag */
+const CAL_MAX_ITER=20000;     /* generation guard; 20000 daily steps is ~54y, far past any sane query */
+/* Plausibility window for any instant this unit will reason about. null, 0, false and "" all
+   coerce to 0 in ordinary JS arithmetic, and the unit used to answer them with the 1 Jan 1970
+   claims release, 810 minutes away - a confident tier-2 tag on a row whose timestamp went
+   missing. Nothing outside this window is a timestamp this instrument can have produced. */
+const CAL_T_MIN=1230768000000; /* 2009-01-01T00:00:00Z - before any tape this tool will ever see */
+const CAL_T_MAX=4102444800000; /* 2100-01-01T00:00:00Z */
+/* Widest span the day-walk generator can cover inside CAL_MAX_ITER (3 days of internal pad).
+   A request wider than this is REFUSED, not truncated: a truncated walk returns the wrong
+   nearest release with no indication that anything was dropped. */
+const CAL_MAX_SPAN_MS=(CAL_MAX_ITER-4)*86400000;         /* ~54.7 years */
+const CAL_MAX_HORIZON_MIN=Math.floor(CAL_MAX_SPAN_MS/120000); /* ~27.4 years, since the range is +/-H */
+/* Malformed RELEASES.DATED rows found by the most recent releasesBetween() call: the hand-entered
+   table is the one thing here a human fills in, so its rejects are recorded rather than dropped.
+   Shape: [{i, name, why}]. Also available on demand via calValidateDated(). */
+const CAL_DATED_BAD=[];
+
+/* Nth occurrence (n>=1) of weekday `dow` (0=Sun) in UTC month `mo` of year `y`, at 00:00 UTC. */
+function nthDowUtc(y,mo,dow,n){
+  const d0=new Date(Date.UTC(y,mo,1)).getUTCDay();
+  return Date.UTC(y,mo,1+((dow-d0+7)%7)+(n-1)*7);
+}
+/* US DST bounds for a calendar year, as UTC instants.
+   Rule (Energy Policy Act 2005, in force since 2007): starts second Sunday in March at
+   02:00 local standard (EST, UTC-5) = 07:00 UTC; ends first Sunday in November at
+   02:00 local daylight (EDT, UTC-4) = 06:00 UTC. Nothing here is year-specific. */
+function usDstBoundsUtc(y){
+  return { start: nthDowUtc(y,2,0,2)+7*3600000, end: nthDowUtc(y,10,0,1)+6*3600000 };
+}
+/* 240 (EDT) or 300 (EST): minutes to ADD to a US Eastern wall clock to get UTC.
+   Safe across the year boundary without cross-year lookup: January and December are EST
+   under every US rule, so the current UTC year's bounds always classify them correctly. */
+function usEasternOffsetMinutes(utcMs){
+  const b=usDstBoundsUtc(new Date(utcMs).getUTCFullYear());
+  return (utcMs>=b.start&&utcMs<b.end)?240:300;
+}
+/* US Eastern wall clock -> epoch ms. Tries each candidate offset and keeps the one that is
+   self-consistent with the resulting instant.
+   - Ambiguous fall-back hour (01:00-01:59 on the November Sunday): returns the FIRST
+     occurrence, i.e. the EDT reading. Documented, not accidental.
+   - Non-existent spring-forward gap (02:00-02:59 on the March Sunday): neither offset is
+     self-consistent; resolves forward via the standard offset, so 02:30 -> 03:30 EDT. */
+function etToUtc(y,mo,d,hh,mm){
+  const naive=Date.UTC(y,mo,d,hh||0,mm||0,0,0);
+  const a=naive+240*60000; if(usEasternOffsetMinutes(a)===240) return a;
+  const b=naive+300*60000; return b;
+}
+
+/* True only for a real, plausible epoch-ms instant. Deliberately strict about TYPE as well as
+   value: a Date object and the numeric string "1783080000000" are both rejected rather than
+   silently coerced, because both used to produce a wrong answer (a Date string-concatenated
+   inside the range computation and reported "no event known" for a window 30 min from NFP).
+   Callers holding a Date or a CSV string must convert explicitly - +d / Number(s) - so the
+   coercion happens where someone can see it. */
+function calValidTime(t){
+  return typeof t==="number"&&isFinite(t)&&t>=CAL_T_MIN&&t<=CAL_T_MAX;
+}
+
+const RELEASES={
+  /* (a) RULE-DERIVED. The publication rule is genuinely deterministic, so these dates are
+     computed, never stored. Known real exceptions are NOT modelled - see NOTES.md: BLS
+     shifts nonfarm payrolls off the first Friday in rare years, and moves initial claims to
+     Wednesday in weeks containing a Thursday federal holiday. A shifted release is therefore
+     tagged one day off; it is not invented. Every row generated from this table carries
+     src:"rule" so that caveat travels with the data instead of living only in this comment. */
+  RULE:[
+    {name:"NFP",   kind:"scheduled-numeric", tier:1, et:[8,30], rule:"first-friday-of-month"},
+    {name:"CLAIMS",kind:"scheduled-numeric", tier:2, et:[8,30], rule:"every-thursday"}
+  ],
+  /* (b) DATED. Releases whose exact dates are published by an agency and are NOT derivable
+     by any rule. Rows from here carry src:"dated" - an agency-published date, not an inference.
+     THIS TABLE IS INTENTIONALLY EMPTY AND MUST STAY EMPTY UNTIL FILLED BY HAND
+     FROM THE OFFICIAL CALENDARS:
+        CPI, PPI            -> BLS release schedule
+        retail sales        -> Census advance monthly retail
+        PCE, GDP            -> BEA release schedule
+        FOMC decisions      -> federalreserve.gov FOMC calendar
+        ISM                 -> ISM Report On Business schedule
+     Row shape (build t with etToUtc so DST is handled - t MUST be epoch ms, not an ISO string):
+        {name:"CPI", kind:"scheduled-numeric", tier:1, t: etToUtc(2026,0,13,8,30)}
+     tier 1 = high BTC relevance (CPI, NFP, FOMC, PCE); tier 2 = lower (claims, ISM, retail).
+     Malformed rows are NOT silently dropped: they are listed by calValidateDated() and in
+     CAL_DATED_BAD after any releasesBetween() call. Surface that count in the UI.
+     DO NOT GUESS A DATE HERE. A wrong CPI date silently mislabels every window around it and
+     poisons the whole event-distance analysis; an empty table only ever means "no event
+     known", which is honest and recoverable. */
+  DATED:[]
+};
+
+/* Why a hand-entered DATED row is unusable, or null if it is fine. */
+function calDatedRowFault(r){
+  if(!r||typeof r!=="object") return "row is not an object";
+  if(r.t===undefined||r.t===null) return "missing t (build it with etToUtc)";
+  if(typeof r.t!=="number") return "t is a "+(typeof r.t)+", not epoch ms (build it with etToUtc)";
+  if(!isFinite(r.t)) return "t is not a finite number";
+  if(r.t<CAL_T_MIN||r.t>CAL_T_MAX) return "t is outside the plausible range (2009-2100)";
+  if(typeof r.name!=="string"||r.name==="") return "missing name";
+  if(r.tier!==undefined&&r.tier!==1&&r.tier!==2) return "tier must be 1 or 2";
+  return null;
+}
+/* Validate the hand-entered table (defaults to RELEASES.DATED). Returns the REJECTED rows as
+   [{i,name,why}] - empty array means the table is clean. The one table a human types into is
+   the one that must never fail silently: a dropped row reads as "no event known", which is
+   this unit's defined meaning for something else entirely. */
+function calValidateDated(rows){
+  const list=(rows===undefined?RELEASES.DATED:rows), bad=[];
+  if(!Array.isArray(list)){ bad.push({i:-1,name:null,why:"RELEASES.DATED is not an array"}); return bad; }
+  for(let i=0;i<list.length;i++){
+    const r=list[i], why=calDatedRowFault(r);
+    if(why!==null) bad.push({i:i,name:(r&&typeof r==="object"&&typeof r.name==="string")?r.name:null,why:why});
+  }
+  return bad;
+}
+
+/* Every release in [t0,t1] inclusive, from both sources, sorted by t.
+   Each row carries src: "rule" (derived from the publication rule, subject to the unmodelled
+   holiday/BLS shifts in NOTES.md) or "dated" (an agency-published date entered by hand).
+   THROWS on a non-numeric range or a span the generator cannot cover - see the header. */
+function releasesBetween(t0,t1){
+  const out=[];
+  /* refresh the hand-entry reject list on every call, so the UI always sees current state */
+  CAL_DATED_BAD.length=0;
+  const bad=calValidateDated();
+  for(let i=0;i<bad.length;i++) CAL_DATED_BAD.push(bad[i]);
+  if(typeof t0!=="number"||typeof t1!=="number"||!isFinite(t0)||!isFinite(t1))
+    throw new TypeError("calendar: releasesBetween needs two finite epoch-ms numbers, got "+
+      (typeof t0)+"/"+(typeof t1)+"; convert Dates and strings at the call site");
+  if(!(t0<=t1)) return out;
+  if(t1-t0>CAL_MAX_SPAN_MS)
+    throw new RangeError("calendar: releasesBetween span "+Math.round((t1-t0)/86400000)+
+      "d exceeds the generator guard of "+Math.round(CAL_MAX_SPAN_MS/86400000)+
+      "d; refusing rather than returning a silently truncated list");
+  const d0=new Date(t0-86400000), d1=new Date(t1+86400000);   /* pad a UTC day each side, then filter exactly */
+  /* nonfarm payrolls: first Friday of each month, 08:30 ET */
+  let y=d0.getUTCFullYear(), mo=d0.getUTCMonth(), g=0;
+  const yE=d1.getUTCFullYear(), moE=d1.getUTCMonth();
+  while((y<yE||(y===yE&&mo<=moE))){
+    if(g++>=CAL_MAX_ITER) throw new RangeError("calendar: month walk hit CAL_MAX_ITER; refusing a truncated list");
+    const f=new Date(nthDowUtc(y,mo,5,1));
+    const t=etToUtc(f.getUTCFullYear(),f.getUTCMonth(),f.getUTCDate(),8,30);
+    if(t>=t0&&t<=t1) out.push({name:"NFP",kind:"scheduled-numeric",tier:1,src:"rule",t:t});
+    mo++; if(mo>11){mo=0;y++;}
+  }
+  /* initial jobless claims: every Thursday, 08:30 ET */
+  let dd=Date.UTC(d0.getUTCFullYear(),d0.getUTCMonth(),d0.getUTCDate());
+  const dE=Date.UTC(d1.getUTCFullYear(),d1.getUTCMonth(),d1.getUTCDate());
+  for(g=0;dd<=dE;dd+=86400000){
+    if(g++>=CAL_MAX_ITER) throw new RangeError("calendar: day walk hit CAL_MAX_ITER; refusing a truncated list");
+    const c=new Date(dd); if(c.getUTCDay()!==4) continue;
+    const t=etToUtc(c.getUTCFullYear(),c.getUTCMonth(),c.getUTCDate(),8,30);
+    if(t>=t0&&t<=t1) out.push({name:"CLAIMS",kind:"scheduled-numeric",tier:2,src:"rule",t:t});
+  }
+  const dated=Array.isArray(RELEASES.DATED)?RELEASES.DATED:[];
+  for(let i=0;i<dated.length;i++){
+    const r=dated[i];
+    if(calDatedRowFault(r)!==null) continue;   /* already recorded in CAL_DATED_BAD above */
+    if(!(r.t>=t0&&r.t<=t1)) continue;
+    out.push({name:r.name,kind:r.kind||"scheduled-numeric",tier:r.tier||2,src:"dated",t:r.t});
+  }
+  out.sort(function(a,b){ return (a.t-b.t)||(a.tier-b.tier)||(a.name<b.name?-1:a.name>b.name?1:0); });
+  return out;
+}
+
+/* Nearest release to t within +/- horizonMin (default CAL_HORIZON_MIN), or null.
+   mins is SIGNED whole minutes from t to the release: negative = it already happened.
+   src is "rule" or "dated" - carry it, do not drop it (see NOTES.md).
+   Ties break to the lower tier number (higher relevance), then to the earlier release.
+   null for: a horizon <= 0 or non-numeric, and for any t that is not a plausible epoch-ms
+   number (null/0/false/NaN/Date/"1783080000000" all return null rather than a 1970 tag).
+   THROWS for a horizon wider than CAL_MAX_HORIZON_MIN - a caller bug, refused not truncated. */
+function nearestRelease(t,horizonMin){
+  const H=(horizonMin==null?CAL_HORIZON_MIN:horizonMin);
+  if(typeof H!=="number"||!isFinite(H)||!(H>0)) return null;
+  if(H>CAL_MAX_HORIZON_MIN)
+    throw new RangeError("calendar: horizon "+H+" min exceeds CAL_MAX_HORIZON_MIN ("+
+      CAL_MAX_HORIZON_MIN+"); refusing rather than returning a truncated search");
+  if(!calValidTime(t)) return null;
+  const list=releasesBetween(t-H*60000,t+H*60000);
+  let best=null,bd=Infinity;
+  for(let i=0;i<list.length;i++){
+    const r=list[i], d=Math.abs(r.t-t);
+    if(best===null||d<bd||(d===bd&&(r.tier<best.tier||(r.tier===best.tier&&r.t<best.t)))){ best=r; bd=d; }
+  }
+  if(best===null) return null;
+  return {name:best.name,kind:best.kind,tier:best.tier,src:best.src,t:best.t,mins:Math.round((best.t-t)/60000)};
+}
+
+/* Compact four-key tag, safe to persist on every ledger row so any recorded window can be
+   re-analysed by event distance retroactively. Nulls when nothing is within the horizon OR when
+   t is not a usable timestamp - those two cases are deliberately identical, because the only
+   safe thing to say about a row with no clock is nothing.
+   evSrc is the provenance: "rule" = inferred from the publication rule, which is AT RISK in the
+   ~14% of months whose 1st is a Friday and in holiday weeks (NOTES.md); "dated" = a date an
+   agency published.
+   Keep the key. It is the difference between a caveat that survives in the data and one that
+   survives only in a markdown file nobody reads at analysis time. */
+function eventTag(t,horizonMin){
+  const r=nearestRelease(t,horizonMin);
+  if(r===null) return {ev:null,evMins:null,evTier:null,evSrc:null};
+  return {ev:r.name,evMins:r.mins,evTier:r.tier,evSrc:r.src};
+}
+
+/* ---------------- H protocol: detect ---------------- */
+/* ---------------------------------------------------------------- shock detection (H-protocol phase 1/2)
+   Measurement only. Nothing here prices, arms, or executes anything.
+
+   The spine's original phase-2 rule was "flag when realized vol exceeds rv60*SEAS by a multiple".
+   That is circular: rv60*SEAS is the same quantity calSigma() feeds the pricing engine, so the rule
+   flags "the pricing model is currently surprised" and then invites trading on the surprised model.
+   Corrected here: recent vol is used ONLY as a SCALE to standardise an observed move. Nothing below
+   ever compares a realized quantity against a forecast of that same quantity.
+
+   SECOND circularity, mechanical rather than conceptual, and the reason baselineSigma() exists:
+   computeStats() builds sig and rv60 from the TRAILING window, which contains the very minutes being
+   standardised. A move then inflates its own denominator and z saturates at a ceiling that does not
+   depend on how big the move was -- sqrt(60)=7.746 for an rv60 scale, 1/sqrt(1-0.94)=4.082 for the
+   EWMA sig. SHOCK_EDGES tops out at 6, so under those scales the tail buckets are unreachable or
+   collapse into one bin, and H1 -- whose entire mechanism lives in the TAIL of shock sizes -- would
+   be measured with the tail deleted. The scale must therefore be estimated from bars that END BEFORE
+   the standardised span. baselineSigma() does exactly that and is the intended source. */
+
+/* PRE-REGISTERED constants. Fixed before any outcome was scored; they are not fitted to data and
+   must not be tuned once results exist. Tuning any of these after seeing a result manufactures the
+   effect it is supposed to test. */
+const SHOCK={
+  K_DEFAULT:3,        /* |z| threshold for a phase-2 (endogenous) flag, in standardised-move units */
+  CAL_NEAR_MIN:15,    /* a scheduled release counts as "nearby" within +/-15 min of its stamp */
+  WINDOW_MIN:30,      /* default post-shock analysis window, minutes */
+  STALE_MAX_MIN:1,    /* the newest bar may lag `now` by at most this many minutes (see standardisedMove) */
+  MAG_UNMEASURED:"unmeasured", /* magLabel when a shock fired but no z could be measured */
+  MAG_NONE:"none"     /* magLabel when nothing fired (a bucket here would read as a shock size) */
+};
+
+/* PRE-REGISTERED bucket edges for H1's size-conditioning, in standard deviations of the standardised
+   move. Half-open [lo,hi): absZ exactly 2 lands in "z2-3". Lowest bucket exists because a phase-1
+   calendar shock can carry any |z|, including a tiny one.
+   The top two buckets are kept SEPARATE rather than merged into one ">=4" on purpose: H1's whole
+   mechanism is that reversal only clears cost in the TAIL of shock sizes, so the tail has to survive
+   the bucketing instead of being averaged into a fat top bucket. DO NOT retune these later.
+   These edges are only reachable if the scale is lagged -- see baselineSigma(). */
+const SHOCK_EDGES=[2,3,4,6];
+const SHOCK_LABELS=["z<2","z2-3","z3-4","z4-6","z6+"];
+
+/* PRE-REGISTERED baseline-scale settings. LOOKBACK_MIN 60 mirrors the spine's rv60 horizon; GAP_MIN 1
+   drops the bar that anchors the move's own p0, because a shock frequently starts mid-minute before
+   the span's first key; MIN_FRAC 0.5 / MIN_RET 10 reproduce rv60's own "at least 30 of 60 usable
+   returns" gate at the default lookback, and keep a shorter lookback from being estimated off a
+   handful of bars. Not fitted. */
+const BASELINE={LOOKBACK_MIN:60,GAP_MIN:1,MIN_FRAC:0.5,MIN_RET:10};
+
+/* LAGGED per-minute volatility scale: sigma estimated STRICTLY FROM BARS BEFORE the span that
+   standardisedMove() will measure, so the move cannot enter its own denominator.
+
+   Given the same keys/closes/now/windowMin that standardisedMove() receives, the measured span is
+   bars [n-1-windowMin .. n-1]. This function uses only bars at or before index (n-1-windowMin-gapMin),
+   taking `lookbackMin` one-minute returns ending there:
+
+       ... [ s .......... e ] --gapMin-- [ k0 ............ k1 ]
+           |<- baseline ->|              |<- measured span ->|
+
+   sigma is the uncentered RMS of those returns, sqrt(mean(r^2)) -- the same functional form as
+   computeStats()' rv60, which is what calSigma() uses as its base, so the units and the estimator
+   match the rest of the codebase. Returns across a bar gap or through a corrupt close are DROPPED
+   (computeStats()' 1-apart rule), not measured through.
+
+   Returns null -- never a plausible number -- when: bad args; lookbackMin < 2; gapMin < 0; the tape
+   is staler than SHOCK.STALE_MAX_MIN (the same gate standardisedMove applies, so the two agree);
+   there are not enough bars for the whole lagged sample; fewer than max(MIN_RET, ceil(lookback/2))
+   usable returns survive; or sigma comes out non-positive (a perfectly flat baseline gives no scale,
+   and dividing by it would manufacture an infinite z).
+
+   The result is an OBJECT, not a bare number, so the scale's provenance can land on the ledger row:
+   {sigPerMin, lagged:true, nRet, lookbackMin, gapMin, windowMin, kFrom, kTo, kSpanFrom, kSpanTo, source}.
+   Pass it straight to standardisedMove() as `sigPerMin`.
+
+   HONEST LIMITS. Lagging removes the mechanical self-inflation (numerator inside its own denominator).
+   It does NOT remove volatility clustering: a shock arriving after an already-elevated hour still has
+   a larger denominator, so the second shock of a burst reads smaller than the first. It does not
+   remove sub-minute leakage beyond gapMin minutes. And the uncentered RMS carries any drift inside
+   the baseline into sigma, exactly as rv60 does. z is a standardised move, not a p-value. */
+function baselineSigma(keys,closes,now,windowMin,lookbackMin,gapMin){
+  if(!Array.isArray(keys)||!Array.isArray(closes)) return null;
+  if(typeof now!=="number"||!isFinite(now)) return null;
+  if(typeof windowMin!=="number"||!isFinite(windowMin)) return null;
+  const w=Math.round(windowMin); if(w<1) return null;
+  let L=BASELINE.LOOKBACK_MIN;
+  if(lookbackMin!==undefined&&lookbackMin!==null){
+    if(typeof lookbackMin!=="number"||!isFinite(lookbackMin)) return null;
+    L=Math.round(lookbackMin);
+  }
+  if(L<2) return null;
+  let g=BASELINE.GAP_MIN;
+  if(gapMin!==undefined&&gapMin!==null){
+    if(typeof gapMin!=="number"||!isFinite(gapMin)) return null;
+    g=Math.round(gapMin);
+  }
+  if(g<0) return null;
+  const n=Math.min(keys.length,closes.length); if(n<1) return null;
+  const kEnd=keys[n-1]; if(typeof kEnd!=="number"||!isFinite(kEnd)) return null;
+  const lag=Math.floor(now/60000)-kEnd;
+  if(lag<0||lag>SHOCK.STALE_MAX_MIN) return null;
+  const j0=n-1-w;                 /* first bar of the span standardisedMove will measure */
+  const e=j0-g;                   /* last bar admitted to the baseline */
+  const s=e-L;                    /* first bar admitted; L returns run s+1..e */
+  if(s<0) return null;
+  let sum=0,cnt=0;
+  for(let i=s+1;i<=e;i++){
+    const ka=keys[i-1],kb=keys[i];
+    if(typeof ka!=="number"||typeof kb!=="number"||kb-ka!==1) continue;    /* a gap is not a 1-minute return */
+    const ca=closes[i-1],cb=closes[i];
+    if(typeof ca!=="number"||!isFinite(ca)||ca<=0) continue;
+    if(typeof cb!=="number"||!isFinite(cb)||cb<=0) continue;
+    const r=Math.log(cb/ca); if(!isFinite(r)) continue;
+    sum+=r*r; cnt++;
+  }
+  const need=Math.max(BASELINE.MIN_RET,Math.ceil(L*BASELINE.MIN_FRAC));
+  if(cnt<need) return null;
+  const sig=Math.sqrt(sum/cnt);
+  if(!isFinite(sig)||sig<=0) return null;
+  return {sigPerMin:sig,lagged:true,nRet:cnt,lookbackMin:L,gapMin:g,windowMin:w,
+          kFrom:keys[s],kTo:keys[e],kSpanFrom:keys[j0],kSpanTo:kEnd,source:"baselineSigma"};
+}
+
+/* Resolve the `sigPerMin` argument of standardisedMove into {sig,lagged,meta} or null.
+   A baselineSigma() result is the intended input and carries lagged:true. A bare positive number is
+   still accepted -- a FIXED constant scale is a legitimate, uncontaminated choice -- but it is tagged
+   lagged:false so a ledger row records that the ceiling of D1 may apply to it. */
+function shockScale(sigPerMin){
+  if(typeof sigPerMin==="number")
+    return (isFinite(sigPerMin)&&sigPerMin>0)?{sig:sigPerMin,lagged:false,meta:null}:null;
+  if(sigPerMin&&typeof sigPerMin==="object"){
+    const v=sigPerMin.sigPerMin;
+    if(typeof v==="number"&&isFinite(v)&&v>0)
+      return {sig:v,lagged:sigPerMin.lagged===true,meta:sigPerMin};
+  }
+  return null;
+}
+
+/* Log return over the last `windowMin` completed minutes, standardised by a per-minute sigma.
+   keys/closes are the parallel arrays from barsExcludingCurrent(); keys are minute indices
+   (Math.floor(ms/60000)) and MUST be exactly 1 apart across the whole span, the same rule
+   computeStats() uses to refuse a sleep/background gap as a one-minute return.
+
+   `sigPerMin` is a SCALE only -- z is a standardised move, never a model error. Pass either:
+     - a baselineSigma(keys,closes,now,windowMin,...) result  <-- REQUIRED FORM for H-protocol rows;
+       its sample ends before the measured span, so the move cannot inflate its own denominator; or
+     - a bare positive number, for a FIXED constant scale.
+   DO NOT pass computeStats().rv60, computeStats().sig or calSigma(...): those are estimated over a
+   trailing window that CONTAINS the measured span, which caps z at sqrt(60)=7.746 and 4.082
+   respectively regardless of how large the move is, and so empties the pre-registered tail buckets.
+   The result carries `sigLagged` and `sigMeta` so which scale was used is reconstructable from the row.
+   If a scale object's sample does NOT end before the measured span (a caller who built the baseline
+   for a different windowMin), the move is REFUSED rather than measured on an overlapping scale.
+
+   Returns null (rather than a plausible number) when the span cannot be measured truthfully:
+   bad args, an unusable scale, fewer than windowMin+1 bars, any gap inside the span, a non-positive
+   or non-finite close ANYWHERE in the span (the endpoints alone would still compute, but a corrupt
+   bar inside means the tape was broken across the span), or a newest bar staler than
+   SHOCK.STALE_MAX_MIN relative to `now` -- a stale tape would otherwise report an old move as "the
+   last windowMin minutes". */
+function standardisedMove(keys,closes,now,windowMin,sigPerMin){
+  if(!Array.isArray(keys)||!Array.isArray(closes)) return null;
+  if(typeof now!=="number"||!isFinite(now)) return null;
+  if(typeof windowMin!=="number"||!isFinite(windowMin)) return null;
+  const sc=shockScale(sigPerMin); if(sc===null) return null;
+  const w=Math.round(windowMin); if(w<1) return null;
+  const n=Math.min(keys.length,closes.length); if(n<w+1) return null;
+  const kEnd=keys[n-1]; if(typeof kEnd!=="number"||!isFinite(kEnd)) return null;
+  const lag=Math.floor(now/60000)-kEnd;
+  if(lag<0||lag>SHOCK.STALE_MAX_MIN) return null;
+  for(let i=n-1-w;i<n;i++){
+    if(i>n-1-w&&keys[i]-keys[i-1]!==1) return null;                          /* a gap is not a 1-minute step */
+    const c=closes[i];
+    if(typeof c!=="number"||!isFinite(c)||c<=0) return null;                 /* a corrupt bar anywhere in the span voids it */
+  }
+  /* the exclusion is ENFORCED here, not merely trusted: a caller who builds the baseline for one
+     windowMin and then measures another would otherwise slide the sample back inside the span. */
+  if(sc.meta&&typeof sc.meta.kTo==="number"&&isFinite(sc.meta.kTo)&&sc.meta.kTo>=keys[n-1-w]) return null;
+  const p1=closes[n-1],p0=closes[n-1-w];
+  const ret=Math.log(p1/p0);
+  const z=ret/(sc.sig*Math.sqrt(w));
+  if(!isFinite(z)) return null;
+  return {ret:ret,z:z,absZ:Math.abs(z),windowMin:w,k0:keys[n-1-w],k1:kEnd,p0:p0,p1:p1,
+          sigPerMin:sc.sig,sigLagged:sc.lagged,sigMeta:sc.meta};
+}
+
+/* Ordinal magnitude bucket for absZ. Returns {i,label,lo,hi} (hi null in the open top bucket)
+   or null when absZ is not a measurable non-negative number. `i` is the ordinal; `label` is the
+   CSV/grouping key. */
+function shockMagnitudeBucket(absZ){
+  if(typeof absZ!=="number"||!isFinite(absZ)||absZ<0) return null;
+  let i=0; while(i<SHOCK_EDGES.length&&absZ>=SHOCK_EDGES[i]) i++;
+  return {i:i,label:SHOCK_LABELS[i],lo:i===0?0:SHOCK_EDGES[i-1],hi:i<SHOCK_EDGES.length?SHOCK_EDGES[i]:null};
+}
+
+/* Is a named scheduled release near enough to claim this observation? Accepts the calendar unit's
+   tag {ev,evMins,evTier}, a {name,mins} row, or a bare event-name string (caller already gated).
+   `nearMin` defaults to SHOCK.CAL_NEAR_MIN when absent or unusable: an omitted argument used to make
+   the comparison `Math.abs(m)<=undefined` -> false, which silently DISCARDED a release happening
+   right now and filed the move as endogenous -- the exact direction this function exists to avoid.
+   A named event with no usable distance still returns the name: the dangerous error is filing a
+   scheduled move into the endogenous bucket, so ambiguity resolves toward phase 1. */
+function shockCalNear(tag,nearMin){
+  if(tag===null||tag===undefined||tag===false) return null;
+  if(typeof tag==="string") return tag.length?tag:null;
+  if(typeof tag!=="object") return null;
+  const nm=(typeof nearMin==="number"&&isFinite(nearMin)&&nearMin>=0)?nearMin:SHOCK.CAL_NEAR_MIN;
+  let name=null;
+  if(typeof tag.ev==="string"&&tag.ev.length) name=tag.ev;
+  else if(typeof tag.name==="string"&&tag.name.length) name=tag.name;
+  if(name===null) return null;
+  let m=null;
+  if(typeof tag.evMins==="number") m=tag.evMins;
+  else if(typeof tag.mins==="number") m=tag.mins;
+  if(m===null||!isFinite(m)) return name;
+  return Math.abs(m)<=nm?name:null;
+}
+
+/* opts: {calendarTag, z, k, calNearMin}
+   -> {shock, phase, z, mag, magLabel, source}
+   Phase 1 (scheduled) takes precedence and does NOT look at z at all: a release is a known event
+   whether or not the price moved, and a quiet release is still a release.
+   Phase 2 (endogenous) fires on |z| >= k ONLY when no scheduled release is nearby.
+   `phase` is always recorded because the two have very different reliability -- a phase-1 flag is a
+   fact from a calendar, a phase-2 flag is an inference from the tape. They must never be pooled
+   into one "shock" population without carrying this field.
+
+   `mag` is NULL in two distinct situations and a caller MUST branch on it before reading .label:
+     - nothing fired: a bucket on a non-shock would read as a shock magnitude;
+     - a phase-1 shock whose z could not be measured (bar gap, stale tape after a backgrounded tab,
+       cold start). The size is genuinely unknown and inventing a bucket for it would corrupt H1's
+       size-conditioning. This is COMMON, not exotic -- it is the normal state after a tab resume.
+   `magLabel` is therefore ALWAYS a non-empty string and is the field a render or CSV path running at
+   1 Hz should read: mag.label when a bucket exists, else SHOCK.MAG_UNMEASURED ("unmeasured") for a
+   fired-but-unmeasured row, else SHOCK.MAG_NONE ("none"). Neither sentinel is a member of
+   SHOCK_LABELS, so a grouping key can never silently absorb them into a real bucket.
+   Call shockMagnitudeBucket() directly to bucket control windows. */
+function detectShock(opts){
+  const o=opts||{};
+  const z=(typeof o.z==="number"&&isFinite(o.z))?o.z:null;
+  const k=(typeof o.k==="number"&&isFinite(o.k)&&o.k>0)?o.k:SHOCK.K_DEFAULT;
+  const near=(typeof o.calNearMin==="number"&&isFinite(o.calNearMin)&&o.calNearMin>=0)?o.calNearMin:SHOCK.CAL_NEAR_MIN;
+  const cal=shockCalNear(o.calendarTag,near);
+  const lab=(m,fired)=>m===null?(fired?SHOCK.MAG_UNMEASURED:SHOCK.MAG_NONE):m.label;
+  if(cal!==null){
+    const m=z===null?null:shockMagnitudeBucket(Math.abs(z));
+    return {shock:true,phase:1,z:z,mag:m,magLabel:lab(m,true),source:cal};
+  }
+  if(z!==null&&Math.abs(z)>=k){
+    const m=shockMagnitudeBucket(Math.abs(z));
+    return {shock:true,phase:2,z:z,mag:m,magLabel:lab(m,true),source:"endogenous"};
+  }
+  return {shock:false,phase:null,z:z,mag:null,magLabel:SHOCK.MAG_NONE,source:null};
+}
+
+/* Post-shock gate. Half-open [0,lenMin) so consecutive windows tile without double-counting a row.
+   minsSince is signed and unrounded (negative = nowT precedes the shock). */
+function shockWindow(shockT,nowT,lenMin){
+  if(typeof shockT!=="number"||!isFinite(shockT)||typeof nowT!=="number"||!isFinite(nowT))
+    return {inWindow:false,minsSince:null};
+  const L=(typeof lenMin==="number"&&isFinite(lenMin))?lenMin:SHOCK.WINDOW_MIN;
+  const mins=(nowT-shockT)/60000;
+  return {inWindow:mins>=0&&mins<L,minsSince:mins};
+}
+
+/* Time-matched control keys. Without these every shock result is confounded with time of day:
+   the releases that drive phase 1 cluster at 12:30-13:30 UTC, on the rising limb of this
+   instrument's own seasonal curve (SEAS 1.007 at 12 UTC -> 1.298 at 13 UTC -> 1.934 at 14 UTC), and
+   US DST slides the same 08:30 ET release between the 12 and 13 UTC slots twice a year (08:30 EDT =
+   12:30 UTC, 08:30 EST = 13:30 UTC), whose seasonal factors differ by ~29%. A shock/non-shock
+   comparison must be made WITHIN a clock stratum, not pooled across the day. Randomising the side
+   (the spine's shock_random control) does not address this at all -- it randomises the call, not the
+   clock. seasTable is passed in (never read off the global) so this is testable; if it is not a
+   24-entry numeric table, seas comes back null rather than silently wrong.
+   weekday is the UTC day (0=Sun). slot15 is the 15-minute slot of the UTC day, 0..95 -- the natural
+   stratum for KXBTC15M windows, though it is sparse; hourUTC is the coarser stratum to fall back to. */
+function timeMatchedControl(t,seasTable){
+  if(typeof t!=="number"||!isFinite(t)) return null;
+  const d=new Date(t),h=d.getUTCHours(),mi=d.getUTCMinutes();
+  let s=null;
+  if(Array.isArray(seasTable)&&seasTable.length===24){ const v=seasTable[h]; if(typeof v==="number"&&isFinite(v)) s=v; }
+  return {hourUTC:h,minuteUTC:mi,weekday:d.getUTCDay(),slot15:h*4+Math.floor(mi/15),seas:s};
+}
+
+/* ---------------- H protocol: schema ---------------- */
+/* ---------------------------------------------------------------- schema: ledger enrichment (H-protocol state capture) */
+/* Pure glue for SPEC.md. Builds the OPTIONAL, NULLABLE field bundles that edgeSnapOne / swingTick /
+   simCloseOne attach to each row, plus the deferred settlement-volatility bundle and the two offline
+   analysis measures the CSV needs. No DOM, no localStorage, no fetch, no timers, no reads of S.
+
+   THE OMIT RULE, which is the whole backward-compatibility contract: a value that cannot be derived
+   truthfully is OMITTED (left undefined), never written as null and never guessed. JSON.stringify drops
+   an undefined value, so a new row with no reading is byte-for-byte identical to a row written by the
+   previous build. Every consumer therefore needs exactly one tolerance rule - "absent means unknown" -
+   and it covers both the old rows and the new ones.
+
+   Two return conventions, deliberately different:
+     *Fields(...)  -> an object for schemaPut: absent keys are UNDEFINED (so they never reach storage).
+     the analysis helpers (depthAtAsk, misRatio, edgeSpreadC, swingSpreadC, utcHour, seasAt)
+                   -> NULL for "no value", because they feed the CSV, where a cell must be written. */
+const SCHEMA_VERSION=2;              /* stamped on containers and on standalone journal rows, never on a snap */
+const SCHEMA_BP=1e4;                 /* sigma is stored as basis points of PER-MINUTE log-return sigma */
+const SCHEMA_VOL_GIVEUP_MS=300*60000;/* S.bars holds 360 minutes; past this a window's realized sigma is gone for good */
+/* PRE-REGISTERED, DO NOT TUNE. The plausibility band on si/sm - the implied sigma as a multiple of the model's
+   own sigma for the same row. Fixed before any vrp data exists, exactly as VERDICT_RULE's thresholds were
+   (CLAUDE.md sec 4, sec 7.6). Derivation of the floor: within this tool's own model family two sigmas describing
+   the same tape can differ by at most the seasonal ratio times the term factor - sqrt(1.934/0.804)=1.55 times
+   1.089 = 1.69. Anything past that is not a disagreement about volatility inside the model, it is the model
+   failing. 4 is roughly 2.4x that widest in-family disagreement, deliberately loose so ordinary regime
+   disagreement is never excluded; it is a judgment number and it is named as one. Changing it to admit more
+   readings would be tuning a filter against its own results - any change is a recorded re-registration, not an
+   edit. Nothing is destroyed by it: a failing row keeps si/sm/xs/tau, only the composite vrp is withheld and the
+   withholding is counted in vrpX, so the excluded set is measurable and vrp is recomputable under any other rule. */
+const SCHEMA_SIR_MIN=0.25, SCHEMA_SIR_MAX=4;
+
+/* finite -> rounded number; anything else -> undefined, so the key is omitted. */
+function schemaNum(v,dp){
+  if(typeof v!=="number"||!isFinite(v)) return undefined;
+  const m=Math.pow(10,dp||0), r=Math.round(v*m)/m;
+  return isFinite(r)?r:undefined;
+}
+/* per-minute sigma -> basis points per minute (sigma*1e4), 2dp. Live BTC runs roughly 5-15 bp/min, so
+   2dp of a bp is finer than the tape can resolve and 4 characters replace 9. */
+function sigBp(sig){
+  if(typeof sig!=="number"||!isFinite(sig)||sig<0) return undefined;
+  const r=schemaNum(sig*SCHEMA_BP,2);
+  /* a strictly positive sigma below 0.005 bp/min rounds to 0. Storing that would be a FABRICATED zero: it reads
+     as a legitimate measurement of no volatility and propagates as vrp = 0 - sr, a large negative premium out of
+     nowhere. Sub-resolution is not zero - omit it, which is what every other unrepresentable value here does.
+     An exact zero (a genuinely flat tape) is still stored, because that one IS the measurement. */
+  if(r===0&&sig>0) return undefined;
+  return r;
+}
+
+/* the seasonal factor calSigma and touchProb actually apply: sqrt(SEAS[endHour]/SEAS[nowHour]).
+   Exactly 1 inside one clock hour - it only bites when the window crosses an hour boundary (10.2). */
+function seasFactor(now,tEnd){
+  /* new Date(null) is the EPOCH, not an Invalid Date, so an unguarded null would silently read SEAS[0] and
+     return a plausible 1. Both timestamps must be real numbers or there is no factor. */
+  if(typeof now!=="number"||typeof tEnd!=="number"||!isFinite(now)||!isFinite(tEnd)) return undefined;
+  const hN=new Date(now).getUTCHours(), hE=new Date(tEnd).getUTCHours();
+  const a=SEAS[hE], b=SEAS[hN];
+  if(!(a>0)||!(b>0)) return undefined;
+  return Math.sqrt(a/b);
+}
+function utcHour(t){ return (typeof t==="number"&&isFinite(t))?new Date(t).getUTCHours():null; }
+/* the raw seasonality control regressor: the table multiplier for the row's own UTC hour. */
+function seasAt(t){ const h=utcHour(t); return h===null?null:(SEAS[h]===undefined?null:SEAS[h]); }
+
+/* the sigma touchProb runs its Monte Carlo on: the rv60 base times the seasonal ratio and NO term factor.
+   Defined here so there is one definition; touchProb should call it rather than repeat the two lines. */
+function touchSigma(st,now,tEnd){
+  if(!st) return null;
+  if(typeof now!=="number"||typeof tEnd!=="number"||!isFinite(now)||!isFinite(tEnd)) return null;
+  const base=(st.rv60!==null&&st.rv60!==undefined)?st.rv60:st.sig;
+  const s=seasFactor(now,tEnd);
+  if(typeof base!=="number"||!isFinite(base)||s===undefined) return null;
+  return base*s;
+}
+
+/* assign a key only when it carries a real value. Using this rather than a plain assignment matters:
+   `f.sm=undefined` CREATES the key, so Object.keys(f) would report a field the row does not have and any
+   consumer that enumerates the bundle would see a phantom. A bundle contains only what was measured. */
+function schemaSet(f,k,v){ if(v!==undefined) f[k]=v; return f; }
+
+/* copy only the keys that carry a real value onto an existing row. Never writes null, never overwrites
+   a key with undefined, never touches a key the bundle does not mention. */
+function schemaPut(row,f){
+  if(!row||!f) return row;
+  const ks=Object.keys(f);
+  for(let i=0;i<ks.length;i++){ const k=ks[i]; if(f[k]!==undefined) row[k]=f[k]; }
+  return row;
+}
+
+/* kParseBook already computes depthYes/depthNo on every poll and nothing in the page reads either one.
+   depthYes = contracts resting as YES bids; depthNo = contracts resting as NO bids, which are the same
+   book as the YES offers (yesAsk = 100 - bestNoBid). Getting that round the wrong way inverts H2. */
+function bookDepth(ob){
+  const f={};
+  if(!ob) return f;
+  schemaSet(f,"dy",schemaNum(ob.depthYes,0));
+  schemaSet(f,"dn",schemaNum(ob.depthNo,0));
+  return f;
+}
+/* which stored depth backs THIS side's ask: a YES ask is made of resting NO bids, and vice versa. */
+function depthAtAsk(side,dy,dn){
+  const y=schemaNum(dy,0), n=schemaNum(dn,0);
+  if(side==="YES") return n===undefined?null:n;
+  if(side==="NO") return y===undefined?null:y;
+  return null;
+}
+
+/* --- edge snapshot ------------------------------------------------------------------------------- */
+/* P is strikeProbs' return, which must carry the additive S0 key (SPEC 3.1); quote is the {q,spread}
+   object it was handed; ob is the fresh order book, or null for the hourly ladder rungs, which
+   edgeSnapOne is called with ob=null and which therefore carry no depth at all. */
+function edgeSnapFields(P,quote,strike,ob){
+  const f={};
+  if(!P) return schemaPut(f,bookDepth(ob));
+  schemaSet(f,"sm",sigBp(P.sigU));
+  const S0=(typeof P.S0==="number"&&isFinite(P.S0))?P.S0:null;
+  const tau=(typeof P.tau==="number"&&isFinite(P.tau))?P.tau:null;
+  const q=(quote&&typeof quote.q==="number"&&isFinite(quote.q))?quote.q:null;
+  if(S0!==null&&S0>0&&tau!==null&&tau>0&&typeof strike==="number"&&isFinite(strike)&&strike>0){
+    const x=Math.log(strike/S0);
+    if(typeof P.sigU==="number"&&isFinite(P.sigU)&&P.sigU>0){
+      const sd=P.sigU*Math.sqrt(tau);
+      if(sd>0) schemaSet(f,"xs",schemaNum(x/sd,3));
+    }
+    /* si is written ONLY when sm and xs are written too. An implied sigma with nothing beside it cannot be
+       judged - the reading that matters is not the level but the level relative to the model's own sigma and
+       to where the strike sits (SPEC 7.6). A bare si would be a number no analyst could tell from noise, so
+       the whole reading is omitted rather than shipped unjudgeable.
+       guarded: the volspace unit may not be spliced. A missing dependency must cost a field, not the page. */
+    if(q!==null&&f.sm!==undefined&&f.xs!==undefined&&typeof impliedSigma==="function")
+      schemaSet(f,"si",sigBp(impliedSigma(strike,S0,tau,q)));
+  }
+  return schemaPut(f,bookDepth(ob));
+}
+
+/* --- swing read ---------------------------------------------------------------------------------- */
+/* st = computeStats(); side = "YES"|"NO"; ob = S.k.ob, which swingTick already requires to be non-null;
+   S0 = the settlement index price (S.idxPx, the same one touchProb used). si is inverted from the
+   WINDOW's yes-mid, not from the cheap side's ask: a one-sided ask embeds the spread and is not a
+   probability, so inverting it would report the spread as volatility. */
+function swingReadFields(st,side,ob,S0,strike,now,tEnd){
+  const f={};
+  const sig=touchSigma(st,now,tEnd);
+  schemaSet(f,"sm",sigBp(sig));
+  const bidC=ob?(side==="YES"?ob.yesBid:ob.noBid):null;
+  if(typeof bidC==="number"&&isFinite(bidC)) schemaSet(f,"bid",schemaNum(bidC/100,3));
+  const yb=ob?ob.yesBid:null, ya=ob?ob.yesAsk:null;
+  const tau=(typeof tEnd==="number"&&typeof now==="number")?(tEnd-now)/60000:null;
+  if(typeof yb==="number"&&isFinite(yb)&&typeof ya==="number"&&isFinite(ya)&&ya>0&&ya<100
+     &&tau!==null&&tau>0&&typeof S0==="number"&&isFinite(S0)&&S0>0
+     &&typeof strike==="number"&&isFinite(strike)&&strike>0){
+    const x=Math.log(strike/S0), q=((yb+ya)/2)/100;
+    if(typeof sig==="number"&&isFinite(sig)&&sig>0){
+      const sd=sig*Math.sqrt(tau);
+      if(sd>0) schemaSet(f,"xs",schemaNum(x/sd,3));
+    }
+    /* same rule as the edge snap: no si without sm and xs beside it (SPEC 7.6). */
+    if(f.sm!==undefined&&f.xs!==undefined&&typeof impliedSigma==="function")
+      schemaSet(f,"si",sigBp(impliedSigma(strike,S0,tau,q)));
+  }
+  return schemaPut(f,bookDepth(ob));
+}
+
+/* --- journal trade ------------------------------------------------------------------------------- */
+/* A journal row outlives the swing read it came from (3000 rows kept vs 400 window-sides), so the
+   entry-time state has to be copied, not joined. r is that read (e.reads[t.readIdx]); t is the open
+   position, whose entryBid was threaded in for the S1 fix but never reached the journal row. */
+function journalEntryFields(r,t){
+  const f={sv:SCHEMA_VERSION};
+  if(r){
+    schemaSet(f,"sm",schemaNum(r.sm,2)); schemaSet(f,"si",schemaNum(r.si,2)); schemaSet(f,"xs",schemaNum(r.xs,3));
+    schemaSet(f,"dy",schemaNum(r.dy,0)); schemaSet(f,"dn",schemaNum(r.dn,0));
+  }
+  if(t&&typeof t.entryBid==="number"&&isFinite(t.entryBid)) schemaSet(f,"bidIn",schemaNum(t.entryBid,3));
+  return f;
+}
+
+/* --- is this implied sigma worth anything? (SPEC 7.6) --------------------------------------------- */
+/* CAN THIS ROW'S IMPLIED SIGMA BE BELIEVED? Single definition, used by the vrp gate below and by the CSV
+   exporter, so a panel and an export can never disagree about which readings count.
+
+   Why a gate exists at all. Implied volatility is NOT identifiable from an at-the-money binary, and a
+   KXBTC15M strike is set AT THE MONEY AT OPEN. With x = log(strike/S0) and u = sig*sqrt(tau), p_over =
+   1-normCdf(x/u + u/2); at x = 0 sigma survives only in the second-order u/2 drift term, so the price is
+   nearly independent of sigma and the inverse is nearly unbounded. The 15-minute series is therefore BORN
+   UNIDENTIFIED and becomes identifiable only later in a window once price has moved off the strike; the
+   hourly KXBTCD ladder's off-the-money rungs are identified from the first poll. Inverting anyway and
+   subtracting realized sigma yields "1805 bp implied minus 9 bp realized" on an ordinary 40c quote - each
+   step correct, the output pure noise presented as a colossal premium. That is the exact failure CLAUDE.md
+   sec 7 rule 6 exists to prevent, so vrp is OMITTED there and the omission is COUNTED (vrpX), never clamped
+   and never silently dropped.
+
+   Two independent tests, in order, because they catch different failures:
+     1. IDENTIFIABILITY, quote-free. sigmaIdentifiability(x, sigModel, tau) against volspace's pre-registered
+        VRP_REL_MAX. It asks only where the strike sits in model-sigma units, so it selects on the STRIKE and
+        never on the answer - gating on the conditioning of the solution instead would select on the quote's
+        own inversion and bias whatever vrp then measures.
+     2. PLAUSIBILITY, si/sm against the pre-registered band. Necessary because conditioning does NOT catch the
+        second failure: a strike just below spot quoted under 50c inverts exactly, well conditioned at both the
+        model sigma and the solution, to a sigma ~200x the tape's. That is model misspecification wearing an
+        implied volatility's clothes. This test does look at the answer; it is labelled as such, its rejections
+        are counted, and the underlying si/sm/xs/tau stay on the row so the exclusion is fully reversible. */
+function siJudge(ref){
+  const out={si:null,sm:null,sir:null,xs:null,tau:null,relPerCent:null,identified:false,ok:false,code:"noref"};
+  if(!ref) return out;
+  const fin=v=>typeof v==="number"&&isFinite(v);
+  const si=fin(ref.si)?ref.si:null, sm=fin(ref.sm)?ref.sm:null,
+        xs=fin(ref.xs)?ref.xs:null, tau=fin(ref.tau)?ref.tau:null;
+  out.si=si; out.sm=sm; out.xs=xs; out.tau=tau;
+  if(si===null){ out.code="nosi"; return out; }                       /* unattainable quote, or never computed */
+  if(sm===null||!(sm>0)||xs===null||tau===null||!(tau>0)){ out.code="nodiag"; return out; }  /* pre-enrichment row */
+  out.sir=+(si/sm).toFixed(3);
+  if(typeof sigmaIdentifiability!=="function"){ out.code="nodiag"; return out; }
+  const sig=sm/SCHEMA_BP, x=xs*sig*Math.sqrt(tau);                    /* exact inverse of how xs was written */
+  const id=sigmaIdentifiability(x,sig,tau);
+  out.relPerCent=fin(id.relPerCent)?id.relPerCent:null;
+  out.identified=!!id.identified;
+  if(!out.identified){
+    out.code=(out.relPerCent===null)?"cond":(Math.abs(xs)<1?"atm":"tail");
+    return out;
+  }
+  if(!(out.sir>=SCHEMA_SIR_MIN&&out.sir<=SCHEMA_SIR_MAX)){ out.code="impl"; return out; }
+  out.ok=true; out.code="ok";
+  return out;
+}
+
+/* --- deferred settlement volatility -------------------------------------------------------------- */
+/* Realized sigma over a closed window is UNRECOVERABLE later: S.bars keeps 360 minutes and then drops the
+   bars this needs. It has to be computed after the close and stored, or it is lost for good.
+   ref is the REFERENCE ROW - refSnap(w) for an edge window, the mid-life clean read for a swing entry - not a
+   bare implied sigma. It has to be the row: the gate above needs si, sm, xs and tau together, and vrpT is
+   stamped here from ref.t rather than by the caller so a provenance stamp can never outlive the value it
+   points at (a bare-number signature made both of those the caller's problem to get right).
+   Returns {} - nothing to write, retry next tick - when the bars cannot yet cover the window. */
+function volCloseFields(ref,keys,closes,t0,t1,minN){
+  const f={};
+  if(typeof realizedSigmaInfo!=="function") return f;
+  const info=realizedSigmaInfo(keys,closes,t0,t1,minN);
+  if(!info||info.sig===null||typeof info.sig!=="number"||!isFinite(info.sig)) return f;
+  const sr=sigBp(info.sig);
+  if(sr===undefined) return f;          /* sub-resolution realized sigma: nothing truthful to write (F2) */
+  schemaSet(f,"sr",sr);
+  schemaSet(f,"srN",schemaNum(info.n,0));
+  const j=siJudge(ref);
+  if(j.ok){
+    schemaSet(f,"vrp",schemaNum(j.si-sr,2));
+    /* the provenance stamp is written HERE and only when vrp was: a vrpT pointing at a read that produced no
+       value is a stamp on nothing. */
+    if(f.vrp!==undefined&&typeof ref.t==="number"&&isFinite(ref.t)) schemaSet(f,"vrpT",schemaNum(ref.t,0));
+  }
+  /* the omission is a COUNTABLE field, not a silence. Group by vrpX and the selection effect is measurable:
+     noref | nosi | nodiag | atm | tail | cond | impl. */
+  if(f.vrp===undefined) schemaSet(f,"vrpX",j.code);
+  return f;
+}
+/* stop retrying once the bar buffer can no longer cover the window; the caller records srTried then. */
+function schemaVolGiveUp(now,close){
+  if(typeof now!=="number"||typeof close!=="number"||!isFinite(now)||!isFinite(close)) return false;
+  return (now-close)>SCHEMA_VOL_GIVEUP_MS;
+}
+
+/* --- offline analysis measures (CSV columns, computed at export; nothing extra is stored) ---------- */
+/* H2, restated so that it is not self-contradicting. As written in the spine, H2 gates you into trading
+   when the spread is WIDEST - the most expensive moment to cross and the worst moment to rest an order.
+   The question that actually has an answer is whether MISPRICING outgrows SPREAD, i.e. whether the edge
+   per cent of spread is rising. The numerator must come from a QUOTE-INDEPENDENT estimator: using the
+   headline pm would be circular, because the residual fit takes the quote as its baseline and carries
+   spread as a regressor with coefficient -5.023, so pm-qm is a mechanical function of spread and any
+   relationship found would be an artifact of the fit. pa (analytic) is the quote-free estimator that is
+   already stored on every snap. */
+function misRatio(pQuoteFree,qMidCents,spreadC){
+  const p=(typeof pQuoteFree==="number"&&isFinite(pQuoteFree))?pQuoteFree:null;
+  const q=(typeof qMidCents==="number"&&isFinite(qMidCents))?qMidCents:null;
+  const s=(typeof spreadC==="number"&&isFinite(spreadC))?spreadC:null;
+  if(p===null||q===null) return {mis:null,ratio:null};
+  const mis=+(p*100-q).toFixed(3);
+  return {mis,ratio:(s!==null&&s>0)?+(mis/s).toFixed(3):null};
+}
+/* spread in cents at an edge snap, recovered exactly from the two stored quote fields: qm is written as
+   (yesBid+yesAsk)/2 and ya as yesAsk from the SAME pair on the same line, so yesBid = 2*qm - ya and the
+   spread is 2*(ya-qm). Both are stored at 1dp, so the recovered spread is exact to 0.2c. Nothing is
+   stored for this. */
+function edgeSpreadC(qm,ya){
+  if(typeof qm!=="number"||typeof ya!=="number"||!isFinite(qm)||!isFinite(ya)) return null;
+  return +(2*(ya-qm)).toFixed(2);
+}
+/* swing rows quote in DOLLARS (ask 0.05) while edge rows quote in CENTS (ya 5). Both spreads are
+   reported in cents so the two datasets can be compared without a unit trap. */
+function swingSpreadC(ask,bid){
+  if(typeof ask!=="number"||typeof bid!=="number"||!isFinite(ask)||!isFinite(bid)) return null;
+  return +(100*(ask-bid)).toFixed(2);
+}
+
+/* ---------------- H protocol: prereg ---------------- */
+/* ---------------------------------------------------------------- shock programme: pre-registered evidence standard (CLAUDE.md 11)
+   Machine-readable copy of the thresholds written in CLAUDE.md 11. Pure: no DOM, no storage, no clock, no fetch.
+   Fixed 2026-09-06, before any shock-conditioned observation existed. These numbers may be raised. Lowering any of
+   them closes the programme (CLAUDE.md 11.7 clause 6) - it does not lower the bar. test/prereg.js asserts that
+   every value here appears in CLAUDE.md 11, so the document and the code cannot drift apart silently. */
+const SHOCK_RULE={
+  version:"prereg-2026-09-06-a",
+  calN:30,                /* calibration set: first 30 graded shock windows, chronological, per phase */
+  holdN:30,               /* holdout floor; shockRequiredHoldN may raise it, never lower it */
+  minTotal:60,
+  alpha:0.10,             /* k=1 level is 1-alpha=0.90, identical to VERDICT_RULE.brierCI */
+  dBrierFloor:0.010,      /* 6x the 0.0016 model-vs-market gap, 14x the 0.0007 free-refit gain (CLAUDE.md 3) */
+  dBrierAbandon:0.005,    /* below half the floor at the required n: programme closed (11.7 clause 1) */
+  minCtrlPerShock:5,
+  ctrlCoverage:0.80,
+  pnlMinN:30,
+  phase2MinPrecision:0.50,
+  maxMonths:24,
+  relLo:100, relHi:150,   /* scheduled US macro releases per year: planning premise, NOT a measurement (11.1) */
+  winPerYear:35040        /* 96 fifteen-minute windows per day x 365 */
+};
+/* required two-sided CI level for a family of k scored arms (11.4). k=1 reproduces VERDICT_RULE's 0.90 exactly. */
+function shockCiLevel(k){ if(!(k>=1)) return null; return 1-SHOCK_RULE.alpha/Math.floor(k); }
+/* percentile bootstrap cannot resolve a tail finer than 1/B; 20/(1-level) puts >=10 resamples in each tail (11.2a) */
+function shockBootstrapB(level){ if(!(level>0&&level<1)) return null; return Math.ceil(20/(1-level)-1e-9); } /* -1e-9: 1-0.90 is 0.09999999999999998 in binary float and would bill 201 resamples for 200 */
+/* calendar cost of n graded shock windows, in months, at a given releases-per-year rate (11.1) */
+function shockMonths(n,perYear){ if(!(n>=0)||!(perYear>0)) return null; return 12*n/perYear; }
+/* share of the tape that is shock windows, at a given releases-per-year rate */
+function shockWindowShare(perYear){ if(!(perYear>=0)) return null; return perYear/SHOCK_RULE.winPerYear; }
+/* holdout n at which a point estimate equal to dBrierFloor clears the k-arm CI, given the paired-difference sd (11.2a).
+   power is the probability of clearing at that n: 0.5 is the bare "just clears" case, 0.8 the planning case.
+   sd is measured on the calibration half. It cannot be guessed, so a null sd returns null - never a default. */
+function shockRequiredHoldN(sd,k,power){
+  const lvl=shockCiLevel(k); if(lvl===null) return null;
+  if(sd===null||sd===undefined||!(sd>0)) return null;
+  const p=(power===null||power===undefined)?0.5:power; if(!(p>0&&p<1)) return null;
+  const z=invNorm(1-(1-lvl)/2)+invNorm(p);
+  return Math.max(SHOCK_RULE.holdN,Math.ceil(Math.pow(z*sd/SHOCK_RULE.dBrierFloor,2)));
+}
+/* can the required holdout be reached inside the 11.7 clause 5 deadline? monthsUsed is time already spent. */
+function shockFeasible(sd,k,monthsUsed,perYear){
+  const n=shockRequiredHoldN(sd,k,0.5); if(n===null) return null;
+  const mo=shockMonths(n,perYear); if(mo===null) return null;
+  const used=(monthsUsed>0)?monthsUsed:0;
+  return {holdN:n,months:mo,n80:shockRequiredHoldN(sd,k,0.8),
+    ok:(used+mo)<=SHOCK_RULE.maxMonths,deadline:SHOCK_RULE.maxMonths};
+}
+/* labelling (11.4). Exactly one primary per phase; everything else is exploratory in the UI and the CSV. */
+function shockTag(isPrimary){ return isPrimary?"primary":"exploratory"; }
+function shockCsvFlag(isPrimary){ return isPrimary?0:1; }
+function shockMayHeadline(isPrimary,status){ return isPrimary===true&&status==="READY"; }
+/* exactly one primary per phase; anything else is a mis-specified phase, not a scoring question */
+function shockPrimaryOk(arms){
+  if(!Array.isArray(arms)) return null;
+  const n=arms.filter(function(a){ return a&&a.primary===true; }).length;
+  return {ok:n===1,nPrimary:n};
+}
+/* Phase-1 and Phase-2 results are never pooled (11.5). Any call that mixes phases is a bug, so say so loudly. */
+function shockPoolGuard(rows){
+  if(!Array.isArray(rows)) return null;
+  const ph={}; for(const r of rows){ if(r&&r.phase!==undefined&&r.phase!==null) ph[r.phase]=1; }
+  const ks=Object.keys(ph);
+  return {ok:ks.length<=1,phases:ks.map(Number).sort()};
+}
+/* the whole standard as one decision. Pure: every input is a number the caller measured.
+   st = {phase, nCal, nHold, arms, sd, dBrier, ciLo, ctrlMatched, ctrlTotal, pnlN, pnlNet,
+         detPrecision, monthsElapsed, frozen, holdoutSpent}
+   Returns {status, why, ciLevel, bootstrapB, holdNReq}. A missing number required for the decision returns
+   INVALID with the reason - it never falls back to a plausible default. */
+function shockStatus(st){
+  if(!st) return null;
+  const k=(st.arms>=1)?st.arms:1;
+  const lvl=shockCiLevel(k), B=shockBootstrapB(lvl);
+  const need=shockRequiredHoldN(st.sd,k,0.5);
+  const out=function(s,w){ return {status:s,why:w,ciLevel:lvl,bootstrapB:B,holdNReq:need}; };
+  if(st.holdoutSpent===true) return out("INVALID","holdout spent by a post-freeze change (11.6); count restarts at zero");
+  if(st.phase===2){
+    if(st.detPrecision===null||st.detPrecision===undefined) return out("INVALID","phase 2 does not report without a confusion matrix against the phase-1 calendar (11.5)");
+    if(st.detPrecision<SHOCK_RULE.phase2MinPrecision) return out("ABANDON","detector precision below 0.50 (11.7 clause 4)");
+  }
+  if(st.ctrlTotal>0&&(st.ctrlMatched/st.ctrlTotal)<SHOCK_RULE.ctrlCoverage) return out("ABANDON","control coverage below 80% (11.7 clause 3)");
+  if(!(st.nCal>=SHOCK_RULE.calN)) return out("CALIBRATING","calibration set incomplete");
+  if(st.frozen!==true) return out("FROZEN-PENDING","thresholds not frozen and stamped; the holdout may not be opened (11.6)");
+  if(need===null) return out("INVALID","paired-difference sd not measured on the calibration half (11.2a)");
+  if(st.monthsElapsed>SHOCK_RULE.maxMonths&&st.nHold<need) return out("ABANDON","24 months without the required holdout n (11.7 clause 5)");
+  if(st.nHold<need) return out("HOLDOUT","holdout incomplete");
+  if(st.dBrier===null||st.dBrier===undefined||st.ciLo===null||st.ciLo===undefined) return out("INVALID","holdout complete but the primary statistic or its CI is missing");
+  if(st.dBrier<SHOCK_RULE.dBrierAbandon) return out("ABANDON","difference-in-differences below half the floor at the required n (11.7 clause 1)");
+  if(st.dBrier>=SHOCK_RULE.dBrierFloor&&st.ciLo>0){
+    if(!(st.pnlN>=SHOCK_RULE.pnlMinN)) return out("NEGATIVE","statistical bar met, fewer than 30 holdout entries");
+    if(!(st.pnlNet>0)) return out("NEGATIVE","statistical bar met, paper P&L not positive");
+    return out("READY","control-adjusted \u0394 Brier clears the floor and the CI at level "+lvl.toFixed(3)+"; necessary, never sufficient");
+  }
+  return out("NEGATIVE","effect present but below the floor or the CI touches zero");
+}
+
 /* ---------------------------------------------------------------- clock / loop */
 $("pauseBtn").addEventListener("click",()=>{
   S.paused=!S.paused;
@@ -2831,6 +3986,7 @@ setInterval(()=>{
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
   kalshiTick(Date.now());
   try{ edgeSnap(Date.now()); edgeProvisional(Date.now()); }catch(e){}
+  if((Date.now()-(S.volCloseAt||0))>=20000){ S.volCloseAt=Date.now(); try{ volCloseTick(Date.now()); }catch(e){ S.volCloseErr=String(e&&e.message||e); } }
   roundTick(Date.now());
   const _wn=Date.now();
   for(const id of EXCH){ const st=S.src[id];
