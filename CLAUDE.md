@@ -5,8 +5,8 @@ calibrated probability engine, and self-grading ledgers under pre-registered dec
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
 Current deploy: `build-20260906070014` (§10's 22 fixes and the K1 ledger repair). This working copy is ahead of that
-deploy: it carries the **H-protocol measurement layer** (§11), not yet built and pushed. One file, 4,015 lines,
-~267 KB, 210 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+deploy: it carries the **H-protocol measurement layer** (§11), not yet built and pushed. One file, 4,331 lines,
+~292 KB, 214 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -303,7 +303,12 @@ records what differs, what is broken, and how the repo is worked from a clone.
   verdict paper P&L — hold-to-settlement has one leg. The swing/sim journal charges the **unrounded** `0.07·p(1−p)`
   on both legs. The rounds-table paper P&L is gross of fees. Two fee models coexist.
 - **§4 CSV:** exports windows, called windows, swing reads and the simulation journal. `btc.intervals` and
-  `btc.via` are not exported.
+  `btc.via` are not exported. The H-protocol columns (§11) are **derived at export time, not stored** — the event
+  tag, the seasonal factor and the identifiability verdict are recomputed from each row's own measurements when
+  the file is written, so an export always reads against the release calendar as it stands at export time and
+  costs the recorder no bytes. `btc.edge` prunes at 1,500 windows — roughly **15 days** — so for anything
+  accumulating slower than that (the shock programme needs ~7 months, §11.1) **the CSV is the record and
+  localStorage is only the buffer.** Export on a schedule or the data is gone.
 - **§4 swing:** the Monte Carlo tests the side's *fair value* reaching `SWING.target = 0.36`; the ledger grades the
   max **bid** ≥ 0.35 after each read (perfect-exit "touch" grading, as §7.4 warns). The sim journal carries the
   realistic exits. Verified-highlighting requires n ≥ 30 and model Brier < base-rate Brier (confirmed).
@@ -730,3 +735,41 @@ neither), `si_bound` (the bound in force when the row was judged), `si_gate` (`t
 re-filtering at a different bound reads `si_tick_rel` and ignores `si_ident`. **Rows written under the superseded
 bound are not retroactively re-gated**; any analysis pooling old and new rows must filter on `si_tick_rel` and
 split on `si_gate`, because the two populations were not judged by the same instrument.
+
+**The second gate, and what it censors.** Identifiability is necessary and not sufficient. A strike just *below*
+spot, quoted away from fair value, inverts **exactly** — two-sided, well inside the tick bound — to a σ orders of
+magnitude off the tape. Measured, at σ = 9 bp/min, τ = 15, with the quote where a real book would put it:
+
+| strike | quote | fair value | implied σ | tick move | tick gate | implied/model |
+|---|---|---|---|---|---|---|
+| −10 bp | 40¢ | 61¢ | 1,318 bp/min | 0.101 | **passes** | 146× |
+| −35 bp | 25¢ | 84¢ | 3,496 bp/min | 0.047 | **passes** | 388× |
+| −60 bp | 15¢ | 96¢ | 5,367 bp/min | 0.042 | **passes** | 596× |
+| −10 bp | 60¢ | 61¢ | 10.1 bp/min | 0.111 | passes | 1.12× |
+
+That is model misspecification wearing an implied volatility's clothes, and **the tick gate cannot see it** — the
+reading is perfectly well determined, it is just not describing volatility. A second, independent test is
+therefore required, and it is the one that looks at the answer:
+
+> **`SCHEMA_SIR_MIN = 0.25`, `SCHEMA_SIR_MAX = 4`** on `implied σ / model σ`. Within this tool's own model family
+> two σ describing the same tape can differ by at most the seasonal ratio × the term factor —
+> `√(1.934/0.804) × 1.089 = 1.69`. Past that it is not disagreement about volatility inside the model, it is the
+> model failing. 4 is ≈2.4× that widest in-family disagreement, deliberately loose so ordinary regime
+> disagreement is never excluded. It is a judgment number and is named as one.
+
+**This gate censors the measurement, and that has to be said out loud.** H5 exists to measure a variance risk
+premium. A filter that discards every reading above 4× the model σ **truncates the distribution being measured**:
+a genuine premium larger than 4× would be thrown away as implausible, and the reported premium is therefore not
+`E[implied − realized]` but `E[implied − realized | 0.25 ≤ implied/model ≤ 4]`. Any H5 result must be stated with
+that conditioning attached. The mitigation is that nothing is destroyed: a rejected row keeps `si`, `sm`, `xs` and
+`tau`, only the composite `vrp` is withheld, and the withholding is counted in `vrpX` — so the excluded set is
+itself measurable and `vrp` is recomputable under any other rule from the exported columns alone.
+
+**No premium is displayed anywhere in the UI, deliberately.** H5 computes `vrp`, stores it and exports it; it
+renders nothing. Under §7.6 a displayed number reads as a signal, and this one has not earned that yet. The
+premium is read by exporting and grouping on `vrp_omit` — **always tabulate the omission reasons before reading
+the premium.** If the band is rejecting a large share of readings, the band is the finding, not the premium.
+
+Both bounds are §11 thresholds in the full sense. `VRP_TICK_REL_MAX` and `SCHEMA_SIR_MIN`/`SCHEMA_SIR_MAX` may be
+tightened at any time; **loosening either to admit more readings is tuning a filter against its own results and
+fires §11.7 clause 6.** Any change is a recorded re-registration, not an edit.
