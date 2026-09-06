@@ -31,7 +31,7 @@ const REPOS = {
   btc:   { root: path.resolve(HERE, "..", ".."), seedKey: "btc.seed",
            /* --vein is written only by veinLayer(); it has no CSS default, so it cannot pass while dead */
            ready: () => getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
-  rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed",
+  rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed", needsVendor: true,
            /* the binding only exists once React has mounted and rendered */
            ready: () => !!document.querySelector(".binding") },
 };
@@ -99,7 +99,8 @@ function serve(root) {
 
 async function record(tool, outDir) {
   const { chromium } = require("playwright");
-  ensureVendor();
+  /* BTC refuses all egress and needs nothing vendored; only Rhyme cannot boot without a CDN. */
+  if (REPOS[tool].needsVendor) ensureVendor();
   const cfg = REPOS[tool];
   if (!fs.existsSync(path.join(cfg.root, "index.html")))
     return { tool, skipped: `no index.html at ${cfg.root} — clone the sibling repository to record both` };
