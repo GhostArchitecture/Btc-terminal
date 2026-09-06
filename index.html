@@ -1599,8 +1599,15 @@ function sunUseLocation(){
   navigator.geolocation.getCurrentPosition(pos=>{ S.cfg.sun={lat:pos.coords.latitude,lon:pos.coords.longitude,name:"my location"}; saveCfg(); sunTick(); },()=>{},{timeout:8000,maximumAge:600000});
 }
 /* veins: three displaced bezier threads per session, a lit thread over a darker body, malachite on this tool */
+/* Session seed. Generated once per tab and injected through sessionStorage — never derived inside a
+   generator. A harness pins the layer by writing btc.seed before the page loads; that injection seam is
+   what makes the OCCVM golden set diffable at all (2.0 migration process, section 4). It also closes the
+   divergence CLAUDE.md section 10.5 recorded: the veins reseeded per hour, while section 5 said per session. */
+const SESSION=(()=>{ const fresh=()=>String((Date.now()^(Math.random()*1e9))>>>0);
+  try{ let k=sessionStorage.getItem("btc.seed"); if(!k){ k=fresh(); sessionStorage.setItem("btc.seed",k); } return +k; }
+  catch(e){ return +fresh(); } })();
 function veinLayer(){
-  const seed=(Date.now()/3600000|0)>>>0; const rnd=mulberry(seed);
+  const seed=SESSION>>>0; const rnd=mulberry(seed);
   let paths="";
   for(let i=0;i<3;i++){ const y0=100+rnd()*600, x1=200+rnd()*400, y1=rnd()*800, x2=600+rnd()*400, y2=rnd()*800, y3=100+rnd()*600;
     const d="M0 "+y0.toFixed(0)+" C "+x1.toFixed(0)+" "+y1.toFixed(0)+", "+x2.toFixed(0)+" "+y2.toFixed(0)+", 1200 "+y3.toFixed(0);
