@@ -52,9 +52,12 @@
  * `contrast` is a legibility parameter, not a material property: an exponent on the optical ratio setting
  * how much of the available range the substrate spends. Physics fixes the order and the shape; it does
  * not know how readable a terminal has to be at 3am. At contrast 1 the substrate is the mineral's;
- * at 0.782 its spread matches what the tools author today (measured: log 5.739 / log 9.353). It is named
- * here, in the material, for the same reason OCCVM-L7 names `--t-num` — a judgment gets called judgment
- * in the place somebody would otherwise mistake it for measurement.
+ * at 1.177 its spread matches what the tools RENDER at high sun (measured: log 13.881 / log 9.353).
+ * *Until 2.4 this sentence anchored to 5.739 — the spread of the `:root` fallback the sundial overwrites
+ * before first paint — which is the same error that sank 2.3, one level down. The anchor is a named
+ * rendered instant now.* It is named here, in the material, for the same reason OCCVM-L7 names
+ * `--t-num` — a judgment gets called judgment in the place somebody would otherwise mistake it for
+ * measurement.
  */
 var OCCVM_MATERIAL = (function () {
   "use strict";
@@ -83,17 +86,21 @@ var OCCVM_MATERIAL = (function () {
        lattice, so no amount of crystallography produces it. The material says how light BEHAVES on a
        surface; this says what is left after.
      *
-     * ANCHORED AT 2.3 to OCCVM-L1's own substrate floor, `--sub-lo #0e0d13`, replacing an arbitrary
-     * #12111a. This is the same move `authoredContrast` makes and it carries the same objection: setting
+     * ANCHORED to OCCVM-L1's own declared substrate floor, `--sub-lo #0e0d13`, replacing an arbitrary
+     * #12111a. This is the same move `renderedContrast` makes and it carries the same objection: setting
      * the material's one free value FROM the tools is fitting, and somebody should say so. The answer is
-     * that a free parameter has to be set from something, the alternative was a number with no reason at
-     * all, and the fit is to ONE value while the derivation then predicts the other two.
+     * that a free parameter has to be set from something, and the alternative was a number with no reason
+     * at all.
      *
-     * What it buys is the strongest evidence L12 has. At the derived contrast 0.7816 the material now
-     * reproduces the authored ramp's ENDPOINTS to the byte — `--sub-hi #2c2a36` and `--sub-lo #0e0d13`,
-     * neither of them fitted — and disagrees only on the mid-tone, which it puts 3.91 L* darker. That is
-     * the shape disagreement 2.0 recorded as 9.353 : 1.732 : 1.000 against 5.739 : 2.539 : 1.000, landing
-     * on a specific pixel. The hand got the endpoints right and the middle wrong. */
+     * WHAT THIS PARAGRAPH USED TO CLAIM, AND WHY IT NO LONGER DOES. 2.3 reported that at contrast 0.7816
+     * the material reproduced the substrate ramp's endpoints `#2c2a36` and `#0e0d13` to the byte, and
+     * called it the strongest evidence L12 had. Those hexes are the `:root` FALLBACK. The sundial
+     * overwrites all three substrate tokens every minute, starting before first paint, so the ramp was
+     * matched against values nobody renders — and every assertion passed, because every assertion
+     * compared the material against a declaration instead of a render. 2.3 is reverted; this anchor is
+     * kept only because matching L1's declared floor is a defensible way to fix a free parameter, NOT
+     * because it predicts anything. The material's real agreement with the tools is measured in 2.4,
+     * against what the sundial actually paints. */
     body: "#0e0d13",
     luster: "vitreous"
   };

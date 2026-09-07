@@ -1087,6 +1087,20 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       sat(noon["--sub-hi"]) < sat(noon["--sub"]), `hi ${sat(noon["--sub-hi"]).toFixed(3)} vs sub ${sat(noon["--sub"]).toFixed(3)}`);
   }
 
+  /* DOCUMENTATION DRIFT, pinned. 2.4 deleted authoredContrast from the code but left the file's own
+     header and body-colour comment still claiming a contrast of 0.782 "matches what the tools author
+     today" and that the material reproduces the ramp's endpoints "to the byte" — 2.3's retracted claim,
+     shipped in the PR that corrected it. Prose is not generally guardable, but this specific drift is:
+     the retired name may appear only in the one historical note that explains its removal. */
+  {
+    const mSrc = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "material.js"), "utf8");
+    const hits = (mSrc.match(/authoredContrast/g) || []).length;
+    T("authoredContrast survives only as the one note recording why it went", hits === 1, hits + " mention(s)");
+    T("no live claim that 0.782 matches what the tools do", !/0\.782\d?[^)]{0,40}(author|match)/.test(mSrc));
+    T("2.3's retracted 'endpoints to the byte' claim is not asserted as current",
+      !/reproduces the authored ramp's ENDPOINTS to the byte/.test(mSrc));
+  }
+
   /* SPINE.md is the law: the material's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
