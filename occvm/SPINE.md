@@ -21,10 +21,9 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
 | 1.7 | outstanding | the night model. |
 | 1.8 | outstanding | the reference surface. |
-| 1.9 | outstanding | freeze and stage. |
+| **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
 
-Two of eleven defects remain: **D1** (BTC's expired alias block, 1.9) and **D6** (BTC has no mineral
-system, 1.4). D1's aliases were shown to be load-bearing by 1.2's golden diff —
+One of eleven defects remains: **D6** (BTC has no mineral system, 1.4). D1's aliases were shown to be load-bearing by 1.2's golden diff —
 `--ink --meas --dim` all moved with the tokens they alias — so the block is a live dependency, not dead
 weight, and sweeping it is a migration rather than a deletion.
 
@@ -416,7 +415,7 @@ found by measurement after it was written.
 
 | id | tool | defect | closes at |
 |---|---|---|---|
-| **D1** | BTC | the expired `--ink --meas --bondi` alias block, past its removal window and still referenced (lines 26–27, 352, 359, 388, 1253) | 1.9 |
+| **D1** | BTC | the expired `--ink --meas --bondi` alias block, past its removal window and still referenced | **closed 1.9** |
 | **D2** | BTC | one light incomplete: no `--amb --rake --sheen --hi-a --cut-a --shade-a`, 15 fixed `box-shadow` offsets, `--elev` on a different scale with a 0.15 night floor, `--night` a binary step | **closed 1.2** |
 | **D3** | BTC | the numeric face is OS-supplied; metrics vary per platform under a column | **closed 1.3** |
 | **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **closed 1.6** |
@@ -434,7 +433,7 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.5, 1.6 | `build-20260907153431` | D1, D6 |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.9 | `build-20260907155616` | D6 |
 | **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | — | not built | — (1.8) |
 
@@ -507,5 +506,26 @@ rule the next animation escapes; a universal rule is not.
 
 **1.2 did not** delete BTC's surface bloom, adopt any primitive class onto a surface beyond the cast, or
 touch the numeric face, the mineral system or the interaction floor. Those are 1.7, 1.3, 1.4 and 1.5.
+
+**1.9 (narrow)** closed D1. `--ink`, `--meas`, `--dim`, `--faint`, `--bondi`, `--bondi-deep`, `--model`
+and `--model-dim` were a shim from an earlier naming scheme, kept "so nothing downstream breaks" past the
+point anything still depended on the names rather than the values. Two of the eight — `--ink`, `--meas`,
+`--bondi-deep`, `--model` — turned out to have **zero** call sites: pure dead weight. The other four had
+77 call sites between them, every one an inline `style="color:var(--dim)"` string inside JS-generated
+markup — the tool's CSS rules had already moved to the canonical names (`.lbl`, `.srcname`, `.tgl button`
+all read `var(--bone-dim)`/`var(--bone-lo)` directly); only the generated HTML still spoke the old
+dialect. That confirms 1.2's finding: the block was load-bearing, not dead, and the fix is a migration —
+77 call sites moved to their real names (`--dim`→`--bone-lo`, `--faint`→`--bone-dim`,
+`--bondi`→`--verdigris`, `--model-dim`→`--gilt-c`) — not a deletion.
+
+The golden set's own token-set guard (added mid-session, §7's note on it) fired exactly as designed: the
+declared-token scan found eight fewer names and failed the diff on `@token_names` before touching a single
+value. Every one of the 24 value-level deltas that followed was one of those eight tokens going from a
+resolved hex to absent at each of the three instants — nothing else moved. Re-recorded at 338 values.
+
+The roadmap's fuller 1.9 sketch — a full token audit across the whole spine, a migration table for every
+remaining divergence, promoting each to a law amendment or a documented exception — was not performed.
+Nothing else in the spine currently carries an open alias that needs it; when one does, that work is still
+owed under this same release number.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.

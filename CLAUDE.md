@@ -1152,10 +1152,15 @@ Fifteen symbols are absent from the cut; the three that land in right-aligned nu
 `python3 occvm/tools/subset-mono.py` (needs `pip install fonttools brotli`; the output is committed so
 nobody needs them). Closed D3. The artifact grew 435 KB → 461 KB.
 
-**Open against this tool:** `OCCVM-D1` (the expired `--ink --meas --bondi` block — 1.2's golden diff showed
-`--ink --meas --dim` all moving with the tokens they alias, so it is load-bearing, not dead weight),
-`D6` (no mineral system; `--amethyst` is declared once and
-referenced zero times, closes at 1.4). Each names its release in SPINE.md §6.
+**1.9 (narrow) — closed D1.** The expired `--ink --meas --bondi` block was a shim from an earlier naming
+scheme. Two of its eight names had zero call sites (dead weight); the other six carried 77 sites between
+them, every one an inline JS-generated `style="color:var(--dim)"` string — the CSS rules had already moved
+to the canonical names, only generated markup still spoke the old dialect, exactly as 1.2's golden diff
+predicted. All 77 sites migrated to `--bone-lo`/`--bone-dim`/`--verdigris`/`--gilt-c`; the block deleted.
+`test/occvm.js` pins that none of the eight names can be declared or referenced again.
+
+**Open against this tool:** `OCCVM-D6` (no mineral system; `--amethyst` is declared once and
+referenced zero times, closes at 1.4). Names its release in SPINE.md §6.
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.

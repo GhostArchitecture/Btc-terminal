@@ -336,4 +336,20 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the licence travels with the font", fs3.existsSync(path3.join(ROOT3, "occvm", "fonts", "OFL.txt")));
 }
 
+/* --- OCCVM-D1: the expired alias block is gone, not just unused ------------------------------------
+ * 1.2's golden diff proved --ink/--meas/--dim moved with what they alias, so the fix was a migration of
+ * every call site to the canonical name (1.9), not a deletion of dead code. This pins that it stayed
+ * gone: none of the eight legacy names may be declared or referenced again.
+ */
+{
+  const fs4 = require("fs"), path4 = require("path");
+  const html4 = fs4.readFileSync(path4.join(__dirname, "..", "index.html"), "utf8");
+  const DEAD = ["--ink", "--meas", "--dim", "--faint", "--bondi", "--bondi-deep", "--model", "--model-dim"];
+  for (const tok of DEAD) {
+    T(`${tok} is not declared`, !html4.includes(`${tok}:`), tok);
+    T(`${tok} is not referenced`, !html4.includes(`var(${tok})`), tok);
+  }
+  T("--ink2 survives — a distinct token, not part of the alias block", html4.includes("var(--ink2)"));
+}
+
 process.exit(done());

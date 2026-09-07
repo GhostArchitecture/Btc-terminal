@@ -281,9 +281,6 @@ table {
     --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
     /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
     --lx:.35; --ly:-.85; --elev:.55; --night:0;
-    /* legacy names kept so nothing downstream breaks */
-    --ink:var(--bone); --meas:var(--bone); --dim:var(--bone-lo); --faint:var(--bone-dim);
-    --bondi:var(--verdigris); --bondi-deep:var(--gilt-b); --model:var(--gilt-b); --model-dim:var(--gilt-c);
     --up:var(--malachite); --down:var(--ruby); --err:var(--ruby); --warn:var(--gilt-b);
     --rule:rgba(236,227,208,.13); --ink2:rgba(236,227,208,.07);
     --glass:rgba(27,26,34,.74); --glass-hi:rgba(44,42,54,.86);
@@ -510,7 +507,7 @@ table {
 
   <div id="viewChart">
   <section>
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Arming tray — one strike per window</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Arming tray — one strike per window</span>
 </div>
     <div id="armbar" class="tile">
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
@@ -549,7 +546,7 @@ table {
     <button id="secCollapse" type="button" style="font-size:10px;padding:3px 10px">COLLAPSE ALL</button>
   </div>
   <section class="tile" data-key="verdict">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Verdict — pre-registered decision rule</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Verdict — pre-registered decision rule</span>
       <span class="note num" id="verdictbox"></span></div>
     <div class="tblwrap"><table id="vcrit">
       <thead><tr><th>Pass</th><th>Criterion</th><th>Have</th></tr></thead><tbody></tbody>
@@ -558,9 +555,9 @@ table {
   </section>
 
   <section class="tile" data-key="edge">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Edge ledger — model vs market, every window</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Edge ledger — model vs market, every window</span>
       <span class="note"><button id="csvBtn" type="button">EXPORT CSV</button></span></div>
-    <div id="edgesum" class="num" style="font-size:11.5px;color:var(--dim);margin-bottom:8px"></div>
+    <div id="edgesum" class="num" style="font-size:11.5px;color:var(--bone-lo);margin-bottom:8px"></div>
     <div class="tblwrap"><table id="edgeskill">
       <thead><tr><th>Estimator (one read per window, mid-window)</th><th class="model">Brier</th><th>Δ vs market</th></tr></thead><tbody></tbody>
     </table></div>
@@ -576,7 +573,7 @@ table {
   </section>
 
   <section class="tile" data-key="kalshi">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Kalshi KXBTC15M — today’s windows</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Kalshi KXBTC15M — today’s windows</span>
       <span class="note num" id="knote"></span></div>
     <div class="tblwrap"><table id="klad">
       <thead><tr><th>Window</th><th>Strike</th><th>YES last</th><th>Volume</th><th>Settle value</th><th>Result</th></tr></thead>
@@ -586,7 +583,7 @@ table {
   </section>
 
   <section class="tile" data-key="viability">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Viability — spread captured vs adverse selection vs fees, per series</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Viability — spread captured vs adverse selection vs fees, per series</span>
       <span class="note num" id="vianote"></span></div>
     <div class="tblwrap"><table id="viatbl">
       <thead><tr><th>Series · source</th><th>Fills</th><th>Spread</th><th>Adverse</th><th>Fees</th><th>Net</th><th>Reads</th></tr></thead><tbody></tbody>
@@ -595,7 +592,7 @@ table {
   </section>
 
   <section class="tile" data-key="swing">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Swing watch — cheap sides, touch-35¢ ledger</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Swing watch — cheap sides, touch-35¢ ledger</span>
       <span class="note num" id="swnote"></span></div>
     <div class="tblwrap"><table id="swtbl">
       <thead><tr><th>Window · side</th><th>Ask</th><th>P(touch 35¢) model</th><th>Base rate</th><th>Breakeven</th><th>EV / contract</th><th>Flow</th><th>Time left</th></tr></thead><tbody></tbody>
@@ -607,7 +604,7 @@ table {
   </section>
 
   <section class="tile" data-key="journal">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Simulation journal — ten arms, $1,000 paper bankrolls, 5% risk per trade</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Simulation journal — ten arms, $1,000 paper bankrolls, 5% risk per trade</span>
       <span class="note num" id="jnote"></span></div>
     <div class="tblwrap"><table id="jarms">
       <thead><tr><th>Entry · exit</th><th>Bankroll</th><th>Max DD</th><th>Trades</th><th>Win</th><th>Hit 35¢</th><th>P&amp;L / share</th><th>90% CI</th><th>Exits</th></tr></thead><tbody></tbody>
@@ -620,20 +617,20 @@ table {
   </section>
 
   <section class="tile" data-key="rounds">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Windows — your strike calls</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Windows — your strike calls</span>
       <span class="note num" id="rnote">no calls yet</span></div>
     <div class="tblwrap"><table id="rounds">
       <thead><tr><th>Window</th><th>T+</th><th>Strike</th><th>Call</th><th class="model">P@arm</th><th class="model">P↑ fin</th><th class="model">Edge@arm</th><th>Vote</th><th>Outcome</th><th>Hit</th><th>Kalshi</th></tr></thead>
       <tbody></tbody>
     </table></div>
-    <div id="probnote" class="lbl" style="margin-top:6px;letter-spacing:.08em;color:var(--bondi)"></div>
+    <div id="probnote" class="lbl" style="margin-top:6px;letter-spacing:.08em;color:var(--verdigris)"></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">outcome = ≥⅔ of fresh sources on one side of that strike at expiry · disputed = strike inside the spread · void = under two voters · withdrawn = pulled before settle, logged, untallied</div>
   </section>
 
   <section class="tile" data-key="intervals">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Window analysis — completed windows</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Window analysis — completed windows</span>
       <span class="note num" id="inote"></span></div>
-    <div id="trendmap" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px">no completed windows yet</div>
+    <div id="trendmap" class="lbl num" style="letter-spacing:.06em;color:var(--verdigris);margin-bottom:8px">no completed windows yet</div>
     <div class="tblwrap"><table id="intervals">
       <thead><tr><th>Window</th><th>Open</th><th>Close</th><th>Δ</th><th>Range</th><th>Strikes</th><th>Hits</th></tr></thead>
       <tbody></tbody>
@@ -641,7 +638,7 @@ table {
   </section>
 
   <section class="tile" id="sources" data-key="sources">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Sources</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Sources</span>
       <span class="note num" id="srcnote">0 live</span></div>
     <div id="srcrows"></div>
     <div class="lbl" style="margin-top:10px;letter-spacing:.08em">kalshi request trail — last 40, newest first · outcome = HTTP status, timeout, or the browser’s network error verbatim</div>
@@ -650,7 +647,7 @@ table {
   </section>
 
   <section class="tile" data-key="signals">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Signals — microstructure read</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Signals — microstructure read</span>
       <span class="note num" id="signote"></span></div>
     <div class="tblwrap"><table id="signals">
       <thead><tr><th>Component</th><th>Read</th><th>Detail</th><th>Predictive weight</th></tr></thead>
@@ -660,9 +657,9 @@ table {
   </section>
 
   <section class="tile" data-key="xt">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Tape extrapolation — +5 min dataset</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Tape extrapolation — +5 min dataset</span>
       <span class="note num" id="xtnote"></span></div>
-    <div id="xtcomp" class="lbl num" style="letter-spacing:.06em;color:var(--bondi);margin-bottom:8px"></div>
+    <div id="xtcomp" class="lbl num" style="letter-spacing:.06em;color:var(--verdigris);margin-bottom:8px"></div>
     <div class="tblwrap"><table id="xtcur">
       <thead><tr><th>Step</th><th>Time</th><th class="model">Projected</th><th class="model">Δ</th><th>P5</th><th>P95</th></tr></thead>
       <tbody></tbody>
@@ -676,7 +673,7 @@ table {
   </section>
 
   <section class="tile" data-key="advanced">
-    <div class="shead"><span class="lbl" style="color:var(--dim)">Advanced — overrides (automatic by default)</span>
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Advanced — overrides (automatic by default)</span>
       <span class="note num" id="autonote"></span></div>
     <div class="lbl" style="letter-spacing:.08em;margin-bottom:4px">band width and axis dynamics are set by the tool from realized coverage, close-weighting and fees; sliders here override only while moved off default · RESET restores automatic</div>
     <div id="tunebar">
@@ -701,7 +698,7 @@ table {
         <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(236,227,208,.14);background:rgba(255,255,255,.75)"></label>
         <button id="ktestBtn">TEST</button>
         <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages" target="_blank" rel="noopener"><span class="aslink">CLOUDFLARE PAGES SETUP ↗</span></a>
-        <span id="ktest" class="num" style="color:var(--faint);font-size:10.5px"></span>
+        <span id="ktest" class="num" style="color:var(--bone-dim);font-size:10.5px"></span>
       </div>
     </div>
   </section>
@@ -711,7 +708,7 @@ table {
 
 
   <div id="method" class="tile" data-key="method">
-    <div class="mhead shead"><span class="lbl" style="color:var(--dim)">Method — how every number is made</span></div>
+    <div class="mhead shead"><span class="lbl" style="color:var(--bone-lo)">Method — how every number is made</span></div>
     <p><b>Tape and index.</b> The plotted price is a sticky-leader tape: one exchange book plots at a time — the
       leader, chosen by latency priority — streaming its prints at full socket speed, while the other feeds run
       verification. Every print must be confirmed by a CF-constituent peer within a dynamic tolerance (three times the live
@@ -1821,11 +1818,11 @@ function renderKalshi(){
   if(!strip) return;
   const base=kalshiBase();
   if(!base){
-    strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 not connected \u2014 open TUNE: host on Cloudflare Pages (zero-config /api), set a relay URL, or serve from localhost</span>';
+    strip.innerHTML='<span style="color:var(--bone-dim)">KALSHI \u00b7 not connected \u2014 open TUNE: host on Cloudflare Pages (zero-config /api), set a relay URL, or serve from localhost</span>';
     if(tb) tb.innerHTML=""; return;
   }
   const c=K.cur, ob=K.ob;
-  if(!c){ strip.innerHTML='<span style="color:var(--faint)">KALSHI \u00b7 '+(K.err?("error "+K.err):"fetching current window\u2026")+'</span>'; return; }
+  if(!c){ strip.innerHTML='<span style="color:var(--bone-dim)">KALSHI \u00b7 '+(K.err?("error "+K.err):"fetching current window\u2026")+'</span>'; return; }
   const cents=v=>v===null?"\u2014":v.toFixed(1)+"\u00a2";
   let model=null, edgeY=null, edgeN=null;
   if(c.strike&&S.lastPx!==null){
@@ -1835,18 +1832,18 @@ function renderKalshi(){
       if(ob&&ob.noAsk!==null) edgeN=((1-model)-ob.noAsk/100)*100-100*kFee(ob.noAsk/100); }
   }
   const eTxt=(v)=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(1)+"pt");
-  const eCol=(v)=>v===null?"var(--faint)":(v>=3?"var(--up)":v<=-3?"var(--down)":"var(--dim)");
+  const eCol=(v)=>v===null?"var(--bone-dim)":(v>=3?"var(--up)":v<=-3?"var(--down)":"var(--bone-lo)");
   const qAge=Math.round((Date.now()-(K.obAt||K.curAt||0))/1000); const stale=qAge>30;
-  strip.style.color=stale?"var(--faint)":"";
-  strip.innerHTML='<span style="color:var(--faint);letter-spacing:.12em;font-size:9.5px">KALSHI '+timeStr(c.open)+"\u2013"+timeStr(c.close)+'</span> '
+  strip.style.color=stale?"var(--bone-dim)":"";
+  strip.innerHTML='<span style="color:var(--bone-dim);letter-spacing:.12em;font-size:9.5px">KALSHI '+timeStr(c.open)+"\u2013"+timeStr(c.close)+'</span> '
     +'strike <b>'+(c.strike?fmtUSD.format(c.strike):"TBD")+'</b>'
-    +(stale?(' <span style="color:var(--down)">\u26a0 quotes stale '+qAge+'s</span>'):(' <span style="color:var(--faint)">\u00b7 quotes '+qAge+'s</span>'))
+    +(stale?(' <span style="color:var(--down)">\u26a0 quotes stale '+qAge+'s</span>'):(' <span style="color:var(--bone-dim)">\u00b7 quotes '+qAge+'s</span>'))
     +' \u00b7 YES '+(ob?cents(ob.yesBid)+"/"+cents(ob.yesAsk):cents(c.yesBid)+"/"+cents(c.yesAsk))
     +' \u00b7 NO '+(ob?cents(ob.noBid)+"/"+cents(ob.noAsk):cents(c.noBid)+"/"+cents(c.noAsk))
     +(model!==null?(' \u00b7 model YES '+Math.round(model*100)+'%'):'')
     +' \u00b7 net edge <span style="color:'+eCol(edgeY)+'">YES '+eTxt(edgeY)+'</span> <span style="color:'+eCol(edgeN)+'">NO '+eTxt(edgeN)+'</span>'
     +' \u00b7 vol '+Math.round(c.vol).toLocaleString()
-    +' \u00b7 <span style="color:var(--faint)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)+(K.last429cls?(' ('+K.last429cls+')'):'')):'')+(K.failover?(' \u00b7 failover '+K.failover):'')
+    +' \u00b7 <span style="color:var(--bone-dim)">'+((K.reqLog||[]).length)+' req/min'+(K.last429?(' \u00b7 last 429 '+timeStr(K.last429)+(K.last429cls?(' ('+K.last429cls+')'):'')):'')+(K.failover?(' \u00b7 failover '+K.failover):'')
     +((K.backoff&&K.backoff.history&&K.backoff.history>Date.now())?(' \u00b7 history paused '+Math.ceil((K.backoff.history-Date.now())/1000)+'s'):'')
     +((K.benched&&K.bench&&K.bench[K.benched]&&K.bench[K.benched].until>Date.now())?(' \u00b7 <span style="color:var(--down)">benched '+K.benched+' '+Math.ceil((K.bench[K.benched].until-Date.now())/60000)+'m</span>'):'')+'</span>'
     +(K.err?(' \u00b7 <span style="color:var(--down)">'+K.err+'</span>'):'');
@@ -1856,11 +1853,11 @@ function renderKalshi(){
     rows.sort((x,y)=>x.close-y.close);
     tb.innerHTML=rows.map(m=>{
       const cur=c&&m.ticker===c.ticker;
-      const rc=m.result==="yes"?"var(--up)":m.result==="no"?"var(--down)":"var(--faint)";
-      return '<tr'+(cur?' style="background:rgba(217,165,44,.06)"':'')+'><td class="num" style="color:var(--dim)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span class="occvm-sym" style="color:var(--bondi)">\u25cf</span>':'')+'</td>'
+      const rc=m.result==="yes"?"var(--up)":m.result==="no"?"var(--down)":"var(--bone-dim)";
+      return '<tr'+(cur?' style="background:rgba(217,165,44,.06)"':'')+'><td class="num" style="color:var(--bone-lo)">'+timeStr(m.open)+"\u2013"+timeStr(m.close)+(cur?' <span class="occvm-sym" style="color:var(--verdigris)">\u25cf</span>':'')+'</td>'
         +'<td class="num">'+(m.strike?fmtUSD.format(m.strike):"TBD")+'</td>'
         +'<td class="num">'+((m.last!==null&&m.last!==undefined)?m.last.toFixed(1)+"\u00a2":"\u2014")+'</td>'
-        +'<td class="num" style="color:var(--faint)">'+Math.round(m.vol).toLocaleString()+'</td>'
+        +'<td class="num" style="color:var(--bone-dim)">'+Math.round(m.vol).toLocaleString()+'</td>'
         +'<td class="num">'+(m.expVal!==null?fmtUSD.format(m.expVal):"\u2014")+'</td>'
         +'<td class="num" style="color:'+rc+'">'+(m.result?m.result.toUpperCase():m.status)+'</td></tr>';
     }).join("");
@@ -2046,23 +2043,23 @@ function renderEdge(){
     tbS.innerHTML=order.filter(k=>E.skill[k]).map(k=>{ const v=E.skill[k]; const d=q?q.brier-v.brier:0;
       return '<tr><td>'+k+(k==="headline"?' <span class="sub">'+FIT_VERSION+'</span>':'')+'</td><td class="num model">'+f3(v.brier)+' <span class="sub">n'+v.n+'</span></td>'
         +'<td class="num" style="color:var(--'+(d>0?"up":"down")+')">'+(d>=0?"+":"")+f3(d)+' vs market</td></tr>'; }).join("")
-      +(q?('<tr><td>market</td><td class="num">'+f3(q.brier)+' <span class="sub">n'+q.n+'</span></td><td class="num" style="color:var(--faint)">baseline</td></tr>'):"");
+      +(q?('<tr><td>market</td><td class="num">'+f3(q.brier)+' <span class="sub">n'+q.n+'</span></td><td class="num" style="color:var(--bone-dim)">baseline</td></tr>'):"");
     for(const ser of ["15m","hourly"]){ const Es=edgeStatsFor(ser); if(!Es||!Es.skill.headline||!Es.skill.market) continue;
       const h=Es.skill.headline,mk=Es.skill.market, d=mk.brier-h.brier;
-      tbS.innerHTML+='<tr><td style="color:var(--dim)">'+ser+' windows \u2014 headline vs market</td><td class="num model">'+f3(h.brier)+' <span class="sub">n'+h.n+'</span></td><td class="num" style="color:var(--'+(d>0?"up":"down")+')">'+(d>=0?"+":"")+f3(d)+' (market '+f3(mk.brier)+')</td></tr>'; }
+      tbS.innerHTML+='<tr><td style="color:var(--bone-lo)">'+ser+' windows \u2014 headline vs market</td><td class="num model">'+f3(h.brier)+' <span class="sub">n'+h.n+'</span></td><td class="num" style="color:var(--'+(d>0?"up":"down")+')">'+(d>=0?"+":"")+f3(d)+' (market '+f3(mk.brier)+')</td></tr>'; }
   }
   if(tbB) tbB.innerHTML=E.bands.map(b=>{
-    if(!b.n) return '<tr><td class="num" style="color:var(--dim)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>';
+    if(!b.n) return '<tr><td class="num" style="color:var(--bone-lo)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>';
     const real=b.win/b.n, mk=b.mkt/b.n, md=b.mod/b.n;
-    const c=real>mk+0.02?"var(--up)":real<mk-0.02?"var(--down)":"var(--dim)";
-    return '<tr><td class="num" style="color:var(--dim)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">'+b.n+'</td>'
+    const c=real>mk+0.02?"var(--up)":real<mk-0.02?"var(--down)":"var(--bone-lo)";
+    return '<tr><td class="num" style="color:var(--bone-lo)">'+b.lo+"\u2013"+(b.hi>100?"\u221e":b.hi)+'pt</td><td class="num">'+b.n+'</td>'
       +'<td class="num" style="color:'+c+'">'+pct(real)+'</td><td class="num">'+pct(mk)+'</td><td class="num model">'+pct(md)+'</td>'
       +'<td class="num" style="color:var(--'+(b.pnl>=0?"up":"down")+')">'+(b.pnl>=0?"+":"")+b.pnl.toFixed(2)+'</td></tr>';
   }).join("");
   if(tbC) tbC.innerHTML=E.calM.map((m,i)=>{
     const q=E.calQ[i];
-    const cell=(x)=>x.n?('<td class="num">'+pct(x.y/x.n)+' <span class="sub">n'+x.n+'</span></td>'):'<td style="color:var(--faint)">\u2014</td>';
-    return '<tr><td class="num" style="color:var(--dim)">'+m.lo+"\u2013"+(m.lo+10)+'%</td>'+cell(m)+cell(q)+'</tr>';
+    const cell=(x)=>x.n?('<td class="num">'+pct(x.y/x.n)+' <span class="sub">n'+x.n+'</span></td>'):'<td style="color:var(--bone-dim)">\u2014</td>';
+    return '<tr><td class="num" style="color:var(--bone-lo)">'+m.lo+"\u2013"+(m.lo+10)+'%</td>'+cell(m)+cell(q)+'</tr>';
   }).join("");
 }
 function exportCSV(){
@@ -2494,17 +2491,17 @@ function renderSwing(){
   const cents=v=>v===null||v===undefined?"\u2014":Math.round(v*100)+"\u00a2";
   const posLine=w=>{ const ids=["tool/box","tool/trail"]; const parts=[]; for(const id of ids){ const t=w.sim[id]; if(!t) continue;
       parts.push(id.split("/")[1]+": "+(t.open?("open "+t.shares+" sh @"+cents(t.entry)+" \u00b7 peak "+cents(t.peak)+(t.armed?" \u00b7 trailing":"")):("closed "+t.reason+" @"+cents(t.exit)+" "+(t.pnl>=0?"+":"")+"$"+t.pnl.toFixed(2)))); }
-    return parts.length?('<br><span style="color:var(--faint)">tool arm \u00b7 '+parts.join(" \u00b7 ")+'</span>'):""; };
+    return parts.length?('<br><span style="color:var(--bone-dim)">tool arm \u00b7 '+parts.join(" \u00b7 ")+'</span>'):""; };
   const chip=w=>{ const isLive=live.find(s=>s.side===w.side); const watch=isLive&&isLive.p!==null&&isLive.p>isLive.be&&st.verified;
     const theta=(w.p0!==null&&w.pNow!==null)?(" \u00b7 touch "+pc(w.p0)+"\u2192"+pc(w.pNow)):(w.p0!==null?(" \u00b7 touch at read "+pc(w.p0)):"");
     return '<span class="swchip'+(watch?' watch':'')+'">'+(watch?'\u25c6 SWING WATCH \u00b7 ':'')+w.side+' read @'+cents(w.ask0)+' \u00b7 now '+cents(w.bid)+'/'+cents(w.ask)+' \u00b7 peak '+cents(w.peak)
-      +' \u00b7 P&L at bid '+c2(w.pnlShare)+'/sh'+theta+' \u00b7 breakeven '+pc(w.be)+' \u00b7 '+(w.tau>0?mmss(w.close-now)+' left':'gate'+(w.graded?(w.hit?" \u00b7 reached 35\u00a2":" \u00b7 never reached 35\u00a2"):""))+(st.verified?'':' \u00b7 <span style="color:var(--faint)">unverified (n'+(st.n||0)+')</span>')+posLine(w)+'</span>'; };
-  if(strip) strip.innerHTML='<span class="lbl">swing watch \u00b7 sides read this window persist to the gate \u00b7 read = first ask seen \u00b7 P(touch) = model at read \u2192 now (theta)</span> '+(W.length?W.map(chip).join(" "):'<span style="color:var(--faint)">no side under 15\u00a2 read yet in the live window</span>');
+      +' \u00b7 P&L at bid '+c2(w.pnlShare)+'/sh'+theta+' \u00b7 breakeven '+pc(w.be)+' \u00b7 '+(w.tau>0?mmss(w.close-now)+' left':'gate'+(w.graded?(w.hit?" \u00b7 reached 35\u00a2":" \u00b7 never reached 35\u00a2"):""))+(st.verified?'':' \u00b7 <span style="color:var(--bone-dim)">unverified (n'+(st.n||0)+')</span>')+posLine(w)+'</span>'; };
+  if(strip) strip.innerHTML='<span class="lbl">swing watch \u00b7 sides read this window persist to the gate \u00b7 read = first ask seen \u00b7 P(touch) = model at read \u2192 now (theta)</span> '+(W.length?W.map(chip).join(" "):'<span style="color:var(--bone-dim)">no side under 15\u00a2 read yet in the live window</span>');
   if(tb) tb.innerHTML=live.map(s=>'<tr><td>'+timeStr(s.close)+' \u00b7 '+s.side+'</td><td class="num">'+Math.round(s.ask*100)+'\u00a2</td><td class="num model">'+pc(s.p)+'</td><td class="num">'+pc(s.base)+'</td><td class="num">'+pc(s.be)+'</td>'
     +'<td class="num" style="color:var(--'+(s.ev!==null&&s.ev>0?"up":"down")+')">'+(s.ev===null?"\u2014":((s.ev>=0?"+":"")+s.ev.toFixed(1)+"\u00a2"))+'</td><td class="num">'+(s.ofi===null?"thin":((s.ofi>=0?"+":"")+s.ofi.toFixed(2)))+'</td><td class="num">'+mmss(s.close-now)+'</td></tr>').join("")
-    ||'<tr><td colspan="8" style="color:var(--faint)">no side under 15\u00a2 in the live window</td></tr>';
+    ||'<tr><td colspan="8" style="color:var(--bone-dim)">no side under 15\u00a2 in the live window</td></tr>';
   if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
-    +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--faint)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
+    +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--bone-dim)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
   const rnS=repairNote();
   if(note) note.textContent=(st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting")+(rnS?(" \u00b7 "+rnS):"");
 }
@@ -2516,13 +2513,13 @@ function renderJournal(){
     const head='<tr'+(isTool?' style="background:rgba(217,165,44,.05)"':'')+'><td>'+a.entry+' \u00b7 '+a.exit+'<span class="sub">'+a.label.split(" \u2014 ")[1]+'</span></td>';
     const Bk=S.simBank[a.id]||{};
     const bankTxt='$'+s.bank.toFixed(2)+(s.bank<=0?' <span style="color:var(--down)">\u00b7 busted</span>':'')
-      +(Bk.restarted?' <span style="color:var(--faint)">\u00b7 restarted (K1)</span>':(Bk.contaminated?' <span style="color:var(--faint)">\u00b7 curve approx (K1)</span>':''));
+      +(Bk.restarted?' <span style="color:var(--bone-dim)">\u00b7 restarted (K1)</span>':(Bk.contaminated?' <span style="color:var(--bone-dim)">\u00b7 curve approx (K1)</span>':''));
     if(!s.n) return head+'<td class="num">'+bankTxt+'</td><td class="num">\u2014</td><td class="num">0</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td><td class="num">\u2014</td></tr>';
     return head+'<td class="num" style="color:var(--'+(s.bank>=SIM.bank0?"up":"down")+')">'+bankTxt+'</td><td class="num">'+pc(s.dd)+'</td><td class="num">'+s.n+'</td><td class="num">'+pc(s.winRate)+'</td><td class="num">'+pc(s.hitRate)+'</td>'
-      +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--dim)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
+      +'<td class="num" style="color:var(--'+(s.pnlShare>0?"up":"down")+')">'+c2(s.pnlShare)+'</td><td class="num">'+(s.ci?('['+c2(s.ci.lo)+', '+c2(s.ci.hi)+']'):"n < 8")+'</td><td class="num" style="color:var(--bone-lo)">'+Object.entries(s.reasons).map(([k,v])=>k+" "+v).join(" \u00b7 ")+'</td></tr>'; }).join("");
   tb.innerHTML=S.journal.slice(0,40).map(t=>'<tr><td class="num">'+timeStr(t.close)+'<span class="sub">'+fmtUSD.format(t.strike)+'</span></td><td>'+t.side+'</td><td>'+t.arm+'</td><td class="num">'+cents(t.entry)+'</td><td class="num">'+cents(t.exit)+'</td><td>'+t.reason+'</td><td class="num">'+t.shares+'</td><td class="num">$'+t.stake.toFixed(2)+'</td>'
     +'<td class="num" style="color:var(--'+(t.pnl>0?"up":"down")+')">'+(t.pnl>=0?"+":"")+'$'+t.pnl.toFixed(2)+'<span class="sub">'+c2(t.pnlShare)+'/sh</span></td><td class="num">'+cents(t.peak)+'</td><td class="num model">'+pc(t.p)+'</td><td class="num">'+(t.ofi===null||t.ofi===undefined?"thin":((t.ofi>=0?"+":"")+t.ofi.toFixed(2)))+'</td></tr>').join("")
-    ||'<tr><td colspan="12" style="color:var(--faint)">no simulated trades yet \u2014 arms enter on cheap-side reads and close by rule or at the gate</td></tr>';
+    ||'<tr><td colspan="12" style="color:var(--bone-dim)">no simulated trades yet \u2014 arms enter on cheap-side reads and close by rule or at the gate</td></tr>';
   const best=SIM_ARMS.map(a=>({id:a.id,s:st[a.id]})).sort((x,y)=>y.s.bank-x.s.bank)[0];
   const tt=st["tool/trail"], ab=st["all/box"];
   const rn=repairNote();
@@ -2585,12 +2582,12 @@ function renderViability(){
   const strip=$("vstrip"), tb=$("viatbl")&&$("viatbl").querySelector("tbody"), note=$("vianote");
   const rows=viaRows(); const f2=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(2)+"\u00a2");
   const verdict=r=>r.n<30?"insufficient (n"+r.n+")":(r.net>0?"positive":"negative");
-  if(tb) tb.innerHTML=rows.map(r=>'<tr'+(r.sub?' style="color:var(--dim)"':'')+'><td>'+r.label+'</td><td class="num">'+r.n+(r.posts!==undefined?'<span class="sub">of '+r.posts+' posts</span>':'')+'</td>'
+  if(tb) tb.innerHTML=rows.map(r=>'<tr'+(r.sub?' style="color:var(--bone-lo)"':'')+'><td>'+r.label+'</td><td class="num">'+r.n+(r.posts!==undefined?'<span class="sub">of '+r.posts+' posts</span>':'')+'</td>'
     +'<td class="num">'+(r.spread===null?"\u2014":r.spread.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.adv===null?"\u2014":r.adv.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.fee===null?"\u2014":r.fee.toFixed(2)+"\u00a2")+'</td>'
     +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td><td class="num" style="color:var(--'+(r.n>=30&&r.net>0?"up":"down")+')">'+(r.spread===null?"no fills yet":verdict(r))+'</td></tr>').join("");
   const live15=rows.find(r=>r.label==="15m \u00b7 live"), liveH=rows.find(r=>r.label==="hourly \u00b7 live");
   const h15=rows.find(r=>r.label==="15m \u00b7 history"), hH=rows.find(r=>r.label==="hourly \u00b7 history");
-  const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--faint)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
+  const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--bone-dim)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
     +' \u00b7 <span style="color:var(--'+((l&&l.n>=30&&l.net>0)?"up":"down")+')">'+((l&&l.n>=30&&l.net>0)?"POSITIVE":"NEGATIVE")+'</span>';
   if(strip) strip.innerHTML='<span class="lbl">viability \u00b7 maker round trip \u00b7 spread \u2212 adverse \u2212 fees</span> '+txt("15m",h15,live15)+' \u00b7 '+txt("hour",hH,liveH);
   if(note) note.textContent="reads positive only on net > 0 over \u2265 30 live fills";
@@ -2643,7 +2640,7 @@ function renderVerdict(){
   const V=computeVerdict();
   el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '+V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria';
   tb.innerHTML=V.crit.map(c=>'<tr><td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713":"\u2717")+'</td>'
-    +'<td style="white-space:normal;min-width:11em">'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--dim)">'+c.have+'</td></tr>').join("");
+    +'<td style="white-space:normal;min-width:11em">'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--bone-lo)">'+c.have+'</td></tr>').join("");
 }
 /* ---------------------------------------------------------------- tape extrapolation (+5 min) */
 function extrapolate(now){
@@ -2927,7 +2924,7 @@ function renderSignals(){
   const G=S.sig, strip=null, tb=$("signals")&&$("signals").querySelector("tbody");
   const f1=v=>v===null||v===undefined?"\u2014":(v>=0?"+":"")+v.toFixed(1);
   if(!G){ if(strip) strip.textContent="signals warming \u2014 tape depth building"; if(tb) tb.innerHTML=""; return; }
-  const dc=G.dir==="UP"?"var(--up)":G.dir==="DOWN"?"var(--down)":"var(--dim)";
+  const dc=G.dir==="UP"?"var(--up)":G.dir==="DOWN"?"var(--down)":"var(--bone-lo)";
   const wt=G.weight===null?"\u2014":Math.round(G.weight*100)+"%";
   const ofiTxt=G.ofi60?((G.ofi60.x>=0?"+":"")+G.ofi60.x.toFixed(2)+(G.ofi60.x>0.15?" buy-heavy":G.ofi60.x<-0.15?" sell-heavy":" balanced")):"thin";
   const dTxt=G.disl?(G.disl.isolated?("ISOLATED "+f1(G.disl.dev)+"bp \u2192 reversion likely"):("cluster "+(G.disl.cluster===null?"\u2014":Math.round(G.disl.cluster*100)+"% agree"))):"\u2014";
@@ -2947,7 +2944,7 @@ function renderSignals(){
       ["Dislocation",dTxt,G.disl?("leader vs peer mid "+f1(G.disl.dev)+"bp \u00b7 spread "+G.disl.spread.toFixed(1)+"bp \u00b7 "+G.disl.peers+" peers"):"\u2014","isolated \u2192 arbitrage reversion; cluster \u2192 persistence"],
       ["Reaction levels",lv?(lv.name+" "+fmtUSD.format(lv.p)):"\u2014",G.levels.map(l=>l.name+" "+f1(l.bp)+"bp").join(" \u00b7 "),"round-number clustering \u2014 zones, not calls"]
     ];
-    tb.innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num" style="color:var(--faint)">'+r[2]+'</td><td style="color:var(--faint)">'+r[3]+'</td></tr>').join("");
+    tb.innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num" style="color:var(--bone-dim)">'+r[2]+'</td><td style="color:var(--bone-dim)">'+r[3]+'</td></tr>').join("");
     $("signote").textContent="flow prints "+S.flow.length+" \u00b7 tape "+S.tape.length;
   }
 }
@@ -3014,28 +3011,28 @@ function renderRounds(){
     const oc=R.outcome, col=oc==="UP"?"up":oc==="DOWN"?"down":"";
     const hit=(R.hit===null||R.hit===undefined)?"\u2014":(R.hit?'<span class="up">HIT</span>':'<span class="down">MISS</span>');
     const pa=(R.probAtArm===null||R.probAtArm===undefined)?"\u2014":Math.round(R.probAtArm*100)+"%";
-    let pf="\u2014", pc="var(--faint)";
+    let pf="\u2014", pc="var(--bone-dim)";
     if(R.probFinal!==null&&R.probFinal!==undefined){
       pf=Math.round(R.probFinal*100)+"%";
       if(oc==="UP"||oc==="DOWN") pc=((R.probFinal>0.5)===(oc==="UP"))?"var(--up)":"var(--down)";
     }
-    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(R.tStart)+'\u2013'+timeStr(R.tEnd)+'</td>'
-      +'<td class="num" style="color:var(--faint)">T+'+mmss(R.tArm-R.tStart)+'</td>'
+    return '<tr><td class="num" style="color:var(--bone-lo)">'+timeStr(R.tStart)+'\u2013'+timeStr(R.tEnd)+'</td>'
+      +'<td class="num" style="color:var(--bone-dim)">T+'+mmss(R.tArm-R.tStart)+'</td>'
       +'<td class="num">'+fmtUSD.format(R.strike)+'</td>'
-      +'<td class="num" style="color:var(--dim)">'+R.call+'</td>'
-      +'<td class="num" style="color:var(--faint)">'+pa+'</td>'
+      +'<td class="num" style="color:var(--bone-lo)">'+R.call+'</td>'
+      +'<td class="num" style="color:var(--bone-dim)">'+pa+'</td>'
       +'<td class="num" style="color:'+pc+'">'+pf+'</td>'
-      +(function(){ if(R.edgeAtArm===null||R.edgeAtArm===undefined) return '<td style="color:var(--faint)">\u2014</td>';
+      +(function(){ if(R.edgeAtArm===null||R.edgeAtArm===undefined) return '<td style="color:var(--bone-dim)">\u2014</td>';
           const e=R.edgeAtArm; return '<td class="num" style="color:var(--'+(e>=3?"up":e<=-3?"down":"dim")+')">'+(e>=0?"+":"")+e.toFixed(1)+'pt<span class="sub">q '+R.quoteAtArm+'\u00a2</span></td>'; })()
       +'<td class="num">'+(R.up!==undefined?(R.up+"\u2191 "+R.dn+"\u2193"):"\u2014")+'</td>'
       +'<td class="num '+col+'">'+oc+(R.provisional?'<span class="sub">provisional</span>':'')+'</td>'
       +'<td class="num">'+hit+'</td>'
-      +(function(){ if(!R.kalshi) return '<td style="color:var(--faint)">\u2014</td>';
+      +(function(){ if(!R.kalshi) return '<td style="color:var(--bone-dim)">\u2014</td>';
           const kr=R.kalshi.result.toUpperCase();
           const same=(R.strike!==null&&R.kalshi.strike!==null&&Math.abs(R.strike-R.kalshi.strike)<0.01);
           const ours=oc==="UP"?"YES":oc==="DOWN"?"NO":null;
           const agree=(same&&ours)?(ours===kr):null;
-          const c=agree===null?"var(--faint)":(agree?"var(--up)":"var(--down)");
+          const c=agree===null?"var(--bone-dim)":(agree?"var(--up)":"var(--down)");
           return '<td class="num" style="color:'+c+'">'+kr+(agree===null?"":' <span class="occvm-sym">'+(agree?"\u2713":"\u2717")+"</span>")+'</td>'; })()
       +'</tr>';
   }).join("");
@@ -3059,12 +3056,12 @@ function renderIntervals(){
   tb.innerHTML=L.map(e=>{
     const d=e.dBp===null?"\u2014":fmtBp(e.dBp);
     const dc=e.dBp===null?"":(e.dBp>=0?"up":"down");
-    return '<tr><td class="num" style="color:var(--dim)">'+timeStr(e.tStart)+'\u2013'+timeStr(e.tEnd)+'</td>'
+    return '<tr><td class="num" style="color:var(--bone-lo)">'+timeStr(e.tStart)+'\u2013'+timeStr(e.tEnd)+'</td>'
       +'<td class="num">'+(e.openRef?fmtUSD.format(e.openRef):"\u2014")+'</td>'
       +'<td class="num">'+(e.closeRef?fmtUSD.format(e.closeRef):"\u2014")+'</td>'
       +'<td class="num '+dc+'">'+d+'</td>'
-      +'<td class="num" style="color:var(--faint)">'+(e.rangeBp!==null?e.rangeBp.toFixed(1)+"bp":"\u2014")+'</td>'
-      +'<td class="num">'+e.nStrikes+(e.nWithdrawn?(' <span style="color:var(--faint)">('+e.nWithdrawn+'w)</span>'):'')+'</td>'
+      +'<td class="num" style="color:var(--bone-dim)">'+(e.rangeBp!==null?e.rangeBp.toFixed(1)+"bp":"\u2014")+'</td>'
+      +'<td class="num">'+e.nStrikes+(e.nWithdrawn?(' <span style="color:var(--bone-dim)">('+e.nWithdrawn+'w)</span>'):'')+'</td>'
       +'<td class="num">'+(e.nCalls?(e.nHits+"/"+e.nCalls):"\u2014")+'</td></tr>';
   }).join("");
 }
@@ -3110,7 +3107,7 @@ function renderSpot(p){
   S.lastPx=p;
   const spans=[["\u03945m",3e5],["\u039415m",9e5],["\u039460m",36e5]];
   let chips=spans.map(([l,ms])=>{
-    const q=priceAgo(ms); if(q===null) return '<span class="chip"><span class="lbl">'+l+' change</span><span style="color:var(--faint)">\u2014</span></span>';
+    const q=priceAgo(ms); if(q===null) return '<span class="chip"><span class="lbl">'+l+' change</span><span style="color:var(--bone-dim)">\u2014</span></span>';
     const d=100*(p/q-1), cls=d>=0?"up":"down";
     return '<span class="chip"><span class="lbl">'+l+' change</span><span class="'+cls+'">'+fmtPct(d)+'</span></span>';
   }).join("");
@@ -3122,8 +3119,8 @@ function renderSpot(p){
 function renderReqTrail(){
   const tb=$("reqtrail")&&$("reqtrail").querySelector("tbody"); if(!tb) return;
   const T=S.k.reqTrail||[];
-  tb.innerHTML=T.map(r=>'<tr><td class="num">'+new Date(r.t).toLocaleTimeString([],{hour12:false})+'</td><td class="num" style="color:var(--dim)">'+r.base+'</td><td>'+r.cls+'</td>'
-    +'<td class="num" style="color:var(--'+(r.outcome==="200"?"up":"down")+')">'+r.outcome+'</td><td class="num">'+r.ms+'</td></tr>').join("")||'<tr><td colspan="5" style="color:var(--faint)">no requests yet</td></tr>';
+  tb.innerHTML=T.map(r=>'<tr><td class="num">'+new Date(r.t).toLocaleTimeString([],{hour12:false})+'</td><td class="num" style="color:var(--bone-lo)">'+r.base+'</td><td>'+r.cls+'</td>'
+    +'<td class="num" style="color:var(--'+(r.outcome==="200"?"up":"down")+')">'+r.outcome+'</td><td class="num">'+r.ms+'</td></tr>').join("")||'<tr><td colspan="5" style="color:var(--bone-dim)">no requests yet</td></tr>';
 }
 function renderSources(){
   if((Math.floor(Date.now()/1000)%5)===0) renderReqTrail();
@@ -3142,13 +3139,13 @@ function renderSources(){
     const status=(st.status!=="ok"&&st.status!=="…")?st.status:"";
     const bi=EXCH.indexOf(s.id);
     const sw=bi>=0?'<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+BRAID[bi]+';margin-right:5px;vertical-align:middle"></span>':'';
-    const trans=st.ws?('<em style="color:var(--model-dim)">WS</em>'+(st.restErr?'<em style="color:var(--faint)">rest \u2717</em>':'')):'';
+    const trans=st.ws?('<em style="color:var(--gilt-c)">WS</em>'+(st.restErr?'<em style="color:var(--bone-dim)">rest \u2717</em>':'')):'';
     return '<div class="row"><span class="dot '+dot+'"></span>'
       +'<span class="srcname">'+sw+s.name+trans+(s.tag?'<em>'+s.tag.toUpperCase()+'</em>':'')+'</span>'
       +'<span class="r num">'+ptxt+(status?' <span style="color:var(--err);font-size:10px">'+status+'</span>':'')+'</span>'
-      +'<span class="r num" style="color:var(--dim)">'+dev+'</span>'
-      +'<span class="r num" style="color:var(--faint)">'+(st.ws?"ws":lat)+'</span>'
-      +'<span class="r num" style="color:var(--faint)">'+age+'</span></div>';
+      +'<span class="r num" style="color:var(--bone-lo)">'+dev+'</span>'
+      +'<span class="r num" style="color:var(--bone-dim)">'+(st.ws?"ws":lat)+'</span>'
+      +'<span class="r num" style="color:var(--bone-dim)">'+age+'</span></div>';
   }).join("");
   $("srcnote").textContent=live+" live / "+SOURCES.length;
   const pill=$("status");
@@ -3434,16 +3431,16 @@ function renderXTData(){
   if(cur){
     const cp=cur.comp, f=v=>(v>=0?"+":"")+v.toFixed(1);
     if(comp) comp.textContent="contributions at +5 (bp): momentum "+f(cp.mom)+" \u00b7 flow "+f(cp.flow)+" \u00b7 reversion "+f(cp.rev)+" \u00b7 dislocation "+f(cp.disl)+" \u00b7 \u03c3\u2081\u2098 "+(1e4*cur.sig).toFixed(1)+"bp";
-    tb.innerHTML=cur.steps.map(s=>'<tr><td class="num" style="color:var(--dim)">+'+s.k+'m</td><td class="num">'+timeStr(s.t)+'</td>'
+    tb.innerHTML=cur.steps.map(s=>'<tr><td class="num" style="color:var(--bone-lo)">+'+s.k+'m</td><td class="num">'+timeStr(s.t)+'</td>'
       +'<td class="num model">'+fmtUSD.format(s.p)+'</td><td class="num model">'+fmtBp(1e4*Math.log(s.p/cur.P0))+'</td>'
-      +'<td class="num" style="color:var(--faint)">'+fmtUSD.format(s.lo)+'</td><td class="num" style="color:var(--faint)">'+fmtUSD.format(s.hi)+'</td></tr>').join("");
+      +'<td class="num" style="color:var(--bone-dim)">'+fmtUSD.format(s.lo)+'</td><td class="num" style="color:var(--bone-dim)">'+fmtUSD.format(s.hi)+'</td></tr>').join("");
   } else { tb.innerHTML=""; if(comp) comp.textContent="warming"; }
   const rows=[];
   for(let k=1;k<=5;k++){
     const st=S.xt.stats[k];
-    if(!st||!st.n){ rows.push('<tr><td class="num" style="color:var(--dim)">+'+k+'m</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>'); continue; }
+    if(!st||!st.n){ rows.push('<tr><td class="num" style="color:var(--bone-lo)">+'+k+'m</td><td class="num">0</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>'); continue; }
     const mae=st.sumAbs/st.n, flat=st.sumFlat/st.n, d=mae-flat;
-    rows.push('<tr><td class="num" style="color:var(--dim)">+'+k+'m</td><td class="num">'+st.n+'</td>'
+    rows.push('<tr><td class="num" style="color:var(--bone-lo)">+'+k+'m</td><td class="num">'+st.n+'</td>'
       +'<td class="num model">'+mae.toFixed(1)+'</td><td class="num">'+flat.toFixed(1)+'</td>'
       +'<td class="num" style="color:var(--'+(d<=0?"up":"down")+')">'+(d<=0?"":"+")+d.toFixed(1)+'</td>'
       +'<td class="num">'+Math.round(100*st.inB/st.n)+'%</td>'
@@ -6934,7 +6931,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907153431";
+const BUILD_STAMP="build-20260907155616";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -6951,5 +6948,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907153431 -->
+<!-- build-20260907155616 -->
 </html>
