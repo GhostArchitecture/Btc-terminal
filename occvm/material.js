@@ -78,10 +78,23 @@ var OCCVM_MATERIAL = (function () {
     density: 2.93,                                    /* g/cm³ */
     /* stiffness tensor, GPa — C11/C22/C33 are the three axes P1's motion derives from */
     C: { 11: 171.1, 22: 110.1, 33: 98.4, 44: 39.3, 55: 24.2, 66: 40.2, 12: 60.3, 13: 27.8, 23: 41.9 },
-    /* the body colour: what the material absorbs to. NOT derived — a mineral's colour comes from trace
-       chemistry and defects, not from its lattice, and OCCVM-L1's obsidian anchor is the tools' own
-       subject matter. The material says how light BEHAVES on it; this says what is left after. */
-    body: "#12111a",
+    /* THE BODY COLOUR: what the material absorbs to. NOT derived, and named as judgment for the same
+       reason `contrast` is — a mineral's colour comes from trace chemistry and defects, not from its
+       lattice, so no amount of crystallography produces it. The material says how light BEHAVES on a
+       surface; this says what is left after.
+     *
+     * ANCHORED AT 2.3 to OCCVM-L1's own substrate floor, `--sub-lo #0e0d13`, replacing an arbitrary
+     * #12111a. This is the same move `authoredContrast` makes and it carries the same objection: setting
+     * the material's one free value FROM the tools is fitting, and somebody should say so. The answer is
+     * that a free parameter has to be set from something, the alternative was a number with no reason at
+     * all, and the fit is to ONE value while the derivation then predicts the other two.
+     *
+     * What it buys is the strongest evidence L12 has. At the derived contrast 0.7816 the material now
+     * reproduces the authored ramp's ENDPOINTS to the byte — `--sub-hi #2c2a36` and `--sub-lo #0e0d13`,
+     * neither of them fitted — and disagrees only on the mid-tone, which it puts 3.91 L* darker. That is
+     * the shape disagreement 2.0 recorded as 9.353 : 1.732 : 1.000 against 5.739 : 2.539 : 1.000, landing
+     * on a specific pixel. The hand got the endpoints right and the middle wrong. */
+    body: "#0e0d13",
     luster: "vitreous"
   };
 
