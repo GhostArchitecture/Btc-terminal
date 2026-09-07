@@ -160,7 +160,7 @@ const { T, done } = runner("h-protocol");
     const head=s=>{ const i=text.indexOf("# "+s); const line=text.slice(i).split("\\n")[1]||""; return line.split(",").length; };
     return {windows:head("windows"),swing:head("swing_reads"),journal:head("simulation_journal"),
       hasVrp:/vrp_bpm/.test(text),hasEv:/"ev_mins"/.test(text),hasDepth:/depth_yes/.test(text),hasIdent:/si_ident/.test(text)}; })()`);
-  T("the windows dataset carries its 58 columns", r.windows === 58, r.windows);
+  T("the windows dataset carries its 59 columns", r.windows === 59, r.windows);
   T("swing reads and journal rows carry the enriched columns", r.swing === 45 && r.journal === 51, { swing: r.swing, journal: r.journal });
   T("the premium, event, depth and identifiability columns are all exported", r.hasVrp && r.hasEv && r.hasDepth && r.hasIdent, r);
 }
@@ -383,6 +383,66 @@ const { T, done } = runner("h-protocol");
     r.o.mid_at_post_c === "44" && r.o.spread_c === "4" && r.o.adverse_c === "1.5" && +r.o.net_c > 0, r.o);
   T("and each row is tagged with the release it sat next to, derived at export from its own timestamp",
     r.o.ev === "GDP" && r.o.ev_mins === "-1", r.o);
+}
+
+/* ---- structural breaks (CLAUDE.md 11.9): registry, boundary, and the operator entry point */
+{
+  /* setNow's fixed clock is sticky across the whole file - relying on whatever an earlier test last left
+     it at would make this block's pass/fail depend on execution order elsewhere in the file, which is
+     exactly the fragility this project's own house style avoids. Pin it explicitly. */
+  setNow(Date.UTC(2026, 8, 1));
+  const r = R(`(function(){
+    S.regime={v:1,entries:[]};
+    const id=regimeDeclare("2026-08-15T00:00:00Z","price-collapse","BTC dropped 55% in 72h","https://example.com");
+    const before=regimeAt(Date.UTC(2026,7,1),S.regime.entries);
+    const after=regimeAt(Date.UTC(2026,8,20),S.regime.entries);
+    const same=sameRegime(Date.UTC(2026,7,1),Date.UTC(2026,7,10),S.regime.entries);
+    const crosses=sameRegime(Date.UTC(2026,7,1),Date.UTC(2026,8,20),S.regime.entries);
+    const bad=regimeDeclare("not-a-date","other","");   /* malformed: no category validation bypass, empty reason */
+    return {id:id,before:before,after:after,same:same,crosses:crosses,bad:bad,entries:S.regime.entries.length}; })()`);
+  T("regimeDeclare records a well-formed break and returns its id", typeof r.id === "string" && r.id.length > 0, r.id);
+  T("regimeAt returns different ordinals on either side of a declared break", r.before === 0 && r.after === 1, r);
+  T("sameRegime pools two instants on one side of the boundary", r.same === true, r.same);
+  T("...and refuses to pool instants that straddle it", r.crosses === false, r.crosses);
+  T("a malformed declaration (empty reason) is refused, not silently recorded", r.bad === null && r.entries === 1, r);
+}
+{
+  /* the one invariant CLAUDE.md 11.9 states as absolute: a FLAGGED instant never moves the boundary */
+  const r = R(`(function(){
+    S.regime={v:1,entries:[{id:"f1",kind:"flagged",t:${Date.UTC(2026,7,15)},declaredAt:${Date.UTC(2026,7,15)},
+      metric:{name:"rv_trailing_pctl",value:0.002,percentile:99.4}}]};
+    return {before:regimeAt(Date.UTC(2026,7,1),S.regime.entries),after:regimeAt(Date.UTC(2026,7,20),S.regime.entries)}; })()`);
+  T("a flagged-only registry never defines a boundary: every instant reads as regime 0", r.before === 0 && r.after === 0, r);
+}
+{
+  /* a supersession cycle in hand-edited storage must fault, never silently collapse a regime span */
+  const r = R(`(function(){
+    const a={id:"a",kind:"declared",t:${Date.UTC(2026,7,1)},declaredAt:${Date.UTC(2026,7,1)},category:"other",reason:"a",supersedes:"b"};
+    const b={id:"b",kind:"declared",t:${Date.UTC(2026,7,2)},declaredAt:${Date.UTC(2026,7,2)},category:"other",reason:"b",supersedes:"a"};
+    return {faults:regimeRegistryFaults([a,b]).length,boundaries:regimeBoundaries([a,b]).length}; })()`);
+  T("a 2-entry supersession cycle faults both entries rather than silently collapsing the span", r.faults === 2, r.faults);
+  T("...and defines zero boundaries while it stands", r.boundaries === 0, r.boundaries);
+}
+{
+  /* the CSV: every one of the three regime-tagged datasets actually carries the column and a value */
+  const now = Date.UTC(2026, 8, 1);
+  const r = R(`(function(){
+    S.regime={v:1,entries:[]}; regimeDeclare("2026-08-15T00:00:00Z","price-collapse","x");
+    computeStats=()=>({sig:0.0009,rv60:0.0009,muFast:0,nBars:200}); S.idxPx=100000; S.lastPx=100000;
+    S.edge.windows={}; S.roundLog=[]; S.swing={v:1,w:{}}; S.journal=[]; S.shock={v:1,rows:{}};
+    S.via={v:1,series:{},rows:[{t:${now},dt:60,k:"15m",tk:"KXBTC15M-X",f:1,rb:42,ra:46,m1:45.5}]};
+    const m={ticker:"KXBTC15M-Y",strike:100400,open:${now}-7*60000,close:${now}+8*60000,yesBid:18,yesAsk:22,noBid:78,noAsk:82,status:"open"};
+    edgeSnapOne(m,${now},{yesBid:18,yesAsk:22,noBid:78,noAsk:82});
+    exportCSV();
+    const txt=window._lastBlob.text;
+    const cell=(section,name)=>{ const i=txt.indexOf("# "+section); const L=txt.slice(i).split(String.fromCharCode(10));
+      const hd=L[1].split(",").map(x=>x.replace(/"/g,"")), dv=L[2].split(",").map(x=>x.replace(/"/g,""));
+      const j=hd.indexOf(name); return j<0?"MISSING":dv[j]; };
+    return {windows:cell("windows","regime_idx"),maker:cell("maker_fills","regime_idx"),
+      h1header:/"regime_idx"/.test(txt.slice(txt.indexOf("# h1_reversal")))}; })()`);
+  T("windows carries regime_idx with a value, not a missing column", r.windows === "1", r.windows);
+  T("maker_fills carries regime_idx with a value", r.maker === "1", r.maker);
+  T("h1_reversal's header carries regime_idx", r.h1header === true, r.h1header);
 }
 
 process.exitCode = done() ? 1 : 0;

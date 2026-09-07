@@ -6,8 +6,8 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 
 Current deploy: `build-20260906195621` — §10's 22 fixes, the K1 ledger repair, and the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, and the identifiability and
-plausibility gates. Nothing in it renders; it computes, stores and exports. One file, 5,858 lines,
-~360 KB, 269 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+plausibility gates. Nothing in it renders; it computes, stores and exports. One file, 6,331 lines,
+~428 KB, 286 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---

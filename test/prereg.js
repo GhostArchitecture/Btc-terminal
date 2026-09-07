@@ -367,9 +367,22 @@ const BOUNDS = R(`({VRP_TICK_REL_MAX:VRP_TICK_REL_MAX,VRP_TICK:VRP_TICK,SCHEMA_S
 {
   const src = H.script;
   const a = src.indexOf("/* ---------------- H protocol: prereg");
-  const b = src.indexOf("clock / loop", a);
+  /* The block ends at whichever comes first: the clock/loop anchor, or the NEXT spliced unit's own marker.
+     Bounding it unconditionally at "clock / loop" was correct only while prereg happened to be the LAST
+     unit spliced before that anchor - true when this assertion was written, false the moment a later unit
+     (regime) was spliced after it. The bug this produces is the interesting kind: it does not miss a real
+     impurity, it manufactures a false one by sweeping a LATER unit's own source - and its comments - into
+     "the pre-registration surface". A prose comment in units/regime/code.js explaining why the registry
+     must tolerate a hand-edited localStorage key was flagged as the prereg block touching storage, which it
+     never does. Bounding by the nearest marker, exactly as units/tools/resplice.js's own boundary walk
+     does, fixes it structurally rather than by excluding one string. */
+  const nextMarker = src.indexOf("/* ---------------- H protocol:", a + 1);
+  const loopAnchor = src.indexOf("clock / loop", a);
+  const b = nextMarker >= 0 && (loopAnchor < 0 || nextMarker < loopAnchor) ? nextMarker : loopAnchor;
   const block = a >= 0 && b > a ? src.slice(a, b) : "";
   T("the pre-registration block is locatable in source", block.length > 1500, block.length);
+  T("the block boundary is the prereg unit's own end, not a later unit's source",
+    block.indexOf("H protocol: regime") < 0 && block.indexOf("REGIME_") < 0, block.length);
   const impure = ["fetch(", "XMLHttpRequest", "WebSocket", "localStorage", "sessionStorage", "document.", "navigator.", "Date.now("]
     .filter(t => block.indexOf(t) >= 0);
   T("the pre-registration surface touches no network, storage, DOM or clock", impure.length === 0, impure);
