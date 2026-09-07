@@ -875,10 +875,46 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const st = MAT.stiffness(A);
   T("stiffness normalises to the softest axis and orders a > b > c", st.c === 1 && st.a > st.b && st.b > st.c);
 
+  /* ── P1 — anisotropic motion: derived, measured, and deliberately not wired ──────────────────── */
+  {
+    const mo = MAT.motion(A), st2 = MAT.stiffness(A);
+    T("motion derives from stiffness as an oscillator period, 1/sqrt(k)",
+      Math.abs(mo.a - 1 / Math.sqrt(st2.a)) < 1e-12 && Math.abs(mo.a - 0.7584) < 1e-3, mo.a.toFixed(4));
+    T("a stiffer axis settles faster", mo.a < mo.b && mo.b < mo.c);
+    T("motion is NOT the static-compliance mapping 1/k, which describes deflection not duration",
+      Math.abs(mo.a - 1 / st2.a) > 0.15, (1 / st2.a).toFixed(4) + " would be compliance");
+
+    /* THE SELF-RETIRING GUARD. P1 stays unwired only while anisotropy is unobservable, and it is
+       unobservable only while nothing animates horizontally. This counts the real thing rather than
+       trusting the note: when somebody adds a horizontal motion, this fails and says P1 is expressible.
+       This censuses THIS repository only, and Rhyme carries the same guard over its own files. Reaching
+       across to a sibling checkout would make the verdict depend on what happens to be on disk — the
+       partial-checkout trap already fixed once in the token audit and once in the golden recorder. Two
+       guards over two complete halves beats one guard over an uncertain whole. */
+    const files20 = [["index.html"], ["occvm", "spine.css"], ["occvm", "reference", "index.html"]];
+    let xSites = 0, seen = 0;
+    for (const g of files20) {
+      const f = path20.join(__dirname, "..", ...g);
+      if (!fs20.existsSync(f)) continue;
+      seen++;
+      for (const line of fs20.readFileSync(f, "utf8").split("\n"))
+        if (/translateX|translate3d\(\s*[^0]/.test(line) && /transition|animation|keyframes/.test(line)) xSites++;
+    }
+    T("the P1 census actually read this repo's files (a zero from an empty sweep proves nothing)",
+      seen === files20.length, seen + "/" + files20.length);
+    T("P1 stays unwired: still no animated horizontal motion to be anisotropic against",
+      xSites === MAT.P1_UNEXPRESSED.translateXSites, xSites + " translateX site(s) — if nonzero, P1 is now expressible: wire it");
+
+    /* and it must not have shipped tokens in the meantime — that would be D12, one release after 1.2a */
+    for (const tok of ["--dur-a", "--dur-b", "--dur-c"])
+      T(`P1 ships no ${tok} token while it is unexpressed`,
+        !fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8").includes(tok));
+  }
+
   /* SPINE.md is the law: the material's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
-    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93"])
+    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93", "0.7584"])
       T(`SPINE.md records the material constant ${v}`, spine.includes(v));
     T("SPINE.md declares OCCVM-L12", /OCCVM-L12/.test(spine));
   }

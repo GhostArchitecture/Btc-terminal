@@ -186,16 +186,58 @@ var OCCVM_MATERIAL = (function () {
      reference ratio; a denser material throws a heavier shadow and carries more apparent mass. */
   function castWeight(m) { return m.density / 2.65; }
 
-  /* P1 — the stiffness ratio the three axes move at, normalised to the softest (C33). */
+  /* P1 — anisotropic motion. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
+   *
+   * The stiffness ratio the three axes move at, normalised to the softest (C33):
+   *     a 1.7388   b 1.1189   c 1.0000
+   */
   function stiffness(m) {
     return { a: m.C[11] / m.C[33], b: m.C[22] / m.C[33], c: 1 };
   }
+
+  /* Duration scalar per axis. A stiffer axis settles faster, and the relation is the oscillator's, not
+     the spring's: T = 2π√(m/k), so duration ∝ 1/√k. The alternative — static compliance, 1/k — was the
+     other candidate and is wrong for a TEMPORAL quantity; it describes how far a thing deflects, not how
+     long it takes. Both are recorded because they differ enough to matter:
+         1/√k   a 0.7584   b 0.9454   c 1.0000     ← in force
+         1/k    a 0.5751   b 0.8937   c 1.0000     ← rejected, static not temporal            */
+  function motion(m) {
+    var k = stiffness(m);
+    return { a: 1 / Math.sqrt(k.a), b: 1 / Math.sqrt(k.b), c: 1 / Math.sqrt(k.c) };
+  }
+
+  /* ---- WHY P1 IS NOT WIRED TO A TOKEN --------------------------------------------------------------
+   *
+   * Anisotropy is only observable as a DIFFERENCE BETWEEN TWO DIRECTIONS IN THE SAME VIEW. Censused
+   * across both tools and the spine at 2.0:
+   *
+   *     translateX     0 animated sites          <- zero, in either tool
+   *     translateY     3 animated sites          (.edge:active 260ms, rise 380ms, and BTC's chevron)
+   *     translate(x,y) every site is a STATIC light-vector offset, calc(var(--lx) * Npx), not a motion
+   *
+   * There is no pair. The one genuinely animated 2D direction anywhere is fracture's separation along
+   * the twin normal, and projecting the per-axis scalars onto it gives 194.4ms against the isotropic
+   * 220ms — an 11.6% change. But the fracture angle is FIXED: one direction, every time, with nothing
+   * beside it to be faster or slower than. That is not anisotropy, it is 220 renamed to 194.
+   *
+   * Shipping `--dur-a/--dur-b/--dur-c` here would be three tokens computed and consumed by nothing,
+   * which is OCCVM-D12 exactly — closed at 1.2a, one release before this one. The arithmetic stays
+   * because it is right and cheap; the wiring waits for a second axis to exist. `test/occvm.js` holds a
+   * SELF-RETIRING guard: it asserts the translateX count is still zero, so the day somebody animates a
+   * horizontal motion the suite fails and says P1 has become expressible.                              */
+  var P1_UNEXPRESSED = {
+    reason: "no animated horizontal motion exists in either tool; anisotropy needs two directions in one view",
+    translateXSites: 0,
+    fractureProjection: 0.8837,
+    censusedAt: "2.0"
+  };
 
   return {
     ARAGONITE: ARAGONITE, CUT: CUT, AUTHORED_SPREAD: AUTHORED_SPREAD,
     fresnel: fresnel, faces: faces, substrate: substrate, authoredContrast: authoredContrast,
     birefringence: birefringence,
-    edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness
+    edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
+    motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED
   };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_MATERIAL;

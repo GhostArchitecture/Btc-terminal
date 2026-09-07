@@ -494,6 +494,39 @@ between what the material says and what the tools do — which is the input any 
 nobody had before. Adopting it is a per-surface decision under the migration table (§6b), not a
 side effect of writing the law down.
 
+**P1 — anisotropic motion: derived, measured, and deliberately not wired.** The stiffness tensor gives
+each axis a settling time, and the relation is the oscillator's rather than the spring's: `T = 2π√(m/k)`,
+so duration ∝ `1/√k`. The other candidate — static compliance, `1/k` — is wrong for a *temporal* quantity;
+it describes how far a thing deflects, not how long it takes. Both are recorded because they differ enough
+to matter:
+
+| | a | b | c |
+|---|---|---|---|
+| `1/√k` — in force | **0.7584** | 0.9454 | 1.0000 |
+| `1/k` — rejected, static not temporal | 0.5751 | 0.8937 | 1.0000 |
+
+**It ships no token, and the census is why.** Anisotropy is only observable as a difference between **two
+directions in the same view**. Across both tools and the spine at 2.0:
+
+- `translateX` — **zero animated sites**, in either tool;
+- `translateY` — three (`.edge:active` 260 ms, `rise` 380 ms, BTC's chevron);
+- `translate(x, y)` — eight sites, and **every one is a static light-vector offset**, `calc(var(--lx) * Npx)`,
+  not a motion.
+
+There is no pair. The one genuinely animated 2D direction anywhere is fracture's separation along the twin
+normal, and projecting the per-axis scalars onto it gives **194.4 ms against the isotropic 220 ms**, an
+11.6% change. But the fracture angle is **fixed** — one direction, every time, with nothing beside it to be
+faster or slower than. That is not anisotropy; it is 220 renamed to 194.
+
+Shipping `--dur-a/--dur-b/--dur-c` would be three tokens computed and consumed by nothing, which is
+`OCCVM-D12` exactly — closed at 1.2a, one release before this one. **The arithmetic stays because it is
+right and cheap; the wiring waits for a second axis to exist.** Each repository's suite holds a
+**self-retiring guard** over its own files: it counts animated horizontal motion and asserts the count is
+still zero, so the day somebody adds one the suite fails and says P1 has become expressible. *This is the
+same disposition 1.1b gave the twin misfit, and for the same reason:* a physically-motivated extension that
+produces nothing measurable in the regime these tools are actually in is a finding, and raising a
+coefficient until it produced a visible result would be fudging a derived number to reach a wanted picture.
+
 ### OCCVM-L9 — night
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
