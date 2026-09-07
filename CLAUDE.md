@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907190822` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907192237` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1206,6 +1206,40 @@ It also found a real gap in its own first section: `.occvm-slab` and `.occvm-cas
 so no surface could wear both, which is why every surface that wanted a cut face *and* a cast re-authored
 the bevel by hand. `--occvm-bevel` (spine.css, L2) is the fix. Nothing in this tool moves — the token is
 added, no existing value changes, and this tool does not use `.occvm-slab`.
+
+**2.0 — the material model (`OCCVM-L12`), and one delete that never happened.** `occvm/material.js` is a
+seventh spliced part: aragonite defined once — cell, principal indices α/β/γ, hardness, density,
+stiffness — with the substrate ramp **derived** from angular Fresnel at L2's cut geometry rather than
+authored as three hexes. **Nothing in this tool repaints.** 2.0 defines and derives; adopting it on a
+surface is a separate decision under SPINE.md §6b, and what exists now is the definition plus the measured
+distance between what the material says and what the tools do, which nobody had before.
+
+*Two derivations were tried, measured and rejected before the third was kept, and both are on the record
+because each sounds more physical than the one in force.* Normal-incidence Fresnel on α/β/γ spans **1.48×**
+against the **5.74×** linear-luminance spread this tool authors, so real optics taken that way is 3.9×
+*flatter* than the design and the substrate would go nearly monochrome. Weighting reflectance by incident
+flux (`R(θ)·cos θ`) is worse: the cosine cancels the Fresnel rise and the whole sweep collapses to
+**1.13×**. What is in force is that a dark, glossy solid is seen by its **specular** return, so a face
+tracks `R` at the angle it presents *to the viewer* — the slab's own cut geometry. **The sun therefore
+drops out of the ratio**, which is why this derivation is the one kept: material owns structure, the
+sundial keeps owning magnitude exactly as it has since 1.2, and 2.0 does not double-apply the light
+pipeline. Optics gives `9.353 : 1.732 : 1.000` against the authored `5.739 : 2.539 : 1.000` — same
+ordering, more convex shape — stated rather than fitted, because a per-face correction is three authored
+numbers wearing a derivation's clothes. `contrast` is the one value that is judgment and is named as such;
+at a derived `0.7816` the material reproduces today's spread.
+
+*The lattice now has a single owner.* `occvm/veins.js` reads the cell from the material instead of
+restating it; `occvm/fracture.js` still reads the angle from veins. The same three lengths had been typed
+in two files — two copies of one fact, the defect L3 exists to prevent, one material down.
+
+*And it found a defect this tool has shipped since 1.1b.* The splicer inserts every part after one anchor,
+so parts land in **reverse** list order and `fracture.js` is evaluated *before* `veins.js` is assigned. It
+captured `OCCVM_VEINS` at that moment, got null, and **`cleave()` threw on every call in the browser**,
+while Node resolved it through `require` and every assertion passed. The read is now lazy, and the guard
+runs the spliced blocks in the page's own order with no `require` in scope. In Rhyme — fracture's first
+real consumer — the consequence was functional rather than cosmetic: the throw landed before the `done`
+callback, so **deleting a draft silently did nothing** for anyone not on reduced motion. `test/occvm.js`
+235 → 274.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
