@@ -25,7 +25,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ icon-{180,192,512}.png, icon-maskable-512.png, favicon-32.png, icon.png
 ├─ test/                         page harnesses (§6, §10.1)
 ├─ units/                        the H-protocol units — code, suites, specs and reviews (§6, §11)
-│   ├─ {volspace,calendar,detect,reversal,schema,prereg}/{code.js,test.js,*.md}
+│   ├─ {volspace,calendar,detect,reversal,schema,prereg,regime}/{code.js,test.js,*.md}
 │   ├─ run.js                    runs every unit suite
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 └─ .nojekyll
@@ -1017,3 +1017,62 @@ the premium.** If the band is rejecting a large share of readings, the band is t
 Both bounds are §11 thresholds in the full sense. `VRP_TICK_REL_MAX` and `SCHEMA_SIR_MIN`/`SCHEMA_SIR_MAX` may be
 tightened at any time; **loosening either to admit more readings is tuning a filter against its own results and
 fires §11.7 clause 6.** Any change is a recorded re-registration, not an edit.
+
+### 11.9 Structural breaks — registered 2026-09-07, before any instance exists
+
+Everything above assumes BTC trades in one continuous regime: the same kind of asset, subject to the same kind
+of price dynamics, for the life of the programme. That assumption can fail — a collapse, a sovereign adoption
+as reserve or backing, an exchange failure that breaks the CF constituent basket, a Kalshi contract redefinition
+— and none of those are the kind of event the calendar (§11.3) or the shock detector (§11.5) is built to see:
+they are not a scheduled release and not a volume burst inside one window, they are a change in what the
+underlying process *is*. Pooling data from before and after such an event is not a matching failure the way an
+uncontrolled release is; it is measuring two different instruments and calling the difference a signal.
+
+**This is a real risk to the programme's external validity, not to its arithmetic**, and it is registered now,
+while it costs nothing, because a threshold or rule invented after seeing the market move is exactly the
+hindsight §7.4 and §11.7 clause 6 exist to prevent.
+
+**Declaration is operator judgment, always, and always carries a reason.** No formula decides whether BTC has
+broken regime — a formula can only flag that something unusual happened, never that it *means* something. A
+structural break is therefore **declared**, not detected: a human writes it down, with a category, a reason,
+and a source, the same provenance discipline as the calendar's `DATED` rows (§8). The categories are a closed
+set — `price-collapse`, `price-parabola`, `sovereign-adoption`, `exchange-failure`, `contract-redefinition`,
+`other` — closed so a typo is caught, `other` so the set is never a reason to refuse a real one.
+
+**The automatic half is a flag, never a decision.** A deferred pass may mark an instant as `flagged` when a
+realized-volatility statistic crosses an unusual percentile of its own trailing distribution — self-normalizing,
+because a fixed price level (a "$40,000" or a "70% draw-down") is exactly the kind of number this document
+warns against inventing, and what counts as unusual for BTC changes with BTC. A `flagged` instant carries no
+reason beyond the statistic that tripped it, is **never sufficient to define a regime boundary on its own**, and
+never gates, restarts, or closes anything by itself. It exists so the operator does not have to remember to
+look; the record still requires a human to say what it means, exactly as `unverified` prices still move the
+tape in §2 rather than halting it.
+
+**What a declared break does, and what it does not.**
+
+- Nothing already recorded is deleted, edited, or reclassified. §4's ungardenable rule applies here exactly as
+  everywhere else: a declaration is a new row, appended, never a rewrite of history.
+- Every declared break defines a **regime boundary instant**. `regimeAt(t)` returns which regime an instant
+  belongs to — an ordinal, not a judgment — derived at read time from the registry, the same pattern as
+  `eventTag`/`coverageAt` (§10.2): it costs the recorder nothing and is exported on every H-protocol row, not
+  only the shock programme's, because H5's premium and any future H2 both implicitly assume the vol regime is
+  stable too.
+- **No calibration set, no control match, and no bootstrap resample may span a regime boundary.** This binds
+  §11.2's difference-in-differences and §11.3's control matching exactly as phase separation (§11.5) and series
+  separation (§4) already bind them: a control drawn from a different regime than its shock is not time-matched
+  in any sense §11.3 means, whatever slot, weekday and quarter it shares.
+  If a declared break's effective instant falls inside an **open** calibration or holdout set — frozen or not —
+  that set is spent: this is the same mechanic and the same wording as §11.6's holdout-spending clause,
+  extended explicitly to a regime break. The count for the regime the break closes stops where the break falls;
+  a fresh calibration set opens on the first graded shock window in the new regime. Data from the closed regime
+  stays on the record and stays exportable; it simply never pools with data from the regime that follows it.
+- A break declared, then found to be over-called, is not un-declared. The registry entry is superseded — a new
+  entry marked `superseded`, citing the one it corrects, in the same style as §11.8's superseded bounds — so
+  the record of what was believed and when is never lost. Un-declaring silently would let a boundary be moved
+  after seeing whether it helped the result, which is the one thing this whole document exists to prevent.
+
+**This registers the concept and its effect before any scorer consumes it.** No scorer exists in the repository
+right now — the one built and reviewed on 2026-09-06/07 was reset (§10.1) rather than carried forward, so that
+regime-break handling could be part of a scorer's design from the start rather than retrofitted onto code
+already hardened against a different set of failures. `regimeAt(t)` and the registry it reads are the contract
+any future scorer must honor; nothing here depends on that scorer existing yet.
