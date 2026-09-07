@@ -78,6 +78,8 @@ const EXPORTS="\n;({SCORE:SCORE,SC_OMIT:SC_OMIT,SC_CALLER_FIELDS:SC_CALLER_FIELD
   "scMissingRequired:scMissingRequired,scIsRefusal:scIsRefusal,scRefused:scRefused,"+
   "scMaxMonths:scMaxMonths,scRatchetStatus:scRatchetStatus,scMissingAll:scMissingAll,"+
   "SC_ROW_FIELDS:SC_ROW_FIELDS,SC_SNAP_FIELDS:SC_SNAP_FIELDS,SC_OPT_FIELDS:SC_OPT_FIELDS,"+
+  "SC_STAMP_FIELDS:SC_STAMP_FIELDS,scNeighbourValue:scNeighbourValue,scSnapCheck:scSnapCheck,"+
+  "scSnapsCheck:scSnapsCheck,scCalPool:scCalPool,"+
   "SC_SPLIT_FIELDS:SC_SPLIT_FIELDS,SC_NEIGHBOUR_FIELDS:SC_NEIGHBOUR_FIELDS,"+
   "scTypeNum:scTypeNum,scTypeBool:scTypeBool,scTypeStr:scTypeStr,scTypeArr:scTypeArr,scTypeFn:scTypeFn,"+
   "scTypeStamp:scTypeStamp,scFieldOf:scFieldOf,scFieldCheck:scFieldCheck,scRowCheck:scRowCheck,"+
@@ -1781,44 +1783,200 @@ sect("THE CONTRACT IS TOTAL: one table, exhaustive against what the code actuall
      without one: the source is parsed, every property name it READS is collected, the names this unit itself
      ASSIGNS and a fixed list of JS builtins are subtracted, and the remainder must be a subset of the
      contract tables. A new `w.something` or `o.something` fails here unless it is declared. */
-  /* comments AND string literals are stripped: a `.md` inside a refusal message is not a property read */
-  const CODE=SRC.replace(/\/\*[\s\S]*?\*\//g,"").replace(/"(?:[^"\\]|\\.)*"/g,'""');
-  const reads={},assigned={};
-  let m;
-  const reRead=/\.([A-Za-z_$][\w$]*)/g;
-  while((m=reRead.exec(CODE))) reads[m[1]]=(reads[m[1]]||0)+1;
-  const reKey=/([A-Za-z_$][\w$]*)\s*:/g;
-  while((m=reKey.exec(CODE))) assigned[m[1]]=1;
-  const reSet=/\.([A-Za-z_$][\w$]*)\s*=[^=]/g;
-  while((m=reSet.exec(CODE))) assigned[m[1]]=1;
+  /* THE SUBTRACTION IS NARROWED TO THE OBJECT BEING READ, WHICH IS THE WHOLE OF THIS FIX.
+
+     The previous scan collected every `.name` read, then subtracted every name appearing ANYWHERE in the file
+     as an object-literal key or an assignment target. That subtraction is file-wide and scope-blind, so any
+     name this unit EMITS was invisible to it as a name this unit READS -- 162 of them, including `level`,
+     `skill`, `status`, `n`, `code`, `why`, `known`, `matched`, `series` and `phase`. Measured against the
+     unmodified suite: inserting `o.weight` failed it (as NOTES claimed), inserting `o.level` or `w.skill`
+     left it 880/880 GREEN. The mechanism the whole contract rebuild rests on bit for one name in ten.
+
+     So the scan is RECEIVER-QUALIFIED. Every read is resolved back to the identifier it is taken on, and
+     every receiver in the unit is classified exactly once:
+       CALLER receivers -- a row, a snapshot, an opts object, a registered boundary stamp -- may read ONLY the
+         names in the contract table that governs them. A name the unit assigns on its OWN objects buys
+         nothing here, which is precisely the collision the old scan got wrong.
+       NEIGHBOUR receivers -- controlEligible, shockStatus, shockPoolGuard, bootstrapCI -- may read only
+         SC_NEIGHBOUR_FIELDS.
+       INTERNAL receivers -- this unit's own objects -- may read only names in INTERNAL_NAMES, which is an
+         explicit hand-maintained list rather than a derived one, asserted by size and by the requirement that
+         every entry is genuinely assigned by the unit somewhere.
+     An UNCLASSIFIED receiver is a failure, so a new local cannot quietly acquire the permissive branch.
+     The scan is then run against deliberately mutated copies of the source, so that "it bites" is an
+     assertion in this file rather than a claim in NOTES. */
+  function scanStrip(src){
+    return src.replace(/\/\*[\s\S]*?\*\//g,"").replace(/"(?:[^"\\]|\\.)*"/g,'""');
+  }
+  const SCAN_KW={"return":1,"typeof":1,"in":1,"of":1,"new":1,"delete":1,"void":1,"instanceof":1,
+    "case":1,"do":1,"else":1};
+  function scanIsId(ch){ return /[A-Za-z0-9_$]/.test(ch); }
+  /* the base identifier a member read is taken on: `rows[i].ticker` -> rows, `m.controls[j].skill` -> m,
+     `Object.keys(o).length` -> Object, `(h>>>0).toString(16)` -> an expression. */
+  function scanBaseOf(code,dot){
+    let i=dot-1;
+    for(;;){
+      while(i>=0&&/\s/.test(code[i])) i--;
+      if(i<0) return "(expr)";
+      const ch=code[i];
+      if(ch===")"||ch==="]"){
+        const open=(ch===")")?"(":"[";
+        let d=0;
+        for(;i>=0;i--){ if(code[i]===ch) d++; else if(code[i]===open){ d--; if(!d) break; } }
+        if(i<0) return "(expr)";
+        i--;
+        let j=i; while(j>=0&&/\s/.test(code[j])) j--;
+        if(j<0||!scanIsId(code[j])) return "(expr)";
+        i=j; continue;
+      }
+      if(scanIsId(ch)){
+        let j=i; while(j>=0&&scanIsId(code[j])) j--;
+        const nm=code.slice(j+1,i+1);
+        if(/^[0-9]/.test(nm)||SCAN_KW[nm]) return "(expr)";
+        let k=j; while(k>=0&&/\s/.test(code[k])) k--;
+        if(k>=0&&code[k]==="."&&code[k-1]!=="."){ i=k-1; continue; }
+        return nm;
+      }
+      return "(expr)";
+    }
+  }
+  function scanReads(src){
+    const code=scanStrip(src),out=[];
+    const re=/\.\s*([A-Za-z_$][\w$]*)/g; let mm;
+    while((mm=re.exec(code))){
+      if(code[mm.index-1]===".") continue;
+      out.push({base:scanBaseOf(code,mm.index),name:mm[1]});
+    }
+    return out;
+  }
   /* the JS surface this unit uses. Fixed, short, and nothing caller-supplied can hide in it. */
   const BUILTIN=["abs","call","ceil","charCodeAt","filter","floor","getUTCDay","getUTCFullYear","getUTCMonth",
     "hasOwnProperty","imul","indexOf","isArray","join","keys","length","map","max","min","pow","prototype",
     "push","random","replace","reverse","round","slice","sort","split","sqrt","toFixed","toString"];
+  /* EVERY CALLER-SUPPLIED AND NEIGHBOUR RECEIVER IN THE UNIT, and the table that governs it. */
+  const CALLER_RECV={w:"row",c:"row",r:"row",rows:"row",rw:"row",pool:"row",shock:"row",snaps:"row",
+    s:"snap",best:"snap",
+    o:"opt",opts:"opt",
+    a:"stamp",b:"stamp",v:"stamp",boundary:"stamp",
+    e:"nbr",g:"nbr",ci:"nbr",status:"nbr",SHOCK_RULE:"nbr"};
+  /* THIS UNIT'S OWN OBJECTS. Explicit, so a new one is a failure until it is classified. */
+  const INTERNAL_RECV=["(expr)","Array","Date","Math","Object","P","SCORE","SC_CALLER_FIELDS","SC_OMIT",
+    "SC_OPT_FIELDS","SC_REFUSALS","SC_ROW_FIELDS","SC_SNAP_FIELDS","SC_SPLIT_FIELDS","SC_STAMP_FIELDS",
+    "SC_VERDICT_FIELDS","a0","ab","asm","bchk","cal","cell","cells","chk","cid","cl","cov","cp","cs","ctx",
+    "d","ded","did","f","fc","fr","holdN","ids","inSpan","k","ka","kb","keep","ks","last","list","m","missing",
+    "need","oc","order","out","p","pairs","parts","pg","pr","probes","q","rc","rec","rep","req","sc",
+    "scFieldCheck","sg","side","sk","sp","sr","st","str","table","ticker","u","x"];
+  /* THE NAMES THIS UNIT EMITS ON ITS OWN OBJECTS. Hand-maintained on purpose: derived from the source it was
+     the hole, because a name the unit assigns anywhere became a name it could read anywhere. */
+  const INTERNAL_NAMES=["B","BAD_OPT","BAD_PHASE","BAD_PROB","BAD_ROW","BAD_SHOCK","BAD_SNAP","BAD_WINDOW",
+    "BOUNDARY_MOVED","CAL_N","CAL_SHORT","CLEAR_HALF_MIN","COV_MIN_N","CTRL_MIN","DAY_MS","EMPTY_BOOK",
+    "HOLD_N_MIN","IS_SHOCK","MISSING_FIELDS","MIXED_PHASE","MIXED_SERIES","NO_ARMS","NO_BOOTSTRAP",
+    "NO_CALENDAR","NO_CELL","NO_MATCHED","NO_PHASE","NO_PREREG","NO_REFSNAP","NO_SHOCKS","REF_TAU_MIN",
+    "SD_ZERO_REL","SLOT_MIN","THIN","UNGRADED","UNKNOWN_OPT","all","at","bMkt","bTool","bad","badRow",
+    "boundaryExists","cal","calPool","cell","cells","ci","ciLo","clear","code","codeMissing","computed",
+    "controlled","controls","coverage","ctrl","ctrlMatched","ctrlTotal","dBrier","did","dow","dropped",
+    "dupControls","dupRows","effective","evaluable","excluded","feasible","field","frac","gate","graded",
+    "hold","holdN","id","ids","level","matched","missing","moved","movedDown","n80","nCal","nHold","name",
+    "paired","pairs","power","probes","quarter","ratcheted","recorded","refuse","registered","registeredOk",
+    "rejects","req","restricted","rows","sd","sdMeasured","shape","shockSkill","shocks","skill","slot","st",
+    "toolMinusMarket","total","uncontrolled","undetermined","ungraded","unmatched","version"];
+  const TABLES={row:U.SC_ROW_FIELDS,snap:U.SC_SNAP_FIELDS,opt:U.SC_OPT_FIELDS,stamp:U.SC_STAMP_FIELDS,
+    nbr:U.SC_NEIGHBOUR_FIELDS};
   const declared={};
-  const tables=[U.SC_ROW_FIELDS,U.SC_SNAP_FIELDS,U.SC_OPT_FIELDS,U.SC_NEIGHBOUR_FIELDS];
-  for(let i=0;i<tables.length;i++) for(let j=0;j<tables[i].length;j++) declared[tables[i][j].name]=1;
-  const undeclared=Object.keys(reads).filter(function(k){
-    return !assigned[k]&&BUILTIN.indexOf(k)<0&&!declared[k]; }).sort();
-  eq("every field this unit reads and does not itself produce is in the contract",undeclared.join(","),"");
-  /* and the other direction, so the table cannot rot: every declared field is actually read */
+  for(const tk in TABLES) for(let j=0;j<TABLES[tk].length;j++) declared[TABLES[tk][j].name]=1;
+  function tableHas(kind,name){
+    const t=TABLES[kind]; if(!t) return false;
+    for(let j=0;j<t.length;j++) if(t[j].name===name) return true;
+    return false;
+  }
+  /* -> {unclassified, caller, internal}: three lists of "base.name" strings, all empty on a clean source. */
+  function scanFindings(src){
+    const out={unclassified:{},caller:{},internal:{}};
+    const rd=scanReads(src);
+    for(let i=0;i<rd.length;i++){
+      const base=rd[i].base,name=rd[i].name;
+      if(BUILTIN.indexOf(name)>=0) continue;
+      if(Object.prototype.hasOwnProperty.call(CALLER_RECV,base)){
+        if(!tableHas(CALLER_RECV[base],name)) out.caller[base+"."+name]=1;
+        continue;
+      }
+      if(INTERNAL_RECV.indexOf(base)<0){ out.unclassified[base+"."+name]=1; continue; }
+      if(!declared[name]&&INTERNAL_NAMES.indexOf(name)<0) out.internal[base+"."+name]=1;
+    }
+    return {unclassified:Object.keys(out.unclassified).sort(),
+      caller:Object.keys(out.caller).sort(),internal:Object.keys(out.internal).sort()};
+  }
+  const F=scanFindings(SRC);
+  eq("every receiver in the unit is classified as caller, neighbour or internal",F.unclassified.join(","),"");
+  eq("every name read on a CALLER or NEIGHBOUR object is in that object's own contract table",
+     F.caller.join(","),"");
+  eq("every name read on one of the unit's own objects is in the declared internal list",
+     F.internal.join(","),"");
+  /* the allow-list cannot grow silently, and cannot smuggle in a caller field */
+  eq("the internal-name allow-list is the size it is asserted to be",INTERNAL_NAMES.length,115);
+  const CODE=scanStrip(SRC);
+  const emitted={}; let mm2;
+  const reKey=/([A-Za-z_$][\w$]*)\s*:/g;
+  while((mm2=reKey.exec(CODE))) emitted[mm2[1]]=1;
+  const reSet=/\.([A-Za-z_$][\w$]*)\s*=[^=]/g;
+  while((mm2=reSet.exec(CODE))) emitted[mm2[1]]=1;
+  eq("...and every name on it is one the unit actually EMITS, not one it merely reads",
+     INTERNAL_NAMES.filter(function(k){ return !emitted[k]; }).join(","),"");
+  eq("...and none of them is a contract field wearing an internal name",
+     INTERNAL_NAMES.filter(function(k){ return declared[k]; }).join(","),"");
+  /* and the other direction, so the tables cannot rot: every declared field is actually read */
+  const reads={}; const rdAll=scanReads(SRC);
+  for(let i=0;i<rdAll.length;i++) reads[rdAll[i].name]=1;
   const dead=Object.keys(declared).filter(function(k){ return !reads[k]; }).sort();
   eq("...and every declared field is actually read",dead.join(","),"");
-  /* the tables agree with the field lists the rest of the unit already had */
-  const optNames=U.SC_OPT_FIELDS.map(function(f){ return f.name; });
-  for(let i=0;i<U.SC_CALLER_FIELDS.length;i++)
-    ok("SC_OPT_FIELDS covers the st-bound caller field "+U.SC_CALLER_FIELDS[i],
-       optNames.indexOf(U.SC_CALLER_FIELDS[i])>=0);
-  for(let i=0;i<U.SC_SPLIT_FIELDS.length;i++)
-    ok("...and the split-bound field "+U.SC_SPLIT_FIELDS[i],optNames.indexOf(U.SC_SPLIT_FIELDS[i])>=0);
-  eq("...and nothing else but bootstrap",optNames.length,
-     U.SC_CALLER_FIELDS.length+U.SC_SPLIT_FIELDS.length+1);
-  ok("every contract entry states a permitted shape in words",
-     tables.every(function(t){ return t.every(function(f){
-       return typeof f.shape==="string"&&f.shape.length>0; }); }));
-  ok("every ROW and OPT entry carries a predicate, so nothing is merely `read`",
-     U.SC_ROW_FIELDS.every(function(f){ return typeof f.ok==="function"; })&&
-     U.SC_OPT_FIELDS.every(function(f){ return typeof f.ok==="function"; }));
+
+  /* THE SCAN, MUTATION-TESTED AGAINST ITSELF. The reviewer's probes are the first three: `o.weight` is a
+     brand-new name, `o.level` and `w.skill` COLLIDE with names the unit assigns elsewhere, and the collision
+     is exactly what the old scan got wrong -- both of those left the suite green. */
+  const probes=[
+    {src:";var zzA=o.weight;",want:"caller",why:"a NEW caller field read on opts"},
+    {src:";var zzB=o.level;",want:"caller",why:"an opts read COLLIDING with an internal name (`level`)"},
+    {src:";var zzC=w.skill;",want:"caller",why:"a ROW read colliding with an internal name (`skill`)"},
+    {src:";var zzD=w.status;",want:"caller",why:"a ROW read colliding with a NEIGHBOUR field (`status`)"},
+    {src:";var zzE=s.n;",want:"caller",why:"a SNAPSHOT read colliding with a stamp field (`n`)"},
+    {src:";var zzF=o.boundaryExists;",want:"caller",why:"an opts read of a name the unit emits on ctx"},
+    {src:";var zzG=out.somethingNew;",want:"internal",why:"a NEW name on one of the unit's own objects"},
+    {src:";var zzH=zzq.anything;",want:"unclassified",why:"a receiver nobody classified"}
+  ];
+  /* measured as a DELTA against the clean source, so these stay assertions about the SCAN even when the
+     source under it is dirty -- a real undeclared read then fails one assertion, the one that names it. */
+  function probeDelta(kind,src){
+    return scanFindings(SRC+"\n"+src)[kind].length-F[kind].length;
+  }
+  for(let i=0;i<probes.length;i++)
+    ok("the scan BITES: "+probes[i].why,probeDelta(probes[i].want,probes[i].src)===1,
+       {probe:probes[i].src,found:scanFindings(SRC+"\n"+probes[i].src)});
+  const clean=[";var zzI=w.result;",";var zzJ=out.level;",";var zzK=s.tau;",";var zzL=o.arms;",
+    ";var zzN=e.eligible;",";var zzO=SHOCK_RULE.maxMonths;"];
+  for(let i=0;i<clean.length;i++)
+    ok("...and does not bite a legitimate read: "+clean[i],
+       probeDelta("caller",clean[i])+probeDelta("internal",clean[i])+
+       probeDelta("unclassified",clean[i])===0,scanFindings(SRC+"\n"+clean[i]));
+
+  /* NO CONTRACT TABLE MAY BE DECORATIVE. SC_SNAP_FIELDS shipped with five entries, zero predicates and no
+     call site: scFieldCheck's type branch is `if(f.ok&&!f.ok(v))`, so every value passed, and a wrong-typed
+     `tau` on the true refSnap silently promoted the next-nearest read into the scored observation -- a
+     measured sign flip on one window from -0.20000 to +0.20000. Both halves are asserted as a CLASS so the
+     next table cannot ship the same way: every entry of every table carries a predicate, and every table is
+     handed to scFieldCheck somewhere in the unit. */
+  const TABLE_NAMES=["SC_ROW_FIELDS","SC_SNAP_FIELDS","SC_OPT_FIELDS","SC_STAMP_FIELDS",
+    "SC_NEIGHBOUR_FIELDS"];
+  for(const tk in TABLES){
+    ok("every entry of the "+tk+" table states a permitted shape in words",
+       TABLES[tk].every(function(f){ return typeof f.shape==="string"&&f.shape.length>0; }));
+    ok("EVERY ENTRY OF THE "+tk+" TABLE CARRIES A PREDICATE, so nothing is merely `read`",
+       TABLES[tk].every(function(f){ return typeof f.ok==="function"; }),
+       TABLES[tk].filter(function(f){ return typeof f.ok!=="function"; }).map(function(f){ return f.name; }));
+  }
+  for(let i=0;i<TABLE_NAMES.length;i++)
+    ok("the "+TABLE_NAMES[i]+" table is handed to scFieldCheck, so it cannot be decorative",
+       CODE.indexOf("scFieldCheck("+TABLE_NAMES[i])>=0);
+  eq("...and there are exactly that many contract tables",Object.keys(TABLES).length,TABLE_NAMES.length);
   /* THE FAILURE MODE OF A FIELD THAT SKIPPED THE CONTRACT IS REFUSAL, NOT PASSAGE */
   STUB_RELEASES.length=0;
   const G=mkCells({tag:"ct",n:30,nCtrl:5,nShock:2,
@@ -1962,7 +2120,7 @@ sect("the contract looks where the READ looks, and a declared shape IS its predi
        if(U.SC_ROW_FIELDS[i].name==="phase") return U.SC_ROW_FIELDS[i].shape; return ""; })()));
 }
 
-sect("the four 2026-09-06 registrations are in CLAUDE.md, not only in this unit");
+sect("the 2026-09-06 registrations are in CLAUDE.md, not only in this unit");
 {
   if(fs.existsSync(DOC)){
     const doc=fs.readFileSync(DOC,"utf8");
@@ -1978,6 +2136,14 @@ sect("the four 2026-09-06 registrations are in CLAUDE.md, not only in this unit"
     ok("11.2a requires BOTH power figures as output",
        /Both power figures are required output/.test(doc));
     ok("...and 11.2 still says control coverage is 80%",/Control coverage .{0,4}80%/.test(doc));
+    /* the fifth, registered 2026-09-06 and implemented by scCalPool. Without this the code could carry a
+       control-matching rule 11.6 does not, which is the drift the other four guards exist to prevent. */
+    ok("11.6 registers that a calibration window draws ONLY PRE-BOUNDARY controls",
+       /A calibration window draws only controls that closed at or before the boundary/.test(doc));
+    ok("...and says why: the matching cell recurs weekly, so the frozen sd would never settle",
+       /recurs \*\*weekly\*\*/.test(doc)&&/non-stationary/.test(doc));
+    ok("...and 11.6 still calls it part of the control-matching rule it freezes",
+       /part of the control-matching rule this subsection freezes/.test(doc));
   } else ok("CLAUDE.md not present; registration guards skipped",true);
 }
 
@@ -2027,6 +2193,227 @@ sect("garbage in");
 }
 
 /* ==================================================================================================== */
+/* ==================================================================================================== */
+sect("11.6 REGISTERED: a calibration window draws only controls that closed AT OR BEFORE the boundary");
+{
+  /* THE THIRD REVIEW'S FINDING 1, AS ITS OWN REPRODUCTION.
+     A matching cell is (series, slot, weekday, quarter) and recurs WEEKLY, so every calibration cell gains a
+     control every week by construction. scPairs matched every shock window against the WHOLE CURRENT ROW SET,
+     so a calibration pair's control mean was estimated partly from post-boundary windows and the frozen sd was
+     non-stationary. scCalFp reported that faithfully -- and therefore REFUSED, on a weekly cadence, with a
+     message telling the caller its holdout was spent, over an accrual that moved nothing.
+     CLAUDE.md 11.6 now registers the rule that fixes it, and this block is that rule's test.
+
+     The fixture keeps calibration and holdout in DISJOINT cells so "a control landing in a calibration cell"
+     and "a control landing in a holdout cell" are separable: group A is 30 cells whose single shock is in
+     week 6, group B is 30 cells at other slots whose single shock is in week 7. Sorted by close, every A
+     shock precedes every B shock, so the boundary is A's last window and the halves are exactly the groups. */
+  STUB_RELEASES.length=0;
+  /* the reviewer's control-skill pattern, quartered, so 11.2a's required holdout n lands on its floor of 30
+     and this fixture reaches READY rather than HOLDOUT -- the point of the block is that ordinary accrual
+     does not turn a SCORING pass into a refusal, which is only visible if the pass scores. */
+  function cs4(i){ return cellSkill(i)/4; }
+  const A=mkCells({tag:"cpA",n:30,nCtrl:5,nShock:1,
+    ctrl:function(i){ return pmFor(cs4(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  const B=mkCells({tag:"cpB",slot0:40,n:30,nCtrl:5,nShock:1,
+    ctrl:function(i){ return pmFor(cs4(i),60,1); },
+    shock:function(){ return pmFor(SHOCK_SKILL,60,1); }});
+  /* group B's shock sits in week 7, so it lands in the holdout; mkCells puts every shock at week 6+k */
+  for(let i=0;i<B.shocks.length;i++){
+    const w=B.shocks[i];
+    STUB_RELEASES.splice(STUB_RELEASES.indexOf(w.open),1);
+    w.open+=WEEK; w.close+=WEEK;
+    for(let j=0;j<w.snaps.length;j++) w.snaps[j].t+=WEEK;
+    STUB_RELEASES.push(w.open);
+  }
+  const rows=A.rows.concat(B.rows);
+  const opts=reg(rows,baseOpts());
+  const base=U.scReport(rows,opts);
+  eq("the two-group fixture reaches a verdict at all",base.status.status,"READY",base.status);
+  eq("...with 30 calibration and 30 holdout windows",base.st.nCal+","+base.st.nHold,"30,30");
+  eq("the boundary is group A's last window",U.scSeriesOf(opts.boundary.ticker),"15m");
+  ok("...and it is a group-A ticker",/cpAs/.test(opts.boundary.ticker),opts.boundary.ticker);
+  eq("the calibration control pool is RESTRICTED once a boundary is registered",base.calPool.restricted,true);
+  eq("...at the registered boundary's close",base.calPool.at,opts.boundary.close);
+  ok("...and it actually drops rows",base.calPool.dropped>0,base.calPool);
+
+  /* the FIRST, UNREGISTERED pass is the other half of the ordering answer: it is unrestricted, and it cannot
+     reach a verdict, so no verdict is ever computed against an unrestricted calibration half */
+  const first=U.scReport(rows,baseOpts());
+  eq("an UNREGISTERED pass does not restrict",first.calPool.restricted,false);
+  eq("...and it is a refusal, not a verdict",first.status.status,"REFUSED");
+  eq("...naming the registration it is waiting for",first.status.code,U.SC_OMIT.MISSING_FIELDS);
+  ok("...specifically the boundary",first.status.why.indexOf("boundary")>=0,first.status.why);
+
+  /* ---- THE REPRODUCTION: one extra control, in one CALIBRATION cell, arriving after the boundary ---- */
+  const t0A=CELL_BASE;                                   /* group A, cell 0 */
+  const late=mkWin("KXBTC15M-cpA-late0",t0A+9*WEEK,15,"yes",pmFor(cs4(0),60,1),60);
+  const rows2=rows.concat([late]);
+  const rep2=U.scReport(rows2,opts);
+  eq("ORDINARY CONTROL ACCRUAL IN A CALIBRATION CELL NO LONGER REFUSES",rep2.status.status,"READY",rep2.status);
+  eq("...the boundary did not move",rep2.boundary.moved,false);
+  eq("...the calibration FINGERPRINT is identical",rep2.split.boundary.fp,opts.boundary.fp);
+  eq("...and the frozen sd is unchanged, exactly",rep2.sd,base.sd);
+  eq("...so 11.2a's required n is unchanged too",rep2.holdN.computed,base.holdN.computed);
+
+  /* and the asymmetry, measured on the pairs themselves rather than inferred from the verdict */
+  const P2=U.scPairs(rows2,opts.boundary);
+  const calPair=P2.pairs.filter(function(p){ return p.ticker==="KXBTC15M-cpAs0-0"; })[0];
+  const holdPair=P2.pairs.filter(function(p){ return p.ticker==="KXBTC15M-cpBs0-0"; })[0];
+  ok("the calibration pair in that cell exists",!!calPair);
+  eq("...and it still draws exactly its five PRE-BOUNDARY controls",(calPair||{}).nCtrl,5);
+  ok("the holdout half is untouched by the restriction",!!holdPair&&holdPair.nCtrl===5,holdPair);
+
+  /* ---- a control landing in a HOLDOUT cell: the calibration half must not move, and the holdout must ---- */
+  const t0B=CELL_BASE+40*15*MIN;                         /* group B, cell 0 */
+  const lateB=mkWin("KXBTC15M-cpB-late0",t0B+9*WEEK,15,"yes",pmFor(cs4(0),60,1),60);
+  const rows3=rows.concat([lateB]);
+  const rep3=U.scReport(rows3,opts);
+  eq("a control landing in a HOLDOUT cell does not disturb the calibration half",
+     rep3.split.boundary.fp,opts.boundary.fp);
+  eq("...and does not refuse",rep3.status.status,"READY",rep3.status);
+  const P3=U.scPairs(rows3,opts.boundary);
+  const holdPair3=P3.pairs.filter(function(p){ return p.ticker==="KXBTC15M-cpBs0-0"; })[0];
+  eq("...it IS used, by the holdout pair whose cell it landed in",(holdPair3||{}).nCtrl,6);
+  eq("...while that cell's calibration counterpart does not exist to be affected",
+     (P3.pairs.filter(function(p){ return p.ticker==="KXBTC15M-cpAs0-0"; })[0]||{}).nCtrl,5);
+
+  /* ---- the fingerprint is NOT disarmed: a change to the PRE-boundary calibration set still refuses ---- */
+  const early=mkWin("KXBTC15M-cpA-early0",t0A+5*WEEK,15,"yes",pmFor(cs4(0),60,1),60);
+  const rep4=U.scReport(rows.concat([early]),opts);
+  eq("a control arriving BEFORE the boundary in a calibration cell still moves the frozen set",
+     rep4.status.status,"REFUSED",rep4.status);
+  eq("...as boundary-moved",rep4.code,U.SC_OMIT.BOUNDARY_MOVED);
+  ok("...for the fingerprint's reason",/calibration set changed/.test(rep4.boundary.why),rep4.boundary.why);
+  /* and so does losing one: 10.2's 15-day prune is the guaranteed version of this */
+  const pruned=rows.filter(function(w){ return w.ticker!=="KXBTC15M-cpAc0-0"; });
+  eq("...and so does LOSING a pre-boundary control",U.scReport(pruned,opts).status.status,"REFUSED");
+
+  /* ---- five accruals at once, which is the weekly cadence the finding described ---- */
+  const many=rows.slice();
+  for(let wk=8;wk<13;wk++)
+    for(let ci=0;ci<3;ci++)
+      many.push(mkWin("KXBTC15M-cpA-acc"+wk+"-"+ci,CELL_BASE+ci*15*MIN+wk*WEEK,15,"yes",
+        pmFor(cs4(ci),60,1),60));
+  const rep5=U.scReport(many,opts);
+  eq("FIFTEEN post-boundary controls across three calibration cells still do not move the fingerprint",
+     rep5.split.boundary.fp,opts.boundary.fp);
+  eq("...and the sd is still the frozen one",rep5.sd,base.sd);
+  ok("...and the unit still scores",rep5.status.status==="READY",rep5.status);
+  STUB_RELEASES.length=0;
+}
+sect("scCalPool: the restriction itself, on `close` alone");
+{
+  const stamp={n:30,close:1000,ticker:"KXBTC15M-b",fp:"abc-30"};
+  const rows=[{ticker:"a",close:999},{ticker:"b",close:1000},{ticker:"c",close:1001},{ticker:"d"}];
+  const p=U.scCalPool(rows,stamp);
+  eq("a control that closed BEFORE the boundary is kept",p.rows.indexOf(rows[0])>=0,true);
+  eq("a control that closed AT the boundary is kept -- it closed at or before it",p.rows.indexOf(rows[1])>=0,
+     true);
+  eq("a control that closed AFTER the boundary is dropped",p.rows.indexOf(rows[2])>=0,false);
+  eq("...and the drop is counted",p.dropped,1);
+  eq("a row with no usable close is passed through to the rule that applies to it",
+     p.rows.indexOf(rows[3])>=0,true);
+  eq("the pool reports the instant it cut at",p.at,1000);
+  eq("...and that it cut at all",p.restricted,true);
+  const un=U.scCalPool(rows,null);
+  eq("with no registered stamp there is no restriction",un.restricted,false);
+  eq("...and every row is in the pool",un.rows.length,4);
+  eq("...including nothing dropped",un.dropped,0);
+  eq("a malformed stamp does not restrict either -- scOptsCheck refused it long before this",
+     U.scCalPool(rows,{n:30,close:1000,ticker:"x"}).restricted,false);
+  eq("a non-array is not a pool",U.scCalPool(null,stamp).rows.length,0);
+}
+
+/* ==================================================================================================== */
+sect("SC_SNAP_FIELDS is a contract, not a decoration: a wrong-typed tau may not promote a neighbour");
+{
+  /* THE THIRD REVIEW'S FINDING 5, AS ITS OWN REPRODUCTION. The table shipped with five entries and no `ok`
+     predicates, and scFieldCheck's type branch is `if(f.ok&&!f.ok(v))` -- so every value passed. scRefSnap
+     SKIPS a snapshot whose tau is not a finite number, so corrupting the tau of the read that IS the refSnap
+     scored the NEXT-NEAREST read instead: measured, one window's scored skill moved from -0.20000 to +0.20000.
+     A sign flip on the scored quantity, from a declared and unchecked field. */
+  const t=Date.UTC(2026,0,7,12,30);
+  function twoRead(){
+    return {ticker:"KXBTC15M-sn",open:t,close:t+15*MIN,result:"yes",phase:1,shock:false,
+      snaps:[{tau:14,t:t+MIN,pm:pmFor(0.20,50,1),qm:50},
+             {tau:6,t:t+9*MIN,pm:pmFor(-0.20,50,1),qm:50}]};
+  }
+  const clean=twoRead();
+  eq("clean: the refSnap is the tau-6 read",U.scRefSnap(clean).tau,6);
+  close("...and the scored skill is -0.20000",U.scSkill(clean).skill,-0.2,1e-12);
+  const bad=twoRead(); bad.snaps[1].tau="6";
+  const sk=U.scSkill(bad);
+  eq("a wrong-typed tau on the true refSnap REFUSES the window",sk.ok,false);
+  eq("...with its own reason code",sk.code,U.SC_OMIT.BAD_SNAP);
+  eq("...and does NOT score the neighbour at +0.2",sk.skill,undefined);
+  /* the same corruption through the whole pass, where it is a refusal of the CALL */
+  const rc=U.scRowCheck(bad);
+  eq("...the row contract refuses it too",rc.ok,false);
+  eq("...naming snaps",rc.field,"snaps");
+  ok("...and the snapshot index and field",/snapshot 1: tau/.test(rc.why),rc.why);
+  eq("...and bad-snapshot is a REFUSAL, not a measurement state",U.scIsRefusal(U.SC_OMIT.BAD_SNAP),true);
+  const rep=U.scReport([bad],baseOpts());
+  eq("scReport refuses the call",rep.status.status,"REFUSED");
+  eq("...with the same code",rep.code,U.SC_OMIT.BAD_SNAP);
+  ok("...and the refusal explains the promotion it prevented",
+     /promotes its neighbour/.test(rep.status.why),rep.status.why);
+
+  /* every entry, present-and-wrong-typed */
+  const cases=[
+    {f:"tau",v:"6"},{f:"tau",v:{}},{f:"tau",v:null,absent:true},{f:"tau",v:NaN},
+    {f:"pm",v:"banana"},{f:"pm",v:1.5},{f:"pm",v:-0.1},{f:"pm",v:[]},
+    {f:"qm",v:{}},{f:"qm",v:"60"},{f:"qm",v:101},{f:"qm",v:-1},
+    {f:"phantom",v:1},{f:"phantom",v:{}},
+    {f:"t",v:"x"},{f:"t",v:{}}
+  ];
+  for(let i=0;i<cases.length;i++){
+    const w=twoRead();
+    if(cases[i].absent) delete w.snaps[1][cases[i].f]; else w.snaps[1][cases[i].f]=cases[i].v;
+    const r=U.scRowCheck(w);
+    eq("a snapshot whose "+cases[i].f+" is "+JSON.stringify(cases[i].v)+
+       (cases[i].absent?" (absent)":"")+" is refused",r.code,U.SC_OMIT.BAD_SNAP);
+  }
+  /* the reviewer's two probes, which used to return {ok:true} on an unchecked table */
+  eq("scFieldCheck(SNAP,\"pm\",\"banana\") is not ok any more",
+     U.scFieldCheck(U.SC_SNAP_FIELDS,"pm","banana").ok,false);
+  eq("scFieldCheck(SNAP,\"tau\",{}) is not ok any more",
+     U.scFieldCheck(U.SC_SNAP_FIELDS,"tau",{}).ok,false);
+  eq("the snapshot table carries a predicate on EVERY entry",
+     U.SC_SNAP_FIELDS.filter(function(f){ return typeof f.ok!=="function"; }).length,0);
+
+  /* WHAT IS DELIBERATELY *NOT* A REFUSAL: absence of a quote is a measurement state, at the granularity the
+     unit already answers it -- the WINDOW is excluded, counted, with a reason. Requiring pm/qm on every read
+     would refuse a 400-row call over one unused read taken while the book was empty. */
+  const noQ=twoRead(); noQ.snaps[1].qm=null;
+  eq("an absent qm on the refSnap is bad-prob, not a malformed row",U.scSkill(noQ).code,U.SC_OMIT.BAD_PROB);
+  eq("...and the row itself is well-formed",U.scRowCheck(noQ).ok,true);
+  const noP=twoRead(); delete noP.snaps[1].pm;
+  eq("an absent pm is bad-prob too",U.scSkill(noP).code,U.SC_OMIT.BAD_PROB);
+  const emptyBook=twoRead(); emptyBook.snaps[1].qm=0;
+  eq("qm 0 is still an EMPTY BOOK (10.3 K2), not a malformed read",U.scSkill(emptyBook).code,
+     U.SC_OMIT.EMPTY_BOOK);
+  const eb2=twoRead(); eb2.snaps[1].qm=100;
+  eq("...and so is qm 100",U.scSkill(eb2).code,U.SC_OMIT.EMPTY_BOOK);
+  /* phantom stays truthy-tested and the K1 repair's string is a legitimate marker (10.4b) */
+  const k1=twoRead(); k1.snaps[1].phantom="K1";
+  eq("the K1 repair's string marker is a legitimate phantom",U.scRowCheck(k1).ok,true);
+  eq("...and it is still SKIPPED rather than scored",U.scRefSnap(k1).tau,14);
+  const notPhantom=twoRead(); notPhantom.snaps[1].phantom=false;
+  eq("an explicit false is a legitimate phantom too",U.scRowCheck(notPhantom).ok,true);
+  eq("...and does not skip the read",U.scRefSnap(notPhantom).tau,6);
+  /* a snapshot that is not a record at all */
+  const junk=[null,42,"snap",[],undefined];
+  for(let i=0;i<junk.length;i++){
+    const w=twoRead(); w.snaps[1]=junk[i];
+    eq("a snapshot that is "+JSON.stringify(junk[i])+" is refused",U.scRowCheck(w).code,U.SC_OMIT.BAD_SNAP);
+  }
+  eq("an EMPTY snaps array is still legal -- it is a window with no reads, which is a measurement state",
+     U.scRowCheck({ticker:"KXBTC15M-e",open:t,close:t+15*MIN,result:"yes",phase:1,shock:false,snaps:[]}).ok,
+     true);
+}
+
 sect("hygiene");
 {
   ok("no arrow functions",SRC.indexOf("=>")<0);

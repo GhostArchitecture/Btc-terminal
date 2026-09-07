@@ -1,6 +1,6 @@
 # Unit: `score` — the half that computes `st`
 
-`code.js` is the exact block to splice. `node test.js` runs green: **861 assertions, 0 failed, exit 0**.
+`code.js` is the exact block to splice. `node test.js` runs green: **994 assertions, 0 failed, exit 0**.
 1,318 lines, 69 top-level declarations, pure ASCII (asserted), ES2019, no arrow functions, no template
 literals. (Was 255 assertions and 545 lines before the first 2026-09-06 adversarial review, 453 and 902
 after it; the two §"What the review changed" sections at the foot record every difference.) Pure: no DOM, no `localStorage`, no `fetch`, no timers, no `S`, no page helpers — the harness
@@ -68,8 +68,11 @@ better tool, `−0.40` for the worse one, whose `shockStatus` is **ABANDON**, no
 | symbol | kind | notes |
 |---|---|---|
 | `SCORE` | const | `CTRL_MIN 5`, `CAL_N 30`, `HOLD_N_MIN 30`, `COV_MIN_N 30`, `CLEAR_HALF_MIN 45`, `REF_TAU_MIN 6`, `SLOT_MIN 15`, `SD_ZERO_REL 1e-12` |
-| `SC_OMIT` | const | 26 reason codes; every refusal is countable, none is a default |
-| `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_NEIGHBOUR_FIELDS` | const | **the contract** — every field this unit reads, with an explicit type and an explicit permitted shape, enumerated in one place |
+| `SC_OMIT` | const | 27 reason codes; every refusal is countable, none is a default |
+| `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_STAMP_FIELDS` / `SC_NEIGHBOUR_FIELDS` | const | **the contract** — every field this unit reads, with an explicit type, an explicit permitted shape and a **predicate on every entry**, enumerated in one place. `test.js` asserts each table reaches `scFieldCheck` by name, so none of them can be decorative |
+| `scSnapCheck(s)` / `scSnapsCheck(snaps)` | fn | the snapshot contract, applied to **every** read in a row **before** `refSnap` picks — checking only the chosen read would miss the defect, because the read that gets promoted is well-formed |
+| `scNeighbourValue(name,v)` | fn | one value read off a neighbour, through `SC_NEIGHBOUR_FIELDS`; the wrong shape returns `null` rather than being coerced |
+| `scCalPool(rows,boundary)` | fn | §11.6's registered calibration control pool: with a registered stamp, only rows that **closed at or before** the boundary. Returns `{rows, restricted, at, dropped}` |
 | `scTypeNum` / `scTypeBool` / `scTypeStr` / `scTypeArr` / `scTypeFn` / `scTypeStamp` | fn | the contract's predicates; `scTypeStamp` is the boundary stamp `{n, close, ticker, fp}` |
 | `scFieldOf(table,name)` / `scFieldCheck(table,name,v)` | fn | one field, one answer: absent-and-required and present-and-wrong-typed are different codes |
 | `scRowCheck(w)` / `scRowsCheck(rows)` / `scOptsCheck(opts)` | fn | the contract applied; one bad row or one unknown opts key refuses the whole call |
@@ -90,7 +93,7 @@ better tool, `−0.40` for the worse one, whose `shockStatus` is **ABANDON**, no
 | `scSkill(w)` | fn | **market Brier − tool Brier** at `refSnap` |
 | `scMatchControls(shock,pool)` | fn | `{n, controls, matched, reason, known, rejects}` |
 | `scPhaseGuard(rows)` / `scSeriesGuard(rows)` | fn | §11.5 and §4: what may never be pooled |
-| `scPairs(rows)` | fn | one paired difference per matched shock window |
+| `scPairs(rows,boundary)` | fn | one paired difference per matched shock window. `boundary` is the **registered** stamp (or null): with one, a **calibration** window draws only controls that closed at or before it (§11.6) and holdout windows are unaffected; `out.calPool` reports the restriction |
 | `scSplit(pairs)` / `scSplitStable(a,b)` / `scSplitCheck(computed,registered)` | fn | §11.6 chronological split; boundary-move detector; the registered-boundary gate `scReport` calls |
 | `scRatchet(computed,registered)` / `scRatchetStatus(...)` / `scMaxMonths()` | fn | §11.2a's "may only ever move up", applied to the required holdout n and then to the judge's answer |
 | `scAfterBoundary(w,b)` / `scCoverage(P,boundary)` | fn | which side of the boundary a recorded window sits on (`null` = undeterminable); §11.2's registered denominator — holdout, graded, side-determinable, not evaluated below 30 — plus the calibration and pooled cuts and the exclusion counts |
@@ -193,6 +196,16 @@ exactly **one** old control row moved the boundary by one window and the require
 74** — and §11.2a says that number may only ever move **up**. Against §10.2's ~15-day `btc.edge` prune
 and §8's ~15-month programme, control attrition is not a hazard the programme *might* hit; it is
 guaranteed, repeatedly.
+
+**And the calibration half's controls used to accrue with it.** `scPairs` matched every shock window
+against the *whole current row set*, so a **calibration** pair's control mean was estimated partly from
+post-boundary windows — a matching cell is `(series, slot, weekday, quarter)` and recurs **weekly**, so
+every calibration cell gained a control every week by construction. The frozen `sd` was non-stationary,
+`scCalFp` reported that faithfully, and the unit therefore refused on a weekly cadence. §11.6 now
+registers the rule that fixes it and `scCalPool` implements it: **a calibration window draws only
+controls that closed at or before the boundary.** The ordering problem that creates — the boundary
+restricts the pool, the pool decides matched-ness, matched-ness produces the boundary — is broken by
+authority rather than by iteration, and is written out in full under the third review below.
 
 So the boundary is an **input once it exists**. This unit is pure and can persist nothing, so the caller
 supplies `boundary` (the stamp `scSplit` returned when the 30th calibration window was graded) and
@@ -318,11 +331,12 @@ as a certainty.
 | Nothing is defaulted to a permissive value | `scAssemble` copies caller fields verbatim, names the absent ones in `missing` | absent `frozen` → `undefined` → **FROZEN-PENDING**; absent `detPrecision` on phase 2 → **INVALID**; `frozen:"true"` is still refused |
 | A void settlement is not a NO (§10.4) | `result === "yes" \|\| "no"` only | void and `null` both read `ungraded` |
 | An empty-side book is not a quote (§10.3 K2) | `qm === 0` and `qm === 100` are refused before any Brier is formed | `empty-book`, and such a control is rejected and counted |
-| **Every field this unit reads is typed** — a value present in the wrong type is a refusal, an absent load-bearing field is a refusal, an opts key that is not in the contract is a refusal | `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_NEIGHBOUR_FIELDS`, applied by `scRowsCheck` and `scOptsCheck` before anything is matched, scored or split | `shock:1`, `"true"`, `{}`, `[]`, `0.5` and an absent `shock` all refuse (`bad-shock-flag`); `holdoutSpent:1` and `"yes"` refuse (`bad-caller-field`) with the counterfactual READY asserted beside each; an undeclared opts key refuses (`unknown-caller-field`); and the suite **parses `code.js`**, collects every property name it reads, subtracts what the unit assigns and a fixed builtin list, and requires the remainder to be a subset of the tables — so a field added later cannot skip the contract |
+| **Every field this unit reads is typed** — a value present in the wrong type is a refusal, an absent load-bearing field is a refusal, an opts key that is not in the contract is a refusal | `SC_ROW_FIELDS` / `SC_SNAP_FIELDS` / `SC_OPT_FIELDS` / `SC_STAMP_FIELDS` / `SC_NEIGHBOUR_FIELDS`, **every entry carrying a predicate**, applied by `scRowsCheck`, `scSnapsCheck` and `scOptsCheck` before anything is matched, scored or split | `shock:1`, `"true"`, `{}`, `[]`, `0.5` and an absent `shock` all refuse (`bad-shock-flag`); `holdoutSpent:1` and `"yes"` refuse (`bad-caller-field`) with the counterfactual READY asserted beside each; an undeclared opts key refuses (`unknown-caller-field`); a snapshot whose `tau` is the string `"6"` refuses (`bad-snapshot`) instead of silently promoting its neighbour into the scored observation; and the suite **parses `code.js`**, resolves every property read back to the **receiver** it is taken on, and requires a caller receiver to read only its own table — a name the unit assigns elsewhere buys nothing, which is what the old file-wide subtraction got wrong for 162 names |
 | Coverage is read on the **holdout alone**, over §11.2's registered denominator (§11.2, §11.7 clause 3) | `scCoverage` splits recorded windows on the boundary; only `hold` reaches `st`, and all three sides are reported | pooled 0.857 passes while holdout 0.750 abandons, with the pooled counterfactual asserted beside it; **one unmatched window at the open of the holdout reads 0/1 and no longer closes the programme** (the counterfactual ABANDON is asserted beside it); void, still-open and post-gate-only windows are excluded and counted rather than read as matching failures; a window whose side cannot be determined is in neither denominator; before a boundary exists the holdout is empty, the gate reads nothing, and `coverage.cal` is on the report so §11.7 clause 3 can still be asked during calibration |
 | A row set with no `phase` is not scorable (§11.5) | `scPhaseGuard` refuses an absent or non-numeric phase before anything else | `no-phase` / `bad-phase`; and the assertion that a null phase sails past `shockStatus`, which is why the gate is here |
 | A window is `(ticker, open)` (§10.2's overlapping exports) | `scDedupe` on the control pool and on the rows, first occurrence wins, drops counted | three windows in five rows do **not** meet the 5-control minimum. **Residual limitation:** the identity is exactly `(ticker, open)`, so three real controls plus two copies carrying `open + 1`, or two copies under a renamed ticker, still read as five windows. Both require the caller to corrupt an identity Kalshi supplies verbatim; this is a property of the chosen key, not a reachable defect, and the contract cannot type its way out of it |
 | The boundary is registered, not recomputed (§11.6) | `scSplitCheck`; a disagreement stops the pass | pruning one old control row moves it, and the registered call refuses |
+| A calibration window draws only **pre-boundary** controls (§11.6, registered 2026-09-06) | `scCalPool`, applied by `scPairs` to calibration windows only, on the **registered** stamp | fifteen post-boundary controls across three calibration cells leave `boundary.fp` and `sd` bit-identical and the pass still scores; one **pre-boundary** control arriving, or one ageing out, still refuses; a control landing in a holdout cell is used by that holdout pair and does not touch the calibration half |
 | The required n only ratchets up (§11.2a) | `scRatchet` + `scRatchetStatus` | a registered 999 turns the same evidence from READY into HOLDOUT |
 | A hole is not a verdict | `scMissingRequired`; a missing verdict-bearing caller field is a refusal | omitting `holdoutSpent` refuses instead of reading absent as "not spent" |
 | A refused call reports the refusal | `scIsRefusal` / `scRefused`, status `"REFUSED"` | a mixed-phase call no longer reads "CALIBRATING / calibration set incomplete" |
@@ -349,6 +363,33 @@ wrong quarter, release-in-shoulder, another shock window, and an ungraded window
 ### Mutation testing
 
 Each fix is reverted in a throwaway copy of `code.js` run against the unmodified suite. **No survivors.**
+
+**The third review's round, sixteen mutations, all killed** (assertion counts are what the suite loses
+when the rule is removed; `abort` means the suite failed and then stopped on a downstream `TypeError`):
+
+| mutation | assertions killed |
+|---|---|
+| **1** `scPairs` ignores the registered boundary — the pre-fix behaviour, i.e. the finding itself | abort |
+| **1** `scReport` stops handing the boundary to `scPairs` | abort |
+| **1** `scCalPool` drops the control that closed *at* the boundary (`>` becomes `>=`) | 2 |
+| **1** the restriction is applied to **holdout** pairs too | 16 |
+| **4** a NEW caller field is read on `opts` (`o.weight`) — the one the old scan caught | 2 |
+| **4** an `opts` read colliding with an internal name (`o.level`) — the old scan left this **green** | 2 |
+| **4** a ROW read colliding with an internal name (`w.skill`) — likewise **green** before | 2 |
+| **4** a SNAPSHOT read colliding with a stamp field (`s.n`) | 2 |
+| **4** the scan drops receiver qualification (names only, as before) | 7 |
+| **4** the scan subtracts every name the unit assigns anywhere (the old subtraction) | 1 |
+| **5** the `tau` entry loses its predicate | 15 |
+| **5** `scRowCheck` stops checking the snapshots | 27 |
+| **5** `scSkill` stops checking the snapshots | 3 |
+| **5** the `qm` predicate stops bounding the range | 2 |
+| **5** the `phantom` predicate accepts anything | 2 |
+| **5** `scSnapsCheck` checks only the first snapshot | 30 |
+
+The four scan mutations kill **2** assertions each rather than a crowd, and that is by design: the probe
+self-tests are measured as a **delta** against the clean scan, so a real undeclared read fails the one
+assertion that names it plus the probe that proves the scan is still the thing doing the naming. Compare
+the old scan, which killed **1** for `o.weight` and **0** for `o.level` and `w.skill`.
 
 **The second review's round, fifteen mutations, all killed** (the assertion counts are what the suite
 loses when the rule is removed):
@@ -474,7 +515,8 @@ that loop possible. `"REFUSED"` is deliberately
 **not** one of `shockStatus`'s statuses — it is this unit declining to hand the judge an input it does
 not have, and a caller switching on the seven real statuses sees an unknown string, which is safe in the
 only direction that matters: it is not READY. `rep.dupRows`, `rep.coverage` (holdout, calibration and
-pooled) and `rep.holdN` belong in the export beside the estimate.
+pooled), `rep.calPool` (§11.6's restriction: whether it was in force and at which instant) and
+`rep.holdN` belong in the export beside the estimate.
 
 **Every row must carry a numeric `phase`.** An absent one is refused (`no-phase`) and a string one is
 refused (`bad-phase`) — `shockStatus` compares with `===`, so `"2"` would skip §11.5's phase-2 gate
@@ -588,18 +630,202 @@ all four off `CLAUDE.md`, so the code and the document cannot drift apart silent
 | **12** | `arms:"20"` refused correctly but `rep.status.ciLevel` still read 0.995 | `shockStatus` coerces the string through `st.arms >= 1` | `arms` is typed in the contract (integer ≥ 1) and the call refuses **before** any level is derived; a refused call reports `ciLevel: null` |
 | — | the S1 registration | the cluster bootstrap was correct and was verified by the reviewer against an analytic standard error; it is **unchanged** | the comment now cites **CLAUDE.md §11.2**, where the matching cell is registered as the resampling unit, rather than pointing at this file |
 
+## What the third adversarial review changed (2026-09-07)
+
+`REVIEW.md`'s third dated section found five, and opened with the honest headline: **not one of them
+reaches a wrong verdict from well-formed ordinary input.** Every blocking finding in rounds one and two
+did. Findings 2 (`hasOwnProperty` vs plain member access on `opts`) and 3 (`phase` typed as any finite
+number) were closed before this pass and are re-confirmed closed here — `scOptsCheck` tests presence with
+`(f.name in opts)`, so the check looks where the read looks, and the `phase` entry's predicate is
+`v===1||v===2`, which is what its shape string already said. Neither was touched again.
+
+The three below are the rest of that round. The suite went **861 → 994** assertions, and the CLAUDE.md registration guard grew from four §11 registrations to seven checks over five — `test.js` reads the document **from disk** and fails if §11.6's calibration-control sentence is not there, so this unit's control-matching rule and §11 cannot drift apart silently.
+
+### Finding 1 — the registered calibration-control rule (§11.6)
+
+**The symptom.** `scCalFp` fingerprints the calibration *set* — each pair's identity, its paired value and
+the identified controls its mean was estimated from — and `scSplitCheck` turns any change into
+`refuse: boundary-moved`, with a message saying §11.6 makes that a post-freeze change that **spends the
+holdout**. A matching cell is `(series, slot, weekday, quarter)`, which **recurs weekly**, so every
+calibration cell gains a control every week by construction. Measured on the registered 35-cell fixture:
+one extra control in one calibration cell, its skill exactly that cell's existing mean so nothing derived
+moves in sixteen digits, → **REFUSED / boundary-moved.** The unit was correct and unusable in the same
+breath.
+
+**The cause was one line above the fingerprint.** `scPairs` matched every shock window against the *whole
+current row set*, so a **calibration** pair's control mean was estimated partly from windows recorded
+**after** the boundary. The frozen `sd` was therefore non-stationary by construction, and §11.2a's
+required holdout n moved with it — observed moving **80 → 44** from pruning one old control row, in the
+direction §11.2a says it may never take. Freezing a *count* while leaving the controls open to accrual
+freezes an identity, not a quantity. The fingerprint was reporting that faithfully.
+
+**The registration.** CLAUDE.md §11.6 now carries, dated 2026-09-06: *a calibration window draws only
+controls that closed at or before the boundary.* This is a change to the **control-matching rule**, which
+§11.6 freezes and prices at the whole holdout once one is open — free right now only because no
+shock-conditioned row exists anywhere and no holdout is open.
+
+**The implementation.** `scCalPool(rows, boundary)` filters the pool on `close` alone — the registered
+sentence verbatim, not the `(close, ticker)` order `scAfterBoundary` uses to place a *shock* window on one
+side; a control that closed at the same instant as the boundary window **closed at the boundary** and is
+kept. `scPairs(rows, boundary)` computes the pool once and hands the restricted copy to
+`scMatchControls` for calibration windows only; holdout windows keep the full pool. `scReport` passes
+`o.boundary` — the *registered* stamp — through. `rep.calPool` reports `{restricted, at, n, dropped}`.
+
+**This also closes round two's straddle minor**, which is the same problem in its weaker, chronological
+form: a calibration pair could be matched against a control window that **postdates the holdout shocks it
+is being compared with**, which is exactly the leakage §11.6 exists to prevent, arriving through the
+control set rather than through the split. That limitation is struck from the residual list below.
+
+**THE ORDERING PROBLEM, AND HOW IT IS BROKEN.** The boundary is needed to restrict the pool; the pool
+decides matched-ness; matched-ness decides the pair list; the pair list produces the boundary. That is a
+genuine cycle and it is not broken by iterating to a fixed point — iteration is not even well-founded
+here, because tightening the pool can *unmatch* a calibration window, which pushes the boundary later,
+which loosens the pool again.
+
+It is broken by **authority, not by computation**: under §11.6 the boundary is a *caller registration*, so
+
+> **the registered stamp is the authority, and the computed one is only a proposal for the first,
+> unregistered pass.**
+
+Restriction is applied only when a stamp is registered. The answer is stable for three reasons, and all
+three are asserted:
+
+1. **An unregistered pass cannot reach a verdict.** Once a boundary exists at all, `scMissingRequired`
+   makes `boundary` a required field, so the call is **REFUSED** with the computed stamp left on the
+   report to register. No verdict is ever computed against an unrestricted calibration half.
+   (`rep.calPool.restricted === false` *and* `status REFUSED / missing-caller-fields` on that pass.)
+2. **At the moment of registration the two agree by construction.** The caller registers when the 30th
+   calibration window is graded — when there is no post-boundary data for the restriction to remove. The
+   two-call loop `reg()` in `test.js` is that moment, and pass two returns the same boundary pass one
+   proposed.
+3. **After registration the restricted half is a function of pre-boundary data alone**, so it cannot move
+   under accrual. Fifteen post-boundary controls across three calibration cells leave `boundary.fp` and
+   `sd` bit-identical.
+
+**What is deliberately still armed.** A change to the *pre-boundary* calibration set is still a moved
+boundary and still refuses: a control arriving late but dated before the boundary, and a pre-boundary
+control **ageing out of §10.2's 15-day buffer**, both refuse. That is the correct remaining behaviour —
+those genuinely change the frozen `sd` — and it is why the wiring section's warning to persist a control
+ledger stands unchanged.
+
+### Finding 4 — the exhaustiveness scan was blind to 162 names
+
+The scan is the mechanism the whole contract rebuild rests on, so a hole in it is worse than a hole in any
+single field. It collected every `.name` read, then subtracted every name appearing **anywhere in the
+file** as an object-literal key or an assignment target. That subtraction is file-wide and scope-blind, so
+**any name the unit emits was invisible to it as a name the unit reads** — 162 of them, including `level`,
+`skill`, `status`, `n`, `code`, `why`, `known`, `matched`, `series` and `phase`. Reproduced by mutation
+against the unmodified suite: inserting a read of `o.weight` failed it, as this file claimed; inserting
+`o.level` or `w.skill` left it **861/861 green**. It bit for one name in ten.
+
+The scan is now **receiver-qualified**. Each read is resolved back to the identifier it is taken on — a
+backward scan that walks bracket and call groups and member chains, so `rows[i].ticker` resolves to
+`rows`, `m.controls[j].skill` to `m` and `Object.keys(o).length` to `Object` — and every receiver in the
+unit is classified exactly once:
+
+- **caller receivers** (a row, a snapshot, an `opts` object, a registered boundary stamp) may read **only**
+  the names in the contract table that governs them. A name the unit assigns on its own objects buys
+  nothing here, which is precisely the collision the old scan got wrong;
+- **neighbour receivers** (`controlEligible`, `shockStatus`, `shockPoolGuard`, `bootstrapCI`, `SHOCK_RULE`)
+  may read only `SC_NEIGHBOUR_FIELDS`;
+- **internal receivers** — the unit's own objects — may read only names in `INTERNAL_NAMES`, an explicit
+  hand-maintained list of 115, asserted by size and by the requirement that every entry is a name the unit
+  genuinely **emits** and is **not** a contract field wearing an internal name;
+- an **unclassified** receiver is a failure, so a new local cannot quietly acquire the permissive branch.
+  (It bit immediately: it caught `fc`, a local added during this very edit.)
+
+**The scan is mutation-tested against itself, inside the suite.** `scanFindings(src)` is run on the real
+source and on deliberately mutated copies of it, measured as a **delta** against the clean scan so the
+probes stay assertions about the scan rather than echoes of whatever is under it. Eight probes must
+produce exactly one new finding each — including the three the reviewer used and three that collide with
+names the unit assigns elsewhere (`o.level`, `w.skill`, `w.status`, `s.n`, `o.boundaryExists`) — and six
+legitimate reads must produce none.
+
+**Two real contract holes fell out of it**, both invisible to a name-only scan:
+
+- **`SC_NEIGHBOUR_FIELDS` under-declared its own surface by nine names.** The unit read
+  `controlEligible`'s `reason` and `known` (and `series`/`inSpan`/`caveat` *inside* `known`),
+  `shockStatus`'s `status`/`why`/`ciLevel`/`bootstrapB`, `bootstrapCI`'s `lo`/`hi`/`point` and
+  `shockPoolGuard`'s `ok`/`phases` — none of them declared. The table now carries all fifteen, each with a
+  predicate, and every neighbour value is read through `scNeighbourValue`, which returns the value only if
+  it matches the declared shape.
+- **The boundary stamp had no table at all.** It is caller input once registered (`opts.boundary`), and
+  its four fields were four inline `scNum`/`scTypeStr` calls inside `scTypeStamp`. `SC_STAMP_FIELDS` is
+  now a contract table like every other caller surface, and `scTypeStamp` checks against it.
+
+### Finding 5 — `SC_SNAP_FIELDS` was decorative
+
+Five entries, `name`/`req`/`shape`, **zero `ok` predicates**, and never handed to `scFieldCheck`; the type
+branch is `if(f.ok&&!f.ok(v))`, so every value passed. `scFieldCheck(SNAP,"pm","banana")` returned
+`{ok:true}`.
+
+**And it was load-bearing.** `scRefSnap` *skips* a snapshot whose `tau` is not a finite number, so
+corrupting the `tau` of the read that **is** the refSnap does not refuse the window — it scores the
+next-nearest read instead. The reviewer's measurement, reproduced verbatim as an assertion: snaps
+`[{tau:14, skill +0.20}, {tau:6, skill −0.20}]` score **−0.20000** clean, and **+0.2** once the tau-6
+read's `tau` is the string `"6"`. A sign flip on the scored quantity, with no reason code and nothing on
+the report, from a field that was declared and unchecked.
+
+- Every entry now carries a real predicate, and `req` is calibrated to which absence is a **measurement
+  state** and which is a **schema break**: `tau` is required, because one observation per window is
+  defined by *where in the window the read sits* and skipping an unplaceable read is what promotes its
+  neighbour; `pm` and `qm` are optional, because a read taken while the book was empty carries no quote
+  and their absence is already refused at the right granularity — `scSkill` answers `bad-prob` and the
+  **window** is excluded, counted, with a reason. A value **present** with the wrong type is refused in
+  every case, which is the half that was missing. `qm` 0 and 100 stay an `empty-book` measurement, not a
+  malformed read (§10.3 K2), and `phantom` stays truthy-tested by `scRefSnap` exactly as `index.html`
+  tests it, because the K1 repair writes the string `"K1"` (§10.4b) — the predicate says what a marker
+  may *be*, it is not the truthiness test.
+- `scSnapCheck` / `scSnapsCheck` run the table, and they run **before** `refSnap` picks rather than on
+  what it picked: checking only the chosen read would not have caught this defect at all, because the
+  read that gets promoted is perfectly well-formed. They are called from `scRowCheck` — a malformed read
+  is a malformed **row**, since `snaps` is a declared row field whose shape is "array of snapshot
+  records" — and again from `scSkill`, which is callable on its own.
+- New reason code `bad-snapshot`, in `SC_REFUSALS`, whose `why` names the promotion it prevented.
+
+**And the class fix, so the next table cannot ship the same way.** `test.js` now asserts, over **every**
+contract table, that every entry carries a predicate and a shape *and* that the table is handed to
+`scFieldCheck` somewhere in `code.js` by name. `scOptsCheck` was inlining `f.ok(v)` rather than calling
+`scFieldCheck`; it goes through the checker now, which is what that assertion caught.
+
+### The Part 3 decision: one malformed row still refuses the whole call
+
+Recorded as a decision rather than left as a default, which is what the review asked for. Measured on a
+400-row mixed export, **one** row with `result: 0` or no `snaps` key refuses the entire call.
+
+**It stays that way, and the snapshot contract above widens it.** The reasons:
+
+1. **The unit cannot know which rows a schema break affects.** A row this unit cannot type is a row whose
+   *treatment assignment* is unknown, and §11.5's phase guard already set that precedent: one row with
+   `phase: "1"` refuses the whole set, because 1 and `"1"` must never pool. `shock` is the same, and
+   `result`/`snaps` decide grading, which decides the coverage denominator §11.7 clause 3 reads — and that
+   clause is a **permanent closure**. Scoring around an unparseable row silently changes a denominator
+   that can close the programme.
+2. **The per-row alternative is not free.** `unmatched` exists for windows that are *understood* and
+   *excluded* — thin controls, ungraded, void. Putting schema failures in the same bucket makes "excluded
+   for a measurable reason" and "excluded because we could not read it" indistinguishable in the one place
+   §11.3 and §11.7 read for their gates.
+3. **Recovery is bounded and named.** `rep.badRow` carries the row's index, its ticker, the failing field
+   and the reason, and `rep.badRow.n` is the **count of every bad row in the set**, not just the first —
+   so the caller can see how much of a concatenated export is drifting, fix or drop those rows, and re-run.
+
+**The honest cost, stated:** §10.2's concatenated-CSV input is exactly where a schema-drift row comes
+from, and this unit will refuse a 400-row export over one of them. That is a real brittleness against the
+real input shape, accepted deliberately, and the mitigation is the census in `rep.badRow.n` rather than a
+weaker rule. If it proves intolerable in service, the change is a **§11 sentence** — which rows may be
+dropped per-row and which must refuse the call — and not a preference exercised here.
+
 ### Residual limitations, recorded rather than engineered around
 
 - **Dedupe evasion (finding 11).** `(ticker, open)` is the identity; copies carrying `open + 1` or a
   renamed ticker still count as distinct windows. Both require the caller to corrupt an identity Kalshi
   supplies verbatim. Recorded beside the dedupe row in the refusals table above.
-- **Controls straddle the split (finding 13).** A cell with shock windows on both sides of the boundary
-  uses the same control windows for the calibration `sd` and for the holdout estimate, and a control may
-  postdate the holdout shocks it is matched to (same slot, weekday and quarter; later week). §11.6
-  defines the split on **shock windows only**, so the unit is following the registration exactly — but
-  the chronological separation that buys is weaker than §11.6's prose implies. **This is a §11 sentence
-  to sharpen, not a code defect**, and changing the matching rule to fix it here would be changing a
-  frozen rule (§11.6) on the unit's own initiative. Recorded for the next registration pass.
+- ~~**Controls straddle the split (finding 13).**~~ **CLOSED 2026-09-07.** It was recorded here as "a
+  §11 sentence to sharpen, not a code defect", and the third review promoted it from a weakness into a
+  weekly refusal. The sentence was sharpened — §11.6 now registers that a calibration window draws only
+  controls that closed at or before the boundary — and `scCalPool` implements it. See the third review's
+  finding 1 above. The residual is one step down: a **holdout** pair may still draw a control that
+  postdates it, which is correct, because §11.6 freezes the calibration half and nothing else.
 - **`rep.status` is `null` when `prereg` is absent (finding 14).** `scRatchetStatus` passes a null status
   through, so a caller reading `rep.status.status` would throw at the call site rather than seeing a
   reason code. Unreachable under the prescribed splice order — `score` must land below `prereg`, and the

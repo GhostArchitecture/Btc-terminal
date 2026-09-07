@@ -757,8 +757,27 @@ recorded data and then testing it on that same data reproduces both.
   train and July CPI in test and leaks the regime across the boundary. Chronological only.
 - The boundary is a count, not a date, and cannot be moved once the 30th calibration window is graded.
 
-**A calibration window draws only controls that closed at or before the boundary** — registered 2026-09-06,
-and part of the control-matching rule this subsection freezes. A matching cell is (series, slot, weekday,
+**The calibration half is frozen as a RECORD, not as a rule** — registered 2026-09-07, and it is what
+"frozen" has to mean here. When the 30th calibration window is graded, the caller writes down a **manifest**:
+the identity of those thirty shock windows and, for each, the identity of the control windows it drew.
+Thereafter the calibration half is **read from that manifest and never re-derived.** `sd` is computed from it
+and is a fact about a fixed set, which is the only way it can be frozen at all.
+
+*This supersedes the rule registered on 2026-09-06 — "a calibration window draws only controls that closed at
+or before the boundary" — which is struck. It was a correct diagnosis with a broken remedy. Restricting the
+pool makes matched-ness a function of the boundary while the boundary is derived from matched-ness, and that
+cycle has no fixed point on ordinary data: of 51 measured placements, 40 required two registrations, 11
+required one, and some never converged, leaving the unit refusing permanently with a message saying the
+holdout was spent. Freezing by rule cannot work because the rule's inputs keep arriving; freezing by record
+works because a record does not change. Recorded rather than quietly replaced, and free only because no
+observation exists and no holdout is open.*
+
+**The diagnosis it came from stands, and the manifest is what answers it.** A matching cell is (series, slot,
+weekday, quarter), a combination that recurs **weekly**, so a re-derived calibration cell gains a control every
+week by construction and its `sd` is recomputed from a different set on every run — observed moving §11.2a's
+required n **80 → 44** from pruning one old control row, in the direction §11.2a says it may never take. A
+manifest also closes the chronological leak the same way: the recorded control set cannot later acquire a
+window that postdates the holdout shocks it is compared against, because it cannot acquire anything. A matching cell is (series, slot, weekday,
 quarter), a combination that recurs **weekly**, so without this restriction every calibration cell gains a
 control every week by construction and the calibration set is never finished. That makes the frozen `sd`
 non-stationary: it is recomputed from a different set on every run, and §11.2a's required holdout n moves with

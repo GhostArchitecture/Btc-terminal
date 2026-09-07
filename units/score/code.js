@@ -99,6 +99,7 @@ const SC_OMIT={
   CAL_SHORT:"calibration-short",   /* fewer than CAL_N calibration windows: no sd, so no holdout may open */
   BAD_ROW:"bad-row-field",         /* a row field is present with the wrong type, or absent and load-bearing */
   BAD_SHOCK:"bad-shock-flag",      /* `shock` is the treatment assignment and is not a boolean */
+  BAD_SNAP:"bad-snapshot",         /* a snapshot record fails SC_SNAP_FIELDS: a read that cannot be typed */
   BAD_OPT:"bad-caller-field",      /* an opts field is present with the wrong type or an impermissible value */
   UNKNOWN_OPT:"unknown-caller-field" /* an opts key that is not in SC_OPT_FIELDS: a field that skipped the contract */
 };
@@ -144,9 +145,18 @@ function scTypeBool(v){ return v===true||v===false; }
 function scTypeStr(v){ return typeof v==="string"&&v.length>0; }
 function scTypeArr(v){ return Array.isArray(v); }
 function scTypeFn(v){ return typeof v==="function"; }
-/* the boundary stamp scSplit emits: {n, close, ticker, fp}. `fp` is not decoration -- see scCalFp. */
+/* the boundary stamp scSplit emits: {n, close, ticker, fp}. `fp` is not decoration -- see scCalFp.
+   The stamp is CALLER INPUT once it is registered (opts.boundary), so its four fields are a contract table
+   like every other caller surface rather than four inline scNum calls: the exhaustiveness scan in test.js is
+   receiver-qualified, and a caller-supplied object whose fields are not in a table is exactly what it exists
+   to catch. */
 function scTypeStamp(v){
-  return !!v&&typeof v==="object"&&scNum(v.n)&&scNum(v.close)&&scTypeStr(v.ticker)&&scTypeStr(v.fp);
+  if(!v||typeof v!=="object"||Array.isArray(v)) return false;
+  for(let i=0;i<SC_STAMP_FIELDS.length;i++){
+    const f=SC_STAMP_FIELDS[i];
+    if(!scFieldCheck(SC_STAMP_FIELDS,f.name,v[f.name]).ok) return false;
+  }
+  return true;
 }
 /* THE ROW CONTRACT. `req` means the verdict depends on it, so its absence is a refusal rather than a default. */
 const SC_ROW_FIELDS=[
@@ -181,12 +191,49 @@ const SC_ROW_FIELDS=[
    `phantom` is the exception and it is deliberate: it is TRUTHY-tested, exactly as index.html's refSnap tests
    it, because the K1 repair (10.4b) writes the STRING "K1" into it. A truthy test here skips a read, which is
    the conservative direction; tightening it to a boolean would start SCORING the repaired phantom rows. */
+/* WHY EVERY ENTRY CARRIES A PREDICATE NOW. This table shipped with five entries, `name`/`req`/`shape`, and NO
+   `ok` on any of them, and scFieldCheck's type branch is `if(f.ok&&!f.ok(v))` -- so every value passed, and the
+   table was decorative. It is not a cosmetic gap: scRefSnap SKIPS a snapshot whose tau is not a finite number,
+   so corrupting the tau of the read that IS the refSnap does not refuse the window, it scores the NEXT-NEAREST
+   read instead. Measured, on snaps [{tau:14, skill +0.20}, {tau:6, skill -0.20}]: making the tau-6 read's tau
+   the STRING "6" moved the scored skill of that window from -0.20000 to +0.20000. A sign flip on the scored
+   quantity, from a field that was declared and unchecked.
+   SO `req` HERE IS CALIBRATED TO WHICH ABSENCE IS A MEASUREMENT STATE AND WHICH IS A SCHEMA BREAK.
+     tau is REQUIRED: one observation per window is defined by WHERE IN THE WINDOW the read sits, so a read with
+       no tau is not a read this unit can place, and skipping it silently promotes its neighbour.
+     pm and qm are OPTIONAL because their absence is an ORDINARY condition -- a read taken while the book was
+       empty carries no quote -- and it is already refused at the right granularity: scSkill answers bad-prob
+       for the refSnap and the WINDOW is excluded, counted, with a reason. Making them required would refuse a
+       whole 400-row call over one unused read that had no quote.
+     A value PRESENT with the wrong type is refused in every case, which is the half that was missing. */
 const SC_SNAP_FIELDS=[
-  {name:"tau",req:true,shape:"finite number, minutes remaining; a read at tau<0 is post-gate and is skipped"},
-  {name:"pm",req:true,shape:"finite number in [0,1]: the tool's headline probability"},
-  {name:"qm",req:true,shape:"finite number in (0,100): Kalshi's quote in cents; 0 and 100 are an empty book"},
-  {name:"phantom",req:false,shape:"truthy marks a K1-repaired read (10.4b writes the string \"K1\"); skipped"},
-  {name:"t",req:false,shape:"finite number when present; carried onto the scored observation, never compared"}
+  {name:"tau",req:true,shape:"finite number, minutes remaining; a read at tau<0 is post-gate and is skipped",
+   ok:scTypeNum,code:SC_OMIT.BAD_SNAP},
+  {name:"pm",req:false,shape:"finite number in [0,1] when present: the tool's headline probability; ABSENT is "+
+   "a measurement state (scSkill answers bad-prob), a wrong type is not",
+   ok:function(v){ return scNum(v)&&v>=0&&v<=1; },code:SC_OMIT.BAD_SNAP},
+  {name:"qm",req:false,shape:"finite number in [0,100] when present: Kalshi's quote in cents; 0 and 100 are an "+
+   "EMPTY BOOK (10.3 K2) and are refused by scSkill as such, not as a malformed read",
+   ok:function(v){ return scNum(v)&&v>=0&&v<=100; },code:SC_OMIT.BAD_SNAP},
+  /* `phantom` stays TRUTHY-tested by scRefSnap, exactly as index.html's refSnap tests it, because the K1 repair
+     (10.4b) writes the STRING "K1" into it -- a truthy test there skips a read, which is the conservative
+     direction. The predicate is not the truthiness test: it says what a marker may BE. */
+  {name:"phantom",req:false,shape:"boolean, or a repair tag string (10.4b writes \"K1\"); truthy skips the read",
+   ok:function(v){ return v===true||v===false||scTypeStr(v); },code:SC_OMIT.BAD_SNAP},
+  {name:"t",req:false,shape:"finite number when present; carried onto the scored observation, never compared",
+   ok:scTypeNum,code:SC_OMIT.BAD_SNAP}
+];
+/* THE BOUNDARY STAMP CONTRACT (11.6). scSplit emits it and the caller registers it back as opts.boundary, so it
+   is read both as this unit's own output and as caller input; the table is what scTypeStamp checks. */
+const SC_STAMP_FIELDS=[
+  {name:"n",req:true,shape:"finite number: the calibration count the stamp was cut at (SCORE.CAL_N)",
+   ok:scTypeNum,code:SC_OMIT.BAD_OPT},
+  {name:"close",req:true,shape:"finite number (epoch ms, UTC): the boundary window's close",
+   ok:scTypeNum,code:SC_OMIT.BAD_OPT},
+  {name:"ticker",req:true,shape:"non-empty string: the boundary window's ticker, which breaks close ties",
+   ok:scTypeStr,code:SC_OMIT.BAD_OPT},
+  {name:"fp",req:true,shape:"non-empty string: scCalFp's fingerprint of the calibration SET, not of its last "+
+   "window",ok:scTypeStr,code:SC_OMIT.BAD_OPT}
 ];
 /* THE OPTS CONTRACT. Seven fields reach `st` (SC_CALLER_FIELDS), two register 11.6's split and 11.2a's ratchet
    (SC_SPLIT_FIELDS), one is the page's bootstrapCI. `req` here means "required unconditionally"; the two
@@ -222,12 +269,54 @@ const SC_OPT_FIELDS=[
 const SC_SPLIT_FIELDS=["boundary","holdNRegistered"];
 /* WHAT THIS UNIT READS OFF ITS NEIGHBOURS. Not caller input, but read all the same, and enumerated for the same
    reason: the exhaustiveness scan in test.js subtracts nothing it cannot name. */
+/* This table used to carry FOUR entries and no predicates while the unit read THIRTEEN names off its
+   neighbours -- controlEligible's `reason` and `known`, shockStatus's four, bootstrapCI's three, and
+   shockPoolGuard's two were all undeclared. The receiver-qualified scan in test.js is what surfaced that: a
+   neighbour's return value is not this unit's own object, and the names read on it are exactly as much a
+   contract as the ones read on a row. */
 const SC_NEIGHBOUR_FIELDS=[
-  {name:"eligible",from:"controlEligible (calendar/)",shape:"true only when the probe instant is clear"},
-  {name:"maxMonths",from:"SHOCK_RULE (prereg/)",shape:"finite number: 11.7 clause 5's deadline in months"},
-  {name:"relLo",from:"SHOCK_RULE (prereg/)",shape:"11.1's low release-rate PREMISE, not a measurement"},
-  {name:"relHi",from:"SHOCK_RULE (prereg/)",shape:"11.1's high release-rate PREMISE, not a measurement"}
+  {name:"eligible",from:"controlEligible (calendar/)",shape:"true only when the probe instant is clear",
+   ok:scTypeBool},
+  {name:"reason",from:"controlEligible (calendar/)",shape:"non-empty string: why the instant is not clear",
+   ok:scTypeStr},
+  {name:"known",from:"controlEligible (calendar/)",shape:"object: the per-series spans and 11.3's partial "+
+   "caveat, carried out VERBATIM",ok:function(v){ return !!v&&typeof v==="object"&&!Array.isArray(v); }},
+  /* the three fields this unit reads INSIDE `known`. It carries the object out verbatim, but it also unions
+     `inSpan` across probes and takes the first `series`/`caveat` it sees, so they are read and therefore
+     declared -- 11.3 requires the caveat to travel with the number, which means reading it. */
+  {name:"series",from:"controlEligible().known (calendar/)",shape:"array of per-series coverage spans",
+   ok:scTypeArr},
+  {name:"inSpan",from:"controlEligible().known (calendar/)",shape:"array of series names covering the probe",
+   ok:scTypeArr},
+  {name:"caveat",from:"controlEligible().known (calendar/)",shape:"non-empty string: CAL_PARTIAL_CAVEAT",
+   ok:scTypeStr},
+  {name:"maxMonths",from:"SHOCK_RULE (prereg/)",shape:"finite number: 11.7 clause 5's deadline in months",
+   ok:scTypeNum},
+  {name:"relLo",from:"SHOCK_RULE (prereg/)",shape:"11.1's low release-rate PREMISE, not a measurement",
+   ok:scTypeNum},
+  {name:"relHi",from:"SHOCK_RULE (prereg/)",shape:"11.1's high release-rate PREMISE, not a measurement",
+   ok:scTypeNum},
+  {name:"status",from:"shockStatus (prereg/)",shape:"non-empty string: the judge's verdict word",ok:scTypeStr},
+  {name:"why",from:"shockStatus (prereg/)",shape:"non-empty string: the judge's reason, carried verbatim",
+   ok:scTypeStr},
+  {name:"ciLevel",from:"shockStatus (prereg/)",shape:"finite number: 11.4's 1 - 0.10/k",ok:scTypeNum},
+  {name:"bootstrapB",from:"shockStatus (prereg/)",shape:"finite number: 11.2a's B >= 20/(1-level)",
+   ok:scTypeNum},
+  {name:"lo",from:"bootstrapCI (index.html)",shape:"finite number: the interval's lower bound",ok:scTypeNum},
+  {name:"hi",from:"bootstrapCI (index.html)",shape:"finite number: the interval's upper bound",ok:scTypeNum},
+  {name:"point",from:"bootstrapCI (index.html)",shape:"finite number: one stochastic replicate, DISCARDED "+
+   "here in favour of the deterministic mean",ok:scTypeNum},
+  {name:"ok",from:"shockPoolGuard (prereg/)",shape:"boolean: whether the row set is single-phase",
+   ok:scTypeBool},
+  {name:"phases",from:"shockPoolGuard (prereg/)",shape:"array of the phases present",ok:scTypeArr}
 ];
+/* One value read off a neighbour, through the table. Returns the value when it matches the declared shape and
+   null when it does not: a neighbour answering with the wrong type is a neighbour this unit cannot use, which
+   is already a reason code, and it is never coerced. This is also what keeps SC_NEIGHBOUR_FIELDS from being
+   decorative -- test.js asserts every contract table is handed to scFieldCheck somewhere in this file. */
+function scNeighbourValue(name,v){
+  return scFieldCheck(SC_NEIGHBOUR_FIELDS,name,v).ok?v:null;
+}
 function scFieldOf(table,name){
   for(let i=0;i<table.length;i++) if(table[i].name===name) return table[i];
   return null;
@@ -245,6 +334,33 @@ function scFieldCheck(table,name,v){
     f.shape};
   return {ok:true,code:null,why:null};
 }
+/* ONE SNAPSHOT against the snapshot contract, and then EVERY snapshot in a row's array. A malformed read is a
+   malformed ROW, not an unusable observation inside a good one: `snaps` is a declared row field whose shape is
+   "array of snapshot records", and a member that is not a snapshot record means the row is not one either.
+   The alternative -- skip the read and score the window off its neighbours -- is the measured defect (see
+   SC_SNAP_FIELDS), and it is silent by construction, because the promoted read is perfectly well-formed. */
+function scSnapCheck(sn){
+  if(!sn||typeof sn!=="object"||Array.isArray(sn))
+    return {ok:false,code:SC_OMIT.BAD_SNAP,field:null,why:"a snapshot record must be an object"};
+  for(let i=0;i<SC_SNAP_FIELDS.length;i++){
+    const f=SC_SNAP_FIELDS[i];
+    const sr=scFieldCheck(SC_SNAP_FIELDS,f.name,sn[f.name]);
+    if(!sr.ok) return {ok:false,code:SC_OMIT.BAD_SNAP,field:f.name,why:sr.why};
+  }
+  return {ok:true,code:null,field:null,why:null};
+}
+function scSnapsCheck(snaps){
+  const out={ok:true,code:null,field:null,at:-1,why:null};
+  if(!Array.isArray(snaps)){
+    out.ok=false; out.code=SC_OMIT.BAD_SNAP; out.why="snaps must be an array"; return out;
+  }
+  for(let i=0;i<snaps.length;i++){
+    const sr=scSnapCheck(snaps[i]);
+    if(!sr.ok){ out.ok=false; out.code=sr.code; out.field=sr.field; out.at=i;
+      out.why="snapshot "+i+": "+sr.why; return out; }
+  }
+  return out;
+}
 /* ONE ROW against the row contract. Cross-field rules live here because they belong to no single field:
    close must be strictly after open, or the window has no length and 11.3's clearance probes are undefined. */
 function scRowCheck(w){
@@ -252,11 +368,13 @@ function scRowCheck(w){
     return {ok:false,code:SC_OMIT.BAD_ROW,field:null,why:"a window record must be an object"};
   for(let i=0;i<SC_ROW_FIELDS.length;i++){
     const f=SC_ROW_FIELDS[i];
-    const r=scFieldCheck(SC_ROW_FIELDS,f.name,w[f.name]);
-    if(!r.ok) return {ok:false,code:r.code,field:f.name,why:r.why};
+    const fr=scFieldCheck(SC_ROW_FIELDS,f.name,w[f.name]);
+    if(!fr.ok) return {ok:false,code:fr.code,field:f.name,why:fr.why};
   }
   if(!(w.close>w.open))
     return {ok:false,code:SC_OMIT.BAD_ROW,field:"close",why:"close must be strictly after open"};
+  const sc=scSnapsCheck(w.snaps);
+  if(!sc.ok) return {ok:false,code:sc.code,field:"snaps",why:sc.why};
   return {ok:true,code:null,field:null,why:null};
 }
 /* EVERY row, before anything is matched, scored or split. The first failure names itself and the whole call is
@@ -265,12 +383,12 @@ function scRowsCheck(rows){
   const out={ok:true,code:null,field:null,why:null,at:-1,ticker:null,bad:0};
   if(!Array.isArray(rows)){ out.ok=false; out.code=SC_OMIT.BAD_ROW; out.why="rows must be an array"; return out; }
   for(let i=0;i<rows.length;i++){
-    const r=scRowCheck(rows[i]);
-    if(!r.ok){
+    const chk=scRowCheck(rows[i]);
+    if(!chk.ok){
       out.bad++;
-      if(out.ok){ out.ok=false; out.code=r.code; out.field=r.field; out.at=i;
+      if(out.ok){ out.ok=false; out.code=chk.code; out.field=chk.field; out.at=i;
         out.ticker=(rows[i]&&typeof rows[i].ticker==="string")?rows[i].ticker:null;
-        out.why="row "+i+(out.ticker?" ("+out.ticker+")":"")+": "+r.why; }
+        out.why="row "+i+(out.ticker?" ("+out.ticker+")":"")+": "+chk.why; }
     }
   }
   return out;
@@ -302,9 +420,13 @@ function scOptsCheck(opts){
     if(!(f.name in opts)) continue;
     const v=opts[f.name];
     if(v===undefined||v===null) continue;             /* absent: the required-field pass answers for it */
-    if(f.ok&&!f.ok(v)){
+    /* through scFieldCheck, not through an inlined `f.ok(v)`: a table nothing hands to scFieldCheck is a table
+       whose predicates can go missing without anything noticing, which is exactly how SC_SNAP_FIELDS shipped
+       decorative. test.js asserts every contract table reaches scFieldCheck by name. */
+    const fc=scFieldCheck(SC_OPT_FIELDS,f.name,v);
+    if(!fc.ok){
       out.ok=false; out.code=SC_OMIT.BAD_OPT; out.field=f.name;
-      out.why="opts."+f.name+" is present with the wrong type or shape: expected "+f.shape;
+      out.why="opts."+fc.why;
       return out;
     }
   }
@@ -450,8 +572,8 @@ function scMatchKey(w){
   const s=scSeriesOf(w.ticker); if(s===null) return null;
   return {series:s,slot:scSlotUtc(w.open),dow:scWeekdayUtc(w.open),quarter:scQuarterUtc(w.open)};
 }
-function scKeyEqual(a,b){
-  return !!a&&!!b&&a.series===b.series&&a.slot===b.slot&&a.dow===b.dow&&a.quarter===b.quarter;
+function scKeyEqual(ka,kb){
+  return !!ka&&!!kb&&ka.series===kb.series&&ka.slot===kb.slot&&ka.dow===kb.dow&&ka.quarter===kb.quarter;
 }
 /* The same four fields as one string. This is the MATCHING CELL: every shock window carrying this key draws
    its controls from the same pool, so it is the unit the CI is resampled over (see scCells). */
@@ -509,7 +631,7 @@ function scWindowClear(w){
       const sp=e.known.inSpan||[];
       for(let j=0;j<sp.length;j++) if(seen[sp[j]]!==1){ seen[sp[j]]=1; inSpan.push(sp[j]); }
     }
-    if(!e||e.eligible!==true){
+    if(!e||scNeighbourValue("eligible",e.eligible)!==true){
       inSpan.sort();
       return {clear:false,reason:(e&&e.reason)||SC_OMIT.BAD_WINDOW,
         known:{series:series,inSpan:inSpan,partial:true,caveat:caveat},probes:probes.length};
@@ -555,6 +677,11 @@ function scRefSnap(w){
 function scSkill(w){
   if(!w||!scNum(w.open)||!scNum(w.close)) return {ok:false,code:SC_OMIT.BAD_WINDOW};
   if(w.result!=="yes"&&w.result!=="no") return {ok:false,code:SC_OMIT.UNGRADED};
+  /* the snapshot contract runs BEFORE refSnap picks, not after it picked. In the scPairs path scRowCheck has
+     already refused the call, but scSkill is callable on its own and this is the layer where a wrong-typed tau
+     would otherwise promote the next-nearest read into the scored observation. */
+  const sc=scSnapsCheck(w.snaps);
+  if(!sc.ok) return {ok:false,code:sc.code};
   const s=scRefSnap(w); if(s===null) return {ok:false,code:SC_OMIT.NO_REFSNAP};
   const y=w.result==="yes"?1:0;
   const pt=s.pm, q=scNum(s.qm)?s.qm/100:null;
@@ -622,6 +749,57 @@ function scMatchControls(shock,pool){
   return out;
 }
 
+/* ---- 11.6's REGISTERED CALIBRATION CONTROL POOL ---------------------------------------------------------
+   "A CALIBRATION WINDOW DRAWS ONLY CONTROLS THAT CLOSED AT OR BEFORE THE BOUNDARY", registered in CLAUDE.md
+   11.6 on 2026-09-06 as part of the control-matching rule that subsection freezes.
+
+   WHY IT HAD TO BE REGISTERED. A matching cell is (series, slot, weekday, quarter) -- a combination that
+   recurs WEEKLY -- so every calibration cell gains a control every week, by construction, for as long as the
+   quarter lasts. scPairs matched every shock window against the WHOLE CURRENT ROW SET, so a CALIBRATION pair's
+   control mean was estimated partly from windows recorded AFTER the boundary, and the sd 11.2a freezes was
+   therefore non-stationary by construction: it was recomputed from a different set on every run. Measured, it
+   moved the required holdout n 80 -> 44 from pruning one old control row, in the direction 11.2a says it may
+   never take. The calibration fingerprint (scCalFp) reported that correctly -- and so, once a boundary was
+   registered, the unit REFUSED on a weekly cadence with a message telling the caller its holdout was spent,
+   over an accrual that moved nothing. Freezing a COUNT while leaving the controls open to accrual freezes an
+   identity, not a quantity.
+
+   It also closes the chronological half of the same problem, recorded in the second review as a minor: without
+   it a calibration pair can be matched against a control window that POSTDATES the holdout shocks it is being
+   compared with, which is the leakage 11.6 exists to prevent arriving through the control set rather than
+   through the split.
+
+   THE ORDERING PROBLEM, AND HOW IT IS BROKEN. The boundary is needed to restrict the pool; the pool decides
+   matched-ness; matched-ness decides the pair list; the pair list produces the boundary. The cycle is broken by
+   AUTHORITY, not by iteration: the boundary is a CALLER REGISTRATION (11.6), so the registered stamp is the
+   authority and the computed one is only a proposal for the first, unregistered pass. Restriction is applied
+   only when a stamp is registered. A pass with no registered stamp cannot reach a verdict anyway -- once a
+   boundary exists, scMissingRequired makes `boundary` a required field and the call is REFUSED with the
+   computed stamp on the report to register -- so no verdict is ever computed against an unrestricted
+   calibration half. And at the moment of registration the two agree by construction: the caller registers when
+   the 30th calibration window is graded, when there is no post-boundary data for the restriction to remove.
+
+   The comparison is on `close` alone, which is the registered sentence verbatim ("closed at or before the
+   boundary"), not on the (close, ticker) order scAfterBoundary uses to place a SHOCK window on one side or the
+   other. A control that closed at the same instant as the boundary window closed AT the boundary. */
+function scCalPool(rows,boundary){
+  const out={rows:[],restricted:false,at:null,dropped:0};
+  if(!Array.isArray(rows)) return out;
+  out.rows=rows;
+  if(!scTypeStamp(boundary)) return out;      /* unregistered: no restriction, and no verdict either */
+  out.restricted=true; out.at=boundary.close;
+  const keep=[];
+  for(let i=0;i<rows.length;i++){
+    const c=rows[i];
+    /* a row with no usable close is KEPT and refused by the rule that applies to it, exactly as scDedupe
+       passes an identity-less row through rather than swallowing it here. */
+    if(c&&scNum(c.close)&&c.close>out.at){ out.dropped++; continue; }
+    keep.push(c);
+  }
+  out.rows=keep;
+  return out;
+}
+
 /* ---- guards: what may never be pooled ------------------------------------------------------------------- */
 /* 11.5: separate ledgers, separate n, separate READY, no pooled Brier, no pooled P&L, no combined verdict, ever.
    prereg/ ships shockPoolGuard for exactly this; it is used when present so there is one definition of "mixed
@@ -674,9 +852,9 @@ function scSeriesGuard(rows){
    Unmatched shock windows are RECORDED in `unmatched` with their identity and their reason and carry NO skill
    field: an unmatched window is excluded from scoring, and putting its score on the record beside the matched
    ones is how it gets scored by accident. */
-function scPairs(rows){
+function scPairs(rows,boundary){
   const out={ok:false,code:null,pairs:[],unmatched:[],ctrlTotal:0,ctrlMatched:0,
-    dupRows:0,phase:null,series:null,known:null,badRow:null};
+    dupRows:0,phase:null,series:null,known:null,badRow:null,calPool:null};
   if(!Array.isArray(rows)||!rows.length){ out.code=SC_OMIT.NO_SHOCKS; return out; }
   const ded=scDedupe(rows); const rw=ded.rows; out.dupRows=ded.dropped;
   /* THE CONTRACT, BEFORE ANYTHING IS MATCHED, SCORED OR SPLIT. One row this unit cannot type is a set whose
@@ -690,6 +868,9 @@ function scPairs(rows){
   if(!scHasCalendar()){ out.code=SC_OMIT.NO_CALENDAR; return out; }
   out.phase=pg.phases.length?pg.phases[0]:null;
   out.series=sg.series.length?sg.series[0]:null;
+  /* 11.6's registered calibration control pool. Computed ONCE, not per shock window. */
+  const cp=scCalPool(rw,boundary);
+  out.calPool={restricted:cp.restricted,at:cp.at,n:cp.rows.length,dropped:cp.dropped};
   const seen={}, inSpan=[]; let series=null, caveat=null;
   for(let i=0;i<rw.length;i++){
     const w=rw[i];
@@ -700,7 +881,11 @@ function scPairs(rows){
     if(!w||w.shock!==true) continue;
     out.ctrlTotal++;
     const sk=scSkill(w);
-    const m=scMatchControls(w,rw);
+    /* A CALIBRATION window draws from the restricted pool; a HOLDOUT window is unaffected. Which side w falls
+       on is scAfterBoundary's answer -- the same (close, ticker) placement scCoverage uses, so a window is
+       never calibration for the pool and holdout for the denominator. */
+    const isCal=cp.restricted&&scAfterBoundary(w,boundary)===false;
+    const m=scMatchControls(w,isCal?cp.rows:rw);
     if(m.known){
       if(series===null) series=m.known.series;
       if(caveat===null) caveat=m.known.caveat;
@@ -872,9 +1057,9 @@ function scDid(pairs){
   if(!Array.isArray(pairs)||!pairs.length){ out.code=SC_OMIT.NO_MATCHED; return out; }
   const p=[],u=[];
   for(let i=0;i<pairs.length;i++){
-    const r=pairs[i];
-    if(!r||!scNum(r.paired)||!scNum(r.shockSkill)){ out.code=SC_OMIT.BAD_PROB; return out; }
-    p.push(r.paired); u.push(r.shockSkill);
+    const pr=pairs[i];
+    if(!pr||!scNum(pr.paired)||!scNum(pr.shockSkill)){ out.code=SC_OMIT.BAD_PROB; return out; }
+    p.push(pr.paired); u.push(pr.shockSkill);
   }
   const c=scMean(p);
   if(c===null){ out.code=SC_OMIT.BAD_PROB; return out; }
@@ -938,14 +1123,14 @@ function scCells(pairs){
     const p=pairs[i];
     if(!p||typeof p.cell!=="string"||!p.cell.length||!scNum(p.shockSkill)||
        !Array.isArray(p.ctrl)||!p.ctrl.length){ out.code=SC_OMIT.NO_CELL; return out; }
-    let c;
-    if(scHasOwn(idx,p.cell)) c=idx[p.cell];
-    else { c={key:p.cell,shocks:[],ctrl:[],ids:{}}; idx[p.cell]=c; order.push(c); }
-    c.shocks.push(p.shockSkill);
+    let cell;
+    if(scHasOwn(idx,p.cell)) cell=idx[p.cell];
+    else { cell={key:p.cell,shocks:[],ctrl:[],ids:{}}; idx[p.cell]=cell; order.push(cell); }
+    cell.shocks.push(p.shockSkill);
     for(let j=0;j<p.ctrl.length;j++){
       const q=p.ctrl[j];
       if(!q||typeof q.id!=="string"||!scNum(q.skill)){ out.code=SC_OMIT.NO_CELL; return out; }
-      if(!scHasOwn(c.ids,q.id)){ c.ids[q.id]=1; c.ctrl.push(q.skill); }   /* a control counted once per cell */
+      if(!scHasOwn(cell.ids,q.id)){ cell.ids[q.id]=1; cell.ctrl.push(q.skill); } /* counted once per cell */
     }
   }
   out.cells=order;
@@ -958,12 +1143,14 @@ function scClusterStat(cells){
   if(!Array.isArray(cells)||!cells.length) return null;
   let s=0,n=0;
   for(let i=0;i<cells.length;i++){
-    const c=cells[i];
-    if(!c||!Array.isArray(c.ctrl)||!c.ctrl.length||!Array.isArray(c.shocks)||!c.shocks.length) return null;
+    const cell=cells[i];
+    if(!cell||!Array.isArray(cell.ctrl)||!cell.ctrl.length||
+       !Array.isArray(cell.shocks)||!cell.shocks.length) return null;
     let cs=0;
-    for(let j=0;j<c.ctrl.length;j++) cs+=c.ctrl[Math.floor(Math.random()*c.ctrl.length)];
-    const cm=cs/c.ctrl.length;
-    for(let j=0;j<c.shocks.length;j++){ s+=c.shocks[Math.floor(Math.random()*c.shocks.length)]-cm; n++; }
+    for(let j=0;j<cell.ctrl.length;j++) cs+=cell.ctrl[Math.floor(Math.random()*cell.ctrl.length)];
+    const cm=cs/cell.ctrl.length;
+    for(let j=0;j<cell.shocks.length;j++){
+      s+=cell.shocks[Math.floor(Math.random()*cell.shocks.length)]-cm; n++; }
   }
   return n?s/n:null;
 }
@@ -981,8 +1168,8 @@ function scCi(pairs,k,bootstrapFn){
   if(fn===null){ out.code=SC_OMIT.NO_BOOTSTRAP; return out; }
   if(!Array.isArray(pairs)||!pairs.length){ out.code=SC_OMIT.NO_MATCHED; return out; }
   const v=[];
-  for(let i=0;i<pairs.length;i++){ const r=pairs[i];
-    if(!r||!scNum(r.paired)){ out.code=SC_OMIT.BAD_PROB; return out; } v.push(r.paired); }
+  for(let i=0;i<pairs.length;i++){ const pr=pairs[i];
+    if(!pr||!scNum(pr.paired)){ out.code=SC_OMIT.BAD_PROB; return out; } v.push(pr.paired); }
   const cl=scCells(pairs);
   if(cl.code!==null){ out.code=cl.code; return out; }   /* no cells, no clusters, no interval -- never a fallback */
   out.n=v.length; out.cells=cl.cells.length;
@@ -1083,11 +1270,11 @@ function scCoverage(P,boundary){
   const walk=function(list,matched,gradedDefault){
     if(!Array.isArray(list)) return;
     for(let i=0;i<list.length;i++){
-      const w=list[i];
+      const rec=list[i];                              /* a PAIR or an UNMATCHED record, never a caller row */
       out.recorded++;
-      const graded=(gradedDefault===true)?true:(w&&w.graded===true);
+      const graded=(gradedDefault===true)?true:(rec&&rec.graded===true);
       if(!graded){ out.excluded.ungraded++; continue; }
-      const side=scAfterBoundary(w,boundary);
+      const side=scAfterBoundary(rec,boundary);
       if(side===null){ out.excluded.undetermined++; continue; }
       add(out.all,matched);
       add(side?out.hold:out.cal,matched);
@@ -1134,11 +1321,11 @@ const SC_VERDICT_FIELDS=["arms","pnlN","pnlNet","monthsElapsed","frozen","holdou
    report and only withholds the verdict. That is the intended loop: run, read `rep.split.boundary` and
    `rep.holdN.computed`/`n80`, write them into CLAUDE.md 11.2a with a date, register them, run again. */
 function scRequiredFields(phase,ctx){
-  const r=SC_VERDICT_FIELDS.slice();
-  if(phase===2) r.push("detPrecision");
-  if(ctx&&ctx.boundaryExists===true) r.push("boundary");
-  if(ctx&&ctx.sdMeasured===true) r.push("holdNRegistered");
-  return r;
+  const need=SC_VERDICT_FIELDS.slice();
+  if(phase===2) need.push("detPrecision");
+  if(ctx&&ctx.boundaryExists===true) need.push("boundary");
+  if(ctx&&ctx.sdMeasured===true) need.push("holdNRegistered");
+  return need;
 }
 function scMissingRequired(missing,phase,ctx){
   const out=[]; if(!Array.isArray(missing)) return out;
@@ -1162,7 +1349,7 @@ function scMissingAll(missing,opts){
    forbids outright, which cannot reach READY but hides a caller bug indefinitely. */
 const SC_REFUSALS=[SC_OMIT.MIXED_PHASE,SC_OMIT.MIXED_SERIES,SC_OMIT.NO_PHASE,SC_OMIT.BAD_PHASE,
   SC_OMIT.NO_CALENDAR,SC_OMIT.BOUNDARY_MOVED,SC_OMIT.MISSING_FIELDS,
-  SC_OMIT.BAD_ROW,SC_OMIT.BAD_SHOCK,SC_OMIT.BAD_OPT,SC_OMIT.UNKNOWN_OPT];
+  SC_OMIT.BAD_ROW,SC_OMIT.BAD_SHOCK,SC_OMIT.BAD_SNAP,SC_OMIT.BAD_OPT,SC_OMIT.UNKNOWN_OPT];
 const SC_REFUSAL_WHY={
   "mixed-phase":"phase 1 and phase 2 are never pooled (11.5): separate ledgers, separate n, separate READY",
   "mixed-series":"15-minute and hourly windows are scored separately (section 4)",
@@ -1172,6 +1359,7 @@ const SC_REFUSAL_WHY={
   "boundary-moved":"the calibration/holdout boundary is not the registered one (11.6); moving it after the holdout opened spends the holdout",
   "missing-caller-fields":"a caller field the verdict depends on was not supplied; a hole is not a verdict",
   "bad-row-field":"a window record is missing a field this unit reads, or carries one with the wrong type; a value present in the wrong type is refused, never coerced",
+  "bad-snapshot":"a snapshot record carries a field with the wrong type, or is missing the tau that places it in its window; a read this unit cannot type would otherwise be SKIPPED, which promotes its neighbour into the scored observation",
   "bad-shock-flag":"`shock` is the treatment assignment (11.2) and must be strictly true or false; a truthy value would be neither treated nor excluded from its own cell's control pool",
   "bad-caller-field":"a caller field is present with the wrong type or an impermissible value",
   "unknown-caller-field":"opts carries a key this unit does not read; a field that skipped the contract is refused, never ignored"
@@ -1185,8 +1373,8 @@ function scRefused(code,why,k){
     ciLevel:lvl,bootstrapB:B,holdNReq:null};
 }
 function scMaxMonths(){
-  if(typeof SHOCK_RULE!=="object"||SHOCK_RULE===null||!scNum(SHOCK_RULE.maxMonths)) return null;
-  return SHOCK_RULE.maxMonths;
+  if(typeof SHOCK_RULE!=="object"||SHOCK_RULE===null) return null;
+  return scNeighbourValue("maxMonths",SHOCK_RULE.maxMonths);
 }
 /* the 11.2a ratchet, applied to the judge's answer. shockStatus derives its own `need` from st.sd, so a
    registered requirement larger than the one this call's sd implies has to be applied afterwards -- and it may
@@ -1227,7 +1415,7 @@ function scReport(rows,opts){
   const o=(opts&&typeof opts==="object")?opts:{};
   const rep={version:SCORE.version,ok:false,code:null,
     phase:null,series:null,
-    unmatched:[],dupRows:0,badRow:null,coverage:null,
+    unmatched:[],dupRows:0,badRow:null,coverage:null,calPool:null,
     known:null,caveat:null,
     split:null,boundary:null,sd:null,holdN:null,did:null,ci:null,st:null,missing:null,status:null};
   /* THE CALLER'S OWN MESSAGE IS CHECKED FIRST, before any row is read. An unknown opts key is refused here
@@ -1241,9 +1429,12 @@ function scReport(rows,opts){
     rep.status=scRefused(oc.code,oc.why,null);
     return rep;
   }
-  const P=scPairs(rows);
+  /* 11.6's registered boundary reaches scPairs, not just scSplitCheck: it restricts which controls a
+     CALIBRATION pair may draw (scCalPool). opts.boundary has already been type-checked above, so a present-
+     but-malformed stamp refused the call before any row was read. */
+  const P=scPairs(rows,o.boundary);
   rep.code=P.code; rep.phase=P.phase; rep.series=P.series;
-  rep.unmatched=P.unmatched; rep.dupRows=P.dupRows; rep.badRow=P.badRow;
+  rep.unmatched=P.unmatched; rep.dupRows=P.dupRows; rep.badRow=P.badRow; rep.calPool=P.calPool;
   rep.known=P.known; rep.caveat=(P.known&&P.known.caveat)||null;
   /* THE POOLED COVERAGE PAIR IS NOT ON THIS OBJECT. It used to be, as rep.ctrlMatched / rep.ctrlTotal, beside
      rep.st.ctrlMatched / rep.st.ctrlTotal, which are the HOLDOUT ones -- two identically-named pairs on one
@@ -1281,11 +1472,11 @@ function scReport(rows,opts){
   const sd=scSd(sp.cal);
   const did=scDid(sp.hold);
   const ci=scCi(sp.hold,o.arms,o.bootstrap);
-  const a=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:sd,
+  const asm=scAssemble({phase:P.phase,nCal:sp.cal.length,nHold:sp.hold.length,sd:sd,
     dBrier:did.controlled,ciLo:ci.lo,ctrlMatched:cov.gate.matched,ctrlTotal:cov.gate.total},o);
   rep.ok=true; rep.code=(sd===null?SC_OMIT.CAL_SHORT:null);
-  rep.coverage=cov; rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=a.st;
-  rep.missing=scMissingAll(a.missing,o);
+  rep.coverage=cov; rep.sd=sd; rep.did=did; rep.ci=ci; rep.st=asm.st;
+  rep.missing=scMissingAll(asm.missing,o);
   /* 11.2a REQUIRES BOTH POWER FIGURES AS OUTPUT (registered 2026-09-06): "a report that carries the 50%-power
      required n without the 80% figure beside it is exactly the barely-powered design mistaken for a good one
      this subsection was written to prevent, and the at-open feasibility test against 11.7's deadline cannot be
@@ -1304,8 +1495,8 @@ function scReport(rows,opts){
   rep.holdN.power={computed:0.5,alongside:0.8};
   rep.holdN.feasible=(kOk&&typeof shockFeasible==="function"&&typeof SHOCK_RULE==="object"&&SHOCK_RULE!==null)
     ?{premise:"11.1 planning premise, NOT a measurement: releases per year",
-      lo:shockFeasible(sd,o.arms,o.monthsElapsed,SHOCK_RULE.relLo),
-      hi:shockFeasible(sd,o.arms,o.monthsElapsed,SHOCK_RULE.relHi)}
+      lo:shockFeasible(sd,o.arms,o.monthsElapsed,scNeighbourValue("relLo",SHOCK_RULE.relLo)),
+      hi:shockFeasible(sd,o.arms,o.monthsElapsed,scNeighbourValue("relHi",SHOCK_RULE.relHi))}
     :null;
   /* a caller field the verdict depends on is missing -> a refusal, not a verdict. The measurements above stay
      on the report: they are real, and the caller needs them to see what it under-specified. */
@@ -1321,7 +1512,7 @@ function scReport(rows,opts){
       "these caller fields decide the verdict and were not supplied: "+req.join(", "),o.arms);
     return rep;
   }
-  rep.status=scRatchetStatus((typeof shockStatus==="function")?shockStatus(a.st):null,
+  rep.status=scRatchetStatus((typeof shockStatus==="function")?shockStatus(asm.st):null,
     sp.hold.length,rep.holdN,o.monthsElapsed);
   return rep;
 }
