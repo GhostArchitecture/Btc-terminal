@@ -180,13 +180,13 @@ var OCCVM_SUN = (function () {
       "--elev": e.toFixed(3),
       "--night": night.toFixed(3),
       "--dusk-stage": stage,
-      "--amb": amb.toFixed(3),
+      "--fill": amb.toFixed(3),
       "--rake": rake.toFixed(1) + "px",
       "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
       /* OCCVM-D12, closed at 1.2a — AMBIENT FILLS WHAT DIRECT LIGHT DOES NOT.
        *
-       * 1.2 recorded that --elev's 0.15 night floor "moved" to --amb. It did not move; it was deleted.
-       * --amb was computed, written, and read by nothing, while these two alphas — the bevel the floor
+       * 1.2 recorded that --elev's 0.15 night floor "moved" to --fill. It did not move; it was deleted.
+       * --fill was computed, written, and read by nothing, while these two alphas — the bevel the floor
        * existed to hold up — collapsed to 0.060 after dark. The law's claim that "a bevel stays legible
        * after dark because ambient light is 0.53 there" was false in both halves: ambient held nothing
        * up, and the figure was 0.630 rather than 0.53. Found by 1.9's audit, which is what an audit is

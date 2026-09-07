@@ -19,6 +19,8 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
 | **1.2a** | landed | closed `OCCVM-D12`: the night floor 1.2 recorded as *moved* to `--amb` had in fact been deleted. Ambient now fills what direct light does not, so the bevel after dark is held up by the term the law always said held it up. First visible change in six releases. |
 | **2.0** | landed | **OCCVM-L12, the material model.** Aragonite defined once in `occvm/material.js` — cell, principal indices, hardness, density, stiffness — with the lattice's single owner moved here and `veins.js` reading it. The substrate ramp is **derived** from angular Fresnel at L2's cut geometry rather than authored, with two rejected derivations recorded and pinned. Also fixed a load-order defect that had `cleave()` throwing in the browser since 1.1b. |
+| **2.1** | landed | **P1 and P4, both derived, measured, and not wired.** Anisotropic motion (`1/√k`: a 0.7584, b 0.9454, c 1.0000) has no second axis to be observed against — `translateX` is at zero animated sites in either tool. Unit-cell spacing (a 1.0000 : c 1.1573 : b 1.6069) does not survive integer-pixel rounding at the sizes 84.5% of spacing uses. Both keep their arithmetic, ship no token, and carry self-retiring guards; the golden-ratio guard ships regardless. |
+| **2.2** | landed | `--amb` renamed **`--fill`**, values byte-identical. The non-monotonicity 1.2a deferred to 2.0 was measured and is not a defect: consumers weight the term by `(1−e)`, which cuts a 28% dip in the token to 1% in what reaches the surface, so the token was only ever mis-named. `--amb` is pinned out of both repositories. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -147,17 +149,17 @@ The sundial writes, at most once a minute:
 --lx --ly      screen light vector, unit length
 --elev         sin(elevation) · 1.25, clamped [0,1], falling to 0 at night
 --night        continuous ramp, 0 at −2° to 1 at −10°  (OCCVM-L9)
---amb          ambient floor: 0.45 + 0.55·elev·(1−night) + 0.18·night
+--fill         fill weight:   0.45 + 0.55·elev·(1−night) + 0.18·night
 --rake         cast length in px, from the sun's angle
 --sheen --hi-a --cut-a --shade-a    specular, highlight, cut and shade alphas
 --glow         night bloom on ink only  (OCCVM-L9)
 ```
 
-`--elev` falls to zero at night and **the night floor lives in `--amb`, not in `--elev`** — a bevel stays
+`--elev` falls to zero at night and **the night floor lives in `--fill`, not in `--elev`** — a bevel stays
 legible after dark because ambient light fills what direct light does not, rather than because elevation is
-pretended to be 0.15. BTC floored `--elev` at 0.15 and had no `--amb`: `OCCVM-D2`, closed at 1.2.
+pretended to be 0.15. BTC floored `--elev` at 0.15 and had no `--fill`: `OCCVM-D2`, closed at 1.2.
 
-*This sentence was false from 1.2 until 1.2a, in both of its halves.* Ambient held nothing up — `--amb`
+*This sentence was false from 1.2 until 1.2a, in both of its halves.* Ambient held nothing up — `--fill`
 was computed, written, and read by nothing, while `--hi-a` and `--cut-a` collapsed to 0.060 after dark —
 and the figure it quoted, 0.53, was not even the value the formula produced (0.630). A floor recorded as
 *moved* had in fact been *deleted*, and it survived seven releases because a write-only token looks
@@ -166,12 +168,34 @@ exactly like a working one from every angle except a census. `OCCVM-D12`, found 
 not reaching. At full sun that term is worth 0.007 and the daylight frames barely move; after dark it is
 the whole of the bevel — 0.060 → 0.161 and 0.060 → 0.186.
 
-*Recorded while closing it, for 2.0 rather than for now:* `--amb` is **not monotonic in darkness**. It
-reads 0.473 at civil dusk and 0.630 at full night, so ambient rises as the sun disappears. As a model of
-*sky illumination* that is backwards; as a model of *adaptation* — less light needed because the eye has
-adjusted — it is right, and the name is what is wrong. 2.0 gives this term real optics to interact with,
-and a term that climbs at midnight will fight a material model. Decide which of the two it is before it
-becomes a material property.
+*Settled at 2.2, and the name was the whole of it.* 1.2a recorded this term as **not monotonic in
+darkness** — 0.450 at the horizon against 0.630 at full night, so it rises as the sun disappears — and
+left the question of whether that was a defect for 2.0, on the grounds that a term climbing at midnight
+would fight a material model. Measured before renaming anything, it does not:
+
+| | noon | low sun | horizon | civil | night |
+|---|---|---|---|---|---|
+| the term alone | 1.000 | 0.542 | **0.450** | 0.480 | 0.630 |
+| what reaches the surface, `0.16·fill·(1−e)` | 0.0000 | 0.0722 | 0.0720 | 0.0768 | **0.1008** |
+
+(the composite's own peak is 0.07272 at 5° elevation, against 0.07200 at the horizon — the 1% dip)
+
+**Every consumer multiplies it by `(1−e)`, and that very nearly — not exactly — cancels the daytime
+branch.** The token dips **28%** between noon and the horizon. The composite peaks at 5° elevation and
+dips **1%** into the horizon before climbing through dusk to its maximum at night. *An earlier draft of
+this paragraph said the composite was monotonic; the guard written beside it failed that claim, and 1%
+is the measured number.* A one-percent dip across the last five degrees of daylight is not a term that
+will fight a material model, which was 1.2a's actual question. So there was no physical defect to fix —
+only a name claiming to be something it is not. It was never a
+model of sky illumination; it is **the weight of the fill**, and `(1−e)` is how much of the fill applies.
+A fill that rises at night is correct rather than paradoxical, which is why `--amb` became **`--fill`**:
+the word the law was already using for it two paragraphs above.
+
+*One thing the measurement did surface and 2.2 did not change:* the `0.55·elev·(1−night)` branch, once
+weighted by `(1−e)`, contributes `0.55·e·(1−e)` — zero at both ends and peaking mid-afternoon, where it
+nearly doubles the fill (0.0436 against 0.024 at 40° elevation). Nothing states that bulge as intent. It
+is recorded rather than removed, because 2.2 is a rename and a rename that also moves a curve gives the
+golden set a delta it cannot attribute.
 
 ### OCCVM-L4 — cast shadow
 
@@ -654,7 +678,7 @@ now-redundant tool declaration is per-surface adoption work, done at the release
 
 ### 2ab. Governed since 1.2 — written by the sundial
 
-`--lx --ly --elev --night --dusk-stage --phosphor --amb --rake --sheen --hi-a --cut-a --shade-a --glow
+`--lx --ly --elev --night --dusk-stage --phosphor --fill --rake --sheen --hi-a --cut-a --shade-a --glow
 --lxpx --lypx --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y --sub --sub-hi
 --sub-lo --bone --bone-lo`
 
@@ -783,7 +807,7 @@ anchor for substrate and vein alike. The table is by class, because the class is
 | class | tokens | at 2.0 | what a migrator does |
 |---|---|---|---|
 | **Substrate & ink** | `--sub --sub-hi --sub-lo --edge --bone --bone-lo --bone-dim` | **derived from the material.** Three substrate weights become the three faces an orthorhombic crystal actually has — lit face, shade face, edge — each taking its own principal refractive index (α/β/γ) rather than one scaled response. | Stop declaring them. Declare a material; read the same names back. The names do not change, which is deliberate: the migration is in where the value comes from, not in what a surface calls it. |
-| **Light (sun)** | `--lx --ly --elev --amb --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **unchanged in name and meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. | Nothing. |
+| **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
 | **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |

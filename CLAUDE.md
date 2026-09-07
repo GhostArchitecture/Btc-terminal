@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907193808` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907195335` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1112,7 +1112,7 @@ the measured inventory the spine was then authored from.
 - **`test/occvm.js`** holds the determinism seam and the spine guards. Before 1.2 two of its assertions
   deliberately pinned this tool's *current* behaviour, not desired: a binary `--night` and a 0.15 `--elev`
   night floor. They now pin the spine's law instead (`OCCVM-D2`, closed at 1.2) — a continuous `--night`
-  ramp and the floor living in `--amb`. Since 1.7 the file also pins the civil/nautical/astronomical dusk
+  ramp and the floor living in `--fill`. Since 1.7 the file also pins the civil/nautical/astronomical dusk
   staging (`--dusk-stage`, additive over that same ramp) and that BTC's tool-local `--bloom` surface glow
   stays deleted.
 - **`veinLayer()` reads an injected session seed** (`sessionStorage["btc.seed"]`) instead of the wall clock.
@@ -1124,7 +1124,7 @@ the measured inventory the spine was then authored from.
 **1.2 — one light, completed.** The light is now one implementation, `occvm/sundial.js`, spliced into both
 tools: full NOAA position (this tool's) plus Rhyme's derivation of surface response from it. `solarPosition()`
 is gone from this file and `sunTick()` is the display shape around a shared reading. `--night` is a ramp,
-`--elev` drops its 1.4 scale and its 0.15 night floor moves to `--amb`, the light vector resolves neutral
+`--elev` drops its 1.4 scale and its 0.15 night floor moves to `--fill`, the light vector resolves neutral
 overhead below −6°, `--glow` is a resolved scalar, and substrate and ink move with twilight. Closed D2, D8,
 D9, D10.
 

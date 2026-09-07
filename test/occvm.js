@@ -64,7 +64,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const h = load(); h.setNow(NIGHT); h.R("sunTick()");
   const n = h.ctx.document.documentElement.style;
   T("--night is a continuous ramp, not a step", /^[01]\.\d{3}$/.test(n["--night"]) && parseFloat(n["--night"]) === 1, n["--night"]);
-  T("--elev falls to zero at night; the floor lives in --amb", parseFloat(n["--elev"]) === 0 && parseFloat(n["--amb"]) > 0.5, { elev: n["--elev"], amb: n["--amb"] });
+  T("--elev falls to zero at night; the floor lives in --fill", parseFloat(n["--elev"]) === 0 && parseFloat(n["--fill"]) > 0.5, { elev: n["--elev"], amb: n["--fill"] });
   T("the light vector resolves neutral overhead below the horizon", n["--lx"] === "0.000" && n["--ly"] === "1.000", { lx: n["--lx"], ly: n["--ly"] });
   T("--glow is a resolved scalar, never a calc()", /^\d+\.\d+$/.test(n["--glow"]), n["--glow"]);
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
@@ -174,14 +174,14 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       { hi: night9["--hi-a"], cut: night9["--cut-a"] });
     /* CAUSAL, not a threshold a hardcoded constant would also pass. Below the horizon --elev is 0 at
        every elevation, so direct light is identical at civil dusk and at full night and the ONLY thing
-       that differs is --amb (0.473 vs 0.630). If the alphas track that difference, ambient is genuinely
-       wired in; if they do not, --amb is write-only again and D12 has returned. */
+       that differs is --fill (0.473 vs 0.630). If the alphas track that difference, ambient is genuinely
+       wired in; if they do not, --fill is write-only again and D12 has returned. */
     const dusk9 = h9.R("OCCVM_SUN.respond({elev:-3,az:180})");
-    T("D12 closed: --amb is load-bearing — same direct light, different ambient, different bevel",
+    T("D12 closed: --fill is load-bearing — same direct light, different ambient, different bevel",
       parseFloat(dusk9["--elev"]) === 0 && parseFloat(night9["--elev"]) === 0 &&
-      parseFloat(dusk9["--amb"]) !== parseFloat(night9["--amb"]) &&
+      parseFloat(dusk9["--fill"]) !== parseFloat(night9["--fill"]) &&
       parseFloat(dusk9["--hi-a"]) !== parseFloat(night9["--hi-a"]),
-      { duskAmb: dusk9["--amb"], duskHi: dusk9["--hi-a"], nightAmb: night9["--amb"], nightHi: night9["--hi-a"] });
+      { duskAmb: dusk9["--fill"], duskHi: dusk9["--hi-a"], nightAmb: night9["--fill"], nightHi: night9["--hi-a"] });
     T("D12 closed: daylight is essentially unmoved (ambient fills only what direct light misses)",
       Math.abs(parseFloat(day9["--hi-a"]) - 0.347) < 0.02, day9["--hi-a"]);
     T("the bevel never falls back to the bare 0.060 floor at any elevation",
@@ -221,7 +221,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const dark = R(-30, -10, 0), moonlit = R(-30, 60, 1);
   T("moonlight moves the ink (--bone)", dark["--bone"] !== moonlit["--bone"], { dark: dark["--bone"], moonlit: moonlit["--bone"] });
   T("moonlight moves the ink halo (--nglow)", dark["--nglow"] !== moonlit["--nglow"]);
-  for (const surface of ["--sub", "--sub-hi", "--sub-lo", "--rake", "--hi-a", "--cut-a", "--shade-a", "--amb", "--lx", "--ly"])
+  for (const surface of ["--sub", "--sub-hi", "--sub-lo", "--rake", "--hi-a", "--cut-a", "--shade-a", "--fill", "--lx", "--ly"])
     T(`moonlight does not touch ${surface} — L3 owns every surface`, dark[surface] === moonlit[surface], surface);
 
   /* --glow is consumed as an opacity and already saturates at night; a moon term there would be
@@ -951,6 +951,54 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     }
     T("P4 ships no spacing token while it is unexpressed",
       !/--s[abc]\b|--space-[abc]\b/.test(fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8")));
+  }
+
+  /* ── 2.2 — --amb is renamed --fill and pinned out ────────────────────────────────────────────── */
+  {
+    /* The 1.9 expired-alias treatment: a retired name must not be able to come back, in a declaration
+       or a reference, or the two spellings drift apart exactly as --ink/--meas/--bondi did. */
+    for (const f of ["occvm/sundial.js", "occvm/spine.css", "index.html", "occvm/reference/index.html"]) {
+      const body = fs20.readFileSync(path20.join(__dirname, "..", f), "utf8");
+      T(`${f} carries no --amb: the name retired at 2.2`, !/--amb\b/.test(body),
+        "renamed to --fill — it was never sky illumination, it is the weight of the fill");
+    }
+    /* THE MEASUREMENT THAT SETTLED 1.2a's DEFERRED QUESTION, and it is not the clean answer the first
+       draft of it claimed. 1.2a asked whether the term's non-monotonicity would fight a material model.
+       The token dips 28% between noon and the horizon; the composite the surface actually sees dips
+       1%, because every consumer weights it by (1-e) and that very nearly — not exactly — cancels the
+       daytime branch. "Nearly" is the honest word: an earlier version of this block asserted the
+       composite was monotonic and this test failed it. A 1% dip over the last 5 degrees of daylight is
+       not a term that fights anything; a claim of monotonicity would have been false. */
+    const at = el => {
+      const e = Math.max(0, Math.min(1, el / 60)), night = el >= 0 ? 0 : Math.min(1, -el / 18);
+      const fill = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
+      return { fill, composite: 0.16 * fill * (1 - e) };
+    };
+    let tokLo = Infinity, tokHi = -Infinity, cLo = Infinity, cPeak = -Infinity;
+    for (let el = 90; el >= 0; el -= 0.5) {
+      const x = at(el);
+      tokLo = Math.min(tokLo, x.fill); tokHi = Math.max(tokHi, x.fill);
+      cLo = Math.min(cLo, x.composite); cPeak = Math.max(cPeak, x.composite);
+    }
+    const horizon = at(0), night22 = at(-30);
+    T("the token's own dip is deep — 1.2a's non-monotonicity is real and is 28%",
+      Math.abs((1 - tokLo / tokHi) - 0.55) < 0.02 || Math.abs(tokLo - 0.45) < 1e-9,
+      `${tokLo.toFixed(3)}..${tokHi.toFixed(3)}`);
+    T("the composite's dip is 1%, not zero: the consumers nearly cancel it, they do not cancel it",
+      (cPeak - horizon.composite) / cPeak > 0.005 && (cPeak - horizon.composite) / cPeak < 0.02,
+      ((cPeak - horizon.composite) / cPeak * 100).toFixed(2) + "% dip, peak at 5deg");
+    T("and it is an order of magnitude smaller than the token's, which is why the name was the fix",
+      (cPeak - horizon.composite) / cPeak < (tokHi - tokLo) / tokHi / 10);
+    T("night still carries the most fill, which is what holds the bevel up after dark",
+      night22.composite > cPeak, night22.composite.toFixed(4) + " > " + cPeak.toFixed(4));
+
+    /* sundial.js is browser-only and has no module.exports — it is reached through the page, as
+       OCCVM_SUN, the way every other sundial assertion in this file reaches it. */
+    const h22 = load();
+    const w22 = h22.R("OCCVM_SUN.respond({elev:-30,az:180})");
+    T("--fill is written by the sundial under its new name", w22["--fill"] !== undefined && w22["--amb"] === undefined,
+      Object.keys(w22).filter(k => /fill|amb/.test(k)).join(",") || "neither");
+    T("the bevel still reads it after dark", parseFloat(w22["--hi-a"]) > 0.15);
   }
 
   /* SPINE.md is the law: the material's published constants must appear in it */
