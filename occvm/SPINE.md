@@ -595,7 +595,7 @@ which is why this table's right-hand column so often reads "nothing".
 | tool | version | build stamp | violates |
 |---|---|---|---|
 | **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180450` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907175235` | — (renders no mono; D3 does not apply) |
+| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180837` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
