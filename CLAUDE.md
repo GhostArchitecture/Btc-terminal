@@ -1241,6 +1241,33 @@ real consumer — the consequence was functional rather than cosmetic: the throw
 callback, so **deleting a draft silently did nothing** for anyone not on reduced motion. `test/occvm.js`
 235 → 274.
 
+**P1 and 2.1/P4 — two extensions derived, measured, and deliberately not wired.** Both follow 1.1b's
+disposition of the twin misfit: the arithmetic is right and stays, the wiring waits for a regime where it
+expresses, and raising a coefficient until something visible happened would be fudging a derived number
+toward a wanted picture.
+
+*P1, anisotropic motion.* The stiffness tensor gives each axis a settling time, and the relation is the
+oscillator's rather than the spring's — `T = 2π√(m/k)`, so duration ∝ `1/√k`: **a 0.7584, b 0.9454,
+c 1.0000**. Static compliance `1/k` was the other candidate and is wrong for a temporal quantity. It ships
+no token because **anisotropy is only observable as a difference between two directions in the same view**,
+and the census found `translateX` at **zero animated sites in either tool**, `translateY` at three, and all
+eight `translate(x,y)` sites being static light-vector offsets rather than motions. Fracture is the one
+animated 2D direction and its angle is fixed, so projecting the scalars onto it renames 220 ms to 194 ms
+rather than making anything anisotropic. Three tokens consumed by nothing is `OCCVM-D12`, closed one
+release earlier. The guard is **self-retiring**: it counts animated horizontal motion and fails the day one
+appears.
+
+*2.1/P4, unit-cell spacing.* The cell normalised to its shortest edge is **a 1.0000 : c 1.1573 : b 1.6069**.
+Censused over **213 real padding/margin/gap declarations** across both tools — 19 distinct pixel values,
+10.79% weighted mean error against the cell ladder, worse coverage than a plain 4 px grid — so adopting it
+moves 213 declarations by ~11%, a redesign wearing a derivation's coat. And it does not survive to the
+screen: spacing quantises to whole pixels, **84.5% of it is under 12 px**, and the rendered c-step wanders
+**1.125–1.250** with the base rather than following the material, straddling the cell's own 1.157 without
+ever equalling it. **The guard ships even though the scale does not**, because `1.6069` and the golden ratio
+`1.6180` differ by 0.04 px at step 1 and do not reach a whole pixel until step 5 — past the largest spacing
+either tool uses. They are the same number on screen, so somebody will eventually "correct" one to the
+other. It is not a typo for φ; it is 7.97/4.96. `test/occvm.js` 274 → 294.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
