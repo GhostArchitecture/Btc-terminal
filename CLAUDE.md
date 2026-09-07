@@ -4,9 +4,10 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260906195621` — §10's 22 fixes, the K1 ledger repair, and the full **H-protocol
-measurement layer** (§11): H1–H5 recording, the enumerated release calendar, and the identifiability and
-plausibility gates. Nothing in it renders; it computes, stores and exports. One file, 6,331 lines,
+Current deploy: `build-20260907135235` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
+plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
+stores and exports. One file, 6,331 lines,
 ~428 KB, 286 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
