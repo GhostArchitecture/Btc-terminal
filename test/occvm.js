@@ -121,17 +121,35 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
   /* D12 — the defect the audit found. It must be registered as open, not quietly absorbed. */
   T("OCCVM-D12 is registered", /\| \*\*D12\*\* \|/.test(doc9));
-  T("D12 is recorded as open", /\| \*\*D12\*\*[\s\S]{0,900}?\*\*open\*\*/.test(doc9));
-  T("the defect count is stated honestly", !doc9.includes("**All eleven defects are closed.**"));
-  /* and the thing D12 is about is genuinely still true, so the register is not stale */
+  T("D12 is recorded as closed at 1.2a", /\| \*\*D12\*\*[\s\S]{0,900}?\*\*closed 1\.2a\*\*/.test(doc9));
+  T("the defect count is stated honestly", doc9.includes("**All twelve defects are closed.**"));
+  /* D12 is closed at 1.2a. These were "still reproduces" assertions while it was open; inverted now, so
+     the defect cannot come back by the same route it arrived — a floor recorded as moved and silently
+     deleted, invisible because a write-only token looks exactly like a working one. */
   {
     const h9 = load();
     const night9 = h9.R("OCCVM_SUN.respond({elev:-30,az:180})");
-    T("D12 still reproduces: --amb is high at night while the bevel alphas collapse",
-      parseFloat(night9["--amb"]) > 0.5 && parseFloat(night9["--hi-a"]) < 0.1 && parseFloat(night9["--cut-a"]) < 0.1,
-      { amb: night9["--amb"], hi: night9["--hi-a"], cut: night9["--cut-a"] });
-    T("D12 still reproduces: no tool consumes --amb",
-      !/var\(--amb\)|getPropertyValue\("--amb"\)/.test(html9));
+    const day9 = h9.R("OCCVM_SUN.respond({elev:50,az:180})");
+    T("D12 closed: ambient holds the bevel up after dark",
+      parseFloat(night9["--hi-a"]) > 0.12 && parseFloat(night9["--cut-a"]) > 0.14,
+      { hi: night9["--hi-a"], cut: night9["--cut-a"] });
+    /* CAUSAL, not a threshold a hardcoded constant would also pass. Below the horizon --elev is 0 at
+       every elevation, so direct light is identical at civil dusk and at full night and the ONLY thing
+       that differs is --amb (0.473 vs 0.630). If the alphas track that difference, ambient is genuinely
+       wired in; if they do not, --amb is write-only again and D12 has returned. */
+    const dusk9 = h9.R("OCCVM_SUN.respond({elev:-3,az:180})");
+    T("D12 closed: --amb is load-bearing — same direct light, different ambient, different bevel",
+      parseFloat(dusk9["--elev"]) === 0 && parseFloat(night9["--elev"]) === 0 &&
+      parseFloat(dusk9["--amb"]) !== parseFloat(night9["--amb"]) &&
+      parseFloat(dusk9["--hi-a"]) !== parseFloat(night9["--hi-a"]),
+      { duskAmb: dusk9["--amb"], duskHi: dusk9["--hi-a"], nightAmb: night9["--amb"], nightHi: night9["--hi-a"] });
+    T("D12 closed: daylight is essentially unmoved (ambient fills only what direct light misses)",
+      Math.abs(parseFloat(day9["--hi-a"]) - 0.347) < 0.02, day9["--hi-a"]);
+    T("the bevel never falls back to the bare 0.060 floor at any elevation",
+      [-40, -30, -18, -12, -6, -3, 0, 3, 10, 30, 50, 80].every(e => {
+        const t = h9.R(`OCCVM_SUN.respond({elev:${e},az:180})`);
+        return parseFloat(t["--hi-a"]) > 0.09 && parseFloat(t["--cut-a"]) > 0.09;
+      }));
   }
 }
 

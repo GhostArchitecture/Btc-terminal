@@ -183,8 +183,20 @@ var OCCVM_SUN = (function () {
       "--amb": amb.toFixed(3),
       "--rake": rake.toFixed(1) + "px",
       "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
-      "--hi-a": (0.30 * e + 0.06).toFixed(3),
-      "--cut-a": (0.40 * e + 0.06).toFixed(3),
+      /* OCCVM-D12, closed at 1.2a — AMBIENT FILLS WHAT DIRECT LIGHT DOES NOT.
+       *
+       * 1.2 recorded that --elev's 0.15 night floor "moved" to --amb. It did not move; it was deleted.
+       * --amb was computed, written, and read by nothing, while these two alphas — the bevel the floor
+       * existed to hold up — collapsed to 0.060 after dark. The law's claim that "a bevel stays legible
+       * after dark because ambient light is 0.53 there" was false in both halves: ambient held nothing
+       * up, and the figure was 0.630 rather than 0.53. Found by 1.9's audit, which is what an audit is
+       * for; it survived seven releases because a write-only token looks exactly like a working one.
+       *
+       * `(1 - e)` is the share of the surface direct light is NOT reaching, so ambient is admitted in
+       * proportion to what the sun has left uncovered. At full sun the term is worth 0.007 and the
+       * daylight frames barely move; after dark it is the whole of the bevel. */
+      "--hi-a": (0.30 * e + 0.06 + 0.16 * amb * (1 - e)).toFixed(3),
+      "--cut-a": (0.40 * e + 0.06 + 0.20 * amb * (1 - e)).toFixed(3),
       "--shade-a": (0.45 + 0.3 * e).toFixed(3),
       /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). Since
          1.7 it rides the phosphor curve rather than `night` directly, and moonlight lifts it further —

@@ -16,6 +16,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.1** | landed | generative fidelity: DLA veins, `--vein-density --vein-habit`. Closed nothing; added L10. Its determinism requirement was met at 1.0. |
 | **1.1a** | landed | the vein grows **aragonite**, not a generic dendrite: radial from a nucleation point, cyclic-twinned in threes, anisotropy moved from the walk to attachment. 2.0 prep the amended roadmap asks for early, so vein and substrate can become one material without a rework. |
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
+| **1.2a** | landed | closed `OCCVM-D12`: the night floor 1.2 recorded as *moved* to `--amb` had in fact been deleted. Ambient now fills what direct light does not, so the bevel after dark is held up by the term the law always said held it up. First visible change in six releases. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -24,8 +25,8 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.8** | landed | the reference surface, to its full brief: a conforming page holding no values of its own, one live specimen per law, **the light vector swept on a slider rather than a clock**, slabs at every depth, controls in every state, ink at every scale. Recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
 | **1.9** | landed | freeze and stage, in full. D1 closed at the narrow pass (the expired `--ink --meas --bondi` block swept). The rest landed after the amended roadmap surfaced it: a **full token audit as a re-runnable instrument** (`occvm/tools/token-audit.js`, in CI with `--check`), three dead tool-local tokens removed, every divergence promoted to an amendment or a documented exception, the **2.0 migration table** (§6b), and one real defect found — `OCCVM-D12`. |
 
-**Eleven of twelve defects are closed; `OCCVM-D12` was opened by 1.9's own audit and is the one
-thing standing between here and 2.0 that is a bug rather than a decision.** D1's aliases were shown to be load-bearing by 1.2's golden diff —
+**All twelve defects are closed.** `OCCVM-D12` was opened by 1.9's own audit and closed at 1.2a — the
+last thing between here and 2.0 that was a bug rather than a decision. D1's aliases were shown to be load-bearing by 1.2's golden diff —
 `--ink --meas --dim` all moved with the tokens they alias — so the block was a live dependency, not dead
 weight, and sweeping it (1.9) was a migration rather than a deletion. D6 (1.4) closed the same way 1.9
 did: BTC gets the mineral system, but only where it was already load-bearing for this tool — the vein
@@ -151,8 +152,24 @@ The sundial writes, at most once a minute:
 ```
 
 `--elev` falls to zero at night and **the night floor lives in `--amb`, not in `--elev`** — a bevel stays
-legible after dark because ambient light is 0.53 there, not because elevation is pretended to be 0.15. BTC
-floors `--elev` at 0.15 and has no `--amb`: `OCCVM-D2`.
+legible after dark because ambient light fills what direct light does not, rather than because elevation is
+pretended to be 0.15. BTC floored `--elev` at 0.15 and had no `--amb`: `OCCVM-D2`, closed at 1.2.
+
+*This sentence was false from 1.2 until 1.2a, in both of its halves.* Ambient held nothing up — `--amb`
+was computed, written, and read by nothing, while `--hi-a` and `--cut-a` collapsed to 0.060 after dark —
+and the figure it quoted, 0.53, was not even the value the formula produced (0.630). A floor recorded as
+*moved* had in fact been *deleted*, and it survived seven releases because a write-only token looks
+exactly like a working one from every angle except a census. `OCCVM-D12`, found by 1.9's audit, closed at
+**1.2a**: the alphas now admit ambient in proportion to `1 − e`, the share of the surface direct light is
+not reaching. At full sun that term is worth 0.007 and the daylight frames barely move; after dark it is
+the whole of the bevel — 0.060 → 0.161 and 0.060 → 0.186.
+
+*Recorded while closing it, for 2.0 rather than for now:* `--amb` is **not monotonic in darkness**. It
+reads 0.473 at civil dusk and 0.630 at full night, so ambient rises as the sun disappears. As a model of
+*sky illumination* that is backwards; as a model of *adaptation* — less light needed because the eye has
+adjusted — it is right, and the name is what is wrong. 2.0 gives this term real optics to interact with,
+and a term that climbs at midnight will fight a material model. Decide which of the two it is before it
+becomes a material property.
 
 ### OCCVM-L4 — cast shadow
 
@@ -536,7 +553,7 @@ found by measurement after it was written.
 | **D9** | BTC | the light vector keeps tracking the sun below the horizon (−0.516, −0.856 at −39°) instead of resolving neutral overhead (L3) | **closed 1.2** |
 | **D10** | Rhyme | `--bone` is derived from twilight while `--bone-lo` stays fixed, separating a pair that must move together (L1) | **closed 1.2** |
 | **D11** | both | `.row`, `.wrap`, `.note` are defined in both tools with incompatible meanings, so an un-namespaced spine primitive would break a tool on inline (L3 §3) | closed at 1.0 by namespacing |
-| **D12** | spine | **`--amb` is written and read by nothing.** 1.2 recorded that `--elev`'s 0.15 night floor *moved* to `--amb`; measured, it was deleted. `--amb` resolves to 0.630 at night while the bevel alphas it was supposed to hold up, `--hi-a` and `--cut-a`, both collapse to 0.060. The law's claim that "a bevel stays legible after dark because ambient light is 0.53 there" is false as shipped. Found by 1.9's audit | **open** — fixing it changes every surface's night appearance, which 1.9 may not ship |
+| **D12** | spine | **`--amb` is written and read by nothing.** 1.2 recorded that `--elev`'s 0.15 night floor *moved* to `--amb`; measured, it was deleted. `--amb` resolves to 0.630 at night while the bevel alphas it was supposed to hold up, `--hi-a` and `--cut-a`, both collapse to 0.060. The law's claim that "a bevel stays legible after dark because ambient light is 0.53 there" is false as shipped. Found by 1.9's audit | **closed 1.2a** — ambient now fills what direct light does not; night bevel 0.060 → 0.161 |
 
 ---
 
@@ -618,8 +635,8 @@ which is why this table's right-hand column so often reads "nothing".
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907181552` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180837` | — (renders no mono; D3 does not apply) |
+| **BTC Terminal** | 1.0, 1.1, 1.1a, 1.2, 1.2a, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907182547` | — |
+| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.2, 1.2a, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907182548` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
