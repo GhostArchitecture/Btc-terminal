@@ -21,7 +21,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **2.0** | landed | **OCCVM-L12, the material model.** Aragonite defined once in `occvm/material.js` — cell, principal indices, hardness, density, stiffness — with the lattice's single owner moved here and `veins.js` reading it. The substrate ramp is **derived** from angular Fresnel at L2's cut geometry rather than authored, with two rejected derivations recorded and pinned. Also fixed a load-order defect that had `cleave()` throwing in the browser since 1.1b. |
 | **2.1** | landed | **P1 and P4, both derived, measured, and not wired.** Anisotropic motion (`1/√k`: a 0.7584, b 0.9454, c 1.0000) has no second axis to be observed against — `translateX` is at zero animated sites in either tool. Unit-cell spacing (a 1.0000 : c 1.1573 : b 1.6069) does not survive integer-pixel rounding at the sizes 84.5% of spacing uses. Both keep their arithmetic, ship no token, and carry self-retiring guards; the golden-ratio guard ships regardless. |
 | **2.2** | landed | `--amb` renamed **`--fill`**, values byte-identical. The non-monotonicity 1.2a deferred to 2.0 was measured and is not a defect: consumers weight the term by `(1−e)`, which cuts a 28% dip in the token to 1% in what reaches the surface, so the token was only ever mis-named. `--amb` is pinned out of both repositories. |
-| **2.3** | landed | **L12 adopted, on one surface.** The material's free `body` anchored to L1's floor, after which it predicts `--sub-hi` and `--sub-lo` **to the byte, unfitted**, and disagrees only on the mid-tone (3.91 L* darker). `occvm/substrate.css` is generated from `material.js` and gated in CI. Rhyme's `.slab` wears it; BTC does not. |
+| **2.3** | **reverted** | tried to adopt L12 on Rhyme's `.slab` and matched the material against the `:root` **fallback** rather than the rendered substrate, which the sundial overwrites every minute. The adopted surface lost its twilight response. Reverted; `body` stays anchored to L1's floor; the real adoption target — replacing the sundial's two authored face offsets with the material's ratios — is registered in L12, unbuilt. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -513,42 +513,45 @@ applied twice — and it shifted hue, because saturating one channel before anot
 nobody asked the material for. One gain in linear light is hue-preserving by construction, and
 `test/occvm.js` pins both.
 
-**2.0 defined and derived without repainting.** What it produced was the definition, the resolver, and the
-measured distance between what the material says and what the tools do — the input any repaint needs and
-which nobody had before. **2.3 spends it, on one surface.**
+**2.0 defined and derived without repainting, and 2.3 tried to spend it on one surface and was wrong.**
+The attempt is kept on the record here in full, because the mistake is more instructive than the result
+and it is exactly the failure OCCVM-L1 and the golden set exist to catch.
 
-**The free parameter is anchored, and the anchoring is the argument.** `body` is the material's one
-judgment value: a mineral's colour comes from trace chemistry, not from its lattice, so no amount of
-crystallography produces it. At 2.3 it is set to **L1's own substrate floor `#0e0d13`**, replacing an
-arbitrary `#12111a`. That is the same move `contrast` makes and it carries the same objection — setting
-the material's free value *from* the tools is fitting, and it should be said out loud. The answer is that
-a free parameter has to be set from something, the alternative was a number with no reason at all, and
-**the fit is to one value while the derivation then predicts the other two**:
+**What 2.3 claimed.** Anchoring the material's one free value — `body`, a mineral's colour being trace
+chemistry rather than lattice — to `#0e0d13`, the material reproduced the substrate ramp's endpoints
+**to the byte**: `--sub-hi #2c2a36` predicted, unfitted, and `--sub-lo` the anchor itself, with the
+disagreement confined to a mid-tone 3.91 L* darker. Three generated tokens were spliced and Rhyme's
+`.slab` adopted them.
 
-| | derived | authored | |
-|---|---|---|---|
-| `--m-sub-hi` | `#2c2a36` | `#2c2a36` | **exact, and not fitted** |
-| `--m-sub` | `#131219` | `#1b1a22` | 3.91 L* darker |
-| `--m-sub-lo` | `#0e0d13` | `#0e0d13` | exact — this is the anchor |
+**What was actually true.** `#2c2a36 / #1b1a22 / #0e0d13` is the `:root` **fallback declaration**, and the
+sundial overwrites all three every minute, starting before first paint. Nobody has ever seen those hexes.
+The **rendered** substrate is this, from the golden set:
 
-**The authored substrate's endpoints are aragonite**, at L2's cut geometry, to the byte. The hand got the
-endpoints right and the middle wrong, and the middle is exactly where 2.0 said the two disagree: at the
-adopted contrast the *spread* matches by construction (5.739) and the *shape* does not (1.536 against
-2.539), because the material is more convex and spends more of its range on the edge.
+| instant | `--sub-hi` | `--sub` | `--sub-lo` | face ratio hi : sub : lo |
+|---|---|---|---|---|
+| high sun | `#4b4a50` | `#1b1a22` | `#100f14` | 6.413 : 1.000 : 0.462 |
+| low sun | `#362e31` | `#251c1f` | `#151012` | 2.238 : 1.000 : 0.434 |
+| night | `#1f1f2a` | `#0e0e1a` | `#08080f` | 2.984 : 1.000 : 0.539 |
 
-**The value reaches the stylesheet without passing through a hand.** `occvm/tools/gen-substrate.js` emits
-`occvm/substrate.css` from the material; it is spliced like any other part, and CI runs it with `--check`.
-L12's claim is about *provenance*, and provenance does not survive a hand-copied hex. **A generated
-constant rather than a runtime token**, because 2.0's finding was that the sun drops out of the ratio —
-the ramp is constant, and recomputing a constant every tick buys nothing and adds a second place to be
-wrong.
+So the ramp was matched against a static declaration nobody renders, and the live substrate's face ratios
+**swing 2.9× across the day** against the material's single 3.736. The adopted slab therefore also lost its
+twilight response outright — a constant sitting beside neighbours that move.
 
-**Adoption is per-surface (§6b) and the first surface is Rhyme's `.slab`.** BTC has not adopted: its
-substrate sits under the win/lose colours L5 governs, which is not the place to prove a new derivation.
-The three tokens are therefore *declared spine-wide and consumed only in the other repository* — the one
-case where `OCCVM-D12`'s rule does not apply, because a spine token's consumer need not live in the
-repository that declares it. `test/occvm.js` pins both halves: that the endpoints still predict, and that
-BTC's own CSS has not quietly adopted.
+**2.3 is reverted:** `.slab` reads the sundial's tokens again, and the generated `--m-sub-*` are gone
+rather than left declared and unconsumed, which would have been `OCCVM-D12` in the same release that
+cited it. `body` stays anchored — matching L1's declared floor is an improvement whatever consumes it.
+
+**What the measurement did establish, and it is the real adoption target.** The sundial already implements
+2.0's decomposition: a base colour moved by twilight, and face offsets applied to it. But those offsets are
+**authored constants** — `mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)` — and they are exactly
+what L12 is for. Adopting the material means replacing *those two expressions* with the material's face
+ratios, leaving the base colour to the sundial. That is a visible change to both tools and is not something
+a correction commit does; it is registered here, unbuilt, as the shape any real adoption has to take.
+
+*The lesson is the one this document keeps relearning:* every assertion 2.3 shipped passed, because every
+assertion compared the material against a declaration rather than against a render. `test/occvm.js` now
+carries the check that would have caught it — that the rendered substrate is sundial-written and not the
+`:root` fallback.
 
 **P1 — anisotropic motion: derived, measured, and deliberately not wired.** The stiffness tensor gives
 each axis a settling time, and the relation is the oscillator's rather than the spring's: `T = 2π√(m/k)`,
@@ -839,7 +842,6 @@ anchor for substrate and vein alike. The table is by class, because the class is
 | class | tokens | at 2.0 | what a migrator does |
 |---|---|---|---|
 | **Substrate & ink** | `--sub --sub-hi --sub-lo --edge --bone --bone-lo --bone-dim` | **derived from the material.** Three substrate weights become the three faces an orthorhombic crystal actually has — lit face, shade face, edge — each taking its own principal refractive index (α/β/γ) rather than one scaled response. | Stop declaring them. Declare a material; read the same names back. The names do not change, which is deliberate: the migration is in where the value comes from, not in what a surface calls it. |
-| **Material (L12)** | `--m-sub-hi --m-sub --m-sub-lo` | **Generated, never authored.** Emitted from `occvm/material.js` by `occvm/tools/gen-substrate.js`; CI fails on drift. Declared spine-wide, adopted per-surface — Rhyme's `.slab` at 2.3, BTC nowhere yet. | Run the generator; adopt on a surface when you choose to. |
 | **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
 | **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |

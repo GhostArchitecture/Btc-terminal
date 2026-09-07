@@ -28,10 +28,6 @@ jobs:
       - name: OCCVM spine is spliced and current
         run: node occvm/tools/splice-spine.js --check
 
-      # OCCVM 2.3: the derived substrate must match what material.js produces. L12's claim is about
-      # PROVENANCE, and provenance only survives if the value reaches the stylesheet without a hand.
-      - name: OCCVM substrate is generated from the material (2.3)
-        run: node occvm/tools/gen-substrate.js --check
 
       # OCCVM 1.9: the token audit is a gate, not a paragraph. Fails on a token that resolves to
       # nothing, or a tool-local token its own tool never consumes.

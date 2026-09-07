@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907200524` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907201241` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1279,19 +1279,28 @@ pinned out of both repositories. *Recorded and not changed:* the `0.55·elev` br
 contributes `0.55·e·(1−e)` — a mid-afternoon bulge nothing states as intent; a rename that also moved a
 curve would give the golden set a delta it could not attribute.
 
-**2.3 — the material predicts two of three, and Rhyme's `.slab` adopts.** L12's free parameter `body` is
-anchored to L1's own substrate floor `#0e0d13`, replacing an arbitrary `#12111a`. Setting the material's
-one judgment value *from* the tools is fitting and is stated as such — but the fit is to **one** value,
-after which the derivation predicts the other two: `--m-sub-hi` lands on the authored `#2c2a36` **to the
-byte, unfitted**, and the disagreement is confined to the mid-tone at 3.91 L* darker. **The authored
-substrate's endpoints are aragonite** at L2's cut geometry; the hand got the endpoints right and the middle
-wrong, which is precisely the shape disagreement 2.0 measured. `occvm/tools/gen-substrate.js` emits
-`occvm/substrate.css` from the material and CI gates it with `--check`, because L12's claim is about
-provenance and provenance does not survive a hand-copied hex — a generated constant rather than a runtime
-token, since 2.0 established the sun drops out of the ratio. **This tool has not adopted:** its substrate
-sits under the win/lose colours §5 governs, which is not where a new derivation gets proven, so the three
-tokens are declared here and consumed only in Rhyme. Two assertions pin that BTC has not quietly adopted.
-`test/occvm.js` 294 → 318.
+**2.3 — attempted, wrong, reverted, and the mistake is the entry.** 2.3 anchored the material's one free
+value (`body`) to L1's floor `#0e0d13` and found the derived ramp reproduced `--sub-hi` and `--sub-lo`
+**to the byte**, disagreeing only on a mid-tone 3.91 L* darker. Three generated tokens shipped and Rhyme's
+`.slab` adopted them. Every assertion passed.
+
+**All of them compared the material against the `:root` fallback declaration**, which the sundial
+overwrites every minute before first paint. `#2c2a36 / #1b1a22 / #0e0d13` is not what renders — at high sun
+the live substrate is `#4b4a50 / #1b1a22 / #100f14`, and its face ratio swings **2.238 → 6.413** across the
+day against the material's single 3.736. The adopted slab also lost its twilight response outright, a
+constant sitting beside neighbours that move. Caught by reading the golden set's recorded values rather
+than the tests.
+
+Reverted in full; the generated tokens are deleted rather than left declared and unconsumed, which would
+have been `OCCVM-D12` in the release that cited it. **`body` stays anchored** — matching L1's declared
+floor is an improvement whatever consumes it. `test/occvm.js` now carries the check that was missing: the
+rendered substrate is sundial-written, and its face ratio is not constant.
+
+**The real adoption target is registered, unbuilt.** The sundial already implements 2.0's decomposition —
+a base colour moved by twilight, plus face offsets — but those offsets are authored constants,
+`mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)`. Replacing *those two expressions* with the
+material's face ratios is what adopting L12 on a substrate actually means. It is a visible change to both
+tools and is not something a correction commit does.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
