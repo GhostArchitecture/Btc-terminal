@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907135235` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907161724` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1159,8 +1159,17 @@ to the canonical names, only generated markup still spoke the old dialect, exact
 predicted. All 77 sites migrated to `--bone-lo`/`--bone-dim`/`--verdigris`/`--gilt-c`; the block deleted.
 `test/occvm.js` pins that none of the eight names can be declared or referenced again.
 
-**Open against this tool:** `OCCVM-D6` (no mineral system; `--amethyst` is declared once and
-referenced zero times, closes at 1.4). Names its release in SPINE.md §6.
+**1.4 — closed D6.** The mineral set moved into `occvm/minerals.js`, a fifth spliced part shared with Rhyme
+(Rhyme's own two-entry copy, missing `ruby`, was itself the "no local exceptions" gap L6 registers). This
+tool gained `S.cfg.mineral` (default `amethyst`, persisted, a picker in Settings → Advanced) and
+`--mineral --mineral-lo --vein-hi --vein-lo`, resolved from it — the first real consumer of the
+`--amethyst`/`--amethyst-lo` tokens D6 found declared and never referenced. The scope is deliberately
+narrower than Rhyme's: the mineral tints only `veinLayer()`/`veinLayerLegacy()`, never `--malachite`,
+`--ruby`, `--up`, `--down`, or any surface §5 governs, because those already carry this tool's win/lose
+meaning everywhere and a decorative accent has no business sitting beside it. `test/occvm.js` pins both
+the vein layer's dependence on the choice and that switching it never inline-sets an outcome token.
+
+**Open against this tool:** none. Both `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7).
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.

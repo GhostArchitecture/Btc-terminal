@@ -278,6 +278,10 @@ table {
     --bone:#ece3d0; --bone-lo:#b7ad9c; --bone-dim:#8e8778;
     --gilt-a:#ffe9a3; --gilt-b:#d9a52c; --gilt-c:#7a5510;
     --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f; --ruby-lo:#6b1a2e; --amethyst:#8d5cf0; --amethyst-lo:#4a2a8c;
+    /* OCCVM-L6 — the mineral is the reader's chosen accent, distinct from malachite/ruby's fixed outcome
+       meaning above. Defaults resolve to amethyst (the default field) until applyMineral() runs; JS then
+       drives all four from occvm/minerals.js against S.cfg.mineral. Values match Rhyme's own defaults. */
+    --mineral:var(--amethyst); --mineral-lo:var(--amethyst-lo); --vein-hi:#c9a6ff; --vein-lo:#5a36a8;
     --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
     /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
     --lx:.35; --ly:-.85; --elev:.55; --night:0;
@@ -694,6 +698,12 @@ table {
         <button id="sunLoc" type="button">use my location</button>
         <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">solar position computed here for Dayton by default; the coordinates stay in this browser</span>
       </div>
+      <div class="tgrp"><span class="lbl">Mineral</span>
+        <button id="mn_amethyst" type="button" aria-pressed="false">amethyst</button>
+        <button id="mn_malachite" type="button" aria-pressed="false">malachite</button>
+        <button id="mn_ruby" type="button" aria-pressed="false">ruby</button>
+        <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">tints the background vein layer only — never the win/lose colours in §5</span>
+      </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
         <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(236,227,208,.14);background:rgba(255,255,255,.75)"></label>
         <button id="ktestBtn">TEST</button>
@@ -842,6 +852,31 @@ table {
 </div>
 
 <script>
+/* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
+/* sha256:6ab675b82831 */
+/* OCCVM 1.4 — the mineral set (OCCVM-L6). One implementation, shared by every conforming tool.
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * The set is closed and the meanings are fixed: amethyst is the default field, malachite is affirmed/
+ * won/positive, ruby is negated/lost/failed. `m`/`mlo` (accent/deep) are the law-pinned pair — SPINE.md's
+ * L6 table states them exactly. `hi`/`lo` are the vein generator's own highlight/shadow tint, derived by
+ * eye rather than by a formula (the existing amethyst/malachite pair wasn't built from one either), and
+ * are cosmetic: changing them is a design call, not a re-registration.
+ *
+ * Before this file, each tool that had a mineral concept declared its own copy. Rhyme's carried only two
+ * of the three — it had never needed a negative mineral, so ruby was never added — which is exactly the
+ * "no local exceptions" gap L6 exists to close (OCCVM-D6's other half: BTC had no mineral system at all).
+ */
+var OCCVM_MINERALS = {
+  amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c", hi: "#c9a6ff", lo: "#5a36a8" },
+  malachite: { m: "#3fbf7e", mlo: "#1c6a45", hi: "#9ff0c5", lo: "#1f7a50" },
+  ruby:      { m: "#e0475f", mlo: "#6b1a2e", hi: "#f5a3b3", lo: "#8f2740" },
+};
+if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
+/* ==== END OCCVM minerals.js ==== */
+
 /* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
 /* sha256:49518901f7dc */
 /* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
@@ -1574,9 +1609,17 @@ function computeSignals(now){
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
 }
 /* ---------------------------------------------------------------- interact: config + inverse normal */
-const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3};
+const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,mineral:"amethyst"};
 function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); } }
 function saveCfg(){ try{ localStorage.setItem("btc.cfg",JSON.stringify(S.cfg)); }catch(e){} }
+/* OCCVM-L6 — the mineral is a decorative accent (vein tint), never an outcome colour. Deliberately narrower
+   than Rhyme's: this tool's malachite/ruby already carry a fixed win/lose meaning everywhere (§5), so the
+   mineral choice is kept off every surface that could be mistaken for that signal. */
+function applyMineral(){
+  const m=OCCVM_MINERALS[S.cfg.mineral]||OCCVM_MINERALS.amethyst, rs=document.documentElement.style;
+  rs.setProperty("--mineral",m.m); rs.setProperty("--mineral-lo",m.mlo);
+  rs.setProperty("--vein-hi",m.hi); rs.setProperty("--vein-lo",m.lo);
+}
 function invNorm(p){
   p=Math.min(0.999999,Math.max(0.000001,p));
   let lo=-8,hi=8;
@@ -2190,29 +2233,34 @@ function sunUseLocation(){
 const SESSION=(()=>{ const fresh=()=>String((Date.now()^(Math.random()*1e9))>>>0);
   try{ let k=sessionStorage.getItem("btc.seed"); if(!k){ k=fresh(); sessionStorage.setItem("btc.seed",k); } return +k; }
   catch(e){ return +fresh(); } })();
-function veinLayerLegacy(seed){
+function veinLayerLegacy(seed,mineral){
   /* the pre-1.1 generator: three displaced cubic beziers. Kept as the fallback OCCVM-L10 requires — if
-     growth fails for any reason the surface still gets a vein layer rather than nothing. */
+     growth fails for any reason the surface still gets a vein layer rather than nothing. Takes the chosen
+     mineral (OCCVM-L6) so a fallback frame doesn't silently revert to malachite regardless of preference. */
+  const m=OCCVM_MINERALS[mineral]||OCCVM_MINERALS.amethyst;
+  const enc=hex=>"%23"+hex.slice(1);
   const rnd=mulberry(seed);
   let paths="";
   for(let i=0;i<3;i++){ const y0=100+rnd()*600, x1=200+rnd()*400, y1=rnd()*800, x2=600+rnd()*400, y2=rnd()*800, y3=100+rnd()*600;
     const d="M0 "+y0.toFixed(0)+" C "+x1.toFixed(0)+" "+y1.toFixed(0)+", "+x2.toFixed(0)+" "+y2.toFixed(0)+", 1200 "+y3.toFixed(0);
-    paths+="<path d='"+d+"' fill='none' stroke='%231c6a45' stroke-width='"+(3+rnd()*4).toFixed(1)+"' opacity='.55'/><path d='"+d+"' fill='none' stroke='%233fbf7e' stroke-width='"+(0.8+rnd()*0.8).toFixed(1)+"' opacity='.9' transform='translate(0 -1.5)'/>"; }
+    paths+="<path d='"+d+"' fill='none' stroke='"+enc(m.lo)+"' stroke-width='"+(3+rnd()*4).toFixed(1)+"' opacity='.55'/><path d='"+d+"' fill='none' stroke='"+enc(m.hi)+"' stroke-width='"+(0.8+rnd()*0.8).toFixed(1)+"' opacity='.9' transform='translate(0 -1.5)'/>"; }
   return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'>"+paths+"</svg>";
 }
 function veinLayer(){
   /* OCCVM-L10 — the vein is grown, not drawn. Diffusion-limited aggregation on a 96x60 lattice, seeded
-     from the injected session seed so the layer is reproducible and the golden set can diff it. */
-  const seed=SESSION>>>0;
+     from the injected session seed so the layer is reproducible and the golden set can diff it. Colour
+     comes from the chosen mineral (OCCVM-L6, OCCVM-D6) rather than a fixed malachite tint. */
+  const seed=SESSION>>>0, mineral=(S.cfg&&S.cfg.mineral)||"amethyst";
+  const m=OCCVM_MINERALS[mineral]||OCCVM_MINERALS.amethyst;
   const cs=getComputedStyle(document.documentElement);
   const num=(k,d)=>{ const v=parseFloat(cs.getPropertyValue(k)); return isFinite(v)?v:d; };
   let svg;
   try{
     svg=OCCVM_VEINS.field({seed,w:96,h:60,viewW:1200,viewH:800,
       density:num("--vein-density",0.3), habit:num("--vein-habit",0.55),
-      lo:"#1c6a45", hi:"#3fbf7e", wide:4.5, fine:1.3}).svg;
+      lo:m.lo, hi:m.hi, wide:4.5, fine:1.3}).svg;
     svg=encodeURIComponent(svg);   /* raw # would end the data URI; %23 would leave href="%23v" dead */
-  }catch(e){ svg=encodeURIComponent(veinLayerLegacy(seed)); S.veinFallback=String(e&&e.message||e); }
+  }catch(e){ svg=encodeURIComponent(veinLayerLegacy(seed,mineral)); S.veinFallback=String(e&&e.message||e); }
   document.documentElement.style.setProperty("--vein","url(\"data:image/svg+xml;utf8,"+svg+"\")");
 }
 /* ---------------------------------------------------------------- swing watch (touch-35c estimator, ledger, journal) */
@@ -6816,15 +6864,21 @@ function cfgFmt(k,v){
   if(k==="minEdge") return v+"pt";
   return (+v).toFixed(k==="contract"?3:2);
 }
+function syncMineralUI(){
+  for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.setAttribute("aria-pressed",String(m===S.cfg.mineral)); }
+}
+function setMineral(m){ if(!OCCVM_MINERALS[m]) return; S.cfg.mineral=m; saveCfg(); applyMineral(); veinLayer(); syncMineralUI(); }
+for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.addEventListener("click",()=>setMineral(m)); }
 function syncCfgUI(){
   if($("c_kproxy")) $("c_kproxy").value=S.cfg.kproxy||"";
   for(const k of CFG_KEYS){ const el=$("c_"+k), vv=$("v_"+k); if(!el) continue;
     el.value=String(S.cfg[k]); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); }
+  syncMineralUI();
 }
 for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
   el.addEventListener("input",()=>{ S.cfg[k]=+el.value; S.cfg.touched=S.cfg.touched||{}; S.cfg.touched[k]=1; const vv=$("v_"+k); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); saveCfg(); });
 }
-$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
+$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy, mn=S.cfg.mineral; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.mineral=mn; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
@@ -6931,7 +6985,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907155616";
+const BUILD_STAMP="build-20260907161724";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -6940,7 +6994,7 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
   loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); shockLoad(); regimeLoad();
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
   kProbeSameOrigin(); initSections();
-  try{ veinLayer(); sunTick(); }catch(e){}
+  try{ applyMineral(); veinLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
@@ -6948,5 +7002,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907155616 -->
+<!-- build-20260907161724 -->
 </html>

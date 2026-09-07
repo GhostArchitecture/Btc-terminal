@@ -352,4 +352,53 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--ink2 survives — a distinct token, not part of the alias block", html4.includes("var(--ink2)"));
 }
 
+/* --- OCCVM-D6: the mineral is a real, chosen preference — and stays off outcome colour ------------
+ * L6 freezes three minerals with fixed accent/deep hex; this pins the frozen table, that the choice
+ * persists and drives the vein layer, and — the load-bearing negative — that malachite/ruby's fixed
+ * win/lose meaning (CLAUDE.md section 5: "the most dangerous possible bug in this tool") is never
+ * touched by a mineral switch.
+ */
+{
+  const L6 = {
+    amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c" },
+    malachite: { m: "#3fbf7e", mlo: "#1c6a45" },
+    ruby:      { m: "#e0475f", mlo: "#6b1a2e" },
+  };
+  const OCCVM_MINERALS = require("../occvm/minerals.js");
+  for (const k of Object.keys(L6)) {
+    T(`occvm/minerals.js ${k} matches SPINE.md L6`,
+      OCCVM_MINERALS[k] && OCCVM_MINERALS[k].m === L6[k].m && OCCVM_MINERALS[k].mlo === L6[k].mlo, k);
+  }
+
+  const h5 = load({ storage: { "btc.seed": "555" } });
+  h5.R("loadCfg()");
+  T("mineral defaults to amethyst", h5.R("S.cfg.mineral") === "amethyst");
+
+  h5.R("applyMineral()");
+  const rs5 = h5.ctx.document.documentElement.style;
+  T("--mineral resolves to the chosen mineral's accent", rs5.getPropertyValue("--mineral") === "#8d5cf0");
+  T("--mineral-lo resolves to its deep", rs5.getPropertyValue("--mineral-lo") === "#4a2a8c");
+
+  const veinAmethyst = vein(h5);
+  h5.R("setMineral('ruby')");
+  T("setMineral persists the choice", h5.R("S.cfg.mineral") === "ruby");
+  T("setMineral saves to btc.cfg", JSON.parse(h5.store["btc.cfg"]).mineral === "ruby");
+  T("--mineral follows the switch to ruby", rs5.getPropertyValue("--mineral") === "#e0475f");
+  const veinRuby = h5.ctx.document.documentElement.style["--vein"];
+  T("the vein layer's colour changes with the mineral, same seed", veinAmethyst !== veinRuby);
+
+  /* this harness's getComputedStyle is stubbed empty (test/lib/load.js) — it cannot see a plain :root{}
+     CSS declaration, only an inline override. So "untouched" here means never inline-set at all, which
+     is exactly the invariant: applyMineral()/setMineral() must never call .style.setProperty on these. */
+  T("switching mineral does not inline-set --malachite", rs5.getPropertyValue("--malachite") === "");
+  T("switching mineral does not inline-set --ruby", rs5.getPropertyValue("--ruby") === "");
+  T("switching mineral does not inline-set --up (outcome colour)", rs5.getPropertyValue("--up") === "");
+  T("switching mineral does not inline-set --down (outcome colour)", rs5.getPropertyValue("--down") === "");
+
+  const legacy5 = h5.R("veinLayerLegacy(555, 'ruby')");
+  T("the legacy fallback carries ruby's own vein tint, not a fixed malachite",
+    legacy5.includes("8f2740") && legacy5.includes("f5a3b3"));
+  T("the legacy fallback no longer hardcodes malachite hex", !legacy5.includes("1c6a45") && !legacy5.includes("3fbf7e"));
+}
+
 process.exit(done());
