@@ -568,6 +568,30 @@ anchor for substrate and vein alike. The table is by class, because the class is
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
 | **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
+### What the audit found once it stopped trusting the checkout
+
+**BTC wrote `--mineral`, `--mineral-lo`, `--vein-hi` and `--vein-lo` and read none of them.** Four tokens,
+declared and rewritten on every mineral change, consumed by nothing in that tool — `veinLayer()` took its
+tint straight from `occvm/minerals.js` while taking density and habit from CSS, an inconsistency 1.4
+introduced and nobody looked at again. Rhyme consumes all four, so with both clones on the machine the
+audit saw them consumed and said nothing. **CI checks out one repository, and that is where it surfaced.**
+
+Both halves are fixed. `veinLayer()` now reads `--vein-hi`/`--vein-lo` the same way it already read
+`--vein-density`/`--vein-habit`, so the tokens `applyMineral()` writes are the ones the layer is grown
+from; and BTC's mineral picker wears the mineral it is offering, which is what `--mineral`/`--mineral-lo`
+are for.
+
+**And the instrument had the golden recorder's own old defect, one level up.** Its `--check` gated on
+"dead tool-local token" using a census that depends on which clones happen to be present — the exact
+failure mode the recorder had before it was fixed earlier in this migration, where a measured token set
+narrowed silently in CI. Here it did the opposite and failed a green build. Class [A] (a token consumed
+and provided nowhere) is decidable from one repository and is still gated everywhere. Classes [B] and [C]
+are not, and the audit now says so and declines to judge rather than reporting a partial picture as a
+verdict. The harness assertion follows the same rule.
+
+*Recorded here rather than quietly patched, because "the audit found four dead tokens" and "the audit
+could not tell dead from consumed-next-door" are different sentences, and only the second one is true.*
+
 ### Aliases outstanding: none
 
 The deprecation policy (§0) requires a token slated for removal to survive one minor cycle as an alias
@@ -594,7 +618,7 @@ which is why this table's right-hand column so often reads "nothing".
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180450` | — |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907181552` | — |
 | **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180837` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 

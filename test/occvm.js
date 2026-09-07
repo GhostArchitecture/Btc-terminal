@@ -90,8 +90,19 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   /* the two classes the audit exists to make impossible */
   const orphans9 = rows9.filter(r => !provider(r));
   T("no token resolves to nothing", orphans9.length === 0, orphans9.map(r => r.token).join(" "));
+  /* "dead" is only decidable with every conforming tool in view: a token this tool declares and never
+     reads may be read next door. This assertion therefore states what it can see, and says so when it
+     cannot see everything — the same rule the instrument itself now follows, and for the same reason it
+     had to learn it (CI checks out one repository and this guard failed a green build over four tokens
+     Rhyme consumes). Asserting on a partial picture is the golden recorder's old defect wearing a
+     different hat. */
+  const whole9 = rows9.length && rows9[0].rhymePresent;
   const dead9 = rows9.filter(r => !r.spine && provider(r) && !isUsed(r));
-  T("no dead tool-local token survives 1.9", dead9.length === 0, dead9.map(r => r.token).join(" "));
+  if (whole9) T("no dead tool-local token survives 1.9", dead9.length === 0, dead9.map(r => r.token).join(" "));
+  else T("the audit refuses to judge dead tokens on a partial checkout",
+    require("child_process").spawnSync(process.execPath,
+      [path9.join(ROOT9, "occvm", "tools", "token-audit.js"), "--check"], { encoding: "utf8" })
+      .stdout.includes("AUDIT OK (partial)"));
 
   /* what 1.9 removed stays removed */
   const html9 = fs9.readFileSync(path9.join(ROOT9, "index.html"), "utf8");

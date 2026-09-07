@@ -353,6 +353,11 @@ table {
   button:active{transform:translateY(1px)}
   button:focus-visible{outline:2px solid var(--gilt-a);outline-offset:2px}
   button[aria-pressed="true"],button.sel{background:linear-gradient(180deg,var(--verdigris) 0%,var(--verdigris-lo) 100%);color:var(--bone)}
+  /* OCCVM-L6 — the mineral picker wears the mineral it is offering, which is what makes --mineral and
+     --mineral-lo load-bearing here rather than write-only. It is a swatch on a button whose label names
+     the colour, in Settings; it is not an outcome, and it touches nothing section 5 governs. */
+  #mn_amethyst[aria-pressed="true"],#mn_malachite[aria-pressed="true"],#mn_ruby[aria-pressed="true"]{
+    background:linear-gradient(180deg,var(--mineral) 0%,var(--mineral-lo) 100%);color:var(--bone)}
   button:disabled{opacity:.45;cursor:default;filter:none}
 
   /* binding: brushed raw bronze, verdigris in the seam */
@@ -2434,11 +2439,17 @@ function veinLayer(){
   const m=OCCVM_MINERALS[mineral]||OCCVM_MINERALS.amethyst;
   const cs=getComputedStyle(document.documentElement);
   const num=(k,d)=>{ const v=parseFloat(cs.getPropertyValue(k)); return isFinite(v)?v:d; };
+  /* the tint comes through the TOKENS applyMineral() wrote, not straight from the map — the same way
+     density and habit already arrive. Reading two vein parameters from CSS and two from JS was an
+     inconsistency 1.4 introduced, and it left --vein-hi/--vein-lo write-only in this tool: declared,
+     written every time the mineral changes, and read by nothing. 1.9's audit found it once the sibling
+     repository was out of the picture and Rhyme's consumption stopped masking it. */
+  const str=(k,d)=>{ const v=(cs.getPropertyValue(k)||"").trim(); return v||d; };
   let svg;
   try{
     svg=OCCVM_VEINS.field({seed,w:96,h:60,viewW:1200,viewH:800,
       density:num("--vein-density",0.3), habit:num("--vein-habit",0.55),
-      lo:m.lo, hi:m.hi, wide:4.5, fine:1.3}).svg;
+      lo:str("--vein-lo",m.lo), hi:str("--vein-hi",m.hi), wide:4.5, fine:1.3}).svg;
     svg=encodeURIComponent(svg);   /* raw # would end the data URI; %23 would leave href="%23v" dead */
   }catch(e){ svg=encodeURIComponent(veinLayerLegacy(seed,mineral)); S.veinFallback=String(e&&e.message||e); }
   document.documentElement.style.setProperty("--vein","url(\"data:image/svg+xml;utf8,"+svg+"\")");
@@ -7165,7 +7176,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907180450";
+const BUILD_STAMP="build-20260907181552";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7182,5 +7193,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907180450 -->
+<!-- build-20260907181552 -->
 </html>

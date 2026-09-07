@@ -31,6 +31,7 @@ function consumed(text) {
   add(U, text, /var\(\s*(--[a-zA-Z0-9-]+)/g);                       /* CSS reference */
   add(U, text, /getPropertyValue\(\s*["'](--[a-zA-Z0-9-]+)/g);      /* read back in JS */
   add(U, text, /\bnum\(\s*["'](--[a-zA-Z0-9-]+)/g);                 /* a tool's own numeric reader */
+  add(U, text, /\bstr\(\s*["'](--[a-zA-Z0-9-]+)/g);                 /* a tool's own string reader */
   return U;
 }
 /* every way a token is WRITTEN at runtime */
@@ -109,9 +110,31 @@ function main() {
   console.log(deadLocal.length ? deadLocal.map(r => "  " + r.token.padEnd(16) + provider(r)).join("\n") : "  none");
 
   if (argv.includes("--check")) {
+    /* [A] is decidable from one repository: a token consumed here and provided nowhere is broken here.
+     *
+     * [B] AND [C] ARE NOT, AND GATING THEM ON A PARTIAL CHECKOUT IS UNSOUND. A token this tool declares
+     * and never reads may be read by the other tool; with only one repository present the audit cannot
+     * tell "dead" from "consumed next door". CI checks out one repository, so this gate fired on four
+     * tokens that Rhyme consumes and failed a green build — which is precisely the defect the GOLDEN
+     * RECORDER had before it was fixed earlier in this same migration: a verdict that changed with which
+     * clones happened to be on the machine. Having repeated it one level up, the instrument now says so
+     * rather than judging what it cannot see.
+     *
+     * (The four tokens were nevertheless a real finding: BTC wrote --mineral, --mineral-lo, --vein-hi
+     * and --vein-lo and read none of them, which Rhyme's consumption had been masking. They are consumed
+     * in BTC now. The gate below is about what the instrument may CLAIM, not about that fix.) */
     if (orphans.length) { console.error(`\nAUDIT FAIL: ${orphans.length} token(s) resolve to nothing.`); process.exit(1); }
+    const whole = rows.length && rows[0].rhymePresent;
+    if (!whole) {
+      console.log("\nAUDIT OK (partial): nothing resolves to nothing.");
+      console.log("  [B] and [C] are NOT gated here — the sibling repository is absent, so a token this");
+      console.log("  tool never reads may simply be read next door. Run it where both clones are present");
+      console.log("  to judge those. Reporting a partial picture as a verdict is how the golden recorder");
+      console.log("  went wrong before it was fixed; this instrument will not repeat it.");
+      return;
+    }
     if (deadLocal.length) { console.error(`\nAUDIT FAIL: ${deadLocal.length} dead tool-local token(s). 1.9 removes these.`); process.exit(1); }
-    console.log("\nAUDIT OK: nothing resolves to nothing, no dead tool-local token.");
+    console.log("\nAUDIT OK: nothing resolves to nothing, no dead tool-local token, both tools seen.");
   }
 }
 if (require.main === module) main();
