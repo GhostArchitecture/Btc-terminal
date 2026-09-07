@@ -247,4 +247,41 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     !/transition-duration: 0 !important/.test(spine) && /\.01ms/.test(spine));
 }
 
+/* --- OCCVM-L10 / roadmap 1.1: veins are grown, not drawn -------------------------------------------- */
+{
+  const h = load({ storage: { "btc.seed": "20260906" } });
+  h.R("veinLayer()");
+  const vein = decodeURIComponent(h.ctx.document.documentElement.style["--vein"] || "");
+
+  T("the vein layer is produced", vein.length > 500);
+  T("it is a data URI, not bare markup", /url\("data:image\/svg\+xml/.test(vein), vein.slice(0, 40));
+
+  /* The whole point of the release: no curve is fitted over the growth. A path built from a walk uses
+     moveto and lineto and nothing else; C, S, Q, T and A are the bezier arriving back through the
+     renderer. Checked on the path data alone, since the surrounding markup is full of letters. */
+  const dm = vein.match(/<path id='v' d='([^']+)'/);
+  T("the aggregate is traced as straight segments", !!dm && /^[ML0-9 .,-]+$/.test(dm[1]),
+    dm ? [...new Set(dm[1].replace(/[0-9 .,-]/g, ""))].join("") : "no path");
+  T("no bezier command survives anywhere in the layer", !/[CSQTA]\d|[CSQTA] ?-?\d/.test(dm ? dm[1] : ""));
+
+  /* seeded and pure — the golden set and the injected seed both depend on it */
+  const again = load({ storage: { "btc.seed": "20260906" } });
+  again.R("veinLayer()");
+  T("the same seed grows the same aggregate",
+    again.ctx.document.documentElement.style["--vein"] === h.ctx.document.documentElement.style["--vein"]);
+
+  const other = load({ storage: { "btc.seed": "111" } });
+  other.R("veinLayer()");
+  T("a different seed grows a different aggregate",
+    other.ctx.document.documentElement.style["--vein"] !== h.ctx.document.documentElement.style["--vein"]);
+
+  /* the fallback OCCVM-L10 requires: growth failing must not leave the surface bare */
+  const fs2 = require("fs"), path2 = require("path");
+  const html2 = fs2.readFileSync(path2.join(__dirname, "..", "index.html"), "utf8");
+  T("the previous generator is kept as the fallback", /function veinLayerLegacy\(/.test(html2));
+  T("growth is guarded and falls back", /catch\(e\)\{ svg=encodeURIComponent\(veinLayerLegacy/.test(html2));
+  T("the generator reads the spine's tokens",
+    /--vein-density/.test(html2) && /--vein-habit/.test(html2));
+}
+
 process.exit(done());

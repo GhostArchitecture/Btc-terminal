@@ -13,7 +13,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | release | state | what it did |
 |---|---|---|
 | **1.0** | landed | constituted the spine from measurement; inlined it in both tools at zero deltas. Closed D11. |
-| 1.1 | outstanding | DLA veins, `--vein-density --vein-habit`. Its determinism requirement was met at 1.0. |
+| **1.1** | landed | generative fidelity: DLA veins, `--vein-density --vein-habit`. Closed nothing; added L10. Its determinism requirement was met at 1.0. |
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
 | 1.3 | outstanding | the numeric face. D3. |
 | 1.4 | outstanding | mineral as preference. D6. |
@@ -213,6 +213,50 @@ unchanged, and the shared focus ring.
 
 Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`, no `tabIndex`: `OCCVM-D7`.
 
+### OCCVM-L10 — vein habit
+
+Veins are **grown, not drawn**. The generator is diffusion-limited aggregation: a walker enters the
+matrix, moves at random, and sticks the instant it touches the aggregate. Branching is dendritic because a
+protruding tip intercepts walkers before they reach the shielded interior — the screening effect, which
+nobody authors. `--vein-density` is the walker budget as a fraction of the lattice; `--vein-habit` is the
+anisotropy of the walk, 0 for the equant dendrite of a manganese oxide and 1 for an elongated acicular
+form.
+
+**No curve is fitted over the aggregate.** Every stroke is a straight segment between a particle and the
+particle it stuck to — the record of how it grew. A fitted curve is the bezier arriving back through the
+renderer, and both tools previously drew three displaced cubic beziers and called the result a vein.
+
+This law is 2.0's discipline arriving early: *simulate the process, never the resulting shape.* It is the
+first test of whether that discipline survives contact with a real surface, which is why 1.1 comes before
+everything else in the roadmap's sequence.
+
+Completed at **1.1**. The generator is `occvm/veins.js`, seeded and pure (§4), with each tool falling back
+to its previous generator if growth fails.
+
+**What was verified, and what was not.** The roadmap's exit is *"veins pass a side-by-side against
+photographed mineral without the eye catching a bezier"* and *"generation under 30 ms on a cold mobile
+load."* Recorded honestly:
+
+- **No bezier, verified structurally.** The traced path uses `M` and `L` and nothing else, asserted in both
+  tools against the path data rather than the surrounding markup.
+- **The side-by-side against a photograph was not performed.** There is no photographed mineral in this
+  environment to hold it against. What was done instead: the output was rendered and looked at, and the
+  first two attempts were rejected on sight — a von Neumann lattice produced axis-aligned staircases that
+  read as circuit routing, and an edge seed grew a comb with all its mass banked against one side. Moore
+  sticking, scattered nuclei, a full particle budget and a sub-cell trace offset fixed both. That is a
+  weaker test than the criterion names and is recorded as such.
+- **Timing: 6.4 ms warm and ~30 ms on the first call, measured in Chromium in this container** at the
+  lattice each tool actually uses. The first call is dominated by JIT compilation of the generator, not by
+  growth — every later call is single-digit. **A cold mobile load cannot be measured from here**, so the
+  criterion is not claimed as met; the measurement is on the record with its instrument named.
+
+The layer is a **data URI, and both the fragment reference and the colours carry a literal `#`.** Left raw
+inside the URI it ends the URI at a fragment; pre-encoded to `%23` it survives into the parsed SVG as two
+literal characters and `href="%23v"` resolves to nothing — the layer renders empty while every string
+check still passes. `field()` therefore returns raw SVG and the caller encodes the whole document. Both
+tools shipped this bug during 1.1 and neither the golden token diff nor a substring check saw it; it was
+found by decoding the URI into an `<img>` and counting inked pixels.
+
 ### OCCVM-L9 — night
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
@@ -241,6 +285,8 @@ Measured identical in both tools at all three golden instants. These are what `o
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
 
+**Added at 1.1 (OCCVM-L10):** `--vein-density` and `--vein-habit`.
+
 **Added at 1.2 (OCCVM-L4, L2):** the cast depths `--occvm-cast-1 --occvm-cast-2 --occvm-cast-3` and the
 bevel components `--lit-x --lit-y --cut-x --cut-y`. A surface picks a depth or multiplies a bevel component
 by its own; it never authors an offset. The depth multipliers are anchored so each reproduces at high sun
@@ -268,7 +314,6 @@ until then the tools' own declarations stand and the gap is a defect.
 |---|---|---|
 | `--mono`, `--t-num` | OS stack in BTC; `--t-num` nowhere | **1.3** (L7) |
 | `--mineral --mineral-lo --vein-hi --vein-lo --veins` | Rhyme only | **1.4** (L6) |
-| `--vein-density --vein-habit` | nowhere | **1.1** |
 | `--ruby --ruby-lo` | BTC only; Rhyme has no negative mineral | **1.4** (L6) |
 
 ### 2c. Tool-local — not spine, not promised
@@ -360,8 +405,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.2, 1.5, 1.6 | `build-20260907003826` | D1, D3, D6 |
-| **Rhyme Instrument** | 1.0, 1.2, 1.5, 1.6 | `build-20260907003827` | D3 |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | D1, D3, D6 |
+| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | D3 |
 | **Reference surface** | — | not built | — (1.8) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**

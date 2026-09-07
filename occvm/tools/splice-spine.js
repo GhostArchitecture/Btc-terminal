@@ -34,9 +34,11 @@ const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
 const PARTS = IS_RHYME ? [
   { name: "spine.css",  target: path.join("tome-src", "20_style.css"), anchor: null },
   { name: "sundial.js", target: path.join("tome-src", "10_engine.js"), anchor: null },
+  { name: "veins.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
   { name: "spine.css",  target: "index.html", anchor: "<style>" },
   { name: "sundial.js", target: "index.html", anchor: "<script>" },
+  { name: "veins.js",   target: "index.html", anchor: "<script>" },
 ];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);

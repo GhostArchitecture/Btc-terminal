@@ -64,6 +64,13 @@
   --lit-y: calc(var(--ly, 1) * 1px);
   --cut-x: calc(var(--lx, 0) * -1px);
   --cut-y: calc(var(--ly, 1) * -1px);
+
+  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
+     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
+     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
+     acquiring a second generator. */
+  --vein-density: .3;
+  --vein-habit: .55;
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------

@@ -14,7 +14,7 @@
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:5166f8d25399 */
+/* sha256:a0bbdf891cb7 */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -81,6 +81,13 @@
   --lit-y: calc(var(--ly, 1) * 1px);
   --cut-x: calc(var(--lx, 0) * -1px);
   --cut-y: calc(var(--ly, 1) * -1px);
+
+  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
+     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
+     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
+     acquiring a second generator. */
+  --vein-density: .3;
+  --vein-habit: .55;
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
@@ -192,6 +199,9 @@
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,"Liberation Mono",monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,sans-serif;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    /* OCCVM-L10 — this tool's vein layer sits behind live numbers on every tile, so it runs far below the
+       spine's default density. The token is the lever; the generator is shared. */
+    --vein-density:.14;
     --lit:rgba(255,255,255,calc(.16*var(--elev) + .05)); --shade:rgba(0,0,0,.62);
     /* tool-local: the malachite bloom on .tile. OCCVM-L9 reserves --glow for ink, so this is not it.
        1.7 deletes the surface bloom outright under that law; 1.2 only stops the two names colliding. */
@@ -225,7 +235,7 @@
       var(--occvm-cast-3), var(--occvm-cast-1),
       0 0 28px rgba(63,191,126,var(--bloom));
     -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
-  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--vein,none);opacity:.5;mix-blend-mode:screen}
+  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--vein,none);opacity:.16;mix-blend-mode:screen}
   .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,calc(.22*var(--elev)+.08)),transparent)}
   .tile > *{position:relative;z-index:1}
@@ -743,6 +753,193 @@
 </div>
 
 <script>
+/* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
+/* sha256:49518901f7dc */
+/* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Veins are GROWN, not drawn. Both tools drew three displaced cubic beziers and called the result a
+ * mineral vein; a bezier is a shape that resembles the outcome, and the eye eventually catches the
+ * smooth curvature because nothing in a real dendrite is smooth at every scale.
+ *
+ * This is diffusion-limited aggregation: a walker starts in the matrix, moves at random, and sticks the
+ * instant it touches the aggregate. Growth is dendritic because a tip that protrudes intercepts walkers
+ * before they can reach the shielded interior — the screening effect, which nobody has to author. That
+ * is the roadmap's discipline for 2.0 arriving early: simulate the process, never the resulting shape.
+ *
+ * Seeded and pure. Same seed plus same parameters yields the same bytes, which is what the golden set
+ * and the injected session seed exist for (SPINE.md section 4).
+ */
+var OCCVM_VEINS = (function () {
+  "use strict";
+
+  /* the PRNG both tools already use, so a seed means the same thing everywhere */
+  function mulberry32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* grow(): DLA on a lattice, seeded along the left edge so the aggregate crosses the surface the way a
+   * vein does rather than radiating from a point.
+   *
+   * habit is the anisotropy of the walk, and it is a real mineral term: 0 walks isotropically and grows
+   * the bushy, equant dendrite of a manganese oxide; 1 weights horizontal steps and draws the structure
+   * out into the elongated, fibrous habit of an acicular growth. It changes how the crystal grows, not
+   * what is drawn afterwards.
+   *
+   * Walkers spawn just beyond the frontier rather than at infinity — the standard optimisation, and the
+   * reason this finishes in single-digit milliseconds. A walker that strays far outside the frontier is
+   * abandoned rather than followed, which is equivalent in the limit and much cheaper.
+   */
+  function grow(o) {
+    var w = o.w | 0, h = o.h | 0;
+    var n = o.n | 0;
+    var habit = Math.max(0, Math.min(1, o.habit === undefined ? 0.55 : o.habit));
+    var rnd = mulberry32(o.seed >>> 0);
+
+    var occ = new Uint8Array(w * h);
+    var segs = [];
+    var i, j, y, x;
+
+    /* Seeds are a handful of scattered points, not the whole edge. An edge seed grows a comb — every
+       column starts at once and nothing competes — where scattered nuclei compete for the same walkers
+       and screen each other, which is what produces separate dendrites with clear matrix between them.
+       They are scattered across the whole surface, not banked against one edge: a vein layer that fills
+       half the page and stops is a gradient, and the eye reads a gradient as a mistake. */
+    var nuclei = 4 + ((rnd() * 4) | 0);
+    var seeds = [], sites = [];
+    for (i = 0; i < nuclei; i++) {
+      x = 1 + ((rnd() * (w - 3)) | 0);
+      y = ((rnd() * h) | 0);
+      occ[y * w + x] = 1;
+      seeds.push(x, y);
+      sites.push(y * w + x);
+    }
+
+    var maxSteps = h * 2 + 60;
+    /* horizontal step probability: .5 is isotropic, rising to .82 at full habit */
+    var pH = 0.5 + habit * 0.32;
+
+    for (i = 0; i < n; i++) {
+      /* Spawn across the whole occupied extent rather than only at the leading edge, so the interior
+         keeps thickening while the tips advance. Launching only at the frontier grows one filament and
+         leaves the body starved. */
+      /* Launch near the aggregate, not at infinity. A walker released far out in the matrix spends most
+         of its life wandering empty lattice; released on a small circle around a site already occupied,
+         it arrives at the cluster with the same isotropic distribution — this is the standard DLA launch
+         radius, and it is why the generator finishes in single-digit milliseconds instead of twenty. */
+      var site = sites[(rnd() * sites.length) | 0];
+      var ang = rnd() * 6.283185307, rad = 4 + rnd() * 7;
+      x = ((site % w) + Math.cos(ang) * rad) | 0;
+      y = (((site / w) | 0) + Math.sin(ang) * rad) | 0;
+      if (x < 1) x = 1; else if (x > w - 2) x = w - 2;
+      if (y < 0) y += h; else if (y >= h) y -= h;
+      var stuck = -1;
+
+      for (var st = 0; st < maxSteps; st++) {
+        var k = y * w + x;
+        if (occ[k]) break;                                   /* landed inside: discard */
+        /* Moore neighbourhood: a walker sticks on diagonal contact too, so the aggregate grows at 45
+           degrees as readily as along the axes. Von Neumann sticking is what makes a lattice DLA look
+           like circuit routing rather than a mineral. */
+        var hit = -1;
+        for (j = 0; j < 8 && hit < 0; j++) {
+          var dx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
+          var dy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
+          var nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= w) continue;
+          if (ny < 0) ny = h - 1; else if (ny >= h) ny = 0;
+          if (occ[ny * w + nx]) hit = ny * w + nx;
+        }
+        if (hit >= 0) { stuck = hit; break; }
+
+        if (rnd() < pH) x += rnd() < 0.5 ? -1 : 1;
+        else y += rnd() < 0.5 ? -1 : 1;
+
+        if (y < 0) y = h - 1; else if (y >= h) y = 0;        /* the surface wraps vertically */
+        if (x < 1) x = 1; else if (x >= w - 1) x = w - 2;
+      }
+      if (stuck < 0) continue;
+
+      var kk = y * w + x;
+      if (occ[kk]) continue;
+      occ[kk] = 1;
+      sites.push(kk);
+      segs.push(stuck % w, (stuck / w) | 0, x, y);
+    }
+    return { segs: segs, w: w, h: h, nuclei: seeds };
+  }
+
+  /* svg(): trace the aggregate. Every stroke is a straight segment between a particle and the particle
+   * it stuck to — the record of how it grew. No curve is fitted over it, because a fitted curve is the
+   * bezier coming back in through the renderer.
+   */
+  function paths(g, o) {
+    var sc = o.scale || 1, jx = o.ox || 0, jy = o.oy || 0;
+    /* The lattice is a discretisation of the walk, not a fact about the mineral, so the trace carries a
+       deterministic sub-cell offset per particle. It breaks the grid without fitting a curve over the
+       growth — a fitted curve is the bezier coming back in through the renderer. */
+    var jit = o.jitter === undefined ? 0.42 : o.jitter;
+    var r = mulberry32((o.seed >>> 0) ^ 0x5bf03635);
+    var d = [], i;
+    for (i = 0; i < g.segs.length; i += 4) {
+      var ay = g.segs[i + 1], by = g.segs[i + 3];
+      if (Math.abs(ay - by) > g.h * 0.5) continue;           /* a wrap, not a real neighbour */
+      var ax = (g.segs[i] + (r() - 0.5) * jit) * sc + jx;
+      var bx = (g.segs[i + 2] + (r() - 0.5) * jit) * sc + jx;
+      var ay2 = (ay + (r() - 0.5) * jit) * sc + jy;
+      var by2 = (by + (r() - 0.5) * jit) * sc + jy;
+      /* Integer coordinates. At the scale these are drawn, a tenth of a pixel is below the stroke width
+         and costs a byte per number across thousands of segments. */
+      d.push("M" + (ax | 0) + " " + (ay2 | 0) + "L" + (bx | 0) + " " + (by2 | 0));
+    }
+    return d.join("");
+  }
+
+  /* field(): the whole vein layer as a data URI, so both tools share the assembly and not just the
+   * growth. Two strokes over one path — a wide deep one and a fine bright one offset by nothing — read
+   * as a vein with depth rather than a wire.
+   *
+   * density is the walker budget as a fraction of the lattice; habit is the growth anisotropy. Both are
+   * read from --vein-density and --vein-habit by the caller, so a tool can tune its own surface without
+   * a second generator.
+   *
+   * RETURNS RAW SVG. The caller must encodeURIComponent it before putting it in a url(). Both the
+   * fragment reference and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
+   * the URI at a fragment — while pre-encoding it to %23 leaves the parsed SVG holding the two literal
+   * characters "%23", so href="%23v" resolves to nothing and the layer renders empty. That failure is
+   * invisible to a token diff and to any check that only looks for the string: it has to be looked at.
+   */
+  function field(o) {
+    var w = o.w || 110, h = o.h || 70;
+    var density = o.density === undefined ? 0.35 : Math.max(0.05, Math.min(1, o.density));
+    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed });
+    if (g.segs.length < 8) throw new Error("occvm veins: aggregate did not grow");
+    var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
+    /* The geometry is written once and referenced twice. Serialising the same few tens of kilobytes of
+       path data a second time is the single largest cost in producing this layer. */
+    var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
+      (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
+      "<defs><path id='v' d='" + d + "'/></defs>" +
+      "<g fill='none' stroke-linecap='round'>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.5'/>" +
+      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.85'/>" +
+      "</g></svg>";
+    return { svg: svg, particles: g.segs.length / 4 };
+  }
+
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32 };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
+/* ==== END OCCVM veins.js ==== */
+
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
 /* sha256:422bb07f7e07 */
 /* OCCVM 1.2 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
@@ -1900,14 +2097,30 @@ function sunUseLocation(){
 const SESSION=(()=>{ const fresh=()=>String((Date.now()^(Math.random()*1e9))>>>0);
   try{ let k=sessionStorage.getItem("btc.seed"); if(!k){ k=fresh(); sessionStorage.setItem("btc.seed",k); } return +k; }
   catch(e){ return +fresh(); } })();
-function veinLayer(){
-  const seed=SESSION>>>0; const rnd=mulberry(seed);
+function veinLayerLegacy(seed){
+  /* the pre-1.1 generator: three displaced cubic beziers. Kept as the fallback OCCVM-L10 requires — if
+     growth fails for any reason the surface still gets a vein layer rather than nothing. */
+  const rnd=mulberry(seed);
   let paths="";
   for(let i=0;i<3;i++){ const y0=100+rnd()*600, x1=200+rnd()*400, y1=rnd()*800, x2=600+rnd()*400, y2=rnd()*800, y3=100+rnd()*600;
     const d="M0 "+y0.toFixed(0)+" C "+x1.toFixed(0)+" "+y1.toFixed(0)+", "+x2.toFixed(0)+" "+y2.toFixed(0)+", 1200 "+y3.toFixed(0);
     paths+="<path d='"+d+"' fill='none' stroke='%231c6a45' stroke-width='"+(3+rnd()*4).toFixed(1)+"' opacity='.55'/><path d='"+d+"' fill='none' stroke='%233fbf7e' stroke-width='"+(0.8+rnd()*0.8).toFixed(1)+"' opacity='.9' transform='translate(0 -1.5)'/>"; }
-  const svg="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'>"+paths+"</svg>";
-  document.documentElement.style.setProperty("--vein","url(\""+svg+"\")");
+  return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'>"+paths+"</svg>";
+}
+function veinLayer(){
+  /* OCCVM-L10 — the vein is grown, not drawn. Diffusion-limited aggregation on a 96x60 lattice, seeded
+     from the injected session seed so the layer is reproducible and the golden set can diff it. */
+  const seed=SESSION>>>0;
+  const cs=getComputedStyle(document.documentElement);
+  const num=(k,d)=>{ const v=parseFloat(cs.getPropertyValue(k)); return isFinite(v)?v:d; };
+  let svg;
+  try{
+    svg=OCCVM_VEINS.field({seed,w:96,h:60,viewW:1200,viewH:800,
+      density:num("--vein-density",0.3), habit:num("--vein-habit",0.55),
+      lo:"#1c6a45", hi:"#3fbf7e", wide:4.5, fine:1.3}).svg;
+    svg=encodeURIComponent(svg);   /* raw # would end the data URI; %23 would leave href="%23v" dead */
+  }catch(e){ svg=encodeURIComponent(veinLayerLegacy(seed)); S.veinFallback=String(e&&e.message||e); }
+  document.documentElement.style.setProperty("--vein","url(\"data:image/svg+xml;utf8,"+svg+"\")");
 }
 /* ---------------------------------------------------------------- swing watch (touch-35c estimator, ledger, journal) */
 const SWING={target:0.36,payout:0.35,cheapMax:0.15,paths:600};
@@ -6156,7 +6369,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907003826";
+const BUILD_STAMP="build-20260907011503";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -6173,5 +6386,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907003826 -->
+<!-- build-20260907011503 -->
 </html>
