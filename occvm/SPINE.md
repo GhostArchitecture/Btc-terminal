@@ -527,6 +527,42 @@ same disposition 1.1b gave the twin misfit, and for the same reason:* a physical
 produces nothing measurable in the regime these tools are actually in is a finding, and raising a
 coefficient until it produced a visible result would be fudging a derived number to reach a wanted picture.
 
+**P4 — unit-cell spacing: derived, measured, and not wired.** The three cell edges normalised to the
+shortest are a spacing triple with a reason behind them where an 8 px grid has none:
+**a 1.0000 : c 1.1573 : b 1.6069**. Two measurements kill it, and the second is the one that matters.
+
+**It does not describe the tools.** Censused over **213 real padding/margin/gap declarations** across both
+tools: 19 distinct pixel values, weighted mean error against the cell ladder **10.79%**, and a plain 4 px
+grid covers more of them (42.3% within 6%, against 32.4%). Adopting the cell scale would move 213
+declarations by ~11% — a redesign wearing a derivation's coat, and the exact opposite of what the substrate
+did at 2.0, where the material *reproduced* the authored ramp at a derived contrast.
+
+**It does not survive to the screen.** Spacing quantises to whole pixels, and **84.5% of both tools'
+spacing is under 12 px**, where rounding destroys the ratio:
+
+| base | renders | rendered ratio |
+|---|---|---|
+| 2 px | 2 / 2 / 3 | **two of the three steps collapse** |
+| 4 px | 4 / 5 / 6 | 1.000 : 1.250 : 1.500 |
+| 6 px | 6 / 7 / 10 | 1.000 : 1.167 : 1.667 |
+| 8 px | 8 / 9 / 13 | 1.000 : 1.125 : 1.625 |
+
+The rendered c-step wanders **1.125–1.250** across the bases these tools use — a function of the base, not
+of the material — and straddles the cell's own 1.157 without ever equalling it. The derivation is present
+in the source and absent from the render, which is a value computed and consumed by nothing wearing a third
+disguise.
+
+**And the ratio is not distinguishable from the one it would replace.** `b/a = 1.6069` against the golden
+ratio 1.6180 differs by **0.04 px at step 1**, 0.35 px at step 3, and does not reach a whole pixel until
+step 5 — past the largest spacing either tool uses. Over the range where all the spacing actually lives
+they are the same number. What the cell buys is **provenance, not appearance**. That is worth having; it is
+not worth 213 moved declarations.
+
+**The guard ships even though the scale does not, and precisely because they are indistinguishable.**
+Somebody will eventually "correct" 1.6069 to 1.6180 on the grounds that it looks like a typo for φ. It is
+not a typo. It is 7.97/4.96, and the whole point of L12 is that a value has a reason. The suite fails on a
+golden-ratio constant appearing in the spine, and fails on a spacing token shipping while P4 is unexpressed.
+
 ### OCCVM-L9 — night
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.

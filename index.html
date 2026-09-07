@@ -863,7 +863,7 @@ table {
 
 <script>
 /* ==== OCCVM SPINE material.js — spliced from occvm/material.js. do not edit. ==== */
-/* sha256:299c44dee151 */
+/* sha256:a56eeb089757 */
 /* OCCVM 2.0 — the material model (OCCVM-L12). One definition, shared by every conforming tool.
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1091,6 +1091,54 @@ var OCCVM_MATERIAL = (function () {
    * because it is right and cheap; the wiring waits for a second axis to exist. `test/occvm.js` holds a
    * SELF-RETIRING guard: it asserts the translateX count is still zero, so the day somebody animates a
    * horizontal motion the suite fails and says P1 has become expressible.                              */
+  /* P4 — unit-cell spacing. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
+   *
+   * The three cell edges, normalised to the shortest, are a spacing triple with a reason behind it where
+   * an 8px grid has none:  a 1.0000 : c 1.1573 : b 1.6069.
+   *
+   * TWO MEASUREMENTS KILL IT, and the second is the one that matters.
+   *
+   * 1. IT DOES NOT DESCRIBE THE TOOLS. Censused over 213 real padding/margin/gap declarations across both
+   *    tools: 19 distinct pixel values, weighted mean error against the cell ladder 10.79%. A plain 4px
+   *    grid covers more of them (42.3% within 6%, against 32.4%). Adopting the cell scale would therefore
+   *    MOVE 213 declarations by ~11% — a redesign wearing a derivation's coat, and the opposite of what
+   *    the substrate did at 2.0, where the material REPRODUCED the authored ramp at a derived contrast.
+   *
+   * 2. IT DOES NOT SURVIVE TO THE SCREEN. Spacing quantises to whole pixels, and 84.5% of both tools'
+   *    spacing is under 12px, where rounding destroys the ratio outright:
+   *
+   *        base 4  -> 4 / 5 / 6    renders 1.000 : 1.250 : 1.500
+   *        base 6  -> 6 / 7 / 10   renders 1.000 : 1.167 : 1.667
+   *        base 8  -> 8 / 9 / 13   renders 1.000 : 1.125 : 1.625
+   *        base 2  -> 2 / 2 / 3    two of the three steps COLLAPSE
+   *
+   *    The rendered ratios wander by ±8% and are never the cell's. The derivation is present in the
+   *    source and absent from the render, which is a value computed and consumed by nothing wearing a
+   *    third disguise.
+   *
+   * AND THE RATIO IS NOT DISTINGUISHABLE FROM THE ONE IT REPLACES. b/a = 1.6069 against the golden ratio
+   * 1.6180 differs by 0.04px at step 1, 0.35px at step 3, and only reaches a whole pixel at step 5 —
+   * past the largest spacing either tool uses. Over the range where all the spacing actually lives they
+   * are the same number. What the cell buys is provenance, not appearance, and that is worth having; it
+   * is not worth 213 moved declarations.
+   *
+   * THE GUARD SHIPS EVEN THOUGH THE SCALE DOES NOT, and precisely because the two ratios are
+   * indistinguishable: somebody will eventually "correct" 1.6069 to 1.6180 on the grounds that it looks
+   * like a typo for the golden ratio. It is not. It is 7.97/4.96, and the whole point of L12 is that a
+   * value has a reason. `test/occvm.js` fails on the golden ratio appearing as a spacing constant. */
+  function spacing(m) {
+    var c = m.cell;
+    return { a: 1, c: c.c / c.a, b: c.b / c.a };
+  }
+  var GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;   /* named ONLY so a guard can reject it, never to be used */
+  var P4_UNEXPRESSED = {
+    reason: "the cell ratio does not survive integer-pixel quantisation at the sizes 84.5% of spacing uses",
+    declarationsCensused: 213,
+    distinctValues: 19,
+    meanErrorVsCellLadder: 0.1079,
+    censusedAt: "2.1"
+  };
+
   var P1_UNEXPRESSED = {
     reason: "no animated horizontal motion exists in either tool; anisotropy needs two directions in one view",
     translateXSites: 0,
@@ -1103,7 +1151,8 @@ var OCCVM_MATERIAL = (function () {
     fresnel: fresnel, faces: faces, substrate: substrate, authoredContrast: authoredContrast,
     birefringence: birefringence,
     edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
-    motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED
+    motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED,
+    spacing: spacing, GOLDEN_RATIO: GOLDEN_RATIO, P4_UNEXPRESSED: P4_UNEXPRESSED
   };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_MATERIAL;
@@ -7652,7 +7701,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907193202";
+const BUILD_STAMP="build-20260907193808";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7669,5 +7718,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907193202 -->
+<!-- build-20260907193808 -->
 </html>

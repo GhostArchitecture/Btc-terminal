@@ -911,10 +911,52 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
         !fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8").includes(tok));
   }
 
+  /* ── P4 — unit-cell spacing: derived, measured, and not wired ───────────────────────────────── */
+  {
+    const sp = MAT.spacing(A);
+    T("the spacing triple is the cell normalised to its shortest edge",
+      sp.a === 1 && Math.abs(sp.c - 1.1573) < 1e-3 && Math.abs(sp.b - 1.6069) < 1e-3,
+      [sp.a, sp.c, sp.b].map(v => v.toFixed(4)).join(" : "));
+
+    /* THE QUANTISATION MEASUREMENT that decides it: spacing renders in whole pixels, and at the sizes
+       84.5% of both tools' spacing uses, rounding replaces the cell ratio with something else entirely. */
+    const rendered = base => [base, Math.round(base * sp.c), Math.round(base * sp.b)];
+    T("at base 2 two of the three steps collapse to the same pixel", new Set(rendered(2)).size < 3, rendered(2).join("/"));
+    /* The claim is the WANDER, not that every base is far off. At base 6 the rounding happens to land
+       within 0.8% of the cell's ratio; at base 4 it is 8% out. That is exactly the problem — the rendered
+       ratio is a function of the base, not of the material, so the cell is not what reaches the screen. */
+    const bases = [4, 6, 8, 10, 12, 16];
+    const steps = bases.map(b => { const r = rendered(b); return r[1] / r[0]; });
+    const lo = Math.min(...steps), hi = Math.max(...steps);
+    T("the rendered c-step is a function of the base, not the material: it wanders 1.125-1.250",
+      Math.abs(lo - 1.125) < 1e-3 && Math.abs(hi - 1.250) < 1e-3, steps.map(v => v.toFixed(3)).join(" "));
+    T("that wander straddles the cell's own 1.157, so no base renders it reliably",
+      lo < sp.c && sp.c < hi && (hi - lo) > 0.1, `${lo.toFixed(3)} < ${sp.c.toFixed(4)} < ${hi.toFixed(3)}`);
+    T("no base in the tools' range renders the cell's c-step exactly",
+      steps.every(v => Math.abs(v - sp.c) > 1e-6));
+
+    /* THE GOLDEN-RATIO GUARD, which ships even though the scale does not. 1.6069 and 1.6180 differ by
+       0.04px at step 1 and do not reach a whole pixel until step 5, past the largest spacing either tool
+       uses — so they are indistinguishable on screen and somebody will eventually "correct" one to the
+       other. It is not a typo for phi; it is 7.97/4.96. */
+    T("the golden ratio is named only to be rejected, and differs from the cell's by 0.0112",
+      Math.abs(MAT.GOLDEN_RATIO - (1 + Math.sqrt(5)) / 2) < 1e-12 &&
+      Math.abs(MAT.GOLDEN_RATIO - sp.b) > 0.01 && Math.abs(MAT.GOLDEN_RATIO - sp.b) < 0.02,
+      (MAT.GOLDEN_RATIO - sp.b).toFixed(4));
+    for (const f of ["occvm/spine.css", "occvm/material.js", "occvm/veins.js"]) {
+      const body = fs20.readFileSync(path20.join(__dirname, "..", f), "utf8")
+        .split("\n").filter(l => !/GOLDEN_RATIO|golden ratio|1\.6180 differs|"correct"/.test(l)).join("\n");
+      T(`${f} carries no golden-ratio constant`, !/1\.618/.test(body),
+        "phi is not the cell's ratio — 7.97/4.96 = 1.6069 and it has a reason");
+    }
+    T("P4 ships no spacing token while it is unexpressed",
+      !/--s[abc]\b|--space-[abc]\b/.test(fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8")));
+  }
+
   /* SPINE.md is the law: the material's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
-    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93", "0.7584"])
+    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93", "0.7584", "1.6069"])
       T(`SPINE.md records the material constant ${v}`, spine.includes(v));
     T("SPINE.md declares OCCVM-L12", /OCCVM-L12/.test(spine));
   }
