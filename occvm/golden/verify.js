@@ -19,6 +19,10 @@ const HERE = __dirname;
 
 function flat(manifest) {
   const out = {};
+  /* Pin the measured key set itself. If the list of tokens a recording queries can shrink, the diff
+     silently narrows and stops testing what it dropped — which is exactly how eleven live sundial values
+     read <absent> in CI for five releases while every local run said PASS. */
+  out["@token_names"] = (manifest.token_names || []).join(",");
   for (const [c, body] of Object.entries(manifest.cases || {})) {
     for (const [k, v] of Object.entries(body.tokens || {})) out[`${c}/${k}`] = v;
     out[`${c}/@page_errors`] = JSON.stringify(body.page_errors || []);
@@ -48,6 +52,9 @@ async function main() {
     if (!deltas.length) { console.log(`  ${tool}: ${keys.length} values match the golden set`); continue; }
     failures += deltas.length;
     console.log(`  ${tool}: ${deltas.length} of ${keys.length} values DIFFER from the golden set`);
+    if (deltas.includes("@token_names"))
+      console.log("      ^ the SET OF TOKENS MEASURED changed, not just their values. A narrower set is not\n" +
+                  "        a passing diff — it is a diff that stopped looking. Check the recorder before the tool.");
     for (const k of deltas.slice(0, 40))
       console.log(`      ${k}\n        golden ${a[k] === undefined ? "<absent>" : a[k]}\n        now    ${b[k] === undefined ? "<absent>" : b[k]}`);
     if (deltas.length > 40) console.log(`      … and ${deltas.length - 40} more`);

@@ -66,17 +66,28 @@ const VIEW = { width: 1200, height: 900 };
 
 /* The token list is derived from the tools themselves at record time, so a token added to either tool
    appears in the next manifest instead of being silently missed by a hand-kept list. */
-function tokenUnion() {
+/* Which tokens to read off the page.
+ *
+ * THE LIST MUST NOT DEPEND ON WHICH REPOSITORIES HAPPEN TO BE PRESENT. It used to: the union was built
+ * from every repo this checkout could see, and eleven tokens the sundial writes are declared in CSS only
+ * by Rhyme. On a machine with both clones the union carried them; in CI, which checks out one repository,
+ * it did not — so the recorder queried 59 tokens instead of 69 and eleven live values read <absent>
+ * against the baseline. The values were in the page the whole time. A measured key set that can quietly
+ * narrow is a diff that quietly stops testing things, which is worse than one that fails.
+ *
+ * A tool is therefore scanned for the tokens IT names, from the whole file rather than the style block
+ * alone: CSS declarations, setProperty/set calls, and the object keys the shared sundial returns — that
+ * object is the authoritative list of what the light writes, and it is spliced into every tool.
+ */
+function tokenNames(root) {
+  const f = path.join(root, "index.html");
+  if (!fs.existsSync(f)) return null;
+  const html = fs.readFileSync(f, "utf8");
   const names = new Set();
-  for (const k of Object.keys(REPOS)) {
-    const f = path.join(REPOS[k].root, "index.html");
-    if (!fs.existsSync(f)) continue;
-    const html = fs.readFileSync(f, "utf8");
-    const styles = (html.match(/<style[^>]*>[\s\S]*?<\/style>/g) || []).join("\n");
-    for (const m of styles.matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)) names.add(m[1]);
-    /* tokens only ever written from JS (BTC's --vein) never appear in the style block */
-    for (const m of html.matchAll(/(?:setProperty|set)\(\s*"(--[a-zA-Z0-9-]+)"/g)) names.add(m[1]);
-  }
+  const styles = (html.match(/<style[^>]*>[\s\S]*?<\/style>/g) || []).join("\n");
+  for (const m of styles.matchAll(/(--[a-zA-Z0-9-]+)\s*:/g)) names.add(m[1]);
+  for (const m of html.matchAll(/(?:setProperty|set)\(\s*"(--[a-zA-Z0-9-]+)"/g)) names.add(m[1]);
+  for (const m of html.matchAll(/"(--[a-zA-Z0-9-]+)"\s*:/g)) names.add(m[1]);
   return [...names].sort();
 }
 
@@ -101,11 +112,12 @@ async function record(tool, outDir) {
   if (!fs.existsSync(path.join(cfg.root, "index.html")))
     return { tool, skipped: `no index.html at ${cfg.root} — clone the sibling repository to record both` };
 
-  const TOKENS = tokenUnion();
+  const TOKENS = tokenNames(cfg.root);
+  if (!TOKENS || !TOKENS.length) throw new Error(`${tool}: no tokens found — refusing to record an empty manifest`);
   const { srv, port } = await serve(cfg.root);
   const browser = await chromium.launch();
   const out = { tool, recorded_by: "occvm/golden/record.js", seed: SEED, timezone: TZ,
-                viewport: VIEW, tokens: TOKENS.length, cases: {} };
+                viewport: VIEW, tokens: TOKENS.length, token_names: TOKENS, cases: {} };
   try {
     for (const c of CASES) {
       const ctx = await browser.newContext({
@@ -194,4 +206,4 @@ async function main() {
   }
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { record, tokenUnion, CASES, SEED, TZ };
+module.exports = { record, tokenNames, CASES, SEED, TZ };
