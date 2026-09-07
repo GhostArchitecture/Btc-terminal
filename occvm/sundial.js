@@ -1,4 +1,4 @@
-/* OCCVM 1.2 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
+/* OCCVM 1.2/1.7 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
  * spliced copy — the next splice reverts it silently.
@@ -11,6 +11,11 @@
  * The split is deliberate and is registered in SPINE.md section 8: POSITION is the full NOAA algorithm,
  * which BTC carried; RESPONSE is the derivation of surface behaviour from it, which Rhyme carried. Each
  * tool kept its better half and neither keeps a second copy.
+ *
+ * 1.7 adds `--dusk-stage` (day/civil/nautical/astronomical/night, standard elevation boundaries) as a
+ * discrete reading additive over the continuous --night ramp above — the ramp is unchanged, this is a
+ * second, independent classification for anything that wants to react to the named stage rather than
+ * a blend fraction (OCCVM-L9).
  *
  * Everything here is pure: same instant plus same place yields the same bytes. The golden set depends on
  * it (occvm/golden), and so does anything 2.0 resolves at sunTick.
@@ -78,6 +83,16 @@ var OCCVM_SUN = (function () {
     var twilight = 1 - clamp(Math.abs(elev) / 14, 0, 1);
     var dusk = twilight * (1 - night);
 
+    /* OCCVM-L9, 1.7: the civil / nautical / astronomical dusk stages, additive over the ramp above —
+       neither `night` nor `dusk` is redefined by this. Standard elevation boundaries, evaluated against
+       the raw solar elevation rather than either compressed display quantity, so a tool can react to the
+       actual stage independent of how steeply the surface response happens to be tuned. */
+    var stage = elev >= 0 ? "day"
+      : elev >= -6 ? "civil"
+      : elev >= -12 ? "nautical"
+      : elev >= -18 ? "astronomical"
+      : "night";
+
     /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
        ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
     var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
@@ -97,6 +112,7 @@ var OCCVM_SUN = (function () {
       "--ly": ly.toFixed(3),
       "--elev": e.toFixed(3),
       "--night": night.toFixed(3),
+      "--dusk-stage": stage,
       "--amb": amb.toFixed(3),
       "--rake": rake.toFixed(1) + "px",
       "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
@@ -129,6 +145,7 @@ var OCCVM_SUN = (function () {
       elev: p.elev, az: p.az, tokens: t,
       dir: DIRS[Math.round(p.az / 45) % 8],
       night: parseFloat(t["--night"]),
+      stage: t["--dusk-stage"],
       lx: parseFloat(t["--lx"]), ly: parseFloat(t["--ly"]),
       e: parseFloat(t["--elev"]),
       name: place.name || "here"

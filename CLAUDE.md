@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907161724` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907170219` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1102,10 +1102,12 @@ the measured inventory the spine was then authored from.
   tools in Chromium at three pinned sun elevations with the clock, timezone and seed injected;
   `verify.js` diffs. Two tiers: `tokens.json` is byte-stable and asserted on, the PNGs are for the eye and
   **never diffed for equality** — rasterisation differs per machine. `npm run golden` / `npm run golden:verify`.
-- **`test/occvm.js`** holds the determinism seam and the spine guards. Two of its assertions deliberately
-  pin *current* behaviour, not desired: `--night` is this tool's binary step and `--elev` holds its 0.15
-  night floor. The spine's law is the opposite of both (`OCCVM-D2`, closing at 1.2), so resolving them
-  fails this harness loudly rather than drifting.
+- **`test/occvm.js`** holds the determinism seam and the spine guards. Before 1.2 two of its assertions
+  deliberately pinned this tool's *current* behaviour, not desired: a binary `--night` and a 0.15 `--elev`
+  night floor. They now pin the spine's law instead (`OCCVM-D2`, closed at 1.2) — a continuous `--night`
+  ramp and the floor living in `--amb`. Since 1.7 the file also pins the civil/nautical/astronomical dusk
+  staging (`--dusk-stage`, additive over that same ramp) and that BTC's tool-local `--bloom` surface glow
+  stays deleted.
 - **`veinLayer()` reads an injected session seed** (`sessionStorage["btc.seed"]`) instead of the wall clock.
   That closes §10.5's note that the veins reseeded per hour where §5 said per session.
 - **This repository now has CI** (`.github/workflows/ci.yml`): the harnesses, the unit suites, the
@@ -1169,7 +1171,18 @@ narrower than Rhyme's: the mineral tints only `veinLayer()`/`veinLayerLegacy()`,
 meaning everywhere and a decorative accent has no business sitting beside it. `test/occvm.js` pins both
 the vein layer's dependence on the choice and that switching it never inline-sets an outcome token.
 
-**Open against this tool:** none. Both `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7).
+**1.7 — the night model.** `occvm/sundial.js` gains `--dusk-stage`: one of `day`/`civil`/`nautical`/
+`astronomical`/`night`, at the standard elevation boundaries (0°, −6°, −12°, −18°), additive over the
+existing `--night` ramp rather than a replacement for it — same ramp, same formula, a second discrete
+reading alongside it. `S.sun.stage` mirrors it for parity with this tool's other resolved sun fields;
+nothing consumes it yet, and the existing sun pill's own day/night narrative ("sun rise", "morning", "sun
+high") is untouched — it mixes direction with dusk state in a way plain staging doesn't replace, so
+rewriting it wasn't this release's job. `--bloom`, the malachite tile glow renamed rather than resolved at
+1.2, is deleted outright — not replaced with `--glow` on the surface, since `OCCVM-L9` reserves that for
+ink and says plainly that no surface takes one.
+
+**Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 closes no
+numbered defect but completes L9's dusk-stage refinement and the `--bloom` deletion it named in advance.
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.

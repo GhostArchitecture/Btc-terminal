@@ -19,7 +19,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
-| 1.7 | outstanding | the night model. |
+| **1.7** | landed | the dusk stages, additive over the 1.0 `--night` ramp; deleted BTC's tool-local `--bloom` surface glow now that OCCVM-L9's "no surface takes a glow" has an owner. |
 | 1.8 | outstanding | the reference surface. |
 | **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
 
@@ -305,13 +305,18 @@ found by decoding the URI into an `<img>` and counting inked pixels.
 ### OCCVM-L9 — night
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
-A binary step cannot express the civil / nautical / astronomical dusk stages that 1.7 refines it into, so the
-ramp is the 1.0 law and the staging is additive over it.
+A binary step cannot express the civil / nautical / astronomical dusk stages, so the ramp is the 1.0 law
+and the staging is additive over it — `--dusk-stage`, landed at **1.7**: `day` at or above the horizon,
+then `civil` (0° to −6°), `nautical` (−6° to −12°), `astronomical` (−12° to −18°), `night` below that. The
+boundaries are the standard astronomical ones, evaluated against the raw elevation the sundial already
+computes — neither `--night` nor the internal `dusk` blend fraction is redefined by this; the ramp is
+unchanged, `--dusk-stage` is a second, independent, discrete reading alongside it.
 
 Night acts on **ink only**. No surface takes a glow. `--glow` is the ink bloom and nothing reads it for a
-substrate.
+substrate. BTC's `--bloom` — a malachite glow on `.tile`, renamed rather than removed at 1.2 specifically
+so 1.7 could retire it under this law — is deleted, not replaced: the tile takes no glow of any kind now.
 
-BTC's `--night` is a binary step at −2°: `OCCVM-D2`.
+*BTC's `--night` was a binary step at −2° before 1.2: closed `OCCVM-D2`.*
 
 ---
 
@@ -348,11 +353,13 @@ now-redundant tool declaration is per-surface adoption work, done at the release
 
 ### 2ab. Governed since 1.2 — written by the sundial
 
-`--lx --ly --elev --night --amb --rake --sheen --hi-a --cut-a --shade-a --glow --lxpx --lypx --nglow
---nglow-s --sub --sub-hi --sub-lo --bone --bone-lo`
+`--lx --ly --elev --night --dusk-stage --amb --rake --sheen --hi-a --cut-a --shade-a --glow --lxpx --lypx
+--nglow --nglow-s --sub --sub-hi --sub-lo --bone --bone-lo`
 
 All resolved scalars or hexes, all written by `occvm/sundial.js` at most once a minute, none a `calc()`.
-`--bone-lo` is derived from `--bone` rather than authored beside it (L1).
+`--bone-lo` is derived from `--bone` rather than authored beside it (L1). `--dusk-stage`, added at 1.7, is
+the one entry here that is neither a scalar nor a hex — a discrete stage name — because the quantity it
+carries (which of day/civil/nautical/astronomical/night the instant falls in) has no continuous value.
 
 ### 2b. Registered, not yet spine — promoted at the release named
 
@@ -371,10 +378,11 @@ negative mineral, closed with the shared map.
 Semantic tokens that belong to one tool's subject matter: BTC's `--up --down --err --warn
 --field --rule --glass`, Rhyme's `--thick --bthick --stone-h --pad --c --k --text`.
 
-`--bloom` is BTC's malachite glow on `.tile`, renamed at 1.2 so it stops colliding with the spine's
-`--glow`. OCCVM-L9 reserves `--glow` for ink and 1.7's exit is that no surface has taken a glow, so the
-bloom is deleted at 1.7 — by the release that owns the law, not by this one. A tool-local
-token is not a fork. Promoting one is a minor release.
+`--bloom` was BTC's malachite glow on `.tile`, renamed at 1.2 so it stopped colliding with the spine's
+`--glow` — a tool-local token is not a fork, and renaming one is not the same as resolving what it stands
+for. OCCVM-L9 reserves `--glow` for ink and 1.7's exit was that no surface has taken a glow: `--bloom` is
+deleted, not renamed again and not replaced with `--glow` on the surface, since the law says a surface
+gets none. Closed at **1.7**.
 
 ---
 
@@ -455,8 +463,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.9 | `build-20260907161724` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6 | `build-20260907160642` | — (renders no mono; D3 does not apply) |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.9 | `build-20260907170219` | — |
+| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7 | `build-20260907170225` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | — | not built | — (1.8) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
@@ -573,5 +581,32 @@ a stored preference" — is met; the pervasive-accent shape Rhyme has is not, an
 never inline-sets `--malachite`, `--ruby`, `--up`, or `--down`. Golden-verified: exactly five values moved
 per instant (`--mineral`, `--mineral-lo`, `--vein-hi`, `--vein-lo`, `--vein`) against a token count that
 grew from 62 to 66; nothing else in either tool's recording changed.
+
+**1.7** added `--dusk-stage` to `occvm/sundial.js`'s `respond()` — one of five discrete names (`day`,
+`civil`, `nautical`, `astronomical`, `night`) at the standard elevation boundaries (0°, −6°, −12°, −18°),
+evaluated against the raw solar elevation the position algorithm already produces. Nothing about the
+existing `--night` ramp or the internal `dusk` blend changed: the law states the ramp is the 1.0 law and
+the staging is additive, and it is — same formula, same output, a second field alongside it. `tick()`
+mirrors it as `stage` in its return value; BTC threads it onto `S.sun.stage` for parity with every other
+resolved reading it already carries, though nothing consumes it yet — this release makes the classification
+available at the spine level, it does not mandate a UI for it. (BTC's own sun pill keeps its existing
+day/night narrative — "sun rise", "morning", "sun high" — unchanged; that copy mixes direction with dusk
+state in a way plain staging doesn't replace, and rewriting it wasn't this release's job.)
+
+`--bloom` — BTC's malachite tile glow, renamed at 1.2 rather than resolved — is deleted outright: the
+`:root` declaration and the `.tile` box-shadow term both gone, not replaced with `--glow` on the surface,
+because OCCVM-L9 reserves the glow for ink and states plainly that no surface takes one. `test/occvm.js`
+gains eleven guards: the five stage boundaries (including the exact edges, −6/−12/−18, which belong to the
+stage *below* them per the law's own inequalities), that the ramp is untouched at its own reference points
+(0.000 at −2°, 1.000 at −10°), that `sunTick` mirrors the stage, and that `--bloom` is neither declared,
+referenced, nor present in the tile's box-shadow list.
+
+Also corrected in passing: `SPINE.md` itself carried a line — "BTC's `--night` is a binary step at −2°:
+`OCCVM-D2`" — stating the *pre-1.2* condition as if current, three releases after D2 closed it. Retitled as
+history. `CLAUDE.md` §12 had the same drift: a bullet describing `test/occvm.js` as pinning the old binary
+step and 0.15 `--elev` floor "deliberately, not as desired," directly contradicted by the 1.2 paragraph
+immediately below it. Both are artifacts of documenting a release before it shipped and never revisiting
+the sentence once it did — the same failure class as the `--model`/`--bondi` mention 1.4 caught in the
+tool-local token list.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.

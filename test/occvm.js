@@ -70,6 +70,39 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM-L9, 1.7: civil/nautical/astronomical dusk staging, additive over the existing --night ramp -- */
+{
+  const h = load();
+  const stage = elev => h.R(`OCCVM_SUN.respond({elev:${elev},az:0})["--dusk-stage"]`);
+  T("day at or above the horizon", stage(0) === "day", stage(0));
+  T("day just above civil twilight", stage(-0.01) === "civil", stage(-0.01));
+  T("civil twilight spans 0 to -6", stage(-3) === "civil" && stage(-6) === "civil", { m3: stage(-3), m6: stage(-6) });
+  T("nautical twilight spans -6 to -12", stage(-6.01) === "nautical" && stage(-9) === "nautical" && stage(-12) === "nautical",
+    { m601: stage(-6.01), m9: stage(-9), m12: stage(-12) });
+  T("astronomical twilight spans -12 to -18", stage(-12.01) === "astronomical" && stage(-15) === "astronomical" && stage(-18) === "astronomical",
+    { m1201: stage(-12.01), m15: stage(-15), m18: stage(-18) });
+  T("night below -18", stage(-18.01) === "night" && stage(-40) === "night", { m1801: stage(-18.01), m40: stage(-40) });
+
+  /* the law is explicit: the ramp is unchanged, staging is additive over it — not a replacement */
+  const at = (elev, key) => h.R(`OCCVM_SUN.respond({elev:${elev},az:0})["${key}"]`);
+  T("the --night ramp is untouched by the staging (still 0 at -2, 1 at -10)",
+    at(-2, "--night") === "0.000" && at(-10, "--night") === "1.000", { m2: at(-2, "--night"), m10: at(-10, "--night") });
+
+  T("sunTick mirrors the stage onto S.sun", (() => {
+    h.setNow(NIGHT); h.R("sunTick()");
+    return typeof h.R("S.sun.stage") === "string" && h.R("S.sun.stage").length > 0;
+  })());
+}
+
+/* --- 1.7: the tile's surface bloom is deleted, not renamed — OCCVM-L9 reserves --glow for ink only --- */
+{
+  const fs5 = require("fs"), path5 = require("path");
+  const html5 = fs5.readFileSync(path5.join(__dirname, "..", "index.html"), "utf8");
+  T("--bloom is not declared", !html5.includes("--bloom:"));
+  T("--bloom is not referenced", !html5.includes("var(--bloom)"));
+  T("the tile carries no surface glow box-shadow", !/rgba\(63,\s*191,\s*126,\s*var\(--bloom\)\)/.test(html5));
+}
+
 /* --- the screen convention both tools share (occvm/SPINE-AUDIT.md section 3) --- */
 {
   const h = load(); h.setNow(SUN); h.R("sunTick()");

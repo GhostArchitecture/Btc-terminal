@@ -296,9 +296,6 @@ table {
        spine's default density. The token is the lever; the generator is shared. */
     --vein-density:.14;
     --lit:rgba(255,255,255,calc(.16*var(--elev) + .05)); --shade:rgba(0,0,0,.62);
-    /* tool-local: the malachite bloom on .tile. OCCVM-L9 reserves --glow for ink, so this is not it.
-       1.7 deletes the surface bloom outright under that law; 1.2 only stops the two names colliding. */
-    --bloom:calc(var(--night)*.28);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{background:var(--field);color:var(--bone);font-family:var(--sans)}
@@ -325,8 +322,7 @@ table {
     box-shadow:
       inset calc(var(--lx)*1.2px) calc(var(--ly)*1.2px) 0 rgba(255,255,255,.14),
       inset calc(var(--lx)*-1.2px) calc(var(--ly)*-1.2px) 0 var(--shade),
-      var(--occvm-cast-3), var(--occvm-cast-1),
-      0 0 28px rgba(63,191,126,var(--bloom));
+      var(--occvm-cast-3), var(--occvm-cast-1);
     -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
   .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--vein,none);opacity:.16;mix-blend-mode:screen}
   .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
@@ -1065,8 +1061,8 @@ if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
 /* ==== END OCCVM veins.js ==== */
 
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
-/* sha256:422bb07f7e07 */
-/* OCCVM 1.2 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
+/* sha256:f107e7aa8e92 */
+/* OCCVM 1.2/1.7 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
  * spliced copy — the next splice reverts it silently.
@@ -1079,6 +1075,11 @@ if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
  * The split is deliberate and is registered in SPINE.md section 8: POSITION is the full NOAA algorithm,
  * which BTC carried; RESPONSE is the derivation of surface behaviour from it, which Rhyme carried. Each
  * tool kept its better half and neither keeps a second copy.
+ *
+ * 1.7 adds `--dusk-stage` (day/civil/nautical/astronomical/night, standard elevation boundaries) as a
+ * discrete reading additive over the continuous --night ramp above — the ramp is unchanged, this is a
+ * second, independent classification for anything that wants to react to the named stage rather than
+ * a blend fraction (OCCVM-L9).
  *
  * Everything here is pure: same instant plus same place yields the same bytes. The golden set depends on
  * it (occvm/golden), and so does anything 2.0 resolves at sunTick.
@@ -1146,6 +1147,16 @@ var OCCVM_SUN = (function () {
     var twilight = 1 - clamp(Math.abs(elev) / 14, 0, 1);
     var dusk = twilight * (1 - night);
 
+    /* OCCVM-L9, 1.7: the civil / nautical / astronomical dusk stages, additive over the ramp above —
+       neither `night` nor `dusk` is redefined by this. Standard elevation boundaries, evaluated against
+       the raw solar elevation rather than either compressed display quantity, so a tool can react to the
+       actual stage independent of how steeply the surface response happens to be tuned. */
+    var stage = elev >= 0 ? "day"
+      : elev >= -6 ? "civil"
+      : elev >= -12 ? "nautical"
+      : elev >= -18 ? "astronomical"
+      : "night";
+
     /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
        ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
     var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
@@ -1165,6 +1176,7 @@ var OCCVM_SUN = (function () {
       "--ly": ly.toFixed(3),
       "--elev": e.toFixed(3),
       "--night": night.toFixed(3),
+      "--dusk-stage": stage,
       "--amb": amb.toFixed(3),
       "--rake": rake.toFixed(1) + "px",
       "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
@@ -1197,6 +1209,7 @@ var OCCVM_SUN = (function () {
       elev: p.elev, az: p.az, tokens: t,
       dir: DIRS[Math.round(p.az / 45) % 8],
       night: parseFloat(t["--night"]),
+      stage: t["--dusk-stage"],
       lx: parseFloat(t["--lx"]), ly: parseFloat(t["--ly"]),
       e: parseFloat(t["--elev"]),
       name: place.name || "here"
@@ -2215,7 +2228,7 @@ function sunTick(){
      (OCCVM-D2, D9). This is the tool's display shape around the shared reading, and nothing more. */
   const loc=(S.cfg.sun&&isFinite(S.cfg.sun.lat))?S.cfg.sun:SUN_DEF;
   const r=OCCVM_SUN.tick(document.documentElement,loc,new Date());
-  S.sun={elev:r.elev,az:r.az,lx:r.lx,ly:r.ly,elev01:r.e,night:r.night,name:r.name};
+  S.sun={elev:r.elev,az:r.az,lx:r.lx,ly:r.ly,elev01:r.e,night:r.night,stage:r.stage,name:r.name};
   const pill=$("sunpill");
   if(pill){ const phase=r.elev<-6?"night":r.elev<0?"dusk":r.elev<8?(r.az<180?"sun rise":"sun set"):r.elev>50?"sun high":(r.az<180?"morning":"afternoon");
     pill.textContent=phase+" \u00b7 "+r.dir+" \u00b7 "+Math.round(r.elev)+"\u00b0";
@@ -6985,7 +6998,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907161724";
+const BUILD_STAMP="build-20260907170219";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7002,5 +7015,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907161724 -->
+<!-- build-20260907170219 -->
 </html>
