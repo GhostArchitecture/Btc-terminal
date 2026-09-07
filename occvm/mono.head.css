@@ -1,0 +1,87 @@
+/* OCCVM 1.3 — the numeric face (OCCVM-L7).
+ *
+ * Authored in occvm/SPINE.md; spliced by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy.
+ *
+ * Before 1.3 every price, tape row and table cell rode `ui-monospace, "SF Mono", "Cascadia Code", Menlo,
+ * Consolas, "Liberation Mono", monospace` — a stack, so a visitor always got *a* mono face, just not the
+ * same one. That is the defect: the metrics that hold a numeric column together were whichever the
+ * operating system happened to supply.
+ *
+ * TWO WEIGHTS, NOT ONE, AND THAT IS THE POINT. The tool's largest number — the live price — is set at
+ * font-weight 600. With only a 400 face the browser synthesises the bold by smearing the outline, which
+ * changes the advance width and breaks the tabular column the roadmap's exit criterion is about. Both
+ * faces here are strictly monospaced at 600/1000 em, the SAME advance in both, so alignment survives a
+ * weight change by construction rather than by luck. font-synthesis is off so nothing can reintroduce it.
+ *
+ * IBM Plex Mono, SIL Open Font License 1.1 — see occvm/fonts/OFL.txt. Subset to the 108 codepoints these
+ * tools actually render: ASCII, plus the punctuation and symbols found in their own source. Fifteen
+ * further symbols the tools use (arrows, Greek, geometric shapes, check marks) are not in this cut and
+ * fall back; where one of those lands in a numeric column its advance is pinned in the tool's own CSS,
+ * so column alignment never depends on the visitor's font even for a glyph this face does not carry.
+ */
+
+@font-face {
+  font-family: "OCCVM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(data:font/woff2;base64,__W400__) format("woff2");
+}
+
+@font-face {
+  font-family: "OCCVM Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url(data:font/woff2;base64,__W600__) format("woff2");
+}
+
+:root {
+  /* An owned stack: the fallbacks stay so a failed @font-face still renders mono rather than serif, but
+     the first entry is a face that ships with the tool. */
+  --mono: "OCCVM Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* OCCVM-L7 — the numeral scale, for a numeral whose optical size differs from the text beside it.
+   *
+   * IT IS 1, AND THAT IS A MEASUREMENT RATHER THAN A PLACEHOLDER. At 100px this face's digit ink is 71px
+   * against a serif cap of 65 and a sans cap of 68 — figures 4% to 8% taller than the text around them.
+   * A global 0.94 would correct that, and it is not applied, for two reasons. The text faces are
+   * OS-supplied by deliberate design (the roadmap's own non-goal for a sans), so the ratio measured here
+   * is against this machine's fallbacks and does not generalise; and the numerals in these tools sit in
+   * mono runs — tables, tape rows, the price readout — far more often than they sit inline beside prose,
+   * so the mismatch rarely arises where anyone would see it.
+   *
+   * The token is governed so a surface that genuinely mixes the two has one place to say so. Shipping a
+   * six-percent shrink across every number in the tool, justified by a number that changes with the
+   * visitor's operating system, would be worse than shipping no adjustment. */
+  --t-num: __TNUM__;
+}
+
+/* Anything the browser would otherwise set in its own default monospace. Left alone, a <code> element
+   renders in whatever the operating system calls "monospace", which is the defect this part closes. */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--mono);
+}
+
+/* A symbol this subset does not carry, standing inside a numeric run. Fifteen of them exist in these
+   tools — Greek, arrows, geometric shapes, check marks — and a fallback glyph brings its own advance
+   width, which in a right-aligned column shifts every digit before it. Pinning the advance to 1ch (the
+   owned face's own advance) means the column holds even where the glyph does not come from this face. */
+.occvm-sym {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font-variant-numeric: normal;
+}
+
+/* Figure discipline. Tabular under a column so digits align; lining everywhere else so a numeral sits on
+   the baseline beside text. Synthesis off: a synthesised weight is a different advance width. */
+[class~="num"],
+.occvm-num,
+table {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-synthesis: none;
+}

@@ -37,6 +37,8 @@ const PARTS = IS_RHYME ? [
   { name: "veins.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
   { name: "spine.css",  target: "index.html", anchor: "<style>" },
+  /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
+  { name: "mono.css",   target: "index.html", anchor: "<style>" },
   { name: "sundial.js", target: "index.html", anchor: "<script>" },
   { name: "veins.js",   target: "index.html", anchor: "<script>" },
 ];

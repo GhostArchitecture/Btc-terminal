@@ -115,9 +115,20 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const secEnd = doc.indexOf("### 2", secStart + 8);
   const sec = doc.slice(secStart, secEnd);
   const documented = new Set((sec.match(/--[a-z0-9-]+/g) || []));
-  const declared = new Set(
-    (spine.slice(spine.indexOf(":root"), spine.indexOf("---- primitives")).match(/^\s*(--[a-z0-9-]+)\s*:/gm) || [])
-      .map(x => x.trim().replace(/\s*:$/, "")));
+  /* Section 2a spans every CSS part the spine ships, not just spine.css: since 1.3 the owned mono stack
+     and --t-num are declared in mono.css, because the part that declares them is the part that carries
+     the face. Scanning one file would let a token in the other drift out of the document unnoticed. */
+  const declared = new Set();
+  for (const part of ["spine.css", "mono.css"]) {
+    const f = path.join(ROOT, "occvm", part);
+    if (!fs.existsSync(f)) continue;
+    const src = fs.readFileSync(f, "utf8");
+    const head = src.indexOf(":root");
+    if (head < 0) continue;
+    const tail = src.indexOf("---- primitives");
+    for (const m of src.slice(head, tail > head ? tail : undefined).match(/^\s*(--[a-z0-9-]+)\s*:/gm) || [])
+      declared.add(m.trim().replace(/\s*:$/, ""));
+  }
   const extra = [...declared].filter(k => !documented.has(k));
   T("the spine declares nothing SPINE.md section 2a does not list", extra.length === 0, extra);
   T("the spine declares every token section 2a lists", [...documented].every(k => declared.has(k)),
@@ -282,6 +293,47 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("growth is guarded and falls back", /catch\(e\)\{ svg=encodeURIComponent\(veinLayerLegacy/.test(html2));
   T("the generator reads the spine's tokens",
     /--vein-density/.test(html2) && /--vein-habit/.test(html2));
+}
+
+/* --- OCCVM-L7 / roadmap 1.3: the numeric face ------------------------------------------------------
+ * Exit: no tool depends on a font the visitor's OS supplies, and column alignment holds at every weight.
+ * The rendered halves — which face actually paints, and the measured advance at each weight — are
+ * checked in a browser; a stylesheet cannot tell you what a glyph measures.
+ */
+{
+  const fs3 = require("fs"), path3 = require("path");
+  const ROOT3 = path3.resolve(__dirname, "..");
+  const html3 = fs3.readFileSync(path3.join(ROOT3, "index.html"), "utf8");
+  const mono = fs3.readFileSync(path3.join(ROOT3, "occvm", "mono.css"), "utf8");
+
+  T("the face is embedded, not fetched", /@font-face[\s\S]*?url\(data:font\/woff2;base64,/.test(mono)
+    && !/url\(https?:/.test(mono));
+  /* count rule openings, not mentions: the prose above explains why a fallback stack survives and says
+     "@font-face" while doing so. */
+  T("two real weights ship", (mono.match(/@font-face\s*\{/g) || []).length === 2
+    && /font-weight:\s*400/.test(mono) && /font-weight:\s*600/.test(mono),
+    (mono.match(/@font-face\s*\{/g) || []).length);
+  T("weight synthesis is off", /font-synthesis:\s*none/.test(mono));
+
+  /* The tool must no longer name an OS face first. Its own --mono declaration is gone; the spine's
+     owned stack governs, and the fallbacks stay only so a failed @font-face still lands on mono. */
+  const owned = /--mono:\s*"OCCVM Mono"/.test(html3);
+  T("--mono is the owned stack, spine-governed", owned);
+  T("the tool declares no competing --mono",
+    (html3.match(/--mono\s*:/g) || []).length === 1, (html3.match(/--mono\s*:/g) || []).length);
+
+  T("the browser's own default mono is claimed too", /\bcode,\s*\n?kbd,/.test(mono) || /code,[\s\S]{0,40}font-family: var\(--mono\)/.test(mono));
+
+  /* A symbol the subset does not carry, sitting in a right-aligned numeric column, brings its own
+     advance and shifts every digit before it. Those sites pin the advance to 1ch. */
+  T("uncovered symbols in numeric cells are width-pinned",
+    /\.occvm-sym\s*\{[^}]*width:\s*1ch/.test(mono) && (html3.match(/class="occvm-sym"/g) || []).length >= 2);
+
+  T("the subset is regenerable from a committed source",
+    fs3.existsSync(path3.join(ROOT3, "occvm", "fonts", "upstream", "IBMPlexMono-latin-400.woff2"))
+    && fs3.existsSync(path3.join(ROOT3, "occvm", "tools", "subset-mono.py"))
+    && fs3.existsSync(path3.join(ROOT3, "occvm", "mono.head.css")));
+  T("the licence travels with the font", fs3.existsSync(path3.join(ROOT3, "occvm", "fonts", "OFL.txt")));
 }
 
 process.exit(done());

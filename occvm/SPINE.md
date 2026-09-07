@@ -15,7 +15,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.0** | landed | constituted the spine from measurement; inlined it in both tools at zero deltas. Closed D11. |
 | **1.1** | landed | generative fidelity: DLA veins, `--vein-density --vein-habit`. Closed nothing; added L10. Its determinism requirement was met at 1.0. |
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
-| 1.3 | outstanding | the numeric face. D3. |
+| **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | 1.4 | outstanding | mineral as preference. D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
@@ -23,8 +23,8 @@ order would be exactly the drift the ledger law exists to prevent.
 | 1.8 | outstanding | the reference surface. |
 | 1.9 | outstanding | freeze and stage. |
 
-Four of eleven defects remain: **D1** (BTC's expired alias block, 1.9), **D3** (the numeric face, 1.3),
-**D6** (BTC has no mineral system, 1.4). D1's aliases were shown to be load-bearing by 1.2's golden diff —
+Two of eleven defects remain: **D1** (BTC's expired alias block, 1.9) and **D6** (BTC has no mineral
+system, 1.4). D1's aliases were shown to be load-bearing by 1.2's golden diff —
 `--ink --meas --dim` all moved with the tokens they alias — so the block is a live dependency, not dead
 weight, and sweeping it is a migration rather than a deletion.
 
@@ -193,7 +193,33 @@ this law. Completed at **1.4**. BTC has no mineral system at all: `OCCVM-D6`.
 Numerals in a column are tabular. Numerals in running text are lining. A tool depends on **no font the
 visitor's operating system supplies** for any numeral that carries meaning.
 
-Completed at **1.3**. Both tools ride an OS-supplied mono stack today: `OCCVM-D3`.
+The face is `occvm/mono.css` — IBM Plex Mono under the SIL Open Font License, subset to the 108
+codepoints these tools actually render and base64-embedded. It ships **only where mono is rendered**:
+Rhyme resolves zero mono elements, measured, so it does not carry 22 KB of a face it never paints.
+
+**Two weights, and that is not a luxury.** The largest number in BTC — the live price — is set at
+`font-weight: 600`. With a single 400 face the browser synthesises the bold by smearing the outline,
+which changes the advance width and breaks the very column this law exists to hold. Both faces are
+strictly monospaced at **600/1000 em, the same advance in both**, verified in the browser: a ten-digit
+string measures 600px at 100px in weight 400 and in weight 600 alike. `font-synthesis: none` stops
+anything reintroducing a synthesised weight.
+
+**Fifteen symbols fall back, and the column still holds.** The upstream latin cut has no Greek, arrows,
+geometric shapes or check marks; three of those (`●`, `✓`, `✗`) land inside right-aligned numeric cells,
+where a fallback glyph's own advance would shift every digit before it. Those sites carry `.occvm-sym`,
+which pins the advance to `1ch` — the owned face's own advance — so alignment never depends on the
+visitor's font even for a glyph this face does not carry.
+
+**`--t-num` is 1, and that is a measurement rather than a placeholder.** At 100px the face's digit ink is
+71px against a serif cap of 65 and a sans cap of 68 — figures 4% to 8% taller than the text beside them,
+which a global 0.94 would correct. It is not applied. The text faces are OS-supplied *by deliberate
+design* (the roadmap's own non-goal for a sans), so that ratio is against one machine's fallbacks and
+does not generalise; and these numerals sit in mono runs — tables, tape rows, the price readout — far
+more often than inline beside prose. Shipping a six-percent shrink across every number in the tool,
+justified by a figure that changes with the visitor's operating system, would be worse than shipping no
+adjustment. The token is governed so a surface that genuinely mixes the two has one place to say so.
+
+Completed at **1.3** for BTC. `OCCVM-D3` closed.
 
 ### OCCVM-L8 — the interaction floor
 
@@ -287,6 +313,10 @@ Measured identical in both tools at all three golden instants. These are what `o
 
 **Added at 1.1 (OCCVM-L10):** `--vein-density` and `--vein-habit`.
 
+**Added at 1.3 (OCCVM-L7):** `--mono`, now an owned stack whose first entry ships with the tool, and
+`--t-num`. Both are declared in `occvm/mono.css` rather than `spine.css`, because the part that declares
+them is the part that carries the face.
+
 **Added at 1.2 (OCCVM-L4, L2):** the cast depths `--occvm-cast-1 --occvm-cast-2 --occvm-cast-3` and the
 bevel components `--lit-x --lit-y --cut-x --cut-y`. A surface picks a depth or multiplies a bevel component
 by its own; it never authors an offset. The depth multipliers are anchored so each reproduces at high sun
@@ -312,7 +342,6 @@ until then the tools' own declarations stand and the gap is a defect.
 
 | token | today | spine at |
 |---|---|---|
-| `--mono`, `--t-num` | OS stack in BTC; `--t-num` nowhere | **1.3** (L7) |
 | `--mineral --mineral-lo --vein-hi --vein-lo --veins` | Rhyme only | **1.4** (L6) |
 | `--ruby --ruby-lo` | BTC only; Rhyme has no negative mineral | **1.4** (L6) |
 
@@ -389,7 +418,7 @@ found by measurement after it was written.
 |---|---|---|---|
 | **D1** | BTC | the expired `--ink --meas --bondi` alias block, past its removal window and still referenced (lines 26–27, 352, 359, 388, 1253) | 1.9 |
 | **D2** | BTC | one light incomplete: no `--amb --rake --sheen --hi-a --cut-a --shade-a`, 15 fixed `box-shadow` offsets, `--elev` on a different scale with a 0.15 night floor, `--night` a binary step | **closed 1.2** |
-| **D3** | both | the numeric face is OS-supplied; metrics vary per platform under a column | **1.3** |
+| **D3** | BTC | the numeric face is OS-supplied; metrics vary per platform under a column | **closed 1.3** |
 | **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **closed 1.6** |
 | **D5** | BTC | half-installed PWA: `manifest.webmanifest` and four icons ship, with zero `serviceWorker` registration | **closed 1.6** |
 | **D6** | BTC | no mineral system at all. `--amethyst` is declared once and referenced zero times | **1.4** |
@@ -405,8 +434,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | D1, D3, D6 |
-| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | D3 |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.5, 1.6 | `build-20260907113444` | D1, D6 |
+| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | — | not built | — (1.8) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
