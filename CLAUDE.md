@@ -4,10 +4,11 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260906195621` — §10's 22 fixes, the K1 ledger repair, and the full **H-protocol
-measurement layer** (§11): H1–H5 recording, the enumerated release calendar, and the identifiability and
-plausibility gates. Nothing in it renders; it computes, stores and exports. One file, 5,858 lines,
-~360 KB, 269 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+Current deploy: `build-20260907135235` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
+plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
+stores and exports. One file, 6,331 lines,
+~428 KB, 286 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -25,7 +26,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ icon-{180,192,512}.png, icon-maskable-512.png, favicon-32.png, icon.png
 ├─ test/                         page harnesses (§6, §10.1)
 ├─ units/                        the H-protocol units — code, suites, specs and reviews (§6, §11)
-│   ├─ {volspace,calendar,detect,reversal,schema,prereg}/{code.js,test.js,*.md}
+│   ├─ {volspace,calendar,detect,reversal,schema,prereg,regime}/{code.js,test.js,*.md}
 │   ├─ run.js                    runs every unit suite
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 └─ .nojekyll
@@ -546,9 +547,20 @@ conditioned on the release *class* (scheduled US macro) or not at all.
 One **primary** hypothesis per phase, one primary arm, one primary statistic, all three written into this file with
 a build stamp before the first observation of that phase is recorded. Everything else is exploratory (§11.4).
 
-**Primary statistic — difference-in-differences.** For the primary arm, the Brier score of the tool's headline
-probability minus the Brier score of the Kalshi quote-implied probability, on shock windows, *minus the same
-difference computed on that window's time-matched controls* (§11.3). Scoring is one observation per window at
+**Primary statistic — difference-in-differences.** For the primary arm, the Brier score of the Kalshi
+quote-implied probability **minus** the Brier score of the tool's headline probability, on shock windows,
+*minus the same difference computed on that window's time-matched controls* (§11.3). **Brier is a loss, so the
+subtraction is `market − tool` and a POSITIVE Δ means the tool is better** — the same orientation as §4's
+`VERDICT_RULE` and as every Δ Brier in the instrument (`brierQ − brierM`, `mk.brier − h.brier`, `bb − bm`).
+
+*This sentence was corrected on 2026-09-06; it previously read `tool − market`, which is the opposite
+orientation and made the section contradict itself. Under the old wording the paragraph below reasons that a
+market Brier of 0.1457 against a model's 0.1473 makes the model "0.0016 worse" — a **positive** number for a
+**worse** model — and then requires Δ ≥ +0.010 to read READY, i.e. demands the tool be a hundredth of a Brier
+worse than the market before the programme calls it an edge. `shockStatus` always tested the correct
+orientation, so no code was wrong and no threshold moved; the definition was. Caught by probing `shockStatus`
+directly rather than trusting the prose. It is free to fix because no shock-conditioned observation exists and
+no holdout is open (§11.6) — after a holdout opened, the identical correction would have **spent** it.* Scoring is one observation per window at
 `refSnap`, series split, exactly as §4 requires. The unconditional shock number is not the primary statistic and
 never appears without the control-adjusted one beside it.
 
@@ -556,11 +568,35 @@ A shock arm reads READY only when all of the following hold on the **holdout** s
 
 - **n ≥ 30 graded holdout shock windows**, on top of 30 calibration windows — **60 total, minimum.** §11.2a can
   raise the holdout requirement and can never lower it.
-- **Control coverage ≥ 80%**: at least 80% of recorded shock windows have ≥ 5 valid matched controls. A shock
+- **Control coverage ≥ 80%**, measured **on the holdout alone** like everything else in this list, over a
+  denominator of **graded** shock windows whose side of the split is determinable — and evaluated **only once
+  that denominator reaches 30**. Three clarifications, all registered 2026-09-06 after the scorer was built and
+  its first draft was found to close the programme on a single window:
+  *Graded*, because §11.2 lists "n ≥ 30 graded holdout shock windows" and coverage as **separate** conditions —
+  a void, still-open or unscoreable window has as many controls as any other, it simply is not graded, and
+  counting it as a matching failure fires clause 3 on something that is not one.
+  *Determinable side*, because a window that cannot be placed relative to the boundary is not a calibration
+  window; it is a window whose side is unknown, and it belongs in neither denominator.
+  *Minimum 30*, because a ratio over a denominator of one is not evidence of anything and clause 3 is a
+  **permanent closure**. Without it, the first unmatched window of a fresh holdout reads 0/1 = 0% and closes the
+  programme — measured, on the fixture that produced this registration. This is not a loosening under §11.7
+  clause 6: the bar is unchanged at 80%, and what is corrected is a test that returned the wrong answer at small
+  n. The pooled figure it replaced passed that same input at 0.968, so the false closure was introduced by
+  tightening coverage to the holdout, not inherited from the original standard.
+  At least 80% of that denominator must have ≥ 5 valid matched controls. A shock
   window with fewer than 5 controls is recorded but not scored.
 - **Δ Brier (difference-in-differences) ≥ 0.010** — the effect floor.
 - **A two-sided percentile-bootstrap CI at the level `1 − 0.10/k` excluding zero**, where *k* is the number of arms
-  scored in the phase (§11.4).
+  scored in the phase (§11.4). **The resampling unit is the matching cell, not the window** — registered
+  2026-09-06 and frozen with the rest of the primary statistic. §11.3's four matching dimensions mean every
+  shock window in a cell draws the *same* control set, so a window-level bootstrap assumes an independence the
+  matching design destroys by construction and assigns the shared control mean zero variance. Measured on the
+  fixture that produced this registration, the window-level interval had **width exactly zero with its lower
+  bound above zero** — satisfying half the READY test with certainty about a quantity the data does not
+  establish — while the standard error of the shared control mean alone was 2.5× the point estimate. The cluster
+  interval resamples cells, and within a drawn cell re-estimates that cell's control mean from its own controls,
+  so the two travel together. It is never narrower than the window-level interval, and the excess matches an
+  analytic `Var_cluster = Var_naive + Var(control resample mean)/nCells`.
 - **Paper P&L > 0 over ≥ 30 holdout entries**, fees charged as §4 charges them, per-contract rounding as §7.5
   requires.
 
@@ -584,6 +620,11 @@ recorded. The holdout size that lets a point estimate exactly equal to the 0.010
 | 0.02 | 32 | 54 | 4.3 months |
 | 0.03 | 71 | 120 | 9.6 months |
 | 0.05 | 197 | 333 | 26.6 months |
+
+**Both power figures are required output, not optional colour** (registered 2026-09-06): a report that carries
+the 50%-power required n without the 80% figure beside it is exactly the "barely-powered design mistaken for a
+good one" this subsection was written to prevent, and the at-open feasibility test against §11.7's deadline
+cannot be applied without it.
 
 **Procedure, fixed now.** `sd` is measured on the 30 calibration windows. The required holdout n is computed from
 it at 50% power and reported alongside the 80%-power figure, so a barely-powered design is never mistaken for a
@@ -720,6 +761,37 @@ recorded data and then testing it on that same data reproduces both.
   train and July CPI in test and leaks the regime across the boundary. Chronological only.
 - The boundary is a count, not a date, and cannot be moved once the 30th calibration window is graded.
 
+**The calibration half is frozen as a RECORD, not as a rule** — registered 2026-09-07, and it is what
+"frozen" has to mean here. When the 30th calibration window is graded, the caller writes down a **manifest**:
+the identity of those thirty shock windows and, for each, the identity of the control windows it drew.
+Thereafter the calibration half is **read from that manifest and never re-derived.** `sd` is computed from it
+and is a fact about a fixed set, which is the only way it can be frozen at all.
+
+*This supersedes the rule registered on 2026-09-06 — "a calibration window draws only controls that closed at
+or before the boundary" — which is struck. It was a correct diagnosis with a broken remedy. Restricting the
+pool makes matched-ness a function of the boundary while the boundary is derived from matched-ness, and that
+cycle has no fixed point on ordinary data: of 51 measured placements, 40 required two registrations, 11
+required one, and some never converged, leaving the unit refusing permanently with a message saying the
+holdout was spent. Freezing by rule cannot work because the rule's inputs keep arriving; freezing by record
+works because a record does not change. Recorded rather than quietly replaced, and free only because no
+observation exists and no holdout is open.*
+
+**The diagnosis it came from stands, and the manifest is what answers it.** A matching cell is (series, slot,
+weekday, quarter), a combination that recurs **weekly**, so a re-derived calibration cell gains a control every
+week by construction and its `sd` is recomputed from a different set on every run — observed moving §11.2a's
+required n **80 → 44** from pruning one old control row, in the direction §11.2a says it may never take. A
+manifest also closes the chronological leak the same way: the recorded control set cannot later acquire a
+window that postdates the holdout shocks it is compared against, because it cannot acquire anything. A matching cell is (series, slot, weekday,
+quarter), a combination that recurs **weekly**, so without this restriction every calibration cell gains a
+control every week by construction and the calibration set is never finished. That makes the frozen `sd`
+non-stationary: it is recomputed from a different set on every run, and §11.2a's required holdout n moves with
+it — observed moving **80 → 44** from pruning one old control row, in the direction §11.2a says it may never
+take. A boundary that fixes which *shock* windows are calibration, while leaving their *controls* open to
+accrual, freezes a count and not a quantity. It also closes the weaker form of the same problem: a calibration
+pair could otherwise be matched against a control window that postdates the holdout shocks it is being
+compared with, which is the chronological leakage §11.6 exists to prevent, arriving through the control set
+rather than through the split.
+
 **Freezing.** Every threshold, coefficient, detector parameter, control-matching rule and arm designation that the
 calibration set touched is frozen, tagged `fit-YYYY-MM-DD-x` in the code and recorded in this file with a build
 stamp, **before a single holdout window is scored.** READY is decided on the holdout alone. The calibration
@@ -739,9 +811,12 @@ Stated now, before any data. Each of these closes the programme; none of them is
    **< 0.005** — half the effect floor. Closed. Not "extended", not "re-specified".
 2. **The effect is the seasonal curve.** The unconditional shock number is positive and the control-adjusted one is
    not. The finding is `SEAS`, which is already in the model. Closed as a duplicate of a known effect.
-3. **The design cannot be executed.** Fewer than 80% of shock windows have 5 valid matched controls. The comparison
-   this section requires cannot be built, so no shock claim can be made. Closed or redesigned, and a redesign
-   restarts the count at zero.
+3. **The design cannot be executed.** Fewer than 80% of shock windows have 5 valid matched controls, **assessed
+   on the denominator §11.2 defines — graded, side-determinable, holdout, and at least 30 of them.** The
+   comparison this section requires cannot be built, so no shock claim can be made. Closed or redesigned, and a
+   redesign restarts the count at zero. **This clause may not fire below that minimum denominator:** a permanent
+   closure computed from one window is not a finding about the design, and a clause that can end the programme
+   on its first holdout window ends it before the evidence exists to judge it.
 4. **Phase 2's detector is a coin flip.** Precision against the Phase-1 calendar **< 0.50**. Phase 2 closes
    permanently; Phase 1 continues alone.
 5. **The programme runs out of clock.** **24 months** from the first recorded shock window without reaching the
@@ -946,6 +1021,65 @@ the premium.** If the band is rejecting a large share of readings, the band is t
 Both bounds are §11 thresholds in the full sense. `VRP_TICK_REL_MAX` and `SCHEMA_SIR_MIN`/`SCHEMA_SIR_MAX` may be
 tightened at any time; **loosening either to admit more readings is tuning a filter against its own results and
 fires §11.7 clause 6.** Any change is a recorded re-registration, not an edit.
+
+### 11.9 Structural breaks — registered 2026-09-07, before any instance exists
+
+Everything above assumes BTC trades in one continuous regime: the same kind of asset, subject to the same kind
+of price dynamics, for the life of the programme. That assumption can fail — a collapse, a sovereign adoption
+as reserve or backing, an exchange failure that breaks the CF constituent basket, a Kalshi contract redefinition
+— and none of those are the kind of event the calendar (§11.3) or the shock detector (§11.5) is built to see:
+they are not a scheduled release and not a volume burst inside one window, they are a change in what the
+underlying process *is*. Pooling data from before and after such an event is not a matching failure the way an
+uncontrolled release is; it is measuring two different instruments and calling the difference a signal.
+
+**This is a real risk to the programme's external validity, not to its arithmetic**, and it is registered now,
+while it costs nothing, because a threshold or rule invented after seeing the market move is exactly the
+hindsight §7.4 and §11.7 clause 6 exist to prevent.
+
+**Declaration is operator judgment, always, and always carries a reason.** No formula decides whether BTC has
+broken regime — a formula can only flag that something unusual happened, never that it *means* something. A
+structural break is therefore **declared**, not detected: a human writes it down, with a category, a reason,
+and a source, the same provenance discipline as the calendar's `DATED` rows (§8). The categories are a closed
+set — `price-collapse`, `price-parabola`, `sovereign-adoption`, `exchange-failure`, `contract-redefinition`,
+`other` — closed so a typo is caught, `other` so the set is never a reason to refuse a real one.
+
+**The automatic half is a flag, never a decision.** A deferred pass may mark an instant as `flagged` when a
+realized-volatility statistic crosses an unusual percentile of its own trailing distribution — self-normalizing,
+because a fixed price level (a "$40,000" or a "70% draw-down") is exactly the kind of number this document
+warns against inventing, and what counts as unusual for BTC changes with BTC. A `flagged` instant carries no
+reason beyond the statistic that tripped it, is **never sufficient to define a regime boundary on its own**, and
+never gates, restarts, or closes anything by itself. It exists so the operator does not have to remember to
+look; the record still requires a human to say what it means, exactly as `unverified` prices still move the
+tape in §2 rather than halting it.
+
+**What a declared break does, and what it does not.**
+
+- Nothing already recorded is deleted, edited, or reclassified. §4's ungardenable rule applies here exactly as
+  everywhere else: a declaration is a new row, appended, never a rewrite of history.
+- Every declared break defines a **regime boundary instant**. `regimeAt(t)` returns which regime an instant
+  belongs to — an ordinal, not a judgment — derived at read time from the registry, the same pattern as
+  `eventTag`/`coverageAt` (§10.2): it costs the recorder nothing and is exported on every H-protocol row, not
+  only the shock programme's, because H5's premium and any future H2 both implicitly assume the vol regime is
+  stable too.
+- **No calibration set, no control match, and no bootstrap resample may span a regime boundary.** This binds
+  §11.2's difference-in-differences and §11.3's control matching exactly as phase separation (§11.5) and series
+  separation (§4) already bind them: a control drawn from a different regime than its shock is not time-matched
+  in any sense §11.3 means, whatever slot, weekday and quarter it shares.
+  If a declared break's effective instant falls inside an **open** calibration or holdout set — frozen or not —
+  that set is spent: this is the same mechanic and the same wording as §11.6's holdout-spending clause,
+  extended explicitly to a regime break. The count for the regime the break closes stops where the break falls;
+  a fresh calibration set opens on the first graded shock window in the new regime. Data from the closed regime
+  stays on the record and stays exportable; it simply never pools with data from the regime that follows it.
+- A break declared, then found to be over-called, is not un-declared. The registry entry is superseded — a new
+  entry marked `superseded`, citing the one it corrects, in the same style as §11.8's superseded bounds — so
+  the record of what was believed and when is never lost. Un-declaring silently would let a boundary be moved
+  after seeing whether it helped the result, which is the one thing this whole document exists to prevent.
+
+**This registers the concept and its effect before any scorer consumes it.** No scorer exists in the repository
+right now — the one built and reviewed on 2026-09-06/07 was reset (§10.1) rather than carried forward, so that
+regime-break handling could be part of a scorer's design from the start rather than retrofitted onto code
+already hardened against a different set of failures. `regimeAt(t)` and the registry it reads are the contract
+any future scorer must honor; nothing here depends on that scorer existing yet.
 
 ---
 

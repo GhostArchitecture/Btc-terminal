@@ -434,7 +434,7 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.5, 1.6 | `build-20260907113444` | D1, D6 |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.5, 1.6 | `build-20260907153431` | D1, D6 |
 | **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.5, 1.6 | `build-20260907011503` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | — | not built | — (1.8) |
 
