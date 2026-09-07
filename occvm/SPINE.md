@@ -22,6 +22,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **2.1** | landed | **P1 and P4, both derived, measured, and not wired.** Anisotropic motion (`1/√k`: a 0.7584, b 0.9454, c 1.0000) has no second axis to be observed against — `translateX` is at zero animated sites in either tool. Unit-cell spacing (a 1.0000 : c 1.1573 : b 1.6069) does not survive integer-pixel rounding at the sizes 84.5% of spacing uses. Both keep their arithmetic, ship no token, and carry self-retiring guards; the golden-ratio guard ships regardless. |
 | **2.2** | landed | `--amb` renamed **`--fill`**, values byte-identical. The non-monotonicity 1.2a deferred to 2.0 was measured and is not a defect: consumers weight the term by `(1−e)`, which cuts a 28% dip in the token to 1% in what reaches the surface, so the token was only ever mis-named. `--amb` is pinned out of both repositories. |
 | **2.3** | **reverted** | tried to adopt L12 on Rhyme's `.slab` and matched the material against the `:root` **fallback** rather than the rendered substrate, which the sundial overwrites every minute. The adopted surface lost its twilight response. Reverted; `body` stays anchored to L1's floor; the real adoption target — replacing the sundial's two authored face offsets with the material's ratios — is registered in L12, unbuilt. |
+| **2.4** | landed | **L12 adopted where it belongs.** The sundial's two authored face offsets (`0.14·(0.5+e)`, `0.42`) become the material's face ratios; `authoredContrast` — fitted to the fallback, 2.3's error one level down — is deleted for `renderedContrast`, anchored to the rendered high-sun spread. Directionality and mix-toward-light are kept, both for measured reasons. Costs +1.75 L* at noon and +5.00 at low sun, the latter because the shadow face gains directionality it never had. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -552,6 +553,41 @@ a correction commit does; it is registered here, unbuilt, as the shape any real 
 assertion compared the material against a declaration rather than against a render. `test/occvm.js` now
 carries the check that would have caught it — that the rendered substrate is sundial-written and not the
 `:root` fallback.
+
+**2.4 — the substrate's face offsets become the material's, and this is the adoption 2.3 should have
+been.** The sundial's `mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)` were the last authored
+values in the substrate: two magic numbers with no derivation. They are now the material's face ratios,
+taken relative to the base colour the sundial owns.
+
+**The free parameter is re-anchored, which is a correction in its own right.** `authoredContrast` fitted
+to 5.739 — the spread of the `:root` **fallback** — which is 2.3's error one level down, shipped since
+2.0. It is replaced by `renderedContrast`, anchored to the spread the tools actually paint at **high sun,
+13.881**, a named instant rather than an average, because a fit to an unnamed average is the same evasion
+in a longer form. `authoredContrast` is deleted rather than re-valued.
+
+**The division of labour is 2.0's, unchanged:** material owns *structure* — how far the lit and shaded
+faces sit from the base — and the sundial owns *magnitude*, being the base colour and the `(0.5+e)`
+directionality term. That term is kept deliberately: specular contrast between faces depends on how
+directional the light is, and adopting the material's ratio **without** it does not flatten the day, it
+**inverts** it — measured at −7.9 L* on the noon highlight against +8.0 at night. The operation also stays
+a *mix toward the light* rather than a scale of the base: on a dielectric the specular return carries the
+source's colour, so a highlight desaturates, and scaling the base's own linear RGB would keep its hue and
+render as tinted glass. The material sets how far; this file still decides toward what.
+
+**What it costs, stated over the whole day rather than at the anchor.** Anchoring at high sun *guarantees*
+high sun barely moves, so the honest figure is the range:
+
+| instant | ΔL* highlight | ΔL* shadow | spread before → after |
+|---|---|---|---|
+| high sun | +1.75 | +0.68 | 13.88 → 13.44 |
+| low sun | **+5.00** | **+4.47** | 5.16 → 4.05 |
+| night | +0.05 | +1.59 | 5.54 → 3.32 |
+
+**The large move is at low sun, and its cause is named:** the shadow face gains directionality it never
+had. The authored `0.42` was flat at every elevation — a shade face equally deep at noon and at dusk —
+while the material's ratio, modulated like the highlight's, lifts it as the light turns diffuse. That is
+physically the better model and it is also a visible change, so it is written here rather than left for
+someone to discover in a screenshot.
 
 **P1 — anisotropic motion: derived, measured, and deliberately not wired.** The stiffness tensor gives
 each axis a settling time, and the relation is the oscillator's rather than the spring's: `T = 2π√(m/k)`,

@@ -848,11 +848,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     MAT.substrate(A, 0.8).spread < MAT.substrate(A, 1.2).spread);
   T("the substrate ramp is ordered hi > mid > lo", lum(s1.hi) > lum(s1.mid) && lum(s1.mid) > lum(s1.lo));
 
-  /* the authored spread is reproduced at a DERIVED contrast, not a typed one */
-  const kA = MAT.authoredContrast(A);
-  T("authoredContrast is derived from the material, not a literal", Math.abs(kA - 0.7816) < 1e-3, kA.toFixed(4));
-  T("at that contrast the material reproduces the spread the tools author today",
-    Math.abs(MAT.substrate(A, kA).spread - MAT.AUTHORED_SPREAD) < 0.02);
+  /* THE CONTRAST IS ANCHORED TO WHAT RENDERS, NOT TO A DECLARATION. Until 2.4 this fitted to 5.739,
+     the spread of the :root fallback the sundial overwrites before first paint — the same error that
+     sank 2.3, one level down, and shipped since 2.0. It now anchors to the rendered spread at a NAMED
+     instant (high sun), because a fit to an unnamed average is the same evasion in a longer form. */
+  const kR = MAT.renderedContrast(A);
+  T("renderedContrast is derived from the material, not a literal", Math.abs(kR - 1.1766) < 1e-3, kR.toFixed(4));
+  T("at that contrast the material reproduces the spread the tools RENDER at high sun",
+    Math.abs(MAT.substrate(A, kR).spread - MAT.RENDERED_SPREAD_HIGH) < 0.02);
+  T("the anchor is not the :root fallback's spread — 2.3's error may not return",
+    Math.abs(MAT.RENDERED_SPREAD_HIGH - 5.739) > 1, MAT.RENDERED_SPREAD_HIGH);
+  T("authoredContrast is gone: it fitted to hexes nobody paints", MAT.authoredContrast === undefined);
 
   /* the sun must NOT enter the ratio — material owns structure, the sundial owns magnitude (1.2) */
   T("substrate takes no light argument", MAT.substrate.length === 2);
@@ -1043,6 +1049,42 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       Math.abs(rHigh / rLow - 1) > 0.5, `${rHigh.toFixed(3)} at high sun vs ${rLow.toFixed(3)} at low`);
     T("the :root fallback is not what renders, which is what 2.3 measured against",
       rHigh !== 5.739 && Math.abs(rHigh - 5.739) > 0.1, rHigh.toFixed(3));
+  }
+
+  /* ── 2.4 — the substrate's face offsets are the material's ──────────────────────────────────── */
+  {
+    const sun24 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
+    /* comments stripped: the file documents what it removed, and a guard that reads prose would fail on
+       its own changelog. This must test the CODE. */
+    const sunCode = sun24.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    T("the two authored face offsets are gone from the sundial's code",
+      !/0\.14 \* \(0\.5 \+ e\)/.test(sunCode) && !/\[0, 0, 0\], 0\.42/.test(sunCode),
+      "0.14 and 0.42 were the last authored values in the substrate");
+    T("but the file still records what it replaced", /0\.14 \* \(0\.5 \+ e\)/.test(sun24));
+    T("the sundial reads the material for them", /m\.faceRatios\(/.test(sun24));
+    T("and reads it lazily, so splice order cannot break it as it broke fracture at 1.1b",
+      /typeof OCCVM_MATERIAL !== "undefined"/.test(sun24) && !/^\s*var MAT =/m.test(sun24));
+
+    /* the directionality term is KEPT, and this is the assertion that says why: without it the
+       material's constant ratio does not flatten the day, it inverts it. */
+    const h24 = load();
+    const at = el => h24.R(`OCCVM_SUN.respond({elev:${el},az:180})`);
+    const lum24 = h => { const p = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+      .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+      return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+    const spread = el => { const r = at(el); return lum24(r["--sub-hi"]) / lum24(r["--sub-lo"]); };
+    T("face contrast still falls with the sun — the day is not flattened",
+      spread(60) > spread(10) * 1.5, `${spread(60).toFixed(2)} at high sun vs ${spread(10).toFixed(2)} at low`);
+    T("high sun reproduces the rendered spread the contrast is anchored to",
+      Math.abs(spread(60) / MAT.RENDERED_SPREAD_HIGH - 1) < 0.06, spread(60).toFixed(3));
+
+    /* the highlight must still DESATURATE toward the light: a specular return on a dielectric carries
+       the source's colour, so a uniform scale of the base (which keeps its hue) would be wrong. */
+    const noon = at(60);
+    const sat = h => { const c = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16));
+      return (Math.max(...c) - Math.min(...c)) / (Math.max(...c) || 1); };
+    T("the highlight desaturates toward the light rather than scaling the base's hue",
+      sat(noon["--sub-hi"]) < sat(noon["--sub"]), `hi ${sat(noon["--sub-hi"]).toFixed(3)} vs sub ${sat(noon["--sub"]).toFixed(3)}`);
   }
 
   /* SPINE.md is the law: the material's published constants must appear in it */

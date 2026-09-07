@@ -655,7 +655,7 @@ footer { margin-top: 34px; }
 
 <script>
 /* ==== OCCVM SPINE material.js — spliced from occvm/material.js. do not edit. ==== */
-/* sha256:fd592d8dea64 */
+/* sha256:2732d75fb615 */
 /* OCCVM 2.0 — the material model (OCCVM-L12). One definition, shared by every conforming tool.
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -817,8 +817,18 @@ var OCCVM_MATERIAL = (function () {
     }).join("");
   }
 
-  /* the authored spread, kept as a measurement of what the tools do today rather than as a target */
-  var AUTHORED_SPREAD = 5.739;
+  /* THE RENDERED SPREAD, and a correction. Until 2.4 this constant was 5.739 — the spread of the
+   * `:root` FALLBACK declaration `#2c2a36 / #1b1a22 / #0e0d13`, which the sundial overwrites every
+   * minute before first paint. It is the same error that sank 2.3, sitting one level down and shipped
+   * since 2.0: a number fitted to hexes nobody renders.
+   *
+   * What the tools actually paint, measured from the golden set, is a spread that MOVES WITH THE SUN:
+   * 13.881 at high sun, 5.160 at low, 5.537 at night. There is therefore no single "authored spread",
+   * and `authoredContrast` had to be re-specified rather than re-valued: it now anchors to the
+   * rendered spread at a NAMED instant, because a free parameter fitted to an unnamed average is the
+   * same evasion in a longer form. High sun is the anchor — it is where the substrate carries the most
+   * structure and where a shape difference is most visible. */
+  var RENDERED_SPREAD_HIGH = 13.881;
 
   function substrate(m, contrast) {
     var k = contrast === undefined ? 1 : contrast;
@@ -837,11 +847,21 @@ var OCCVM_MATERIAL = (function () {
     };
   }
 
-  /* the contrast at which the material's spread equals what the tools author today. Derived, not typed:
-     it moves if the material moves, which is the whole point of it being here rather than in a stylesheet. */
-  function authoredContrast(m) {
+  /* The contrast at which the material's spread equals what the tools RENDER at high sun. Derived, not
+     typed: it moves if the material moves, which is the whole point of it being here rather than in a
+     stylesheet. Anchoring here is a fit, and it is the same fit `body` makes — a free parameter has to
+     come from somewhere. What it is NOT any more is a fit to a declaration nobody paints. */
+  function renderedContrast(m) {
     var f = faces(m);
-    return Math.log(AUTHORED_SPREAD) / Math.log(f.edge.R / f.front.R);
+    return Math.log(RENDERED_SPREAD_HIGH) / Math.log(f.edge.R / f.front.R);
+  }
+
+  /* The two face offsets the sundial applies, derived rather than authored (2.4, OCCVM-L12).
+     Returned as luminance ratios relative to the MID face, because that is the base the sundial owns:
+     it supplies the substrate colour, this supplies how far the other two faces sit from it. */
+  function faceRatios(m, contrast) {
+    var r = substrate(m, contrast === undefined ? renderedContrast(m) : contrast).ratios;
+    return { hi: r[0] / r[1], lo: 1 / r[1] };
   }
 
   /* ---- what the other properties govern ---------------------------------------------------------
@@ -952,8 +972,8 @@ var OCCVM_MATERIAL = (function () {
   };
 
   return {
-    ARAGONITE: ARAGONITE, CUT: CUT, AUTHORED_SPREAD: AUTHORED_SPREAD,
-    fresnel: fresnel, faces: faces, substrate: substrate, authoredContrast: authoredContrast,
+    ARAGONITE: ARAGONITE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH,
+    fresnel: fresnel, faces: faces, substrate: substrate, renderedContrast: renderedContrast, faceRatios: faceRatios,
     birefringence: birefringence,
     edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
     motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED,
@@ -1468,7 +1488,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
 /* ==== END OCCVM veins.js ==== */
 
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
-/* sha256:592585a93387 */
+/* sha256:255309264fb1 */
 /* OCCVM 1.2/1.7 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1576,6 +1596,57 @@ var OCCVM_SUN = (function () {
   function mix(p, q, t) { return [0, 1, 2].map(function (i) { return Math.round(p[i] + (q[i] - p[i]) * t); }); }
   function hex(c) { return "#" + c.map(function (v) { return clamp(v, 0, 255).toString(16).padStart(2, "0"); }).join(""); }
 
+
+  /* ── OCCVM-L12 adopted, 2.4 — the substrate's two face offsets are the material's, not authored ──
+   *
+   * Until 2.4 these were `0.14 * (0.5 + e)` toward white and a flat `0.42` toward black: two magic
+   * numbers with no derivation, and the last authored values in the substrate. The material supplies
+   * them now, as luminance ratios relative to the base colour this file owns.
+   *
+   * THE DIVISION OF LABOUR IS 2.0's AND IS UNCHANGED: the material owns STRUCTURE — how far the lit and
+   * shaded faces sit from the base — and the sundial owns MAGNITUDE, which is the base colour itself and
+   * the `(0.5 + e)` directionality term kept below. That term is not decoration: specular contrast
+   * between faces genuinely depends on how directional the light is, so a face ratio that ignored the sun
+   * would flatten the day. Measured, adopting the material's ratio WITHOUT it moves the noon highlight
+   * -7.9 L* and raises night contrast +8.0 — it does not flatten uniformly, it inverts the day.
+   *
+   * THE OPERATION STAYS A MIX TOWARD THE LIGHT, not a uniform scale of the base. On a dielectric the
+   * specular return carries the SOURCE's colour, so a highlight desaturates; scaling the base's own
+   * linear RGB would keep its hue and make the highlight look like tinted glass. The material sets how
+   * far, this file still decides toward what.
+   *
+   * Solved by bisection because lum(mix(a, b, t)) has no closed form through the sRGB transfer function.
+   * It is monotone in t, 24 iterations resolve past 8-bit, and it runs once a minute. */
+  function relLum(c) {
+    var p = [0, 1, 2].map(function (i) {
+      var v = c[i] / 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
+  }
+  /* the material, read lazily: the splicer inserts parts in reverse list order, and capturing a sibling
+     part at IIFE time is what had fracture.js throwing in the browser from 1.1b to 2.0. */
+  function material() {
+    return (typeof OCCVM_MATERIAL !== "undefined" && OCCVM_MATERIAL) ? OCCVM_MATERIAL
+         : (typeof require !== "undefined" ? require("./material.js") : null);
+  }
+  var MAT_HI = "hi", MAT_LO = "lo";
+  function faceMix(base, toward, which, e) {
+    var m = material();
+    if (!m) throw new Error("occvm sundial: material.js is not spliced beside this — no face ratios");
+    var want = m.faceRatios(m.ARAGONITE)[which];
+    /* directionality: the material's ratio is the full-light value; diffuse light flattens toward 1 */
+    var dir = (0.5 + e) / 1.5;
+    want = 1 + (want - 1) * dir;
+    var L0 = relLum(base), lo = 0, hi = 1;
+    for (var i = 0; i < 24; i++) {
+      var t = (lo + hi) / 2;
+      if (relLum(mix(base, toward, t)) / L0 < want) { if (want > 1) lo = t; else hi = t; }
+      else { if (want > 1) hi = t; else lo = t; }
+    }
+    return (lo + hi) / 2;
+  }
+
   /* The noon anchors SPINE.md OCCVM-L1 records, and the two ends the day carries them toward. */
   var SUB = [27, 26, 34], SUB_DUSK = [40, 28, 30], SUB_NIGHT = [14, 14, 26];
   var BONE = [236, 227, 208], BONE_DUSK = [244, 214, 170], BONE_NIGHT = [204, 208, 224];
@@ -1628,7 +1699,7 @@ var OCCVM_SUN = (function () {
     var my = (p.moon && mAlt > 0) ? -Math.cos(p.moon.az * RAD) : 0;
 
     /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
-       ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
+       the fill is 0.630 there, not because elevation is pretended to be 0.15 (D2). */
     var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
     var rake = elev > 0 ? Math.min(22, 4 + 14 / Math.max(0.25, Math.tan(elev * RAD)) / 6) : 4;
 
@@ -1690,8 +1761,8 @@ var OCCVM_SUN = (function () {
       "--nglow": (6 * phosphor + 3 * moonLight).toFixed(2) + "px",
       "--nglow-s": (3 * phosphor + 1.5 * moonLight).toFixed(2) + "px",
       "--sub": hex(sub),
-      "--sub-hi": hex(mix(sub, [255, 255, 255], 0.14 * (0.5 + e))),
-      "--sub-lo": hex(mix(sub, [0, 0, 0], 0.42)),
+      "--sub-hi": hex(mix(sub, [255, 255, 255], faceMix(sub, [255, 255, 255], MAT_HI, e))),
+      "--sub-lo": hex(mix(sub, [0, 0, 0], faceMix(sub, [0, 0, 0], MAT_LO, e))),
       "--bone": hex(bone),
       "--bone-lo": hex(boneLo)
     };

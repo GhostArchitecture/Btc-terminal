@@ -159,8 +159,18 @@ var OCCVM_MATERIAL = (function () {
     }).join("");
   }
 
-  /* the authored spread, kept as a measurement of what the tools do today rather than as a target */
-  var AUTHORED_SPREAD = 5.739;
+  /* THE RENDERED SPREAD, and a correction. Until 2.4 this constant was 5.739 — the spread of the
+   * `:root` FALLBACK declaration `#2c2a36 / #1b1a22 / #0e0d13`, which the sundial overwrites every
+   * minute before first paint. It is the same error that sank 2.3, sitting one level down and shipped
+   * since 2.0: a number fitted to hexes nobody renders.
+   *
+   * What the tools actually paint, measured from the golden set, is a spread that MOVES WITH THE SUN:
+   * 13.881 at high sun, 5.160 at low, 5.537 at night. There is therefore no single "authored spread",
+   * and `authoredContrast` had to be re-specified rather than re-valued: it now anchors to the
+   * rendered spread at a NAMED instant, because a free parameter fitted to an unnamed average is the
+   * same evasion in a longer form. High sun is the anchor — it is where the substrate carries the most
+   * structure and where a shape difference is most visible. */
+  var RENDERED_SPREAD_HIGH = 13.881;
 
   function substrate(m, contrast) {
     var k = contrast === undefined ? 1 : contrast;
@@ -179,11 +189,21 @@ var OCCVM_MATERIAL = (function () {
     };
   }
 
-  /* the contrast at which the material's spread equals what the tools author today. Derived, not typed:
-     it moves if the material moves, which is the whole point of it being here rather than in a stylesheet. */
-  function authoredContrast(m) {
+  /* The contrast at which the material's spread equals what the tools RENDER at high sun. Derived, not
+     typed: it moves if the material moves, which is the whole point of it being here rather than in a
+     stylesheet. Anchoring here is a fit, and it is the same fit `body` makes — a free parameter has to
+     come from somewhere. What it is NOT any more is a fit to a declaration nobody paints. */
+  function renderedContrast(m) {
     var f = faces(m);
-    return Math.log(AUTHORED_SPREAD) / Math.log(f.edge.R / f.front.R);
+    return Math.log(RENDERED_SPREAD_HIGH) / Math.log(f.edge.R / f.front.R);
+  }
+
+  /* The two face offsets the sundial applies, derived rather than authored (2.4, OCCVM-L12).
+     Returned as luminance ratios relative to the MID face, because that is the base the sundial owns:
+     it supplies the substrate colour, this supplies how far the other two faces sit from it. */
+  function faceRatios(m, contrast) {
+    var r = substrate(m, contrast === undefined ? renderedContrast(m) : contrast).ratios;
+    return { hi: r[0] / r[1], lo: 1 / r[1] };
   }
 
   /* ---- what the other properties govern ---------------------------------------------------------
@@ -294,8 +314,8 @@ var OCCVM_MATERIAL = (function () {
   };
 
   return {
-    ARAGONITE: ARAGONITE, CUT: CUT, AUTHORED_SPREAD: AUTHORED_SPREAD,
-    fresnel: fresnel, faces: faces, substrate: substrate, authoredContrast: authoredContrast,
+    ARAGONITE: ARAGONITE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH,
+    fresnel: fresnel, faces: faces, substrate: substrate, renderedContrast: renderedContrast, faceRatios: faceRatios,
     birefringence: birefringence,
     edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
     motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED,

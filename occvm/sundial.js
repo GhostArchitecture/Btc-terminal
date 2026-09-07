@@ -105,6 +105,57 @@ var OCCVM_SUN = (function () {
   function mix(p, q, t) { return [0, 1, 2].map(function (i) { return Math.round(p[i] + (q[i] - p[i]) * t); }); }
   function hex(c) { return "#" + c.map(function (v) { return clamp(v, 0, 255).toString(16).padStart(2, "0"); }).join(""); }
 
+
+  /* ── OCCVM-L12 adopted, 2.4 — the substrate's two face offsets are the material's, not authored ──
+   *
+   * Until 2.4 these were `0.14 * (0.5 + e)` toward white and a flat `0.42` toward black: two magic
+   * numbers with no derivation, and the last authored values in the substrate. The material supplies
+   * them now, as luminance ratios relative to the base colour this file owns.
+   *
+   * THE DIVISION OF LABOUR IS 2.0's AND IS UNCHANGED: the material owns STRUCTURE — how far the lit and
+   * shaded faces sit from the base — and the sundial owns MAGNITUDE, which is the base colour itself and
+   * the `(0.5 + e)` directionality term kept below. That term is not decoration: specular contrast
+   * between faces genuinely depends on how directional the light is, so a face ratio that ignored the sun
+   * would flatten the day. Measured, adopting the material's ratio WITHOUT it moves the noon highlight
+   * -7.9 L* and raises night contrast +8.0 — it does not flatten uniformly, it inverts the day.
+   *
+   * THE OPERATION STAYS A MIX TOWARD THE LIGHT, not a uniform scale of the base. On a dielectric the
+   * specular return carries the SOURCE's colour, so a highlight desaturates; scaling the base's own
+   * linear RGB would keep its hue and make the highlight look like tinted glass. The material sets how
+   * far, this file still decides toward what.
+   *
+   * Solved by bisection because lum(mix(a, b, t)) has no closed form through the sRGB transfer function.
+   * It is monotone in t, 24 iterations resolve past 8-bit, and it runs once a minute. */
+  function relLum(c) {
+    var p = [0, 1, 2].map(function (i) {
+      var v = c[i] / 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
+  }
+  /* the material, read lazily: the splicer inserts parts in reverse list order, and capturing a sibling
+     part at IIFE time is what had fracture.js throwing in the browser from 1.1b to 2.0. */
+  function material() {
+    return (typeof OCCVM_MATERIAL !== "undefined" && OCCVM_MATERIAL) ? OCCVM_MATERIAL
+         : (typeof require !== "undefined" ? require("./material.js") : null);
+  }
+  var MAT_HI = "hi", MAT_LO = "lo";
+  function faceMix(base, toward, which, e) {
+    var m = material();
+    if (!m) throw new Error("occvm sundial: material.js is not spliced beside this — no face ratios");
+    var want = m.faceRatios(m.ARAGONITE)[which];
+    /* directionality: the material's ratio is the full-light value; diffuse light flattens toward 1 */
+    var dir = (0.5 + e) / 1.5;
+    want = 1 + (want - 1) * dir;
+    var L0 = relLum(base), lo = 0, hi = 1;
+    for (var i = 0; i < 24; i++) {
+      var t = (lo + hi) / 2;
+      if (relLum(mix(base, toward, t)) / L0 < want) { if (want > 1) lo = t; else hi = t; }
+      else { if (want > 1) hi = t; else lo = t; }
+    }
+    return (lo + hi) / 2;
+  }
+
   /* The noon anchors SPINE.md OCCVM-L1 records, and the two ends the day carries them toward. */
   var SUB = [27, 26, 34], SUB_DUSK = [40, 28, 30], SUB_NIGHT = [14, 14, 26];
   var BONE = [236, 227, 208], BONE_DUSK = [244, 214, 170], BONE_NIGHT = [204, 208, 224];
@@ -157,7 +208,7 @@ var OCCVM_SUN = (function () {
     var my = (p.moon && mAlt > 0) ? -Math.cos(p.moon.az * RAD) : 0;
 
     /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
-       ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
+       the fill is 0.630 there, not because elevation is pretended to be 0.15 (D2). */
     var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
     var rake = elev > 0 ? Math.min(22, 4 + 14 / Math.max(0.25, Math.tan(elev * RAD)) / 6) : 4;
 
@@ -219,8 +270,8 @@ var OCCVM_SUN = (function () {
       "--nglow": (6 * phosphor + 3 * moonLight).toFixed(2) + "px",
       "--nglow-s": (3 * phosphor + 1.5 * moonLight).toFixed(2) + "px",
       "--sub": hex(sub),
-      "--sub-hi": hex(mix(sub, [255, 255, 255], 0.14 * (0.5 + e))),
-      "--sub-lo": hex(mix(sub, [0, 0, 0], 0.42)),
+      "--sub-hi": hex(mix(sub, [255, 255, 255], faceMix(sub, [255, 255, 255], MAT_HI, e))),
+      "--sub-lo": hex(mix(sub, [0, 0, 0], faceMix(sub, [0, 0, 0], MAT_LO, e))),
       "--bone": hex(bone),
       "--bone-lo": hex(boneLo)
     };

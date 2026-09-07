@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907201241` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907202900` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -1301,6 +1301,29 @@ a base colour moved by twilight, plus face offsets — but those offsets are aut
 `mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)`. Replacing *those two expressions* with the
 material's face ratios is what adopting L12 on a substrate actually means. It is a visible change to both
 tools and is not something a correction commit does.
+
+**2.4 — the substrate's face offsets become the material's.** `mix(sub, white, 0.14·(0.5+e))` and
+`mix(sub, black, 0.42)` were the last authored values in the substrate — two magic numbers with no
+derivation — and are now the material's face ratios relative to the base colour the sundial owns. This is
+the adoption 2.3 should have been: it replaces the sundial's constants rather than standing a constant
+beside them.
+
+*It carries a correction of its own.* `authoredContrast` fitted to 5.739, the spread of the `:root`
+**fallback** — 2.3's error one level down, shipped since 2.0. Replaced by `renderedContrast`, anchored to
+the spread the tools actually paint at high sun (13.881), a **named instant** rather than an average.
+`authoredContrast` is deleted rather than re-valued.
+
+*Two things are kept, both for measured reasons.* The `(0.5+e)` directionality term stays, because
+adopting the material's constant ratio without it does not flatten the day, it **inverts** it: −7.9 L* on
+the noon highlight against +8.0 at night. And the operation stays a mix *toward the light* rather than a
+scale of the base, because a specular return on a dielectric carries the source's colour, so a highlight
+desaturates.
+
+*What it costs, over the whole day rather than at the anchor* — anchoring at high sun guarantees high sun
+barely moves, so the range is the honest figure: **+1.75 L\*** highlight at high sun, **+5.00** at low sun,
+**+0.05** at night; shadow **+0.68 / +4.47 / +1.59**. The large move is at low sun and its cause is named:
+the shadow face gains directionality it never had, the authored `0.42` having been flat at every
+elevation. `test/occvm.js` 313 → 322.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
