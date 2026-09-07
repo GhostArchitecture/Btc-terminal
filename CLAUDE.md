@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907135235` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907213640` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -29,6 +29,13 @@ GhostArchitecture/Btc-terminal   (main)
 │   ├─ {volspace,calendar,detect,reversal,schema,prereg,regime}/{code.js,test.js,*.md}
 │   ├─ run.js                    runs every unit suite
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
+├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
+│   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
+│   ├─ {spine.css,sundial.js,veins.js,minerals.js}   the shared parts, spliced into both tools
+│   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
+│   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
+│   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
+│   └─ tools/splice-spine.js     puts each part into each target, idempotently, under a fence
 └─ .nojekyll
 ```
 
@@ -313,8 +320,11 @@ records what differs, what is broken, and how the repo is worked from a clone.
 ### 10.1 Working from a clone
 
 - **Deploy = push to `main`.** Cloudflare Pages and GitHub Pages both build from it; the same-origin `/api`
-  function deploys with the Pages build. Verify by stamp exactly as in §1 step 4. The stamp on line 2725
-  (`<!-- build-YYYYMMDDHHMMSS -->`) is still replaced by hand — assert the replacement (§7.2).
+  function deploys with the Pages build. Verify by stamp exactly as in §1 step 4. The stamp is still
+  replaced by hand — assert the replacement (§7.2) — and **since OCCVM 1.6 it lives in two places**: the
+  `<!-- build-YYYYMMDDHHMMSS -->` comment at the foot of the file and `BUILD_STAMP` in the script, which
+  the service worker's cache name derives from. One replace-all covers both; `test/occvm.js` fails if they
+  disagree, so a missed site cannot ship.
 - **Before editing:** `git status` must be clean and `git diff origin/main` empty (§7.1 in git terms). Check for
   duplicate top-level definitions: `grep -oE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(' index.html | sort | uniq -d`
   must print nothing.
@@ -1077,3 +1087,247 @@ right now — the one built and reviewed on 2026-09-06/07 was reset (§10.1) rat
 regime-break handling could be part of a scorer's design from the start rather than retrofitted onto code
 already hardened against a different set of failures. `regimeAt(t)` and the registry it reads are the contract
 any future scorer must honor; nothing here depends on that scorer existing yet.
+
+---
+
+## 12. OCCVM — the shared visual system (2026-09-06)
+
+The spine this tool shares with the Ghost Codex Rhyme Instrument. `occvm/SPINE.md` is the law; the rest of
+this section is where it touches this repository.
+
+**It did not exist until now.** The OCCVM roadmap and its 2.0 migration process were both written against a
+spine document that had never been committed — `OCCVM` matched zero tracked files in either repository, and
+the laws, defects and conformance table every release cited were unrecoverable. `occvm/SPINE-AUDIT.md` is
+the measured inventory the spine was then authored from.
+
+- **`occvm/spine.css`** is spliced into `index.html` under a fence by `occvm/tools/splice-spine.js`. **Never
+  hand-edit inside the fence** — the next splice reverts it silently, exactly as §6 says about the units.
+  Re-splicing is byte-identical; `--check` verifies and CI runs it.
+- **1.0 changes nothing.** The spine is inlined above this tool's own CSS, so every value it declares is
+  shadowed by or identical to one already here. Verified: zero deltas across 270 golden values.
+- **`occvm/golden/`** is the field record the migration process assumes exists. `record.js` drives both
+  tools in Chromium at three pinned sun elevations with the clock, timezone and seed injected;
+  `verify.js` diffs. Two tiers: `tokens.json` is byte-stable and asserted on, the PNGs are for the eye and
+  **never diffed for equality** — rasterisation differs per machine. `npm run golden` / `npm run golden:verify`.
+- **`test/occvm.js`** holds the determinism seam and the spine guards. Before 1.2 two of its assertions
+  deliberately pinned this tool's *current* behaviour, not desired: a binary `--night` and a 0.15 `--elev`
+  night floor. They now pin the spine's law instead (`OCCVM-D2`, closed at 1.2) — a continuous `--night`
+  ramp and the floor living in `--fill`. Since 1.7 the file also pins the civil/nautical/astronomical dusk
+  staging (`--dusk-stage`, additive over that same ramp) and that BTC's tool-local `--bloom` surface glow
+  stays deleted.
+- **`veinLayer()` reads an injected session seed** (`sessionStorage["btc.seed"]`) instead of the wall clock.
+  That closes §10.5's note that the veins reseeded per hour where §5 said per session.
+- **This repository now has CI** (`.github/workflows/ci.yml`): the harnesses, the unit suites, the
+  duplicate-definition check §7.1 required by hand, the splice-reproducibility check §6 required by hand,
+  the spine check, and a BTC-only golden diff on Chromium.
+
+**1.2 — one light, completed.** The light is now one implementation, `occvm/sundial.js`, spliced into both
+tools: full NOAA position (this tool's) plus Rhyme's derivation of surface response from it. `solarPosition()`
+is gone from this file and `sunTick()` is the display shape around a shared reading. `--night` is a ramp,
+`--elev` drops its 1.4 scale and its 0.15 night floor moves to `--fill`, the light vector resolves neutral
+overhead below −6°, `--glow` is a resolved scalar, and substrate and ink move with twilight. Closed D2, D8,
+D9, D10.
+
+*It also found that every fixed cast offset in both tools pointed the wrong way.* `(--lx, --ly)` points
+**toward** the sun, so a lit bevel belongs at `+(lx, ly)` and a cast at `−(lx, ly)`; the tile's
+`0 16px 36px` threw its shadow down-screen, which at noon is toward the sun. It survived because it looked
+plausible and no rule connected the offset to the light meant to cause it. `test/occvm.js` now pins the
+direction at three bearings — the same treatment §5's colour rule gets, and for the same reason.
+
+**1.6 — architecture conformance.** `sw.js` ships and the page registers it, closing D5. Three rules, and
+the first two are about not lying: **market data is never cached** (a cached price is a wrong price, and
+this tool is only measurement — §9); the page is **network-first**, so a new stamp lands the moment the
+recorder is online and no browser sits on an old one; and the **cache name is the build stamp**, passed as
+`?v=`, so the worker's script URL changes every deploy and nothing is hand-bumped. `theme_color` and the
+`theme-color` tag now agree, closing §8's cosmetic split.
+
+**1.5 — the interaction floor.** Every control is at least 44×44px (`button` gained `min-height:44px` and
+inline-flex centring; the `.tgl` track grew to 48 so its own buttons clear the floor rather than its
+container doing it); ABOVE/BELOW carried their state in a class only and now keep `aria-pressed` in sync;
+the CLOUDFLARE link had a `<button>` nested inside an `<a>`, which is two controls in one place. Reduced
+motion is now one universal rule in the spine — this file's price readout carried an unguarded
+`transition:color .5s` and the collapse chevron an unguarded transform, while the only media query here
+tested `no-preference`, the inverse of the one that matters. Closed D7 in Rhyme; this tool's own gaps are
+closed with it.
+
+**1.3 — the numeric face.** `--mono` is an owned stack: IBM Plex Mono (OFL, `occvm/fonts/OFL.txt`),
+subset to the 108 codepoints this tool renders and base64-embedded in `occvm/mono.css`, which ships only
+here — Rhyme resolves zero mono elements. **Two weights, because the price readout is `font-weight:600`
+and a synthesised bold changes the advance width**, which breaks the tabular column; both faces are
+strictly monospaced at the same 600/1000 em advance, and `font-synthesis:none` keeps it that way.
+Fifteen symbols are absent from the cut; the three that land in right-aligned numeric cells (`●`,
+`✓`, `✗`) carry `.occvm-sym`, pinning their advance to `1ch` so alignment never depends on a fallback.
+`--t-num` is 1 — a measurement, not a placeholder; see SPINE.md L7. Regenerate with
+`python3 occvm/tools/subset-mono.py` (needs `pip install fonttools brotli`; the output is committed so
+nobody needs them). Closed D3. The artifact grew 435 KB → 461 KB.
+
+**1.9 (narrow) — closed D1.** The expired `--ink --meas --bondi` block was a shim from an earlier naming
+scheme. Two of its eight names had zero call sites (dead weight); the other six carried 77 sites between
+them, every one an inline JS-generated `style="color:var(--dim)"` string — the CSS rules had already moved
+to the canonical names, only generated markup still spoke the old dialect, exactly as 1.2's golden diff
+predicted. All 77 sites migrated to `--bone-lo`/`--bone-dim`/`--verdigris`/`--gilt-c`; the block deleted.
+`test/occvm.js` pins that none of the eight names can be declared or referenced again.
+
+**1.4 — closed D6.** The mineral set moved into `occvm/minerals.js`, a fifth spliced part shared with Rhyme
+(Rhyme's own two-entry copy, missing `ruby`, was itself the "no local exceptions" gap L6 registers). This
+tool gained `S.cfg.mineral` (default `amethyst`, persisted, a picker in Settings → Advanced) and
+`--mineral --mineral-lo --vein-hi --vein-lo`, resolved from it — the first real consumer of the
+`--amethyst`/`--amethyst-lo` tokens D6 found declared and never referenced. The scope is deliberately
+narrower than Rhyme's: the mineral tints only `veinLayer()`/`veinLayerLegacy()`, never `--malachite`,
+`--ruby`, `--up`, `--down`, or any surface §5 governs, because those already carry this tool's win/lose
+meaning everywhere and a decorative accent has no business sitting beside it. `test/occvm.js` pins both
+the vein layer's dependence on the choice and that switching it never inline-sets an outcome token.
+
+**1.7 — the night model.** `occvm/sundial.js` gains `--dusk-stage`: one of `day`/`civil`/`nautical`/
+`astronomical`/`night`, at the standard elevation boundaries (0°, −6°, −12°, −18°), additive over the
+existing `--night` ramp rather than a replacement for it — same ramp, same formula, a second discrete
+reading alongside it. `S.sun.stage` mirrors it for parity with this tool's other resolved sun fields;
+nothing consumes it yet, and the existing sun pill's own day/night narrative ("sun rise", "morning", "sun
+high") is untouched — it mixes direction with dusk state in a way plain staging doesn't replace, so
+rewriting it wasn't this release's job. `--bloom`, the malachite tile glow renamed rather than resolved at
+1.2, is deleted outright — not replaced with `--glow` on the surface, since `OCCVM-L9` reserves that for
+ink and says plainly that no surface takes one.
+
+**1.8 — the reference surface.** `occvm/reference/index.html` is a conforming page that exists only to be
+looked at: one live specimen per law, drawn from the five spine parts spliced into it. It lives here rather
+than in both repositories because it renders the numeric face (which ships only where mono is rendered) and
+because it is a conformance *instrument*, like `occvm/golden/` beside it — the law and the parts are what
+both repositories carry identically. It is served with the rest of this repo, so it is readable at
+`btc-terminal.pages.dev/occvm/reference/`.
+
+**It holds no values of its own, and that is enforced, not intended.** `test/occvm.js` strips the spliced
+fences and fails on any hex, `rgb()`/`rgba()` triplet or colour keyword left in the page's own CSS or JS.
+Everything on it resolves through a spine token or a `color-mix()` of one — so it cannot keep looking
+correct after the spine stops applying to it. It is recorded into the golden set as a third surface and
+checked in CI, and it is the sharpest of the three signals: a delta on this tool might be this tool's, a
+delta there can only be the spine's.
+
+It also found a real gap in its own first section: `.occvm-slab` and `.occvm-cast` both own `box-shadow`,
+so no surface could wear both, which is why every surface that wanted a cut face *and* a cast re-authored
+the bevel by hand. `--occvm-bevel` (spine.css, L2) is the fix. Nothing in this tool moves — the token is
+added, no existing value changes, and this tool does not use `.occvm-slab`.
+
+**2.0 — the material model (`OCCVM-L12`), and one delete that never happened.** `occvm/material.js` is a
+seventh spliced part: aragonite defined once — cell, principal indices α/β/γ, hardness, density,
+stiffness — with the substrate ramp **derived** from angular Fresnel at L2's cut geometry rather than
+authored as three hexes. **Nothing in this tool repaints.** 2.0 defines and derives; adopting it on a
+surface is a separate decision under SPINE.md §6b, and what exists now is the definition plus the measured
+distance between what the material says and what the tools do, which nobody had before.
+
+*Two derivations were tried, measured and rejected before the third was kept, and both are on the record
+because each sounds more physical than the one in force.* Normal-incidence Fresnel on α/β/γ spans **1.48×**
+against the **5.74×** linear-luminance spread this tool authors, so real optics taken that way is 3.9×
+*flatter* than the design and the substrate would go nearly monochrome. Weighting reflectance by incident
+flux (`R(θ)·cos θ`) is worse: the cosine cancels the Fresnel rise and the whole sweep collapses to
+**1.13×**. What is in force is that a dark, glossy solid is seen by its **specular** return, so a face
+tracks `R` at the angle it presents *to the viewer* — the slab's own cut geometry. **The sun therefore
+drops out of the ratio**, which is why this derivation is the one kept: material owns structure, the
+sundial keeps owning magnitude exactly as it has since 1.2, and 2.0 does not double-apply the light
+pipeline. Optics gives `9.353 : 1.732 : 1.000` against the authored `5.739 : 2.539 : 1.000` — same
+ordering, more convex shape — stated rather than fitted, because a per-face correction is three authored
+numbers wearing a derivation's clothes. `contrast` is the one value that is judgment and is named as such;
+at a derived `0.7816` the material reproduces today's spread.
+
+*The lattice now has a single owner.* `occvm/veins.js` reads the cell from the material instead of
+restating it; `occvm/fracture.js` still reads the angle from veins. The same three lengths had been typed
+in two files — two copies of one fact, the defect L3 exists to prevent, one material down.
+
+*And it found a defect this tool has shipped since 1.1b.* The splicer inserts every part after one anchor,
+so parts land in **reverse** list order and `fracture.js` is evaluated *before* `veins.js` is assigned. It
+captured `OCCVM_VEINS` at that moment, got null, and **`cleave()` threw on every call in the browser**,
+while Node resolved it through `require` and every assertion passed. The read is now lazy, and the guard
+runs the spliced blocks in the page's own order with no `require` in scope. In Rhyme — fracture's first
+real consumer — the consequence was functional rather than cosmetic: the throw landed before the `done`
+callback, so **deleting a draft silently did nothing** for anyone not on reduced motion. `test/occvm.js`
+235 → 274.
+
+**P1 and 2.1/P4 — two extensions derived, measured, and deliberately not wired.** Both follow 1.1b's
+disposition of the twin misfit: the arithmetic is right and stays, the wiring waits for a regime where it
+expresses, and raising a coefficient until something visible happened would be fudging a derived number
+toward a wanted picture.
+
+*P1, anisotropic motion.* The stiffness tensor gives each axis a settling time, and the relation is the
+oscillator's rather than the spring's — `T = 2π√(m/k)`, so duration ∝ `1/√k`: **a 0.7584, b 0.9454,
+c 1.0000**. Static compliance `1/k` was the other candidate and is wrong for a temporal quantity. It ships
+no token because **anisotropy is only observable as a difference between two directions in the same view**,
+and the census found `translateX` at **zero animated sites in either tool**, `translateY` at three, and all
+eight `translate(x,y)` sites being static light-vector offsets rather than motions. Fracture is the one
+animated 2D direction and its angle is fixed, so projecting the scalars onto it renames 220 ms to 194 ms
+rather than making anything anisotropic. Three tokens consumed by nothing is `OCCVM-D12`, closed one
+release earlier. The guard is **self-retiring**: it counts animated horizontal motion and fails the day one
+appears.
+
+*2.1/P4, unit-cell spacing.* The cell normalised to its shortest edge is **a 1.0000 : c 1.1573 : b 1.6069**.
+Censused over **213 real padding/margin/gap declarations** across both tools — 19 distinct pixel values,
+10.79% weighted mean error against the cell ladder, worse coverage than a plain 4 px grid — so adopting it
+moves 213 declarations by ~11%, a redesign wearing a derivation's coat. And it does not survive to the
+screen: spacing quantises to whole pixels, **84.5% of it is under 12 px**, and the rendered c-step wanders
+**1.125–1.250** with the base rather than following the material, straddling the cell's own 1.157 without
+ever equalling it. **The guard ships even though the scale does not**, because `1.6069` and the golden ratio
+`1.6180` differ by 0.04 px at step 1 and do not reach a whole pixel until step 5 — past the largest spacing
+either tool uses. They are the same number on screen, so somebody will eventually "correct" one to the
+other. It is not a typo for φ; it is 7.97/4.96. `test/occvm.js` 274 → 294.
+
+**2.2 — `--amb` became `--fill`, and 1.2a's last open question closed.** 1.2a recorded this term as
+non-monotonic in darkness (0.450 at the horizon against 0.630 at night) and deferred to 2.0 the question
+of whether a term climbing at midnight would fight a material model. Measured first: every consumer
+weights it by `(1−e)`, which cuts a **28% dip in the token to a 1% dip in what reaches the surface**. There
+was no physical defect — only a name. It was never sky illumination; it is the *weight of the fill*, and a
+fill that rises at night is correct rather than paradoxical. Values byte-identical, proved by re-recording
+the golden set across three surfaces at three instants: one key renamed, **zero value deltas**. `--amb` is
+pinned out of both repositories. *Recorded and not changed:* the `0.55·elev` branch, weighted by `(1−e)`,
+contributes `0.55·e·(1−e)` — a mid-afternoon bulge nothing states as intent; a rename that also moved a
+curve would give the golden set a delta it could not attribute.
+
+**2.3 — attempted, wrong, reverted, and the mistake is the entry.** 2.3 anchored the material's one free
+value (`body`) to L1's floor `#0e0d13` and found the derived ramp reproduced `--sub-hi` and `--sub-lo`
+**to the byte**, disagreeing only on a mid-tone 3.91 L* darker. Three generated tokens shipped and Rhyme's
+`.slab` adopted them. Every assertion passed.
+
+**All of them compared the material against the `:root` fallback declaration**, which the sundial
+overwrites every minute before first paint. `#2c2a36 / #1b1a22 / #0e0d13` is not what renders — at high sun
+the live substrate is `#4b4a50 / #1b1a22 / #100f14`, and its face ratio swings **2.238 → 6.413** across the
+day against the material's single 3.736. The adopted slab also lost its twilight response outright, a
+constant sitting beside neighbours that move. Caught by reading the golden set's recorded values rather
+than the tests.
+
+Reverted in full; the generated tokens are deleted rather than left declared and unconsumed, which would
+have been `OCCVM-D12` in the release that cited it. **`body` stays anchored** — matching L1's declared
+floor is an improvement whatever consumes it. `test/occvm.js` now carries the check that was missing: the
+rendered substrate is sundial-written, and its face ratio is not constant.
+
+**The real adoption target is registered, unbuilt.** The sundial already implements 2.0's decomposition —
+a base colour moved by twilight, plus face offsets — but those offsets are authored constants,
+`mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)`. Replacing *those two expressions* with the
+material's face ratios is what adopting L12 on a substrate actually means. It is a visible change to both
+tools and is not something a correction commit does.
+
+**2.4 — the substrate's face offsets become the material's.** `mix(sub, white, 0.14·(0.5+e))` and
+`mix(sub, black, 0.42)` were the last authored values in the substrate — two magic numbers with no
+derivation — and are now the material's face ratios relative to the base colour the sundial owns. This is
+the adoption 2.3 should have been: it replaces the sundial's constants rather than standing a constant
+beside them.
+
+*It carries a correction of its own.* `authoredContrast` fitted to 5.739, the spread of the `:root`
+**fallback** — 2.3's error one level down, shipped since 2.0. Replaced by `renderedContrast`, anchored to
+the spread the tools actually paint at high sun (13.881), a **named instant** rather than an average.
+`authoredContrast` is deleted rather than re-valued.
+
+*Two things are kept, both for measured reasons.* The `(0.5+e)` directionality term stays, because
+adopting the material's constant ratio without it does not flatten the day, it **inverts** it: −7.9 L* on
+the noon highlight against +8.0 at night. And the operation stays a mix *toward the light* rather than a
+scale of the base, because a specular return on a dielectric carries the source's colour, so a highlight
+desaturates.
+
+*What it costs, over the whole day rather than at the anchor* — anchoring at high sun guarantees high sun
+barely moves, so the range is the honest figure: **+1.75 L\*** highlight at high sun, **+5.00** at low sun,
+**+0.05** at night; shadow **+0.68 / +4.47 / +1.59**. The large move is at low sun and its cause is named:
+the shadow face gains directionality it never had, the authored `0.42` having been flat at every
+elevation. `test/occvm.js` 313 → 322.
+
+**Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
+no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
+advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
+
+`occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
+`TZ=America/New_York`, because Rhyme's reads the local clock.

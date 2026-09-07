@@ -1,0 +1,77 @@
+# CI. This repository had none: its entire push safety was a hand-run `npm test` and a hand-edited
+# build stamp, while the sibling Rhyme-Instrument has enforced drift-checking. During a migration that
+# touches both tools in sequence, the tool with more surfaces had less protection.
+name: CI
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+
+      - name: Harnesses (CLAUDE.md section 6)
+        run: npm test
+
+      # OCCVM: the spine is generated content under a fence (2.0 migration process section 0b). The
+      # spliced block must match occvm/spine.css, or someone hand-edited inside the fence and the next
+      # splice will silently revert it.
+      - name: OCCVM spine is spliced and current
+        run: node occvm/tools/splice-spine.js --check
+
+
+      # OCCVM 1.9: the token audit is a gate, not a paragraph. Fails on a token that resolves to
+      # nothing, or a tool-local token its own tool never consumes.
+      - name: OCCVM token audit (1.9)
+        run: node occvm/tools/token-audit.js --check
+
+      - name: H-protocol unit suites
+        run: npm run test:units
+
+      # CLAUDE.md section 7.1: a usage-limit interruption once shipped duplicate function definitions
+      # and a duplicate state key that turned S.edge into an array. This must print nothing.
+      - name: No duplicate top-level definitions (section 7.1)
+        run: |
+          dupes=$(grep -oE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(' index.html | sort | uniq -d)
+          if [ -n "$dupes" ]; then echo "duplicate top-level definitions:"; echo "$dupes"; exit 1; fi
+          echo "none"
+
+      # CLAUDE.md section 6: the units are the source and index.html is the splice target. Re-splicing
+      # every unit must leave index.html byte-identical, or someone has patched the spliced copy and the
+      # next splice will silently revert it.
+      - name: Splice is reproducible (section 6)
+        run: |
+          node units/tools/resplice.js volspace calendar detect reversal schema prereg
+          git diff --exit-code -- index.html
+
+  golden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # occvm/golden: tier 1 only. The PNGs are never diffed for equality — rasterisation and GPU
+      # compositing differ per machine. Rhyme is skipped here: it lives in a sibling repository this
+      # checkout does not have.
+      - name: Golden set — BTC token manifest
+        run: npm run golden:verify -- --tool btc
+
+      # OCCVM 1.8. The reference surface lives in this repository, so unlike Rhyme it is always present.
+      # It is the sharper of the two signals: it holds no values of its own, so a difference here can
+      # only be the spine's — where a difference on BTC might be the tool's.
+      - name: Golden set — reference surface (OCCVM 1.8)
+        run: npm run golden:verify -- --tool reference

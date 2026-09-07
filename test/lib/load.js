@@ -32,9 +32,19 @@ function mkCtx() {
   });
 }
 
+/* a style object that also honours the CSSOM setter pair, so custom-property writes (the sundial's
+   --lx/--ly/--elev/--night and the vein layer's --vein) are observable instead of throwing. */
+function mkStyle() {
+  const st = {};
+  Object.defineProperty(st, "setProperty", { value: (k, v) => { st[k] = String(v); }, enumerable: false });
+  Object.defineProperty(st, "getPropertyValue", { value: k => (k in st ? st[k] : ""), enumerable: false });
+  Object.defineProperty(st, "removeProperty", { value: k => { delete st[k]; }, enumerable: false });
+  return st;
+}
+
 function mkEl(id) {
   const el = {
-    id, tagName: "DIV", textContent: "", innerHTML: "", value: "", style: {}, dataset: {}, children: [], disabled: false, hidden: false,
+    id, tagName: "DIV", textContent: "", innerHTML: "", value: "", style: mkStyle(), dataset: {}, children: [], disabled: false, hidden: false,
     className: "", width: 800, height: 400, _attrs: {}, _listeners: {},
     addEventListener(t, fn) { (el._listeners[t] = el._listeners[t] || []).push(fn); },
     removeEventListener() {},
@@ -65,6 +75,9 @@ function load(opts) {
   const els = {};
   const $ = id => els[id] || (els[id] = mkEl(id));
   const store = {};
+  /* pre-seeded storage, written before the script evaluates: this is how a harness injects a session
+     seed (btc.seed) so a generator's entropy is pinned rather than sampled. 2.0 migration process, section 4. */
+  for (const [k, v] of Object.entries(opts.storage || {})) store[k] = String(v);
   const localStorage = {
     getItem: k => (k in store ? store[k] : null),
     setItem: (k, v) => { if (opts.quota && String(v).length > opts.quota) { const e = new Error("QuotaExceededError"); e.name = "QuotaExceededError"; throw e; } store[k] = String(v); },

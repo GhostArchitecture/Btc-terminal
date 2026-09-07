@@ -1,0 +1,2208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0a10">
+<title>OCCVM — the reference surface</title>
+<style>
+/* ==== OCCVM SPINE mono.css — spliced from occvm/mono.css. do not edit. ==== */
+/* sha256:50a234fbdaa0 */
+/* OCCVM 1.3 — the numeric face (OCCVM-L7).
+ *
+ * Authored in occvm/SPINE.md; spliced by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy.
+ *
+ * Before 1.3 every price, tape row and table cell rode `ui-monospace, "SF Mono", "Cascadia Code", Menlo,
+ * Consolas, "Liberation Mono", monospace` — a stack, so a visitor always got *a* mono face, just not the
+ * same one. That is the defect: the metrics that hold a numeric column together were whichever the
+ * operating system happened to supply.
+ *
+ * TWO WEIGHTS, NOT ONE, AND THAT IS THE POINT. The tool's largest number — the live price — is set at
+ * font-weight 600. With only a 400 face the browser synthesises the bold by smearing the outline, which
+ * changes the advance width and breaks the tabular column the roadmap's exit criterion is about. Both
+ * faces here are strictly monospaced at 600/1000 em, the SAME advance in both, so alignment survives a
+ * weight change by construction rather than by luck. font-synthesis is off so nothing can reintroduce it.
+ *
+ * IBM Plex Mono, SIL Open Font License 1.1 — see occvm/fonts/OFL.txt. Subset to the 108 codepoints these
+ * tools actually render: ASCII, plus the punctuation and symbols found in their own source. Fifteen
+ * further symbols the tools use (arrows, Greek, geometric shapes, check marks) are not in this cut and
+ * fall back; where one of those lands in a numeric column its advance is pinned in the tool's own CSS,
+ * so column alignment never depends on the visitor's font even for a glyph this face does not carry.
+ */
+
+@font-face {
+  font-family: "OCCVM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url(data:font/woff2;base64,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) format("woff2");
+}
+
+@font-face {
+  font-family: "OCCVM Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: block;
+  src: url(data:font/woff2;base64,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) format("woff2");
+}
+
+:root {
+  /* An owned stack: the fallbacks stay so a failed @font-face still renders mono rather than serif, but
+     the first entry is a face that ships with the tool. */
+  --mono: "OCCVM Mono", ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* OCCVM-L7 — the numeral scale, for a numeral whose optical size differs from the text beside it.
+   *
+   * IT IS 1, AND THAT IS A MEASUREMENT RATHER THAN A PLACEHOLDER. At 100px this face's digit ink is 71px
+   * against a serif cap of 65 and a sans cap of 68 — figures 4% to 8% taller than the text around them.
+   * A global 0.94 would correct that, and it is not applied, for two reasons. The text faces are
+   * OS-supplied by deliberate design (the roadmap's own non-goal for a sans), so the ratio measured here
+   * is against this machine's fallbacks and does not generalise; and the numerals in these tools sit in
+   * mono runs — tables, tape rows, the price readout — far more often than they sit inline beside prose,
+   * so the mismatch rarely arises where anyone would see it.
+   *
+   * The token is governed so a surface that genuinely mixes the two has one place to say so. Shipping a
+   * six-percent shrink across every number in the tool, justified by a number that changes with the
+   * visitor's operating system, would be worse than shipping no adjustment. */
+  --t-num: 1;
+}
+
+/* Anything the browser would otherwise set in its own default monospace. Left alone, a <code> element
+   renders in whatever the operating system calls "monospace", which is the defect this part closes. */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--mono);
+}
+
+/* A symbol this subset does not carry, standing inside a numeric run. Fifteen of them exist in these
+   tools — Greek, arrows, geometric shapes, check marks — and a fallback glyph brings its own advance
+   width, which in a right-aligned column shifts every digit before it. Pinning the advance to 1ch (the
+   owned face's own advance) means the column holds even where the glyph does not come from this face. */
+.occvm-sym {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  font-variant-numeric: normal;
+}
+
+/* Figure discipline. Tabular under a column so digits align; lining everywhere else so a numeral sits on
+   the baseline beside text. Synthesis off: a synthesised weight is a different advance width. */
+[class~="num"],
+.occvm-num,
+table {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-synthesis: none;
+}
+/* ==== END OCCVM mono.css ==== */
+
+/* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
+/* sha256:1b1c9afbdb81 */
+/* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
+ *
+ * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
+ * next splice reverts it silently, and the loss reads as a mystery bug three sessions later.
+ *
+ * 1.0 IS A NO-OP BY CONSTRUCTION. Every value here is one both tools were already carrying, measured
+ * identical at all three golden instants. The one exception is --serif, spine-governed in a single
+ * spelling; the two tools held the same five faces in the same order with different whitespace.
+ * Anything else that moves in occvm/golden after a splice is a splice bug, not a design change.
+ */
+
+:root {
+  /* OCCVM-L1 — substrate and inscription. Only the invariants are here; --sub/--sub-hi/--sub-lo/--bone
+     are derived from twilight in Rhyme and static in BTC, so they are registered (SPINE.md 2b) and
+     become spine at 1.2 when L9's ramp is unified. */
+  --edge: #0b0a10;
+  --bone-lo: #b7ad9c;
+
+  /* OCCVM-L5 — the gilt ramp marks what decides, and nothing else. */
+  --gilt-c: #7a5510;
+  --gilt-b: #d9a52c;
+  --gilt-a: #ffe9a3;
+
+  /* binding */
+  --bronze-c: #4f3a1c;
+  --bronze-b: #8f6a35;
+  --bronze-a: #d9a866;
+
+  /* seam, age */
+  --verdigris: #3f9a86;
+  --verdigris-lo: #23574c;
+
+  /* OCCVM-L7 — the serif carries section heads in both tools. The mono face is OS-supplied in both and
+     is registered, not governed, until 1.3 closes D3. */
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+
+  /* OCCVM-L4 (1.2) — cast depth. A surface picks a depth; it never authors an offset.
+   *
+   * THE SIGN IS NEGATIVE AND THAT IS THE POINT. (--lx, --ly) points TOWARD the sun: ly = -cos(azimuth),
+   * so at noon the sun is due south and ly = +1, which is screen-down. A lit bevel therefore sits at
+   * +(lx, ly) — the face turned toward the light — and a cast falls at -(lx, ly), away from it.
+   *
+   * Every fixed offset this replaced had it backwards. BTC's tile cast `0 16px 36px` threw the shadow
+   * down-screen, which at noon is toward the sun; Rhyme's one derived drop-shadow used +(lx, ly) for the
+   * same reason. Both read plausible and both were inverted, which is exactly why "no fixed offset
+   * survives" is worth more than tidiness.
+   *
+   * Magnitudes are anchored so each depth reproduces at high sun the LENGTH of the offset it replaced
+   * (2px/5px, 3px/8px, 16px/36px against a noon rake of 5.6px) — the length is preserved, the direction
+   * is corrected. Alphas are fractions of --shade-a, so a cast fades with the light like everything else. */
+  --occvm-cast-1:
+    calc(var(--lx, 0) * var(--rake, 4px) * -.36) calc(var(--ly, 1) * var(--rake, 4px) * -.36)
+    calc(var(--rake, 4px) * .9) rgba(0, 0, 0, calc(var(--shade-a, .6) * .67));
+  --occvm-cast-2:
+    calc(var(--lx, 0) * var(--rake, 4px) * -.54) calc(var(--ly, 1) * var(--rake, 4px) * -.54)
+    calc(var(--rake, 4px) * 1.43) rgba(0, 0, 0, calc(var(--shade-a, .6) * .80));
+  --occvm-cast-3:
+    calc(var(--lx, 0) * var(--rake, 4px) * -2.87) calc(var(--ly, 1) * var(--rake, 4px) * -2.87)
+    calc(var(--rake, 4px) * 6.4) rgba(0, 0, 0, calc(var(--shade-a, .6) * .73));
+
+  /* OCCVM-L2 — a bevel is struck from the light, never from a fixed edge. A surface multiplies these by
+     its own depth in px: inset calc(var(--lit-x) * 1.2) ... */
+  --lit-x: calc(var(--lx, 0) * 1px);
+  --lit-y: calc(var(--ly, 1) * 1px);
+  --cut-x: calc(var(--lx, 0) * -1px);
+  --cut-y: calc(var(--ly, 1) * -1px);
+
+  /* OCCVM-L2 (1.8) — the bevel as a VALUE, so it can sit in a box-shadow list beside a cast.
+   *
+   * .occvm-slab and .occvm-cast both own `box-shadow`, so a surface could not wear both: whichever rule
+   * came later won, and the other was silently lost. Every surface that wanted a cut face AND a cast had
+   * to re-author the bevel by hand — which is how channel literals get back into a tool that had removed
+   * them, and it is exactly the composition gap the 1.8 reference surface was built to find (it hit it on
+   * its own first section). A surface now writes: box-shadow: var(--occvm-bevel), var(--occvm-cast-2). */
+  --occvm-bevel:
+    inset var(--lit-x) var(--lit-y) 0 rgba(255, 255, 255, var(--hi-a, .12)),
+    inset var(--cut-x) var(--cut-y) 0 rgba(0, 0, 0, var(--cut-a, .35));
+
+  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
+     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
+     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
+     acquiring a second generator. */
+  --vein-density: .3;
+  --vein-habit: .55;
+}
+
+/* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
+ * Namespaced, because .row, .wrap and .note already mean incompatible things in the two tools (D11).
+ * Declared at 1.0 and used by nothing; adoption is per-surface, at the release each law names. Every
+ * var() below carries a fallback so a primitive is inert rather than broken in a tool that has not yet
+ * been given the token.
+ */
+
+/* OCCVM-L4 — cast shadow derives from the light vector. No fixed offset survives outside this rule. */
+.occvm-cast { box-shadow: var(--occvm-cast-2); }
+.occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
+.occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
+
+/* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
+.occvm-slab {
+  border-radius: 3px;
+  background: var(--sub, #1b1a22);
+  border: 1px solid var(--edge);
+  box-shadow: var(--occvm-bevel);
+}
+
+/* OCCVM-L1 — a hairline division, ink at its faintest. */
+.occvm-rule {
+  border: 0;
+  border-top: 1px solid rgba(236, 227, 208, .13);
+}
+
+/* OCCVM-L8 (1.5) — an action is a real control.
+ *
+ * This reset lets a <button> carry a surface's own class without the user agent's styling changing how
+ * it looks, so semantics can be corrected without redesigning anything. Everything a UA imposes on a
+ * button and a div does not have is neutralised; nothing else is set, so the surface's own rule still
+ * decides layout, colour and size.
+ *
+ * No pseudo-element is used to enlarge a hit area. Two reasons, both load-bearing: a tool's own class may
+ * already own ::before and ::after (Rhyme's .stone owns both), and an overlay large enough to reach 44px
+ * on a dense inline sequence overlaps the neighbour it exists to distinguish, which trades a size floor
+ * for a wrong target. Where a surface must grow, it grows for real. */
+.occvm-act {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+/* OCCVM-L8 — one focus ring across the system. */
+.occvm-focus:focus-visible,
+.occvm-act:focus-visible {
+  outline: 2px solid var(--gilt-b);
+  outline-offset: 2px;
+}
+
+/* OCCVM-L7 — tabular figures under a column. Adopted at 1.3. */
+.occvm-num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* OCCVM-L8 (1.5) — every motion respects the viewer's preference.
+ *
+ * Declared once, in the spine, and deliberately not per-surface: a rule listing the selectors that
+ * animate today is a rule that a new animation escapes tomorrow. Before 1.5 BTC's price readout carried a
+ * half-second colour transition and its collapse chevron a transform, both unguarded, while its only
+ * media query tested no-preference — the inverse of the one that matters.
+ *
+ * Durations go to a hundredth of a millisecond rather than zero so that transitionend and animationend
+ * still fire; a listener waiting on one would otherwise hang forever. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ==== END OCCVM spine.css ==== */
+
+/* ---------------------------------------------------------------------------------------------------
+ * OCCVM 1.8 — THE REFERENCE SURFACE.
+ *
+ * A conforming surface that exists only to be looked at. Every law in SPINE.md gets one live specimen
+ * here, drawn from the spine parts spliced below rather than from a copy of their values, so this page
+ * cannot agree with a spine it does not actually carry.
+ *
+ * THIS PAGE AUTHORS NO COLOUR. Not one hex, not one rgb() triplet, anywhere outside the spliced fences.
+ * Every surface, every rule, every piece of ink here resolves through a spine token — which is what makes
+ * "does this conform" a mechanical question instead of an opinion: test/occvm.js scans this style block
+ * with the fences removed and fails on any literal it finds. The single exception is the theme-color meta
+ * above, which the platform requires as a literal and which no tool can express as a token either.
+ *
+ * It follows that this page is also a canary. If the spine stops resolving — a part unspliced, a token
+ * renamed, the sundial not run — this page does not fall back to something that looks deliberate. It goes
+ * flat and unreadable, immediately and obviously, which is the behaviour a reference surface should have.
+ * ------------------------------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--edge);
+  color: var(--bone);
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+body { min-height: 100vh; position: relative; }
+
+/* OCCVM-L10 — the grown vein layer, at the spine's own default density rather than a tool's tuning.
+   The LAYER OPACITY is a surface decision, not a spine value: BTC runs the density down to .14 because
+   its veins sit behind live numbers, and this page instead keeps the spine's own .3 and takes the
+   legibility back here, so what a reader sees is the default the spine actually ships. */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none;
+  background: var(--vein, none);
+  opacity: .26;
+}
+
+.sheet { max-width: 1060px; margin: 0 auto; padding: 28px 20px 64px; position: relative; }
+
+h1 { font-size: 21px; font-weight: 600; letter-spacing: .01em; }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+h3 { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--bone-lo); }
+
+p  { max-width: 74ch; }
+b, strong { font-weight: 600; }
+code, .mono { font-family: var(--mono); font-size: .92em; }
+
+.lede  { color: var(--bone-lo); }
+.note  { font-size: 12.5px; color: var(--bone-lo); max-width: 74ch; }
+.stamp { font-family: var(--mono); font-size: 11.5px; color: var(--bone-lo); letter-spacing: .04em; }
+
+header { padding-bottom: 18px; }
+header .row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; }
+
+/* Every law is a slab, and the slab is the spine's own .occvm-slab primitive worn by the markup — this
+   page adds spacing and the cast, nothing else. Composing the two is what --occvm-bevel exists for: this
+   surface is the reason it exists (see spine.css, L2/1.8), because the first draft of this file
+   re-authored the bevel by hand and put channel literals straight back into a page whose whole claim is
+   that it holds none. */
+section.law {
+  margin-top: 26px;
+  padding: 18px 18px 20px;
+  position: relative;
+  box-shadow: var(--occvm-bevel), var(--occvm-cast-2);
+}
+section.law > .hd { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin-bottom: 4px; }
+section.law > .hd .id { font-family: var(--mono); font-size: 11.5px; color: var(--gilt-b); letter-spacing: .06em; }
+section.law > p { margin-top: 8px; }
+
+.specimen { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+
+/* a swatch states its own value; nothing here hardcodes what the value is */
+.sw { min-width: 118px; }
+.sw .chip { height: 46px; border-radius: 3px; border: 1px solid var(--edge); }
+.sw .nm  { font-family: var(--mono); font-size: 11px; margin-top: 5px; color: var(--bone-lo); }
+.sw .vl  { font-family: var(--mono); font-size: 11px; color: var(--bone); font-variant-numeric: tabular-nums lining-nums; }
+
+.slabdemo { width: 150px; height: 74px; display: flex; align-items: center; justify-content: center;
+            font-family: var(--mono); font-size: 11px; color: var(--bone-lo); }
+
+/* OCCVM-L8 — a real control: 44px floor, keyboard reachable, state announced, one shared focus ring */
+.pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.pick button {
+  min-height: 44px; min-width: 44px;
+  padding: 0 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px;
+  border: 1px solid var(--edge);
+  background: var(--sub-hi);
+  color: var(--bone-lo);
+  font-family: var(--serif); font-size: 13px; letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: var(--occvm-bevel);
+}
+.pick button[aria-pressed="true"] {
+  color: var(--bone);
+  background: var(--mineral-lo);
+  border-color: var(--mineral);
+}
+
+table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 12.5px; }
+th, td { text-align: left; padding: 5px 10px 5px 0; vertical-align: top; }
+th { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--bone-lo); font-weight: 600; }
+tbody tr + tr td { border-top: 1px solid color-mix(in srgb, var(--bone) 13%, transparent); }
+td.k { font-family: var(--mono); color: var(--bone-lo); white-space: nowrap; }
+td.v { font-family: var(--mono); color: var(--bone); font-variant-numeric: tabular-nums lining-nums; }
+td.src { color: var(--bone-lo); }
+
+/* the dusk strip: five stages, each computed rather than sampled from the clock */
+.stages { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.stage { flex: 1 1 150px; border-radius: 3px; border: 1px solid var(--edge); padding: 10px 12px 12px; }
+.stage .nm { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; }
+.stage .bd { font-family: var(--mono); font-size: 10.5px; margin-top: 2px; opacity: .8; }
+.stage .vs { font-family: var(--mono); font-size: 10.5px; margin-top: 8px; font-variant-numeric: tabular-nums lining-nums; }
+
+.veins { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.veinbox { width: 200px; height: 110px; border-radius: 3px; border: 1px solid var(--edge);
+           background-color: var(--sub-lo); background-size: cover; }
+.veinbox + .cap, .cap { font-family: var(--mono); font-size: 11px; color: var(--bone-lo); margin-top: 5px; }
+
+.figs { font-family: var(--mono); font-variant-numeric: tabular-nums lining-nums; font-size: 13px; }
+.figs div { display: flex; justify-content: space-between; gap: 24px; min-width: 268px; }
+.figs .w6 { font-weight: 600; }
+
+/* a scalar readout — the light's own numbers, in the face L7 governs */
+.vals { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums lining-nums;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 3px 40px; width: 100%; }
+.vals span { display: flex; justify-content: space-between; gap: 16px;
+             padding-bottom: 3px; border-bottom: 1px solid color-mix(in srgb, var(--bone) 13%, transparent); }
+.vals span i { font-style: normal; color: var(--bone-lo); }
+
+/* the sweep: 1.8's specified control. The track and thumb are sized to L8's floor like any other. */
+.sweep { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.sweep label { display: flex; align-items: center; gap: 12px; flex: 1 1 320px; min-height: 44px; }
+.sweep input[type="range"] {
+  flex: 1; min-width: 200px; height: 44px;
+  -webkit-appearance: none; appearance: none; background: none; cursor: pointer;
+}
+.sweep input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; border: 1px solid var(--edge);
+  background: linear-gradient(90deg, var(--sub-lo), var(--gilt-c), var(--gilt-a), var(--gilt-c), var(--sub-lo));
+}
+.sweep input[type="range"]::-moz-range-track {
+  height: 6px; border-radius: 3px; border: 1px solid var(--edge);
+  background: linear-gradient(90deg, var(--sub-lo), var(--gilt-c), var(--gilt-a), var(--gilt-c), var(--sub-lo));
+}
+.sweep input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 26px; margin-top: -11px;
+  border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--bone); box-shadow: var(--occvm-cast-1);
+}
+.sweep input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 26px; border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--bone); box-shadow: var(--occvm-cast-1);
+}
+.sweep input[type="range"]:focus-visible { outline: 2px solid var(--gilt-b); outline-offset: 2px; }
+.sweep button {
+  min-height: 44px; min-width: 44px; padding: 0 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--sub-hi); color: var(--bone-lo);
+  font-family: var(--serif); font-size: 13px; letter-spacing: .04em;
+  box-shadow: var(--occvm-bevel);
+}
+.sweep button[aria-pressed="true"] { color: var(--bone); border-color: var(--gilt-c); }
+
+.gilt  { color: var(--gilt-a); }
+.dim   { color: var(--bone-lo); }
+.rule  { border: 0; border-top: 1px solid color-mix(in srgb, var(--bone) 13%, transparent); margin: 22px 0 0; }
+
+footer { margin-top: 34px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header>
+  <h1>OCCVM — the reference surface</h1>
+  <p class="lede">One live specimen per law, drawn from the spine parts spliced into this file. Not a
+  gallery of intentions: if a value here is wrong, the spine is wrong, because this page holds no values
+  of its own.</p>
+  <div class="row" style="margin-top:10px">
+    <span class="stamp" id="stamp"></span>
+    <span class="stamp" id="sunline"></span>
+  </div>
+</header>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">READ THIS FIRST</span><h2>What this page can and cannot tell you</h2></div>
+  <p><b>It can tell you what the spine currently resolves to</b>, on this browser, at this instant, at this
+  place — every token below is read off the live document rather than transcribed. If a part is unspliced
+  or a token renamed, this page degrades visibly instead of quietly rendering something plausible, because
+  it authors no fallback colour of its own.</p>
+  <p class="note" style="margin-top:8px"><b>It cannot tell you that a tool conforms.</b> A tool's
+  conformance is decided by <code>test/occvm.js</code>, the unit suites and the golden set — assertions
+  that run, not a page a person looks at. This surface is the eye's instrument beside those: it makes a
+  drift <em>visible</em>, and it is recorded into the golden set as a third surface so that a change in the
+  spine itself shows up here even when neither tool happens to reveal it.</p>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L1</span><h2>Substrate and inscription</h2></div>
+  <p>Obsidian substrate, bone inscription. <code>--bone-lo</code> is <em>derived</em> from
+  <code>--bone</code> — carried a quarter of the way to <code>--edge</code> — so the pair cannot separate
+  again as the light moves.</p>
+  <div class="specimen" id="l1"></div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L2</span><h2>Cut geometry</h2></div>
+  <p>A surface is cut, not rounded: radius ≤ 4px, and the bevel is struck from the light rather than from a
+  fixed edge. Both slabs below are the spine's own <code>.occvm-slab</code> primitive; the bevel on each
+  turns with <code>--lx/--ly</code> through the day.</p>
+  <div class="specimen">
+    <div class="occvm-slab slabdemo">.occvm-slab</div>
+    <div class="occvm-slab slabdemo" style="border-radius:4px">radius 4px — the ceiling</div>
+  </div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L3</span><h2>One light</h2></div>
+  <p>Position is the full NOAA solar algorithm; response is the derivation of every surface quantity from
+  it. One implementation, <code>occvm/sundial.js</code>, shared by every conforming tool — a second solar
+  routine anywhere is the defect this law exists to prevent.</p>
+  <div class="specimen" id="l3"></div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L4</span><h2>Cast shadow</h2></div>
+  <p>Depth is chosen; the offset is never authored. <code>(--lx, --ly)</code> points <em>toward</em> the
+  sun, so a cast falls at <code>−(lx, ly)</code> and a lit bevel sits at <code>+(lx, ly)</code>. Every
+  fixed offset the spine replaced had this backwards, in both tools, and both read plausible.</p>
+  <div class="specimen">
+    <div class="occvm-slab slabdemo occvm-cast-1">cast-1</div>
+    <div class="occvm-slab slabdemo occvm-cast">cast-2</div>
+    <div class="occvm-slab slabdemo occvm-cast-3">cast-3</div>
+  </div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L5</span><h2>Gilt is reserved</h2></div>
+  <p>The gilt ramp marks <b>what decides</b> and nothing else. A surface that is merely important is not
+  gilt; a number that settles something is. Malachite and ruby carry outcome, verdigris carries seam and
+  age, bronze carries binding — none of them are interchangeable with this ramp.</p>
+  <div class="specimen" id="l5"></div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L6</span><h2>The mineral set</h2></div>
+  <p>Closed, with fixed meanings: <b>amethyst</b> is the default field, <b>malachite</b> is
+  affirmed/won/positive, <b>ruby</b> is negated/lost/failed. One implementation,
+  <code>occvm/minerals.js</code>; each tool stores its own choice, and a tool may spend the mineral as
+  widely or as narrowly as its own subject matter allows.</p>
+  <div class="pick" id="pick"></div>
+  <div class="specimen" id="l6" style="margin-top:14px"></div>
+  <p class="note" style="margin-top:10px">The picker is a specimen of <b>L8</b> as much as of L6: a real
+  <code>&lt;button&gt;</code>, 44px floor, <code>aria-pressed</code> in sync, the shared focus ring. It
+  holds no state beyond this page view — a reference surface that remembered a choice would record a
+  different golden frame depending on who looked at it last.</p>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L7</span><h2>Figure discipline</h2></div>
+  <p>Numerals in a column are tabular, and no numeral that carries meaning depends on a face the visitor's
+  operating system happens to supply. The face is IBM Plex Mono under the OFL, subset and embedded, in two
+  real weights — a synthesised bold changes the advance width and breaks the column it sits in.</p>
+  <div class="specimen">
+    <div class="figs">
+      <div><span class="dim">weight 400</span><span>1,048,576.00</span></div>
+      <div><span class="dim">weight 600</span><span class="w6">1,048,576.00</span></div>
+      <div><span class="dim">400</span><span>−0.00071828</span></div>
+      <div><span class="dim">600</span><span class="w6">−0.00071828</span></div>
+    </div>
+  </div>
+  <p class="note" style="margin-top:10px">Both rows must align to the digit. If they do not, the face did
+  not load and the browser is synthesising the weight — which is the exact failure L7 exists to prevent,
+  and it is visible here without instrumentation.</p>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L8</span><h2>The interaction floor</h2></div>
+  <p>Every action is a real control: correct element semantics, reachable by keyboard, state announced,
+  a target of at least 44×44px, and one focus ring shared across the system. The floor exempts a target
+  inline within a flow of text — WCAG 2.5.8's own carve-out, because a reading surface is a document
+  rather than a control panel — and nothing that is chrome takes that exemption.</p>
+  <p class="note" style="margin-top:8px">Specimen: the mineral picker above, the sweep below, and the row
+  here. Tab through them — the ring is <code>--gilt-b</code>, 2px, offset 2px, and it is the same ring in
+  both tools. Every target below is at or above the floor; the measured height is printed under each, read
+  off the live box rather than asserted.</p>
+  <div class="pick" id="states"></div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">SPECIMENS</span><h2>Every thickness, every scale</h2></div>
+  <p>1.8's own brief: <i>slabs at every thickness, controls in every state, ink at every scale.</i> The
+  states are above; the depths and the scale run here. A depth is chosen from the three the spine defines
+  and never authored as an offset — these are the same three <code>--occvm-cast-*</code> values every
+  surface in both tools picks from, and they all rake with the sun as you move the sweep.</p>
+  <div class="specimen" id="depths"></div>
+  <h3 style="margin-top:16px">Ink at every scale</h3>
+  <div id="scales"></div>
+  <p class="note" style="margin-top:10px">Serif for prose and heads, mono for anything a column has to
+  hold. Both faces answer to the same light: at night this whole block shifts with <code>--bone</code> and
+  gains <code>--nglow</code>, and under a moon it recovers part of the way back toward its daylight value.</p>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L9</span><h2>Night</h2></div>
+  <p>Night is a continuous quantity, not a state flag: <code>--night</code> ramps from 0 at −2° elevation
+  to 1 at −10°. The civil / nautical / astronomical stages are <b>additive over that ramp</b>, not a
+  replacement for it — <code>--dusk-stage</code>, at the standard boundaries. Night acts on ink only:
+  <b>no surface takes a glow.</b></p>
+  <div class="stages" id="l9"></div>
+  <p class="note" style="margin-top:10px">Each cell is computed by calling the shared sundial at that
+  elevation, not sampled from the clock, so the whole ramp is visible at once from any instant.</p>
+
+  <hr class="rule" style="margin:18px 0 0">
+  <h3 style="margin-top:14px">The sweep — dawn to night, on a slider rather than a clock</h3>
+  <p class="note">This is 1.8's own specified control, and it drives <b>the whole page</b>: every surface,
+  bevel, cast and swatch above re-resolves as you move it, because they all read the same tokens the
+  sundial is writing. Drag from one end to the other and the tool goes through its entire day in front of
+  you. RESUME hands the page back to the real clock.</p>
+  <div class="sweep">
+    <label for="sweep">
+      <span class="lbl">instant</span>
+      <input type="range" id="sweep" min="0" max="1439" step="5" value="0"
+             aria-label="time of day, minutes past local midnight">
+    </label>
+    <button id="sweepResume" type="button" class="occvm-act occvm-focus">RESUME</button>
+    <div class="vals" id="sweepRead"></div>
+  </div>
+  <p class="note" style="margin-top:10px">The moon is on this slider too, and it is the reason a reading
+  taken at 21:40 differs from one at 23:10 at all — past −10° elevation <code>--night</code> is saturated
+  and every other term is a function of it, so without a second light the two instants resolve identically.
+  On a night when the moon is below the horizon at both, they still do, and that is a fact about the sky
+  rather than a gap in the model.</p>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L10</span><h2>Vein habit</h2></div>
+  <p>Veins are <b>grown, not drawn</b> — diffusion-limited aggregation, where a walker sticks the instant
+  it touches the aggregate and branching is dendritic because a protruding tip screens the interior.
+  Nobody authors the branching. Every stroke is a straight segment between a particle and the particle it
+  stuck to; a fitted curve would be the bezier arriving back through the renderer.</p>
+  <div class="veins" id="l10"></div>
+  <p class="note" style="margin-top:10px">Same seed, three habits. The mineral is <b>aragonite</b> — 2.0's
+  anchor, one crystal for substrate and vein alike — so the growth radiates from a nucleation point and
+  twins in threes, the pseudo-hexagonal cyclic twin aragonite is known for. <code>--vein-habit</code> is
+  the anisotropy of that growth, and it lives in <i>attachment</i>, not travel: the walk is unbiased, and
+  what differs by direction is whether a contact is accepted. Biasing the walker instead was measured and
+  did nothing — a walker pushed outward leaves rather than sticking. At habit 0 attachment is indifferent
+  to direction, which is exactly what an equant dendrite is.</p>
+</section>
+
+<hr class="rule">
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">TOKENS</span><h2>What the spine resolves to, right now</h2></div>
+  <p class="note">Enumerated from this document's own stylesheet and from the sundial's own return value —
+  never from a list kept by hand, which is how a token quietly stops being measured.</p>
+  <table>
+    <thead><tr><th style="width:15em">token</th><th style="width:18em">resolved</th><th>written by</th></tr></thead>
+    <tbody id="tok"></tbody>
+  </table>
+</section>
+
+<footer>
+  <p class="note">OCCVM 1.8. This file is spine content: it is committed byte-identical to every conforming
+  repository, and <code>occvm/tools/splice-spine.js</code> keeps the five parts above current in it exactly
+  as it does in a tool. Editing inside a fence here has the same consequence as editing inside one there —
+  the next splice reverts it, silently.</p>
+</footer>
+
+</div>
+
+<script>
+/* ==== OCCVM SPINE material.js — spliced from occvm/material.js. do not edit. ==== */
+/* sha256:01b93a1feca9 */
+/* OCCVM 2.0 — the material model (OCCVM-L12). One definition, shared by every conforming tool.
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * THE BREAK: a hex stops being authored and starts being derived. `--sub-hi`, `--sub` and `--sub-lo` were
+ * three separate decisions that happened to look related. They are now one material, one body colour and
+ * one cut geometry, and their RATIOS fall out of the arithmetic.
+ *
+ * ─── three derivations were measured before this one was kept ────────────────────────────────────
+ *
+ * The roadmap's argument for an orthorhombic system is that a slab has three faces sharing one scaled
+ * response today, and that three principal indices give each face its own value from one definition.
+ * That argument is right. Two obvious ways to cash it in are wrong, and both were measured:
+ *
+ *   1. NORMAL-INCIDENCE Fresnel on α/β/γ gives 4.39% / 6.44% / 6.51% — a spread of 1.48×, against the
+ *      5.74× linear-luminance spread the tools actually author. Real optics, taken that way, is 3.9×
+ *      FLATTER than the design; a substrate derived from it is nearly monochrome and both tools lose the
+ *      structure they are read by.
+ *
+ *   2. Adding the sun and weighting reflectance by incident flux — R(θ)·cos θ, the intuitive fix — is
+ *      WORSE, not better: the cosine very nearly cancels the Fresnel rise, and the whole 0–90° sweep
+ *      collapses to 1.13×, peaking at 76.9°. Flux-weighting cannot produce a ramp at all. It was tried
+ *      because it sounds more physical than what replaced it; it is recorded because the next person to
+ *      have that idea should not have to spend the hour.
+ *
+ * What is kept is the third: on a dark, glossy solid you do not see a diffuse return, you see the
+ * SPECULAR one, so a face's brightness tracks R at the angle it presents TO THE VIEWER. Those angles are
+ * the slab's own cut geometry — the thing OCCVM-L2 already fixes — not the sun's position:
+ *
+ *      front  0°  n=α  R= 4.39%      chamfer 45°  n=β  R= 7.60%      edge 80°  n=γ  R=41.04%
+ *
+ * ─── what that decomposition buys, and it is the reason it is the one kept ───────────────────────
+ *
+ * The sun DROPS OUT of the ratio. Material owns structure; the sundial owns magnitude, exactly as it has
+ * since 1.2. 2.0 therefore does not fight the light pipeline or double-apply it — the failure mode of the
+ * elevation-parameterised version, which re-sorted its own faces as the sun moved and let `mid` collide
+ * with `hi` at noon and with `lo` at dawn.
+ *
+ * ─── where the material and the hand disagree, stated rather than fitted ─────────────────────────
+ *
+ *      optics    edge : chamfer : front  =  9.353 : 1.732 : 1.000
+ *      authored  hi   : mid     : lo     =  5.739 : 2.539 : 1.000
+ *
+ * Same ORDERING, different SHAPE. The material is more convex: it makes the edge carry more of the range
+ * and the mid-tone less, which is what a cut mineral does and what a hand-mixed ramp tends not to. This
+ * is NOT corrected by fitting a per-face fudge — a per-face correction is three authored numbers wearing
+ * a derivation's clothes, which is the exact thing 2.0 exists to remove. The shape is the material's.
+ *
+ * ─── the one value here that is NOT derived, said plainly ────────────────────────────────────────
+ *
+ * `contrast` is a legibility parameter, not a material property: an exponent on the optical ratio setting
+ * how much of the available range the substrate spends. Physics fixes the order and the shape; it does
+ * not know how readable a terminal has to be at 3am. At contrast 1 the substrate is the mineral's;
+ * at 1.177 its spread matches what the tools RENDER at high sun (measured: log 13.881 / log 9.353).
+ * *Until 2.4 this sentence anchored to 5.739 — the spread of the `:root` fallback the sundial overwrites
+ * before first paint — which is the same error that sank 2.3, one level down. The anchor is a named
+ * rendered instant now.* It is named here, in the material, for the same reason OCCVM-L7 names
+ * `--t-num` — a judgment gets called judgment in the place somebody would otherwise mistake it for
+ * measurement.
+ */
+var OCCVM_MATERIAL = (function () {
+  "use strict";
+
+  var RAD = Math.PI / 180;
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  /* ---- the definition ---------------------------------------------------------------------------
+   * Aragonite, CaCO₃, orthorhombic, space group Pmcn. Every number is published and none is chosen:
+   * cell from diffraction, indices from optical mineralogy, elastic constants from Brillouin
+   * spectroscopy on natural single-crystal aragonite at ambient conditions.
+   */
+  var ARAGONITE = {
+    name: "aragonite",
+    formula: "CaCO3",
+    system: "orthorhombic",
+    group: "Pmcn",
+    cell: { a: 4.96, b: 7.97, c: 5.74 },              /* Å */
+    ri: { alpha: 1.530, beta: 1.680, gamma: 1.685 },  /* biaxial, three principal indices */
+    hardness: 3.75,                                   /* Mohs 3.5–4 */
+    density: 2.93,                                    /* g/cm³ */
+    /* stiffness tensor, GPa — C11/C22/C33 are the three axes P1's motion derives from */
+    C: { 11: 171.1, 22: 110.1, 33: 98.4, 44: 39.3, 55: 24.2, 66: 40.2, 12: 60.3, 13: 27.8, 23: 41.9 },
+    /* THE BODY COLOUR: what the material absorbs to. NOT derived, and named as judgment for the same
+       reason `contrast` is — a mineral's colour comes from trace chemistry and defects, not from its
+       lattice, so no amount of crystallography produces it. The material says how light BEHAVES on a
+       surface; this says what is left after.
+     *
+     * ANCHORED to OCCVM-L1's own declared substrate floor, `--sub-lo #0e0d13`, replacing an arbitrary
+     * #12111a. This is the same move `renderedContrast` makes and it carries the same objection: setting
+     * the material's one free value FROM the tools is fitting, and somebody should say so. The answer is
+     * that a free parameter has to be set from something, and the alternative was a number with no reason
+     * at all.
+     *
+     * WHAT THIS PARAGRAPH USED TO CLAIM, AND WHY IT NO LONGER DOES. 2.3 reported that at contrast 0.7816
+     * the material reproduced the substrate ramp's endpoints `#2c2a36` and `#0e0d13` to the byte, and
+     * called it the strongest evidence L12 had. Those hexes are the `:root` FALLBACK. The sundial
+     * overwrites all three substrate tokens every minute, starting before first paint, so the ramp was
+     * matched against values nobody renders — and every assertion passed, because every assertion
+     * compared the material against a declaration instead of a render. 2.3 is reverted; this anchor is
+     * kept only because matching L1's declared floor is a defensible way to fix a free parameter, NOT
+     * because it predicts anything. The material's real agreement with the tools is measured in 2.4,
+     * against what the sundial actually paints. */
+    body: "#0e0d13",
+    luster: "vitreous"
+  };
+
+  /* birefringence, derived rather than stated: γ − α */
+  function birefringence(m) { return m.ri.gamma - m.ri.alpha; }
+
+  /* The {110} composition-plane angle is NOT computed here, deliberately. occvm/veins.js derives it from
+     this file's cell and occvm/fracture.js reads it from veins; adding a third site would be the same
+     duplicate-derivation defect those two exist to avoid. The material owns the lattice; the habit and
+     the cleavage own the angle. */
+
+  /* ---- optics -----------------------------------------------------------------------------------
+   * Unpolarised Fresnel reflectance at an interface, as a function of index and incidence angle.
+   * Total internal reflection is not reachable here (light enters from the less dense side), so the
+   * square root is always real.
+   */
+  function fresnel(n, thetaDeg) {
+    var th = clamp(thetaDeg, 0, 89.9) * RAD;
+    var s = Math.sin(th), c = Math.cos(th);
+    var k = Math.sqrt(Math.max(0, 1 - (s / n) * (s / n)));
+    var rs = Math.pow((c - n * k) / (c + n * k), 2);
+    var rp = Math.pow((k - n * c) / (k + n * c), 2);
+    return (rs + rp) / 2;
+  }
+
+  /* ---- the three faces --------------------------------------------------------------------------
+   * A slab presents three surfaces to the viewer and each takes its own principal index. The angles are
+   * the cut geometry OCCVM-L2 already governs — the flat front, the chamfer L2 permits, and the edge seen
+   * near tangent — so the faces are fixed by the slab, not by the sun (see the header for what happens
+   * when they are not).
+   *
+   * WHICH INDEX GOES ON WHICH FACE IS A CONVENTION, and is flagged as one here rather than buried. What
+   * the crystallography establishes is that there ARE three principal indices and that they differ; it
+   * does not tell you how a rendered rectangle is oriented in the lattice, because a rendered rectangle
+   * is not in a lattice. α on the front and γ on the edge is chosen so the ordering the optics produces
+   * runs the same direction as the ramp the tools already read — the same honesty flag P1 carries about
+   * mapping crystal axes onto screen axes.
+   */
+  var CUT = { front: 0, chamfer: 45, edge: 80 };   /* degrees from the view normal — L2 geometry */
+
+  function faces(m) {
+    return {
+      front:   { axis: "a", n: m.ri.alpha, theta: CUT.front,   R: fresnel(m.ri.alpha, CUT.front) },
+      chamfer: { axis: "b", n: m.ri.beta,  theta: CUT.chamfer, R: fresnel(m.ri.beta,  CUT.chamfer) },
+      edge:    { axis: "c", n: m.ri.gamma, theta: CUT.edge,    R: fresnel(m.ri.gamma, CUT.edge) }
+    };
+  }
+
+  /* ---- resolve ----------------------------------------------------------------------------------
+   * material -> the substrate family. A reflectance ratio is a ratio in LINEAR light, so the body colour
+   * is decoded out of sRGB, scaled, and re-encoded. The first version scaled the sRGB bytes directly and
+   * a 9.35× optical spread rendered as 116× — the transfer function applied twice — and it shifted hue,
+   * because saturating one channel before another is a colour change nobody asked the material for. One
+   * gain across all three linear channels is hue-preserving by construction.
+   */
+  function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function linearToSrgb(v) { return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; }
+  function parse(h) { return [1, 3, 5].map(function (i) { return srgbToLinear(parseInt(h.substr(i, 2), 16) / 255); }); }
+  function hex(c) {
+    return "#" + c.map(function (v) {
+      return clamp(Math.round(linearToSrgb(clamp(v, 0, 1)) * 255), 0, 255).toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  /* THE RENDERED SPREAD, and a correction. Until 2.4 this constant was 5.739 — the spread of the
+   * `:root` FALLBACK declaration `#2c2a36 / #1b1a22 / #0e0d13`, which the sundial overwrites every
+   * minute before first paint. It is the same error that sank 2.3, sitting one level down and shipped
+   * since 2.0: a number fitted to hexes nobody renders.
+   *
+   * What the tools actually paint, measured from the golden set, is a spread that MOVES WITH THE SUN:
+   * 13.881 at high sun, 5.160 at low, 5.537 at night. There is therefore no single "authored spread",
+   * and `authoredContrast` had to be re-specified rather than re-valued: it now anchors to the
+   * rendered spread at a NAMED instant, because a free parameter fitted to an unnamed average is the
+   * same evasion in a longer form. High sun is the anchor — it is where the substrate carries the most
+   * structure and where a shape difference is most visible. */
+  var RENDERED_SPREAD_HIGH = 13.881;
+
+  function substrate(m, contrast) {
+    var k = contrast === undefined ? 1 : contrast;
+    var f = faces(m);
+    var base = f.front.R;                       /* the darkest face is the reference, by geometry */
+    var body = parse(m.body);
+    function face(R) {
+      var gain = Math.pow(R / base, k);         /* contrast is an exponent on the optical ratio */
+      return hex(body.map(function (v) { return v * gain; }));
+    }
+    return {
+      hi: face(f.edge.R), mid: face(f.chamfer.R), lo: face(f.front.R),
+      R: { front: f.front.R, chamfer: f.chamfer.R, edge: f.edge.R },
+      spread: Math.pow(f.edge.R / base, k),
+      ratios: [Math.pow(f.edge.R / base, k), Math.pow(f.chamfer.R / base, k), 1]
+    };
+  }
+
+  /* The contrast at which the material's spread equals what the tools RENDER at high sun. Derived, not
+     typed: it moves if the material moves, which is the whole point of it being here rather than in a
+     stylesheet. Anchoring here is a fit, and it is the same fit `body` makes — a free parameter has to
+     come from somewhere. What it is NOT any more is a fit to a declaration nobody paints. */
+  function renderedContrast(m) {
+    var f = faces(m);
+    return Math.log(RENDERED_SPREAD_HIGH) / Math.log(f.edge.R / f.front.R);
+  }
+
+  /* The two face offsets the sundial applies, derived rather than authored (2.4, OCCVM-L12).
+     Returned as luminance ratios relative to the MID face, because that is the base the sundial owns:
+     it supplies the substrate colour, this supplies how far the other two faces sit from it. */
+  function faceRatios(m, contrast) {
+    var r = substrate(m, contrast === undefined ? renderedContrast(m) : contrast).ratios;
+    return { hi: r[0] / r[1], lo: 1 / r[1] };
+  }
+
+  /* ---- what the other properties govern ---------------------------------------------------------
+   * Stated as derivations rather than applied here, because each belongs to the law that owns the
+   * surface it touches; this file is the material, not the renderer.
+   */
+  /* OCCVM-L2 — hardness sets how sharply a face can be cut. Mohs 3.5–4 is soft enough to be cut into
+     rather than merely faceted, which is the roadmap's own argument for aragonite over topaz. Mapped
+     against the 4px ceiling L2 already fixes: softer mineral, larger permissible radius. */
+  function edgeRadius(m) { return clamp(4 * (m.hardness / 10), 1, 4); }
+
+  /* OCCVM-L4 — density sets cast weight. Aragonite at 2.93 against a nominal 2.65 (quartz) is the
+     reference ratio; a denser material throws a heavier shadow and carries more apparent mass. */
+  function castWeight(m) { return m.density / 2.65; }
+
+  /* P1 — anisotropic motion. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
+   *
+   * The stiffness ratio the three axes move at, normalised to the softest (C33):
+   *     a 1.7388   b 1.1189   c 1.0000
+   */
+  function stiffness(m) {
+    return { a: m.C[11] / m.C[33], b: m.C[22] / m.C[33], c: 1 };
+  }
+
+  /* Duration scalar per axis. A stiffer axis settles faster, and the relation is the oscillator's, not
+     the spring's: T = 2π√(m/k), so duration ∝ 1/√k. The alternative — static compliance, 1/k — was the
+     other candidate and is wrong for a TEMPORAL quantity; it describes how far a thing deflects, not how
+     long it takes. Both are recorded because they differ enough to matter:
+         1/√k   a 0.7584   b 0.9454   c 1.0000     ← in force
+         1/k    a 0.5751   b 0.8937   c 1.0000     ← rejected, static not temporal            */
+  function motion(m) {
+    var k = stiffness(m);
+    return { a: 1 / Math.sqrt(k.a), b: 1 / Math.sqrt(k.b), c: 1 / Math.sqrt(k.c) };
+  }
+
+  /* ---- WHY P1 IS NOT WIRED TO A TOKEN --------------------------------------------------------------
+   *
+   * Anisotropy is only observable as a DIFFERENCE BETWEEN TWO DIRECTIONS IN THE SAME VIEW. Censused
+   * across both tools and the spine at 2.0:
+   *
+   *     translateX     0 animated sites          <- zero, in either tool
+   *     translateY     3 animated sites          (.edge:active 260ms, rise 380ms, and BTC's chevron)
+   *     translate(x,y) every site is a STATIC light-vector offset, calc(var(--lx) * Npx), not a motion
+   *
+   * There is no pair. The one genuinely animated 2D direction anywhere is fracture's separation along
+   * the twin normal, and projecting the per-axis scalars onto it gives 194.4ms against the isotropic
+   * 220ms — an 11.6% change. But the fracture angle is FIXED: one direction, every time, with nothing
+   * beside it to be faster or slower than. That is not anisotropy, it is 220 renamed to 194.
+   *
+   * Shipping `--dur-a/--dur-b/--dur-c` here would be three tokens computed and consumed by nothing,
+   * which is OCCVM-D12 exactly — closed at 1.2a, one release before this one. The arithmetic stays
+   * because it is right and cheap; the wiring waits for a second axis to exist. `test/occvm.js` holds a
+   * SELF-RETIRING guard: it asserts the translateX count is still zero, so the day somebody animates a
+   * horizontal motion the suite fails and says P1 has become expressible.                              */
+  /* P4 — unit-cell spacing. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
+   *
+   * The three cell edges, normalised to the shortest, are a spacing triple with a reason behind it where
+   * an 8px grid has none:  a 1.0000 : c 1.1573 : b 1.6069.
+   *
+   * TWO MEASUREMENTS KILL IT, and the second is the one that matters.
+   *
+   * 1. IT DOES NOT DESCRIBE THE TOOLS. Censused over 213 real padding/margin/gap declarations across both
+   *    tools: 19 distinct pixel values, weighted mean error against the cell ladder 10.79%. A plain 4px
+   *    grid covers more of them (42.3% within 6%, against 32.4%). Adopting the cell scale would therefore
+   *    MOVE 213 declarations by ~11% — a redesign wearing a derivation's coat, and the opposite of what
+   *    the substrate did at 2.0, where the material REPRODUCED the authored ramp at a derived contrast.
+   *
+   * 2. IT DOES NOT SURVIVE TO THE SCREEN. Spacing quantises to whole pixels, and 84.5% of both tools'
+   *    spacing is under 12px, where rounding destroys the ratio outright:
+   *
+   *        base 4  -> 4 / 5 / 6    renders 1.000 : 1.250 : 1.500
+   *        base 6  -> 6 / 7 / 10   renders 1.000 : 1.167 : 1.667
+   *        base 8  -> 8 / 9 / 13   renders 1.000 : 1.125 : 1.625
+   *        base 2  -> 2 / 2 / 3    two of the three steps COLLAPSE
+   *
+   *    The rendered ratios wander by ±8% and are never the cell's. The derivation is present in the
+   *    source and absent from the render, which is a value computed and consumed by nothing wearing a
+   *    third disguise.
+   *
+   * AND THE RATIO IS NOT DISTINGUISHABLE FROM THE ONE IT REPLACES. b/a = 1.6069 against the golden ratio
+   * 1.6180 differs by 0.04px at step 1, 0.35px at step 3, and only reaches a whole pixel at step 5 —
+   * past the largest spacing either tool uses. Over the range where all the spacing actually lives they
+   * are the same number. What the cell buys is provenance, not appearance, and that is worth having; it
+   * is not worth 213 moved declarations.
+   *
+   * THE GUARD SHIPS EVEN THOUGH THE SCALE DOES NOT, and precisely because the two ratios are
+   * indistinguishable: somebody will eventually "correct" 1.6069 to 1.6180 on the grounds that it looks
+   * like a typo for the golden ratio. It is not. It is 7.97/4.96, and the whole point of L12 is that a
+   * value has a reason. `test/occvm.js` fails on the golden ratio appearing as a spacing constant. */
+  function spacing(m) {
+    var c = m.cell;
+    return { a: 1, c: c.c / c.a, b: c.b / c.a };
+  }
+  var GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;   /* named ONLY so a guard can reject it, never to be used */
+  var P4_UNEXPRESSED = {
+    reason: "the cell ratio does not survive integer-pixel quantisation at the sizes 84.5% of spacing uses",
+    declarationsCensused: 213,
+    distinctValues: 19,
+    meanErrorVsCellLadder: 0.1079,
+    censusedAt: "2.1"
+  };
+
+  var P1_UNEXPRESSED = {
+    reason: "no animated horizontal motion exists in either tool; anisotropy needs two directions in one view",
+    translateXSites: 0,
+    fractureProjection: 0.8837,
+    censusedAt: "2.0"
+  };
+
+  return {
+    ARAGONITE: ARAGONITE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH,
+    fresnel: fresnel, faces: faces, substrate: substrate, renderedContrast: renderedContrast, faceRatios: faceRatios,
+    birefringence: birefringence,
+    edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
+    motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED,
+    spacing: spacing, GOLDEN_RATIO: GOLDEN_RATIO, P4_UNEXPRESSED: P4_UNEXPRESSED
+  };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_MATERIAL;
+/* ==== END OCCVM material.js ==== */
+
+/* ==== OCCVM SPINE fracture.js — spliced from occvm/fracture.js. do not edit. ==== */
+/* sha256:27859f9cc43a */
+/* OCCVM 1.1b — fracture. The first shared BEHAVIOUR primitive (OCCVM-L11).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * A destructive action should not share a physical vocabulary with a reversible one. Everything else in
+ * these tools fades, slides or settles; those are elastic behaviours, and elastic behaviour implies the
+ * thing could come back. Aragonite does not deform past its limit — it CLEAVES, along fixed planes, at
+ * an angle its own lattice decides, the moment stress exceeds a threshold. That is a different event, and
+ * irreversible actions are a different event.
+ *
+ * THE ANGLE IS NOT CHOSEN. It is 2·arctan(b/a) from the unit cell — the {110} composition-plane angle of
+ * the same cyclic twin the vein generator grows — imported from occvm/veins.js rather than recomputed,
+ * because two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. An
+ * eyeballed crack is decoration wearing this primitive's clothes; the whole extension passes its own test
+ * only if the angle is the mineral's.
+ *
+ * SCOPE IS THE DISCIPLINE. Irreversible only — delete, discard, disconnect. Never a cancel, never a
+ * dismiss, never a close. A vocabulary that marks everything marks nothing, and this one exists to say
+ * "that is not coming back" in a language the rest of the system deliberately does not speak.
+ */
+var OCCVM_FRACTURE = (function () {
+  "use strict";
+
+  var RAD = Math.PI / 180;
+  /* The mineral's own angle, from the generator that already derives it — and from NOWHERE ELSE.
+   *
+   * This began as `... || 116.209`, a fallback for when the generator is absent. A guard written one
+   * commit later caught it: that literal is a second copy of the angle, which is the exact thing this
+   * primitive's header promises it does not have, and in Node it silently *was* the value while the
+   * browser used the real one. A fallback that quietly disagrees with its source is worse than no
+   * fallback. If the generator is not spliced beside this, that is a splice failure and it should be
+   * loud.
+   *
+   * RESOLVED AT CALL TIME, NOT AT LOAD. The first version captured OCCVM_VEINS into a module-scope
+   * binding while this IIFE ran, and that is wrong in the browser for a reason nothing in Node can show:
+   * the splicer inserts each part after the same anchor, so parts land in reverse list order and this
+   * file is evaluated BEFORE veins.js is assigned. `typeof OCCVM_VEINS` was therefore "undefined" at
+   * capture, the require branch does not exist in a page, and the binding was null — so cleave() threw
+   * on every call from the moment 1.1b shipped. Node resolved it through require and every assertion
+   * passed. A lazy read is order-independent, which is the property this actually needs. */
+  function twinAngle() {
+    var v = (typeof OCCVM_VEINS !== "undefined" && OCCVM_VEINS) ? OCCVM_VEINS
+          : (typeof require !== "undefined" ? require("./veins.js") : null);
+    if (!v || !v.TWIN_ANGLE) throw new Error("occvm fracture: veins.js is not spliced beside this — no angle to cleave on");
+    return v.TWIN_ANGLE;
+  }
+
+  /* 220ms, fixed, and deliberately faster than any elastic curve in the system. Fracture is sudden by
+     definition; sharing a duration with a settle would put it back in the vocabulary it exists to leave. */
+  var MS = 220;
+
+  function reduced() {
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+    catch (e) { return false; }
+  }
+
+  /* mulberry32 again rather than Math.random: a fracture is seeded off the element so a given deletion
+     looks the same if it is replayed, and the golden set can pin one. */
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash(s) {
+    var n = 2166136261;
+    for (var i = 0; i < s.length; i++) { n ^= s.charCodeAt(i); n = Math.imul(n, 16777619); }
+    return n >>> 0;
+  }
+
+  /* The split line, in the element's own box: a line at the twin angle through a jittered centre.
+   * Returned as the two clip polygons, each a half-plane intersected with the box, in percent. */
+  function halves(angleDeg, offset) {
+    var t = Math.tan(angleDeg * RAD);
+    /* y = t·(x − 50) + (50 + offset), in percent coordinates; solve at both box edges */
+    var yAt = function (x) { return t * (x - 50) + (50 + offset); };
+    var y0 = yAt(0), y100 = yAt(100);
+    /* clamp the traversal to the box and take the two sides of it */
+    var a = ["0% " + y0 + "%", "100% " + y100 + "%", "100% -60%", "0% -60%"];
+    var b = ["0% " + y0 + "%", "100% " + y100 + "%", "100% 160%", "0% 160%"];
+    return ["polygon(" + a.join(",") + ")", "polygon(" + b.join(",") + ")"];
+  }
+
+  /* cleave(el, done): the element splits along the mineral's angle and the two halves torque apart.
+   *
+   * The element is cloned twice rather than animated in place, because one box cannot move in two
+   * directions. The original is hidden on the same frame the clones appear, so nothing is ever visible
+   * twice. No fade at any point: cleaved material does not become transparent, it becomes absent, and a
+   * fade here would put the elastic vocabulary back into the one event that is meant to be without it. */
+  function cleave(el, done) {
+    if (!el || !el.getBoundingClientRect) { if (done) done(); return; }
+    var box = el.getBoundingClientRect();
+    if (!box.width || !box.height) { if (done) done(); return; }
+
+    if (reduced()) {                       /* the floor is the law's, not this primitive's (L8) */
+      el.style.visibility = "hidden";
+      if (done) done();
+      return;
+    }
+
+    var seed = hash((el.id || "") + "|" + Math.round(box.width) + "x" + Math.round(box.height));
+    var rnd = rng(seed);
+    /* ±8% of the shorter dimension, so two deletions of the same thing do not cleave identically */
+    var offset = (rnd() * 16 - 8);
+    var ang = twinAngle() - 90;            /* the composition plane, as a screen-space slope */
+    var poly = halves(ang, offset);
+
+    var host = document.createElement("div");
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText = "position:fixed;left:" + box.left + "px;top:" + box.top + "px;width:" +
+      box.width + "px;height:" + box.height + "px;pointer-events:none;z-index:9999";
+
+    /* THE CLONE MUST CARRY ITS COMPUTED STYLE, NOT ITS MARKUP.
+     *
+     * The first version cloned the node and stripped its id — necessary, because two elements with one
+     * id is invalid and breaks getElementById — and the halves rendered BLANK. Everything an `#id`
+     * selector had been giving the element (its background, its border, its whole surface) was supplied
+     * by a rule that no longer matched. Every JS assertion still passed: two clones, opposite torque, no
+     * fade, host cleaned up. It was only visible by looking at the frame.
+     *
+     * Copying the resolved style instead is indifferent to how the element was selected — id, class,
+     * inheritance, inline — so a fracture looks like the thing that fractured whatever the tool's CSS
+     * happens to be. Layout properties are overridden afterwards, because the halves are positioned by
+     * this primitive rather than by the page they came from. */
+    var computed = window.getComputedStyle(el);
+    var norm = { x: Math.cos(ang * RAD), y: Math.sin(ang * RAD) };
+    for (var i = 0; i < 2; i++) {
+      var part = el.cloneNode(true);
+      part.removeAttribute("id");
+      for (var k = 0; k < computed.length; k++) {
+        var prop = computed[k];
+        part.style.setProperty(prop, computed.getPropertyValue(prop));
+      }
+      part.style.cssText += ";position:absolute;left:0;top:0;margin:0;width:100%;height:100%" +
+        ";clip-path:" + poly[i] + ";transition:transform " + MS + "ms cubic-bezier(.15,.7,.4,1)";
+      host.appendChild(part);
+    }
+    document.body.appendChild(host);
+    el.style.visibility = "hidden";
+
+    /* separate along the split normal, each half torquing — real cleavage does not slide parallel */
+    requestAnimationFrame(function () {
+      var kids = host.children;
+      for (var i = 0; i < kids.length; i++) {
+        var s = i ? 1 : -1;
+        var dx = -norm.y * s * (box.height * 0.22 + 10);
+        var dy = norm.x * s * (box.height * 0.22 + 10);
+        kids[i].style.transform =
+          "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(" + (s * (2 + rnd() * 4)).toFixed(2) + "deg)";
+      }
+    });
+
+    setTimeout(function () {
+      if (host.parentNode) host.parentNode.removeChild(host);
+      if (done) done();
+    }, MS + 20);
+  }
+
+  return { cleave: cleave, halves: halves, twinAngle: twinAngle, MS: MS };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_FRACTURE;
+/* ==== END OCCVM fracture.js ==== */
+
+/* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
+/* sha256:6ab675b82831 */
+/* OCCVM 1.4 — the mineral set (OCCVM-L6). One implementation, shared by every conforming tool.
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * The set is closed and the meanings are fixed: amethyst is the default field, malachite is affirmed/
+ * won/positive, ruby is negated/lost/failed. `m`/`mlo` (accent/deep) are the law-pinned pair — SPINE.md's
+ * L6 table states them exactly. `hi`/`lo` are the vein generator's own highlight/shadow tint, derived by
+ * eye rather than by a formula (the existing amethyst/malachite pair wasn't built from one either), and
+ * are cosmetic: changing them is a design call, not a re-registration.
+ *
+ * Before this file, each tool that had a mineral concept declared its own copy. Rhyme's carried only two
+ * of the three — it had never needed a negative mineral, so ruby was never added — which is exactly the
+ * "no local exceptions" gap L6 exists to close (OCCVM-D6's other half: BTC had no mineral system at all).
+ */
+var OCCVM_MINERALS = {
+  amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c", hi: "#c9a6ff", lo: "#5a36a8" },
+  malachite: { m: "#3fbf7e", mlo: "#1c6a45", hi: "#9ff0c5", lo: "#1f7a50" },
+  ruby:      { m: "#e0475f", mlo: "#6b1a2e", hi: "#f5a3b3", lo: "#8f2740" },
+};
+if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
+/* ==== END OCCVM minerals.js ==== */
+
+/* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
+/* sha256:225f96ea3833 */
+/* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Veins are GROWN, not drawn. Both tools drew three displaced cubic beziers and called the result a
+ * mineral vein; a bezier is a shape that resembles the outcome, and the eye eventually catches the
+ * smooth curvature because nothing in a real dendrite is smooth at every scale.
+ *
+ * This is diffusion-limited aggregation: a walker starts in the matrix, moves at random, and sticks the
+ * instant it touches the aggregate. Growth is dendritic because a tip that protrudes intercepts walkers
+ * before they can reach the shielded interior — the screening effect, which nobody has to author. That
+ * is the roadmap's discipline for 2.0 arriving early: simulate the process, never the resulting shape.
+ *
+ * Seeded and pure. Same seed plus same parameters yields the same bytes, which is what the golden set
+ * and the injected session seed exist for (SPINE.md section 4).
+ */
+var OCCVM_VEINS = (function () {
+  "use strict";
+
+  /* ARAGONITE'S UNIT CELL, and the one number that follows from it (1.1b).
+   *
+   * a 4.96 Å · b 7.97 Å · c 5.74 Å, orthorhombic, space group Pmcn. The {110} composition planes of the
+   * cyclic twin sit at 2·arctan(b/a) = 116.209°, against the 120° a hexagonal relationship would need.
+   * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
+   * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
+   *
+   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632.
+   *
+   * 2.0 — THE CELL MOVED OUT OF HERE AND IS NOW READ, NOT RESTATED. occvm/material.js is the material
+   * definition and owns the lattice; this file grows a habit from it. Until 2.0 the same three lengths
+   * were typed here and in the material, which is two copies of one fact — the defect the fracture
+   * primitive's own header forbids, one level up, and it would have gone unnoticed until somebody edited
+   * one of them. The angle still has exactly one derivation; it just happens where the cell lives. */
+  var MAT = (typeof OCCVM_MATERIAL !== "undefined") ? OCCVM_MATERIAL
+          : (typeof require !== "undefined" ? require("./material.js") : null);
+  if (!MAT) throw new Error("occvm veins: material.js is not spliced beside this — no lattice to grow on");
+  var CELL = MAT.ARAGONITE.cell;
+  var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
+  var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
+
+  /* the PRNG both tools already use, so a seed means the same thing everywhere */
+  function mulberry32(a) {
+    a = a >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* grow(): DLA on a lattice, growing the habit of a named mineral rather than a generic dendrite.
+   *
+   * THE MINERAL IS ARAGONITE, and since 1.1a that is a decision the generator encodes rather than a label
+   * on the output. The 2.0 material model anchors substrate and vein to one crystal (CaCO₃, orthorhombic)
+   * on the argument that a vein is not a foreign material embedded in a slab — it is the same crystal
+   * grown differently. Aragonite's two expressions are exactly the two this system needs: a blocky
+   * orthorhombic form for a cut face, and a fibrous radiating form for a vein. So the vein grows the
+   * second one, and it grows it the way aragonite actually does:
+   *
+   *   - FIBRES RADIATE FROM A NUCLEATION POINT. Not from the screen's left edge, and not along the
+   *     screen's horizontal. Until 1.1a the anisotropy was `pH = .5 + habit * .32`, a bias toward
+   *     horizontal STEPS — a direction in the viewport, which is a fact about the browser window and not
+   *     about the crystal. A crystal has no idea which way the screen is. Direction is now measured from
+   *     the growth's own nucleus, which is a direction in the material's frame.
+   *
+   *   - IT TWINS IN THREES. Aragonite's signature is cyclic twinning on {110}: three individuals meeting
+   *     at close to 120°, which mimics a hexagonal prism well enough that the pseudo-hexagonal form is
+   *     what the mineral is known for. Each nucleus therefore carries `twin` sectors — three, by default,
+   *     because that is what aragonite does — each with its own rotation, and growth is selective along
+   *     them. Radiating fibre bundles from one point, grown rather than drawn.
+   *
+   * habit stays what OCCVM-L10 says it is — the anisotropy of growth — and its ends still mean what the
+   * law says: 0 grows the bushy, equant dendrite of a manganese oxide; 1 draws the structure out into an
+   * elongated, acicular form. Two things changed under it. The AXIS anisotropy is measured against moved
+   * from the viewport's to the crystal's, and the MECHANISM moved from the walk to the attachment (see
+   * accept(), below, which records why the first attempt failed). At habit 0 the twin sectors still exist
+   * but express nothing, because attachment is then indifferent to direction — which is correct, and is
+   * what an equant habit is.
+   *
+   * Walkers spawn just beyond the frontier rather than at infinity — the standard optimisation, and the
+   * reason this finishes in single-digit milliseconds. A walker that strays far outside the frontier is
+   * abandoned rather than followed, which is equivalent in the limit and much cheaper.
+   *
+   * `twin` is a parameter rather than a CSS token deliberately. Twinning is a MATERIAL PROPERTY, and
+   * material properties are 2.0's substance — at 2.0 this argument comes from the material definition
+   * instead of a default. Adding a `--vein-twin` token now would put a 2.0 property into the 1.x token
+   * surface, which is the leak SPINE.md's own 1.4 note warns about. It defaults to aragonite's 3.
+   */
+  function grow(o) {
+    var w = o.w | 0, h = o.h | 0;
+    var n = o.n | 0;
+    var habit = Math.max(0, Math.min(1, o.habit === undefined ? 0.55 : o.habit));
+    var twin = o.twin === undefined ? 3 : Math.max(1, o.twin | 0);
+    var rnd = mulberry32(o.seed >>> 0);
+    var TAU = 6.283185307179586;
+
+    var occ = new Uint8Array(w * h);
+    var segs = [];
+    var i, j, y, x;
+
+    /* Nucleation points, scattered across the whole surface rather than banked against one edge: a vein
+       layer that fills half the page and stops is a gradient, and the eye reads a gradient as a mistake.
+       They compete for the same walkers and screen each other, which is what leaves clear matrix between
+       separate growths.
+
+       Each nucleus carries its own twin rotation, so the three sectors do not all point the same way
+       across the surface — cyclic twins nucleate independently and there is no reason they would. */
+    var nuclei = 6 + ((rnd() * 4) | 0);
+    var seeds = [], sites = [], siteGroup = [], groups = [], segOwner = [];
+    for (i = 0; i < nuclei; i++) {
+      x = 1 + ((rnd() * (w - 3)) | 0);
+      y = ((rnd() * h) | 0);
+      occ[y * w + x] = 1;
+      seeds.push(x, y);
+      sites.push(y * w + x);
+      siteGroup.push(i);
+      groups.push({ cx: x, cy: y, rot: rnd() * TAU });
+    }
+
+    var maxSteps = h * 2 + 60;
+
+    /* ATTACHMENT ANISOTROPY — how a crystal actually grows in a direction.
+     *
+     * The first attempt at this biased the WALKER's drift toward its sector axis, and measurement said
+     * it did nothing: twin 1, twin 3 and twin 6 produced identical angular spectra, all dominated by a
+     * single lobe. Two reasons, both instructive. A walker pushed radially outward is pushed away from
+     * the aggregate, so it wanders off and is abandoned rather than sticking anywhere — the bias spent
+     * walkers instead of shaping growth. And snapping an axis to the nearest lattice step collapses
+     * three directions 120° apart into at most four, which destroys the threefold signal before it can
+     * reach the surface.
+     *
+     * A real crystal is not anisotropic because the diffusing atom travels differently. It is
+     * anisotropic because ATTACHMENT differs by crystallographic direction: some faces accept an atom
+     * readily and some do not, and the fast directions become the needles. So the walk stays a pure
+     * unbiased random walk — which is what makes this DLA at all — and the anisotropy lives in whether
+     * a contact is accepted.
+     *
+     * `align` is +1 when the candidate site sits exactly on one of the nucleus's `twin` axes and −1
+     * exactly between two of them; `cos(twin·(θ−rot))` gives the whole cyclic-twin symmetry in one term.
+     * Acceptance falls from certain (habit 0, isotropic, equant) to strongly axis-selective (habit 1),
+     * and a rejected walker keeps walking rather than being discarded, so no walker is wasted. */
+    function accept(g, px, py) {
+      if (habit <= 0) return true;
+      var dx = px - g.cx, dy = py - g.cy;
+      /* the surface wraps vertically, so take the shorter way round when measuring a bearing */
+      if (dy > h / 2) dy -= h; else if (dy < -h / 2) dy += h;
+      if (dx === 0 && dy === 0) return true;                  /* at the nucleus itself: no direction yet */
+      var align = Math.cos(twin * (Math.atan2(dy, dx) - g.rot));   /* +1 on an axis, -1 between */
+      /* Selectivity is the EXPONENT, not a blend against an isotropic floor. The first form here was
+         `(1-habit) + habit·p`, which keeps a 0.45 floor of accepting anything at habit .55 — both tools'
+         default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
+         twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
+         gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
+      /* 1.1b — THE MISFIT WAS TESTED HERE AND DOES NOT EXPRESS. RECORDED, NOT SHIPPED.
+       *
+       * Aragonite's {110} composition planes sit at 2·arctan(b/a) = 116.209° where a hexagonal
+       * relationship needs 120°, a 3.791° deficit at every boundary. That deficit is the whole reason
+       * the habit is called *pseudo*-hexagonal, and a real cyclic twin closes anyway — the misfit is
+       * taken up as strain and leaves a RE-ENTRANT ANGLE at each composition plane. Re-entrant angles
+       * are preferred attachment sites; it is what drives twinned dendritic growth in ice and in ribbon
+       * silicon. So the obvious move is an attachment boost along the seam, at the deficit's own
+       * strength: 3.791/60 = 0.0632.
+       *
+       * IT PRODUCES NOTHING, MEASURED. Folded angular density at the composition plane came back at
+       * 0.15× the plain matrix — below it, not above — and stayed flat at 0.15 across a 10× range in
+       * particle count and a 9× range in lattice area. It is not a resolution limit; it does not
+       * converge. The reason is that DLA is ARRIVAL-limited: the composition plane lies in the screening
+       * shadow of the two arms flanking it, so a walker almost never reaches it, and an attachment boost
+       * only matters conditional on arrival. The re-entrant effect is real, and it belongs to
+       * attachment-limited growth, which this is not.
+       *
+       * Raising the coefficient until a seam appeared would be fudging a derived number to produce a
+       * wanted picture — the exact failure the material model exists to prevent. Shipping the term at
+       * its true strength would be worse: a value computed and consumed by nothing, which is `OCCVM-D12`
+       * one release after closing it. So the term is not here. The arithmetic stays (it is what P2's
+       * fracture angle needs), and the negative result stays with it. */
+      return rnd() < Math.pow((1 + align) / 2, habit * 6);
+    }
+
+    for (i = 0; i < n; i++) {
+      /* Spawn across the whole occupied extent rather than only at the leading edge, so the interior
+         keeps thickening while the tips advance. Launching only at the frontier grows one filament and
+         leaves the body starved. */
+      /* Launch near the aggregate, not at infinity. A walker released far out in the matrix spends most
+         of its life wandering empty lattice; released on a small circle around a site already occupied,
+         it arrives at the cluster with the same isotropic distribution — this is the standard DLA launch
+         radius, and it is why the generator finishes in single-digit milliseconds instead of twenty. */
+      var pick = (rnd() * sites.length) | 0;
+      var site = sites[pick], group = groups[siteGroup[pick]];
+      var ang = rnd() * TAU, rad = 4 + rnd() * 7;
+      x = ((site % w) + Math.cos(ang) * rad) | 0;
+      y = (((site / w) | 0) + Math.sin(ang) * rad) | 0;
+      if (x < 1) x = 1; else if (x > w - 2) x = w - 2;
+      if (y < 0) y += h; else if (y >= h) y -= h;
+      var stuck = -1;
+
+      for (var st = 0; st < maxSteps; st++) {
+        var k = y * w + x;
+        if (occ[k]) break;                                   /* landed inside: discard */
+        /* Moore neighbourhood: a walker sticks on diagonal contact too, so the aggregate grows at 45
+           degrees as readily as along the axes. Von Neumann sticking is what makes a lattice DLA look
+           like circuit routing rather than a mineral. */
+        var hit = -1;
+        for (j = 0; j < 8 && hit < 0; j++) {
+          var dx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
+          var dy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
+          var nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= w) continue;
+          if (ny < 0) ny = h - 1; else if (ny >= h) ny = 0;
+          if (occ[ny * w + nx]) hit = ny * w + nx;
+        }
+        /* a contact only becomes a stick if this direction accepts one (see accept(), above) */
+        if (hit >= 0 && accept(group, x, y)) { stuck = hit; break; }
+
+        /* An unbiased lattice walk. The anisotropy is in attachment, not in travel. */
+        if (rnd() < 0.5) x += rnd() < 0.5 ? -1 : 1;
+        else y += rnd() < 0.5 ? -1 : 1;
+
+        if (y < 0) y = h - 1; else if (y >= h) y = 0;        /* the surface wraps vertically */
+        if (x < 1) x = 1; else if (x >= w - 1) x = w - 2;
+      }
+      if (stuck < 0) continue;
+
+      var kk = y * w + x;
+      if (occ[kk]) continue;
+      occ[kk] = 1;
+      sites.push(kk);
+      siteGroup.push(siteGroup[pick]);   /* a fibre belongs to the twin it grew from */
+      segOwner.push(siteGroup[pick]);
+      segs.push(stuck % w, (stuck / w) | 0, x, y);
+    }
+    /* `groups` and `segOwner` are returned so the twin can be MEASURED rather than eyeballed: with
+       several growths overlapping, assigning a particle to its nearest nucleus misattributes enough of
+       them to bury the signal, and a property that can only be checked when it happens to be isolated is
+       not really checked. With the true owner and the group's own rotation, the angular harmonic is
+       exact — which is what test/occvm.js asserts on. */
+    return { segs: segs, w: w, h: h, nuclei: seeds, twin: twin, groups: groups, segOwner: segOwner };
+  }
+
+  /* svg(): trace the aggregate. Every stroke is a straight segment between a particle and the particle
+   * it stuck to — the record of how it grew. No curve is fitted over it, because a fitted curve is the
+   * bezier coming back in through the renderer.
+   */
+  function paths(g, o) {
+    var sc = o.scale || 1, jx = o.ox || 0, jy = o.oy || 0;
+    /* The lattice is a discretisation of the walk, not a fact about the mineral, so the trace carries a
+       deterministic sub-cell offset per particle. It breaks the grid without fitting a curve over the
+       growth — a fitted curve is the bezier coming back in through the renderer. */
+    var jit = o.jitter === undefined ? 0.42 : o.jitter;
+    var r = mulberry32((o.seed >>> 0) ^ 0x5bf03635);
+    var d = [], i;
+    for (i = 0; i < g.segs.length; i += 4) {
+      var ay = g.segs[i + 1], by = g.segs[i + 3];
+      if (Math.abs(ay - by) > g.h * 0.5) continue;           /* a wrap, not a real neighbour */
+      var ax = (g.segs[i] + (r() - 0.5) * jit) * sc + jx;
+      var bx = (g.segs[i + 2] + (r() - 0.5) * jit) * sc + jx;
+      var ay2 = (ay + (r() - 0.5) * jit) * sc + jy;
+      var by2 = (by + (r() - 0.5) * jit) * sc + jy;
+      /* Integer coordinates. At the scale these are drawn, a tenth of a pixel is below the stroke width
+         and costs a byte per number across thousands of segments. */
+      d.push("M" + (ax | 0) + " " + (ay2 | 0) + "L" + (bx | 0) + " " + (by2 | 0));
+    }
+    return d.join("");
+  }
+
+  /* field(): the whole vein layer as a data URI, so both tools share the assembly and not just the
+   * growth. Two strokes over one path — a wide deep one and a fine bright one offset by nothing — read
+   * as a vein with depth rather than a wire.
+   *
+   * density is the walker budget as a fraction of the lattice; habit is the growth anisotropy. Both are
+   * read from --vein-density and --vein-habit by the caller, so a tool can tune its own surface without
+   * a second generator.
+   *
+   * RETURNS RAW SVG. The caller must encodeURIComponent it before putting it in a url(). Both the
+   * fragment reference and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
+   * the URI at a fragment — while pre-encoding it to %23 leaves the parsed SVG holding the two literal
+   * characters "%23", so href="%23v" resolves to nothing and the layer renders empty. That failure is
+   * invisible to a token diff and to any check that only looks for the string: it has to be looked at.
+   */
+  function field(o) {
+    var w = o.w || 110, h = o.h || 70;
+    var density = o.density === undefined ? 0.35 : Math.max(0.05, Math.min(1, o.density));
+    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed, twin: o.twin });
+    if (g.segs.length < 8) throw new Error("occvm veins: aggregate did not grow");
+    var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
+    /* The geometry is written once and referenced twice. Serialising the same few tens of kilobytes of
+       path data a second time is the single largest cost in producing this layer. */
+    var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
+      (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
+      "<defs><path id='v' d='" + d + "'/></defs>" +
+      "<g fill='none' stroke-linecap='round'>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.5'/>" +
+      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.85'/>" +
+      "</g></svg>";
+    return { svg: svg, particles: g.segs.length / 4 };
+  }
+
+  /* CELL and TWIN_ANGLE are exported because the fracture primitive needs the same arithmetic, and
+     two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. */
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32,
+           CELL: CELL, TWIN_ANGLE: TWIN_ANGLE, MISFIT: MISFIT };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
+/* ==== END OCCVM veins.js ==== */
+
+/* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
+/* sha256:255309264fb1 */
+/* OCCVM 1.2/1.7 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Before 1.2 each tool carried its own. They agreed on the screen convention and on nothing downstream:
+ * different solar algorithms, --elev on two scales, --night a step in one tool and a ramp in the other,
+ * --glow a calc() in one and a scalar in the other, and a light vector that kept tracking the sun 39
+ * degrees below the horizon. Those were OCCVM-D2, D8, D9 and D10, and one implementation closes all four.
+ *
+ * The split is deliberate and is registered in SPINE.md section 8: POSITION is the full NOAA algorithm,
+ * which BTC carried; RESPONSE is the derivation of surface behaviour from it, which Rhyme carried. Each
+ * tool kept its better half and neither keeps a second copy.
+ *
+ * 1.7 adds `--dusk-stage` (day/civil/nautical/astronomical/night, standard elevation boundaries) as a
+ * discrete reading additive over the continuous --night ramp above — the ramp is unchanged, this is a
+ * second, independent classification for anything that wants to react to the named stage rather than
+ * a blend fraction (OCCVM-L9).
+ *
+ * Everything here is pure: same instant plus same place yields the same bytes. The golden set depends on
+ * it (occvm/golden), and so does anything 2.0 resolves at sunTick.
+ */
+var OCCVM_SUN = (function () {
+  "use strict";
+  var RAD = Math.PI / 180;
+  var DAYTON = { lat: 39.7589, lon: -84.1916, name: "Dayton" };
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  /* ---- position: NOAA general solar position, evaluated in UTC ------------------------------------
+   * Returns elevation in degrees and azimuth in degrees clockwise from north. UTC, not the local clock,
+   * so the reading does not move with the viewer's timezone database.
+   */
+  function position(lat, lon, date) {
+    var jd = date.getTime() / 86400000 + 2440587.5, jc = (jd - 2451545) / 36525;
+    var gml = (280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360;
+    var gma = 357.52911 + jc * (35999.05029 - 0.0001537 * jc);
+    var ecc = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
+    var ceq = Math.sin(gma * RAD) * (1.914602 - jc * (0.004817 + 0.000014 * jc))
+            + Math.sin(2 * gma * RAD) * (0.019993 - 0.000101 * jc)
+            + Math.sin(3 * gma * RAD) * 0.000289;
+    var app = gml + ceq - 0.00569 - 0.00478 * Math.sin((125.04 - 1934.136 * jc) * RAD);
+    var mo = 23 + (26 + ((21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813)))) / 60) / 60;
+    var oc = mo + 0.00256 * Math.cos((125.04 - 1934.136 * jc) * RAD);
+    var dec = Math.asin(Math.sin(oc * RAD) * Math.sin(app * RAD));
+    var y = Math.pow(Math.tan(oc / 2 * RAD), 2);
+    var eqt = 4 * (y * Math.sin(2 * gml * RAD) - 2 * ecc * Math.sin(gma * RAD)
+            + 4 * ecc * y * Math.sin(gma * RAD) * Math.cos(2 * gml * RAD)
+            - 0.5 * y * y * Math.sin(4 * gml * RAD) - 1.25 * ecc * ecc * Math.sin(2 * gma * RAD)) / RAD;
+    var minutes = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    var tst = (minutes + eqt + 4 * lon + 1440) % 1440;
+    var ha = (tst / 4 < 0) ? tst / 4 + 180 : tst / 4 - 180;
+    var cz = Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(ha * RAD);
+    var zen = Math.acos(clamp(cz, -1, 1));
+    var az = Math.acos(clamp(((Math.sin(lat * RAD) * Math.cos(zen)) - Math.sin(dec)) / (Math.cos(lat * RAD) * Math.sin(zen)), -1, 1)) / RAD;
+    az = ha > 0 ? (az + 180) % 360 : (540 - az) % 360;
+    /* `lam` — the sun's apparent ecliptic longitude — is returned because the moon's phase is its
+       elongation from the sun, and computing the sun's position twice to get it would be two
+       implementations of the same thing, which is the defect OCCVM-L3 exists to prevent. */
+    return { elev: 90 - zen / RAD, az: az, lam: app };
+  }
+
+  /* ---- the moon: a secondary, weaker light, and ink's only other source (1.7) ---------------------
+   *
+   * OCCVM-L3 says there is exactly one light and it is the sun. That still holds for every SURFACE: the
+   * moon casts nothing, bevels nothing, and moves no substrate. What it reaches is ink, and only at
+   * night, which is the boundary OCCVM-L9 already draws.
+   *
+   * Low-precision lunar theory (Meeus ch. 47, principal terms). Accurate to roughly a degree, which is
+   * far inside the tolerance of a light vector — the same argument SPINE.md §L3 already makes for
+   * permitting a Fourier approximation of the sun's position but not a second implementation of it.
+   *
+   * ILLUMINATION IS NOT OPTIONAL. A moon above the horizon at new phase delivers no light at all, and a
+   * model that lights the page by altitude alone would put a full moon's worth of ink glow into the
+   * darkest night of the month. The phase is the elongation from the sun, so the sun's own longitude is
+   * an input rather than a second sun.
+   */
+  function moon(lat, lon, date, sunLam) {
+    var d = date.getTime() / 86400000 + 2440587.5 - 2451545.0;   /* days since J2000 */
+    var L = 218.316 + 13.176396 * d;                             /* mean longitude */
+    var M = 134.963 + 13.064993 * d;                             /* mean anomaly */
+    var F = 93.272 + 13.229350 * d;                              /* argument of latitude */
+    var lam = (L + 6.289 * Math.sin(M * RAD)) * RAD;             /* ecliptic longitude */
+    var bet = (5.128 * Math.sin(F * RAD)) * RAD;                 /* ecliptic latitude */
+    var ec = 23.4397 * RAD;
+
+    var dec = Math.asin(Math.sin(bet) * Math.cos(ec) + Math.cos(bet) * Math.sin(ec) * Math.sin(lam));
+    var ra = Math.atan2(Math.sin(lam) * Math.cos(ec) - Math.tan(bet) * Math.sin(ec), Math.cos(lam));
+
+    var lst = (280.16 + 360.9856235 * d + lon) * RAD;            /* local sidereal time */
+    var H = lst - ra;
+    var alt = Math.asin(Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(H));
+    var az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(lat * RAD) - Math.tan(dec) * Math.cos(lat * RAD));
+    az = (az / RAD + 180) % 360;                                  /* from south → clockwise from north */
+    if (az < 0) az += 360;
+
+    /* phase: elongation from the sun, illuminated fraction (1 − cos ψ)/2 — 0 at new, 1 at full */
+    var elong = Math.abs(((lam / RAD - (sunLam === undefined ? 0 : sunLam)) % 360 + 540) % 360 - 180);
+    var illum = (1 - Math.cos(elong * RAD)) / 2;
+
+    return { alt: alt / RAD, az: az, illum: illum, elong: elong };
+  }
+
+  /* ---- response: the surface behaviour the position produces -------------------------------------- */
+
+  function mix(p, q, t) { return [0, 1, 2].map(function (i) { return Math.round(p[i] + (q[i] - p[i]) * t); }); }
+  function hex(c) { return "#" + c.map(function (v) { return clamp(v, 0, 255).toString(16).padStart(2, "0"); }).join(""); }
+
+
+  /* ── OCCVM-L12 adopted, 2.4 — the substrate's two face offsets are the material's, not authored ──
+   *
+   * Until 2.4 these were `0.14 * (0.5 + e)` toward white and a flat `0.42` toward black: two magic
+   * numbers with no derivation, and the last authored values in the substrate. The material supplies
+   * them now, as luminance ratios relative to the base colour this file owns.
+   *
+   * THE DIVISION OF LABOUR IS 2.0's AND IS UNCHANGED: the material owns STRUCTURE — how far the lit and
+   * shaded faces sit from the base — and the sundial owns MAGNITUDE, which is the base colour itself and
+   * the `(0.5 + e)` directionality term kept below. That term is not decoration: specular contrast
+   * between faces genuinely depends on how directional the light is, so a face ratio that ignored the sun
+   * would flatten the day. Measured, adopting the material's ratio WITHOUT it moves the noon highlight
+   * -7.9 L* and raises night contrast +8.0 — it does not flatten uniformly, it inverts the day.
+   *
+   * THE OPERATION STAYS A MIX TOWARD THE LIGHT, not a uniform scale of the base. On a dielectric the
+   * specular return carries the SOURCE's colour, so a highlight desaturates; scaling the base's own
+   * linear RGB would keep its hue and make the highlight look like tinted glass. The material sets how
+   * far, this file still decides toward what.
+   *
+   * Solved by bisection because lum(mix(a, b, t)) has no closed form through the sRGB transfer function.
+   * It is monotone in t, 24 iterations resolve past 8-bit, and it runs once a minute. */
+  function relLum(c) {
+    var p = [0, 1, 2].map(function (i) {
+      var v = c[i] / 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
+  }
+  /* the material, read lazily: the splicer inserts parts in reverse list order, and capturing a sibling
+     part at IIFE time is what had fracture.js throwing in the browser from 1.1b to 2.0. */
+  function material() {
+    return (typeof OCCVM_MATERIAL !== "undefined" && OCCVM_MATERIAL) ? OCCVM_MATERIAL
+         : (typeof require !== "undefined" ? require("./material.js") : null);
+  }
+  var MAT_HI = "hi", MAT_LO = "lo";
+  function faceMix(base, toward, which, e) {
+    var m = material();
+    if (!m) throw new Error("occvm sundial: material.js is not spliced beside this — no face ratios");
+    var want = m.faceRatios(m.ARAGONITE)[which];
+    /* directionality: the material's ratio is the full-light value; diffuse light flattens toward 1 */
+    var dir = (0.5 + e) / 1.5;
+    want = 1 + (want - 1) * dir;
+    var L0 = relLum(base), lo = 0, hi = 1;
+    for (var i = 0; i < 24; i++) {
+      var t = (lo + hi) / 2;
+      if (relLum(mix(base, toward, t)) / L0 < want) { if (want > 1) lo = t; else hi = t; }
+      else { if (want > 1) hi = t; else lo = t; }
+    }
+    return (lo + hi) / 2;
+  }
+
+  /* The noon anchors SPINE.md OCCVM-L1 records, and the two ends the day carries them toward. */
+  var SUB = [27, 26, 34], SUB_DUSK = [40, 28, 30], SUB_NIGHT = [14, 14, 26];
+  var BONE = [236, 227, 208], BONE_DUSK = [244, 214, 170], BONE_NIGHT = [204, 208, 224];
+  var EDGE = [11, 10, 16];
+
+  function respond(p) {
+    var elev = p.elev, az = p.az;
+
+    /* OCCVM-L3: below the horizon the vector does not keep tracking a sun nobody can see. Past civil
+       twilight it resolves to neutral overhead. BTC tracked the sun to -39 degrees and beyond (D9). */
+    var up = elev > -6;
+    var lx = up ? Math.sin(az * RAD) : 0;
+    var ly = up ? -Math.cos(az * RAD) : 1;
+
+    var e = clamp(Math.sin(Math.max(0, elev) * RAD) * 1.25, 0, 1);
+
+    /* OCCVM-L9: night is a continuous quantity, 0 at -2 degrees to 1 at -10. A step cannot express the
+       dusk stages 1.7 refines this into. */
+    var night = clamp((-elev - 2) / 8, 0, 1);
+    var twilight = 1 - clamp(Math.abs(elev) / 14, 0, 1);
+    var dusk = twilight * (1 - night);
+
+    /* OCCVM-L9, 1.7: the civil / nautical / astronomical dusk stages, additive over the ramp above —
+       neither `night` nor `dusk` is redefined by this. Standard elevation boundaries, evaluated against
+       the raw solar elevation rather than either compressed display quantity, so a tool can react to the
+       actual stage independent of how steeply the surface response happens to be tuned. */
+    var stage = elev >= 0 ? "day"
+      : elev >= -6 ? "civil"
+      : elev >= -12 ? "nautical"
+      : elev >= -18 ? "astronomical"
+      : "night";
+
+    /* OCCVM-L9, 1.7 — the PHOSPHOR RESPONSE. Ink's answer to darkness is not linear in `night`, and the
+       linear ramp it replaced was a placeholder that read as one: the page went on getting steadily more
+       lit right through a range where the eye has already fully adapted. A phosphor's emission against
+       its excitation saturates, and the standard form for that is 1 − e^(−kx), normalised so the ends
+       stay exactly 0 and 1. It rises fast and then stops: 0.58 by a quarter of the way into night, 0.83
+       by half, which is what "the tool becomes a night instrument quickly, then holds" looks like as a
+       curve rather than as an intention. */
+    var phosphor = (1 - Math.exp(-3.2 * night)) / (1 - Math.exp(-3.2));
+
+    /* The moon reaches ink and nothing else (see moon(), above, and OCCVM-L9). Its weight is the product
+       of three things that must ALL hold for there to be moonlight: it is above the horizon, it is lit,
+       and the sun is gone. Any one of them missing and the term is zero — a moon at new, or below the
+       horizon, or at noon, contributes exactly nothing rather than a little. */
+    var mAlt = p.moon ? p.moon.alt : -90;
+    var mUp = clamp(mAlt / 45, 0, 1);                       /* full weight once it is well up */
+    var moonLight = p.moon ? mUp * p.moon.illum * night : 0;
+    var mx = (p.moon && mAlt > 0) ? Math.sin(p.moon.az * RAD) : 0;
+    var my = (p.moon && mAlt > 0) ? -Math.cos(p.moon.az * RAD) : 0;
+
+    /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
+       the fill is 0.630 there, not because elevation is pretended to be 0.15 (D2). */
+    var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
+    var rake = elev > 0 ? Math.min(22, 4 + 14 / Math.max(0.25, Math.tan(elev * RAD)) / 6) : 4;
+
+    var sub = mix(mix(SUB, SUB_DUSK, dusk), SUB_NIGHT, night);
+    var bone = mix(mix(BONE, BONE_DUSK, dusk), BONE_NIGHT, night);
+    /* 1.7 — moonlight lifts ink toward its daylight value and nothing else on the page moves with
+       it. This is the whole of the moon's authority over the surface (OCCVM-L9), and it is small
+       on purpose: a full moon at the zenith recovers about a tenth of the way back toward day. */
+    if (moonLight > 0) bone = mix(bone, BONE, 0.30 * moonLight);
+
+    /* OCCVM-L1: a derived token derives with its whole family. --bone-lo is --bone carried a quarter of
+       the way to --edge, so the pair cannot separate again (D10). At the noon anchor that reads #b4ada0
+       against the previously authored #b7ad9c — at most 4/255 in any channel, and the price of the
+       relationship being structural instead of remembered. */
+    var boneLo = mix(bone, EDGE, 0.25);
+
+    return {
+      "--lx": lx.toFixed(3),
+      "--ly": ly.toFixed(3),
+      "--elev": e.toFixed(3),
+      "--night": night.toFixed(3),
+      "--dusk-stage": stage,
+      "--fill": amb.toFixed(3),
+      "--rake": rake.toFixed(1) + "px",
+      "--sheen": (0.25 + 0.55 * e * (1 - night)).toFixed(2),
+      /* OCCVM-D12, closed at 1.2a — AMBIENT FILLS WHAT DIRECT LIGHT DOES NOT.
+       *
+       * 1.2 recorded that --elev's 0.15 night floor "moved" to --fill. It did not move; it was deleted.
+       * --fill was computed, written, and read by nothing, while these two alphas — the bevel the floor
+       * existed to hold up — collapsed to 0.060 after dark. The law's claim that "a bevel stays legible
+       * after dark because ambient light is 0.53 there" was false in both halves: ambient held nothing
+       * up, and the figure was 0.630 rather than 0.53. Found by 1.9's audit, which is what an audit is
+       * for; it survived seven releases because a write-only token looks exactly like a working one.
+       *
+       * `(1 - e)` is the share of the surface direct light is NOT reaching, so ambient is admitted in
+       * proportion to what the sun has left uncovered. At full sun the term is worth 0.007 and the
+       * daylight frames barely move; after dark it is the whole of the bevel. */
+      "--hi-a": (0.30 * e + 0.06 + 0.16 * amb * (1 - e)).toFixed(3),
+      "--cut-a": (0.40 * e + 0.06 + 0.20 * amb * (1 - e)).toFixed(3),
+      "--shade-a": (0.45 + 0.3 * e).toFixed(3),
+      /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). Since
+         1.7 it rides the phosphor curve rather than `night` directly, and moonlight lifts it further —
+         a lit night is a brighter-inked night, which is the one thing the moon is allowed to do here. */
+      /* --glow is consumed as an OPACITY (Rhyme's .stone::before) and already reaches 1.0 on a
+         moonless night, so a moon term here would be clamped away invisibly. Moonlight reaches ink
+         through --bone and --nglow instead, both of which have headroom. Checked against the
+         consumers rather than assumed. */
+      "--glow": (0.45 + 0.25 * (1 - e) + 0.30 * phosphor).toFixed(3),
+      "--phosphor": phosphor.toFixed(3),
+      /* the moon: a secondary vector for ink only. --moon-light is zero unless it is up, lit, and dark. */
+      "--moon-alt": mAlt.toFixed(2),
+      "--moon-illum": (p.moon ? p.moon.illum : 0).toFixed(3),
+      "--moon-light": moonLight.toFixed(3),
+      "--moon-x": mx.toFixed(3),
+      "--moon-y": my.toFixed(3),
+      "--lxpx": (lx * 0.9).toFixed(2) + "px",
+      "--lypx": (ly * 0.9).toFixed(2) + "px",
+      /* the night halo: a blur radius in px, so it has room to carry the moon as well as the ramp */
+      "--nglow": (6 * phosphor + 3 * moonLight).toFixed(2) + "px",
+      "--nglow-s": (3 * phosphor + 1.5 * moonLight).toFixed(2) + "px",
+      "--sub": hex(sub),
+      "--sub-hi": hex(mix(sub, [255, 255, 255], faceMix(sub, [255, 255, 255], MAT_HI, e))),
+      "--sub-lo": hex(mix(sub, [0, 0, 0], faceMix(sub, [0, 0, 0], MAT_LO, e))),
+      "--bone": hex(bone),
+      "--bone-lo": hex(boneLo)
+    };
+  }
+
+  var DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+  /* tick(): position, respond, write. Returns the reading for a tool's own display. */
+  function tick(el, loc, date) {
+    var place = (loc && isFinite(loc.lat)) ? loc : DAYTON;
+    var when = date || new Date();
+    var p = position(place.lat, place.lon, when);
+    p.moon = moon(place.lat, place.lon, when, p.lam);
+    var t = respond(p);
+    if (el && el.style) for (var k in t) if (Object.prototype.hasOwnProperty.call(t, k)) el.style.setProperty(k, t[k]);
+    return {
+      elev: p.elev, az: p.az, tokens: t,
+      dir: DIRS[Math.round(p.az / 45) % 8],
+      night: parseFloat(t["--night"]),
+      stage: t["--dusk-stage"],
+      lx: parseFloat(t["--lx"]), ly: parseFloat(t["--ly"]),
+      e: parseFloat(t["--elev"]),
+      name: place.name || "here"
+    };
+  }
+
+  return { position: position, moon: moon, respond: respond, tick: tick, DAYTON: DAYTON, DIRS: DIRS };
+})();
+/* ==== END OCCVM sundial.js ==== */
+
+/* the spine's runtime halves, spliced — the same bytes both tools carry */
+</script>
+<script>
+"use strict";
+/* ---------------------------------------------------------------------------------------------------
+ * The page's own wiring. It computes nothing about the design: every value shown is either read off the
+ * live document or returned by a spine part. Where this file would have to state a colour to display it,
+ * it reads it instead.
+ * ------------------------------------------------------------------------------------------------- */
+var BUILD_STAMP = "build-20260907175747";
+
+var $ = function (id) { return document.getElementById(id); };
+var css = function (k) { return getComputedStyle(document.documentElement).getPropertyValue(k).trim(); };
+var el = function (tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+
+/* a swatch reads its own colour out of the document rather than being told one */
+function swatch(host, token, label) {
+  var box = el("div", "sw");
+  var chip = el("div", "chip");
+  chip.style.background = "var(" + token + ")";
+  box.appendChild(chip);
+  box.appendChild(el("div", "nm", label || token));
+  box.appendChild(el("div", "vl", css(token) || "—"));
+  host.appendChild(box);
+}
+
+/* ---- the light ---------------------------------------------------------------------------------- */
+var SUN_PLACE = OCCVM_SUN.DAYTON;
+
+/* 1.8's sweep. `held` is null when the page is following the real clock, and an instant when the slider
+   owns it. Nothing else in this file knows the difference: every surface reads the tokens the sundial
+   wrote, so driving the sundial from a different instant drives the whole page — which is the point of
+   the control, and the reason it is a slider over the real model rather than a set of canned frames. */
+var held = null;
+
+function instant() { return held === null ? new Date() : held; }
+
+function sunTick() {
+  var when = instant();
+  var r = OCCVM_SUN.tick(document.documentElement, SUN_PLACE, when);
+  var hh = String(when.getHours()).padStart(2, "0") + ":" + String(when.getMinutes()).padStart(2, "0");
+  $("sunline").textContent =
+    (held === null ? "now " : "held ") + hh + " · sun " + r.elev.toFixed(1) + "° · " + r.dir +
+    " · " + r.stage + " · " + r.name;
+  return r;
+}
+
+/* the whole page, re-resolved from whatever instant is current */
+function repaint() {
+  sunTick();
+  paintLight();
+  paintSweep();
+  paintTokens();
+}
+
+function paintSweep() {
+  var when = instant();
+  var p = OCCVM_SUN.position(SUN_PLACE.lat, SUN_PLACE.lon, when);
+  var m = OCCVM_SUN.moon(SUN_PLACE.lat, SUN_PLACE.lon, when, p.lam);
+  var host = $("sweepRead");
+  host.textContent = "";
+  var rows = [
+    ["sun elev", p.elev.toFixed(2) + "°"],
+    ["--dusk-stage", css("--dusk-stage")],
+    ["--night", css("--night")],
+    ["--phosphor", css("--phosphor")],
+    ["moon alt", m.alt.toFixed(2) + "°"],
+    ["moon illum", m.illum.toFixed(3)],
+    ["--moon-light", css("--moon-light")],
+    ["--nglow", css("--nglow")]
+  ];
+  for (var i = 0; i < rows.length; i++) {
+    var row = el("span");
+    row.appendChild(el("i", null, rows[i][0]));
+    row.appendChild(el("b", null, rows[i][1]));
+    host.appendChild(row);
+  }
+}
+
+function setHeld(minutes) {
+  var base = new Date();
+  base.setHours(0, 0, 0, 0);
+  held = new Date(base.getTime() + minutes * 60000);
+  $("sweepResume").setAttribute("aria-pressed", "true");
+  repaint();
+}
+
+function releaseHold() {
+  held = null;
+  $("sweepResume").setAttribute("aria-pressed", "false");
+  repaint();
+}
+
+/* ---- the mineral (L6) --------------------------------------------------------------------------- */
+var mineral = "amethyst";
+
+function applyMineral() {
+  var m = OCCVM_MINERALS[mineral] || OCCVM_MINERALS.amethyst, rs = document.documentElement.style;
+  rs.setProperty("--mineral", m.m);
+  rs.setProperty("--mineral-lo", m.mlo);
+  rs.setProperty("--vein-hi", m.hi);
+  rs.setProperty("--vein-lo", m.lo);
+}
+
+function setMineral(next) {
+  if (!OCCVM_MINERALS[next]) return;
+  mineral = next;
+  applyMineral();
+  syncPicker();
+  paintVeins();
+  paintMineralSwatches();
+}
+
+function syncPicker() {
+  var names = Object.keys(OCCVM_MINERALS);
+  for (var i = 0; i < names.length; i++) {
+    var b = $("mn-" + names[i]);
+    if (b) b.setAttribute("aria-pressed", String(names[i] === mineral));
+  }
+}
+
+function buildPicker() {
+  var host = $("pick"), names = Object.keys(OCCVM_MINERALS);
+  for (var i = 0; i < names.length; i++) {
+    (function (name) {
+      var b = el("button", "occvm-act occvm-focus", name);
+      b.type = "button";
+      b.id = "mn-" + name;
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () { setMineral(name); });
+      host.appendChild(b);
+    })(names[i]);
+  }
+  syncPicker();
+}
+
+function paintMineralSwatches() {
+  var host = $("l6");
+  host.textContent = "";
+  var names = Object.keys(OCCVM_MINERALS);
+  for (var i = 0; i < names.length; i++) {
+    var m = OCCVM_MINERALS[names[i]];
+    var box = el("div", "sw");
+    var chip = el("div", "chip");
+    /* the accent over its own deep, so both law-pinned values of the pair are visible at once */
+    chip.style.background = "linear-gradient(160deg," + m.m + " 0%," + m.mlo + " 100%)";
+    box.appendChild(chip);
+    box.appendChild(el("div", "nm", names[i] + (names[i] === mineral ? " · chosen" : "")));
+    box.appendChild(el("div", "vl", m.m + " / " + m.mlo));
+    host.appendChild(box);
+  }
+}
+
+/* ---- veins (L10) -------------------------------------------------------------------------------- */
+var VEIN_SEED = 20260906;
+
+function paintVeins() {
+  var host = $("l10");
+  host.textContent = "";
+  var m = OCCVM_MINERALS[mineral] || OCCVM_MINERALS.amethyst;
+  var density = parseFloat(css("--vein-density"));
+  var habits = [0, 0.55, 1];
+  for (var i = 0; i < habits.length; i++) {
+    var wrap = el("div");
+    var box = el("div", "veinbox");
+    try {
+      var out = OCCVM_VEINS.field({
+        seed: VEIN_SEED, w: 72, h: 40, viewW: 400, viewH: 220,
+        density: isFinite(density) ? density : 0.3, habit: habits[i],
+        lo: m.lo, hi: m.hi, wide: 3.4, fine: 1.1
+      });
+      box.style.backgroundImage = "url(\"data:image/svg+xml;utf8," + encodeURIComponent(out.svg) + "\")";
+    } catch (e) {
+      box.appendChild(el("div", "cap", "growth failed: " + (e && e.message)));
+    }
+    wrap.appendChild(box);
+    wrap.appendChild(el("div", "cap", "--vein-habit " + habits[i].toFixed(2)));
+    host.appendChild(wrap);
+  }
+  /* the page's own layer follows the chosen mineral too, so the surface and the specimens agree */
+  try {
+    var field = OCCVM_VEINS.field({
+      seed: VEIN_SEED, w: 96, h: 60, viewW: 1200, viewH: 800,
+      density: isFinite(density) ? density : 0.3, habit: parseFloat(css("--vein-habit")) || 0.55,
+      lo: m.lo, hi: m.hi, wide: 4.5, fine: 1.3
+    });
+    document.documentElement.style.setProperty(
+      "--vein", "url(\"data:image/svg+xml;utf8," + encodeURIComponent(field.svg) + "\")");
+  } catch (e) { /* L10 requires a fallback in a tool; a reference surface reports instead of pretending */ }
+}
+
+/* ---- the dusk strip (L9) ------------------------------------------------------------------------ */
+function paintStages() {
+  var host = $("l9");
+  host.textContent = "";
+  var probes = [
+    { elev: 10, bound: "elev ≥ 0°" },
+    { elev: -3, bound: "0° to −6°" },
+    { elev: -9, bound: "−6° to −12°" },
+    { elev: -15, bound: "−12° to −18°" },
+    { elev: -30, bound: "below −18°" }
+  ];
+  for (var i = 0; i < probes.length; i++) {
+    var t = OCCVM_SUN.respond({ elev: probes[i].elev, az: 180 });
+    var cell = el("div", "stage");
+    cell.style.background = t["--sub"];
+    cell.style.color = t["--bone"];
+    cell.appendChild(el("div", "nm", t["--dusk-stage"]));
+    cell.appendChild(el("div", "bd", probes[i].bound));
+    var vs = el("div", "vs");
+    vs.textContent = "--night " + t["--night"] + "\n--fill " + t["--fill"] + "\n--sub " + t["--sub"];
+    vs.style.whiteSpace = "pre";
+    cell.appendChild(vs);
+    host.appendChild(cell);
+  }
+}
+
+/* ---- 1.8's remaining brief: every state, every thickness, every scale ---------------------------- */
+
+/* Controls in every state, each reporting its OWN measured height rather than claiming the floor. */
+function paintStates() {
+  var host = $("states");
+  host.textContent = "";
+  var kinds = [
+    ["rest", {}],
+    ["pressed", { pressed: true }],
+    ["disabled", { disabled: true }]
+  ];
+  for (var i = 0; i < kinds.length; i++) {
+    var wrap = el("div");
+    var b = el("button", "occvm-act occvm-focus", kinds[i][0]);
+    b.type = "button";
+    b.setAttribute("aria-pressed", kinds[i][1].pressed ? "true" : "false");
+    if (kinds[i][1].disabled) { b.disabled = true; b.style.opacity = "0.45"; }
+    wrap.appendChild(b);
+    var cap = el("div", "cap", "");
+    wrap.appendChild(cap);
+    host.appendChild(wrap);
+    /* measured after layout, so the number is the browser's and not this file's */
+    (function (btn, out) {
+      requestAnimationFrame(function () {
+        var r = btn.getBoundingClientRect();
+        out.textContent = Math.round(r.width) + "×" + Math.round(r.height) + "px";
+      });
+    })(b, cap);
+  }
+  /* the focus ring is a state too, and it is the one nobody can screenshot by accident */
+  var note = el("div", "cap", "focus — tab to any of these");
+  note.style.flexBasis = "100%";
+  host.appendChild(note);
+}
+
+/* Slabs at every thickness the spine defines — three depths, no fourth, none authored here. */
+function paintDepths() {
+  var host = $("depths");
+  host.textContent = "";
+  var depths = [
+    ["--occvm-cast-1", "shallow — a chip, a control"],
+    ["--occvm-cast-2", "the default — a slab"],
+    ["--occvm-cast-3", "deep — a tile that floats"]
+  ];
+  for (var i = 0; i < depths.length; i++) {
+    var wrap = el("div");
+    var box = el("div", "occvm-slab slabdemo", depths[i][0]);
+    box.style.boxShadow = "var(--occvm-bevel), var(" + depths[i][0] + ")";
+    wrap.appendChild(box);
+    wrap.appendChild(el("div", "cap", depths[i][1]));
+    host.appendChild(wrap);
+  }
+}
+
+/* Ink at every scale this system actually sets, in both faces. */
+function paintScales() {
+  var host = $("scales");
+  host.textContent = "";
+  var scales = [
+    ["21px serif", "font-family:var(--serif);font-size:21px;font-weight:600"],
+    ["15px serif", "font-family:var(--serif);font-size:15px"],
+    ["12.5px serif dim", "font-family:var(--serif);font-size:12.5px;color:var(--bone-lo)"],
+    ["13px mono", "font-family:var(--mono);font-size:13px"],
+    ["11px mono dim", "font-family:var(--mono);font-size:11px;color:var(--bone-lo)"],
+    ["9.5px label", "font-family:var(--serif);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-lo)"]
+  ];
+  for (var i = 0; i < scales.length; i++) {
+    var row = el("div");
+    row.style.cssText = scales[i][1] + ";padding:2px 0";
+    row.textContent = scales[i][0] + " — the quick brown fox 0123456789";
+    host.appendChild(row);
+  }
+}
+
+/* ---- the token table ---------------------------------------------------------------------------- */
+/* Enumerated, never listed: the :root rules of this document's own stylesheet give what the CSS parts
+   declare, and the sundial's own return value gives what the light writes. A token added to either
+   appears here on the next load; a hand-kept list would not. */
+function tokenSources() {
+  var src = {}, i, j, k;
+  var sheets = document.styleSheets;
+  for (i = 0; i < sheets.length; i++) {
+    var rules;
+    try { rules = sheets[i].cssRules; } catch (e) { continue; }
+    if (!rules) continue;
+    for (j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      if (!rule.selectorText || rule.selectorText.indexOf(":root") < 0 || !rule.style) continue;
+      for (k = 0; k < rule.style.length; k++) {
+        var name = rule.style[k];
+        if (name.slice(0, 2) === "--") src[name] = "spine CSS (declared)";
+      }
+    }
+  }
+  var written = OCCVM_SUN.respond({ elev: 20, az: 180 });
+  for (var key in written) if (Object.prototype.hasOwnProperty.call(written, key)) src[key] = "sundial (per minute)";
+  var mineralWritten = ["--mineral", "--mineral-lo", "--vein-hi", "--vein-lo"];
+  for (i = 0; i < mineralWritten.length; i++) src[mineralWritten[i]] = "mineral choice";
+  src["--vein"] = "vein generator";
+  return src;
+}
+
+function paintTokens() {
+  var src = tokenSources();
+  var names = Object.keys(src).sort();
+  var body = $("tok");
+  body.textContent = "";
+  for (var i = 0; i < names.length; i++) {
+    var v = css(names[i]);
+    var tr = el("tr");
+    tr.appendChild(el("td", "k", names[i]));
+    /* the vein layer resolves to a data URI thousands of characters long; state its size, not its bytes */
+    var shown = names[i] === "--vein"
+      ? (v ? "‹grown layer, " + v.length.toLocaleString() + " chars›" : "‹absent›")
+      : (v || "‹absent›");
+    tr.appendChild(el("td", "v", shown));
+    tr.appendChild(el("td", "src", src[names[i]]));
+    body.appendChild(tr);
+  }
+}
+
+/* ---- boot --------------------------------------------------------------------------------------- */
+$("stamp").textContent = "OCCVM 1.8 · " + BUILD_STAMP;
+
+sunTick();
+applyMineral();
+buildPicker();
+paintMineralSwatches();
+paintVeins();
+paintStages();
+
+/* L3 — the scalars the light writes, read back off the document it just wrote them to. Refreshed with
+   the sundial, so this readout and the surfaces above it can never disagree about the same instant. */
+function paintLight() {
+  var host = $("l3");
+  host.textContent = "";
+  var grid = el("div", "vals");
+  var keys = ["--lx", "--ly", "--elev", "--night", "--dusk-stage", "--fill",
+              "--rake", "--sheen", "--hi-a", "--cut-a", "--shade-a", "--glow"];
+  for (var i = 0; i < keys.length; i++) {
+    var row = el("span");
+    row.appendChild(el("i", null, keys[i]));
+    row.appendChild(el("b", null, css(keys[i]) || "—"));
+    grid.appendChild(row);
+  }
+  host.appendChild(grid);
+}
+
+/* L1 and L5 read their own values out of the document, after the light has written them */
+(function () {
+  var l1 = $("l1"), l5 = $("l5");
+  var subs = ["--sub-hi", "--sub", "--sub-lo", "--edge"];
+  var inks = ["--bone", "--bone-lo"];
+  var i;
+  for (i = 0; i < subs.length; i++) swatch(l1, subs[i]);
+  for (i = 0; i < inks.length; i++) swatch(l1, inks[i]);
+  var gilt = ["--gilt-a", "--gilt-b", "--gilt-c"];
+  for (i = 0; i < gilt.length; i++) swatch(l5, gilt[i]);
+  var rest = ["--verdigris", "--bronze-a", "--bronze-b", "--bronze-c"];
+  for (i = 0; i < rest.length; i++) swatch(l5, rest[i]);
+})();
+
+paintLight();
+paintStates();
+paintDepths();
+paintScales();
+paintTokens();
+
+/* the sweep (1.8): the slider owns the instant while it is held, the clock owns it otherwise */
+(function () {
+  var slider = $("sweep"), now = new Date();
+  slider.value = String(now.getHours() * 60 + now.getMinutes());
+  slider.addEventListener("input", function () { setHeld(+slider.value); });
+  $("sweepResume").setAttribute("aria-pressed", "false");
+  $("sweepResume").addEventListener("click", releaseHold);
+  paintSweep();
+})();
+
+/* the light moves; the page follows it, at the same cadence the tools use — but never while the slider
+   is holding an instant, or the clock would yank the page out from under whoever is sweeping it. */
+setInterval(function () { if (held === null) repaint(); }, 60000);
+</script>
+</body>
+</html>
