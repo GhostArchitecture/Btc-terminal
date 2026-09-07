@@ -1268,6 +1268,31 @@ ever equalling it. **The guard ships even though the scale does not**, because `
 either tool uses. They are the same number on screen, so somebody will eventually "correct" one to the
 other. It is not a typo for φ; it is 7.97/4.96. `test/occvm.js` 274 → 294.
 
+**2.2 — `--amb` became `--fill`, and 1.2a's last open question closed.** 1.2a recorded this term as
+non-monotonic in darkness (0.450 at the horizon against 0.630 at night) and deferred to 2.0 the question
+of whether a term climbing at midnight would fight a material model. Measured first: every consumer
+weights it by `(1−e)`, which cuts a **28% dip in the token to a 1% dip in what reaches the surface**. There
+was no physical defect — only a name. It was never sky illumination; it is the *weight of the fill*, and a
+fill that rises at night is correct rather than paradoxical. Values byte-identical, proved by re-recording
+the golden set across three surfaces at three instants: one key renamed, **zero value deltas**. `--amb` is
+pinned out of both repositories. *Recorded and not changed:* the `0.55·elev` branch, weighted by `(1−e)`,
+contributes `0.55·e·(1−e)` — a mid-afternoon bulge nothing states as intent; a rename that also moved a
+curve would give the golden set a delta it could not attribute.
+
+**2.3 — the material predicts two of three, and Rhyme's `.slab` adopts.** L12's free parameter `body` is
+anchored to L1's own substrate floor `#0e0d13`, replacing an arbitrary `#12111a`. Setting the material's
+one judgment value *from* the tools is fitting and is stated as such — but the fit is to **one** value,
+after which the derivation predicts the other two: `--m-sub-hi` lands on the authored `#2c2a36` **to the
+byte, unfitted**, and the disagreement is confined to the mid-tone at 3.91 L* darker. **The authored
+substrate's endpoints are aragonite** at L2's cut geometry; the hand got the endpoints right and the middle
+wrong, which is precisely the shape disagreement 2.0 measured. `occvm/tools/gen-substrate.js` emits
+`occvm/substrate.css` from the material and CI gates it with `--check`, because L12's claim is about
+provenance and provenance does not survive a hand-copied hex — a generated constant rather than a runtime
+token, since 2.0 established the sun drops out of the ratio. **This tool has not adopted:** its substrate
+sits under the win/lose colours §5 governs, which is not where a new derivation gets proven, so the three
+tokens are declared here and consumed only in Rhyme. Two assertions pin that BTC has not quietly adopted.
+`test/occvm.js` 294 → 318.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
