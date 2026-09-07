@@ -28,6 +28,11 @@ jobs:
       - name: OCCVM spine is spliced and current
         run: node occvm/tools/splice-spine.js --check
 
+      # OCCVM 1.9: the token audit is a gate, not a paragraph. Fails on a token that resolves to
+      # nothing, or a tool-local token its own tool never consumes.
+      - name: OCCVM token audit (1.9)
+        run: node occvm/tools/token-audit.js --check
+
       - name: H-protocol unit suites
         run: npm run test:units
 

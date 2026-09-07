@@ -70,6 +70,60 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM 1.9: freeze and stage ----------------------------------------------------------------
+ * "None technical. The risk is skipping it." It was skipped once. These pin that the audit is an
+ * instrument rather than a paragraph, that what it found stays found, and that the migration table the
+ * release exists to produce actually covers the token surface it claims to.
+ */
+{
+  const fs9 = require("fs"), path9 = require("path");
+  const ROOT9 = path9.resolve(__dirname, "..");
+  const doc9 = fs9.readFileSync(path9.join(ROOT9, "occvm", "SPINE.md"), "utf8");
+  const { audit, provider, isUsed } = require("../occvm/tools/token-audit.js");
+  const rows9 = audit();
+
+  T("the token audit is a committed instrument, not a session",
+    fs9.existsSync(path9.join(ROOT9, "occvm", "tools", "token-audit.js")));
+  T("CI runs the audit as a gate",
+    fs9.readFileSync(path9.join(ROOT9, ".github", "workflows", "ci.yml"), "utf8").includes("token-audit.js --check"));
+
+  /* the two classes the audit exists to make impossible */
+  const orphans9 = rows9.filter(r => !provider(r));
+  T("no token resolves to nothing", orphans9.length === 0, orphans9.map(r => r.token).join(" "));
+  const dead9 = rows9.filter(r => !r.spine && provider(r) && !isUsed(r));
+  T("no dead tool-local token survives 1.9", dead9.length === 0, dead9.map(r => r.token).join(" "));
+
+  /* what 1.9 removed stays removed */
+  const html9 = fs9.readFileSync(path9.join(ROOT9, "index.html"), "utf8");
+  for (const t of ["--glass-hi", "--ruby-lo", "--warn"])
+    T(`${t} stays removed`, !html9.includes(t + ":") && !html9.includes("var(" + t + ")"), t);
+
+  /* the migration table has to actually cover the surface, or it is a summary pretending to be a table */
+  T("the migration table exists", doc9.includes("## 6b. The 2.0 migration table"));
+  const table9 = doc9.slice(doc9.indexOf("## 6b."), doc9.indexOf("## 7."));
+  const missing = rows9.map(r => r.token).filter(t => !table9.includes(t));
+  T("every token in the census appears in the migration table", missing.length === 0,
+    missing.slice(0, 8).join(" ") + (missing.length > 8 ? ` (+${missing.length - 8})` : ""));
+  T("the table records that no aliases are outstanding", /Aliases outstanding: none/.test(table9));
+  T("every divergence is resolved as an amendment or an exception",
+    /Divergences, each resolved/.test(table9) && /Law amended/.test(table9) && /Documented exception/.test(table9));
+
+  /* D12 — the defect the audit found. It must be registered as open, not quietly absorbed. */
+  T("OCCVM-D12 is registered", /\| \*\*D12\*\* \|/.test(doc9));
+  T("D12 is recorded as open", /\| \*\*D12\*\*[\s\S]{0,900}?\*\*open\*\*/.test(doc9));
+  T("the defect count is stated honestly", !doc9.includes("**All eleven defects are closed.**"));
+  /* and the thing D12 is about is genuinely still true, so the register is not stale */
+  {
+    const h9 = load();
+    const night9 = h9.R("OCCVM_SUN.respond({elev:-30,az:180})");
+    T("D12 still reproduces: --amb is high at night while the bevel alphas collapse",
+      parseFloat(night9["--amb"]) > 0.5 && parseFloat(night9["--hi-a"]) < 0.1 && parseFloat(night9["--cut-a"]) < 0.1,
+      { amb: night9["--amb"], hi: night9["--hi-a"], cut: night9["--cut-a"] });
+    T("D12 still reproduces: no tool consumes --amb",
+      !/var\(--amb\)|getPropertyValue\("--amb"\)/.test(html9));
+  }
+}
+
 /* --- OCCVM-L9, 1.7 (complete): the phosphor curve and the moon ----------------------------------
  * The dusk staging shipped first and the other two halves of the release did not. This pins them, and
  * pins the boundary the moon may not cross: it is a light for INK, and L3 still owns every surface.

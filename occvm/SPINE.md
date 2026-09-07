@@ -22,9 +22,10 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
 | **1.7** | landed | the night model, complete: dusk stages additive over the `--night` ramp, ink on a **phosphor curve** rather than a linear one, and the **moon** as a second light reaching ink alone (real lunar theory, gated on illumination). Deleted BTC's `--bloom` surface glow. |
 | **1.8** | landed | the reference surface, to its full brief: a conforming page holding no values of its own, one live specimen per law, **the light vector swept on a slider rather than a clock**, slabs at every depth, controls in every state, ink at every scale. Recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
-| **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
+| **1.9** | landed | freeze and stage, in full. D1 closed at the narrow pass (the expired `--ink --meas --bondi` block swept). The rest landed after the amended roadmap surfaced it: a **full token audit as a re-runnable instrument** (`occvm/tools/token-audit.js`, in CI with `--check`), three dead tool-local tokens removed, every divergence promoted to an amendment or a documented exception, the **2.0 migration table** (§6b), and one real defect found — `OCCVM-D12`. |
 
-**All eleven defects are closed.** D1's aliases were shown to be load-bearing by 1.2's golden diff —
+**Eleven of twelve defects are closed; `OCCVM-D12` was opened by 1.9's own audit and is the one
+thing standing between here and 2.0 that is a bug rather than a decision.** D1's aliases were shown to be load-bearing by 1.2's golden diff —
 `--ink --meas --dim` all moved with the tokens they alias — so the block was a live dependency, not dead
 weight, and sweeping it (1.9) was a migration rather than a deletion. D6 (1.4) closed the same way 1.9
 did: BTC gets the mineral system, but only where it was already load-bearing for this tool — the vein
@@ -535,6 +536,57 @@ found by measurement after it was written.
 | **D9** | BTC | the light vector keeps tracking the sun below the horizon (−0.516, −0.856 at −39°) instead of resolving neutral overhead (L3) | **closed 1.2** |
 | **D10** | Rhyme | `--bone` is derived from twilight while `--bone-lo` stays fixed, separating a pair that must move together (L1) | **closed 1.2** |
 | **D11** | both | `.row`, `.wrap`, `.note` are defined in both tools with incompatible meanings, so an un-namespaced spine primitive would break a tool on inline (L3 §3) | closed at 1.0 by namespacing |
+| **D12** | spine | **`--amb` is written and read by nothing.** 1.2 recorded that `--elev`'s 0.15 night floor *moved* to `--amb`; measured, it was deleted. `--amb` resolves to 0.630 at night while the bevel alphas it was supposed to hold up, `--hi-a` and `--cut-a`, both collapse to 0.060. The law's claim that "a bevel stays legible after dark because ambient light is 0.53 there" is false as shipped. Found by 1.9's audit | **open** — fixing it changes every surface's night appearance, which 1.9 may not ship |
+
+---
+
+## 6b. The 2.0 migration table (1.9)
+
+**1.9's exit is that a reader who has never seen these tools can migrate a conforming tool to 2.0 from
+this table alone.** It is therefore written for that reader and not as a summary for someone who already
+knows. The census below is produced by `occvm/tools/token-audit.js`, which derives it from the artifacts
+every time it runs; it is not a list kept by hand, and CI runs it with `--check`.
+
+**Census at 1.9: 81 distinct tokens.** 27 written by the sundial each minute, 22 declared by the spine's
+CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
+
+### What 2.0 does to each class
+
+2.0's break is that **a hex stops being authored and starts being derived**: `--sub: #1b1a22` becomes
+`material(obsidian)` resolving to a surface response, with aragonite (CaCO₃, orthorhombic, biaxial) as the
+anchor for substrate and vein alike. The table is by class, because the class is what decides the fate:
+
+| class | tokens | at 2.0 | what a migrator does |
+|---|---|---|---|
+| **Substrate & ink** | `--sub --sub-hi --sub-lo --edge --bone --bone-lo --bone-dim` | **derived from the material.** Three substrate weights become the three faces an orthorhombic crystal actually has — lit face, shade face, edge — each taking its own principal refractive index (α/β/γ) rather than one scaled response. | Stop declaring them. Declare a material; read the same names back. The names do not change, which is deliberate: the migration is in where the value comes from, not in what a surface calls it. |
+| **Light (sun)** | `--lx --ly --elev --amb --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **unchanged in name and meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. | Nothing. |
+| **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
+| **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
+| **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
+| **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
+| **Vein** | `--vein-density --vein-habit --vein --veins` | **`twin` joins them from the material.** The generator already grows aragonite's habit as of 1.1a; at 2.0 the twin order stops being a default and comes from the material definition. | Nothing. |
+| **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
+| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
+
+### Aliases outstanding: none
+
+The deprecation policy (§0) requires a token slated for removal to survive one minor cycle as an alias
+marked `/* deprecated → newname (2.0) */`. **There are no such aliases**, and that is a finding rather
+than an omission: the only alias block either tool ever carried was BTC's `--ink --meas --bondi`, and 1.9
+swept it. Nothing is currently scheduled for rename at 2.0 — the break is in derivation, not in naming,
+which is why this table's right-hand column so often reads "nothing".
+
+### Divergences, each resolved
+
+| divergence | resolution |
+|---|---|
+| L3 said "exactly one light"; 1.7 added the moon | **Law amended**, narrowly and in the open (§L3): one light on any *surface*; the moon reaches ink alone. |
+| L6's roadmap exit asked that a mineral chosen in one tool be honoured by the other | **Documented exception** (§L6): `localStorage` is per-origin and the tools have no common origin. Replaced by conformance — one set, one meaning, stored twice. Physically unreachable, not inconvenient. |
+| BTC spends the mineral only on its vein layer; Rhyme spends it across its chrome | **Documented exception** (§L6): BTC's malachite and ruby already carry a fixed win/lose meaning, and a decorative accent may not sit beside an outcome signal. |
+| `--t-num` is governed and applied by nobody | **Documented exception** (§L7): measured at 1.0 on one machine's fallbacks, deliberately not generalised. |
+| `--amb` is written and read by nobody | **Defect**, `OCCVM-D12`. Not an exception — the law makes a false claim about it. |
+| Rhyme's vein layer is never measured by the golden set | **Defect-adjacent, recorded here**: Rhyme sets `--veins` per-slab inline rather than on `documentElement`, and the recorder reads `documentElement`. Its vein output has never been diffed. Fixing it means either moving the write or teaching the recorder to sample an element, and both are 2.0-scale decisions about where a per-instance token lives. |
+| BTC's reference surface and golden set are not duplicated into Rhyme | **Documented exception** (§1.8): they are conformance instruments, not spine content. The law and the five parts are what every repository carries identically. |
 
 ---
 
@@ -542,7 +594,7 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907175234` | — |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907180450` | — |
 | **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907175235` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 
