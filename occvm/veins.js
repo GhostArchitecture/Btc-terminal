@@ -18,6 +18,18 @@
 var OCCVM_VEINS = (function () {
   "use strict";
 
+  /* ARAGONITE'S UNIT CELL, and the one number that follows from it (1.1b).
+   *
+   * a 4.96 Å · b 7.97 Å · c 5.74 Å, orthorhombic, space group Pmcn. The {110} composition planes of the
+   * cyclic twin sit at 2·arctan(b/a) = 116.209°, against the 120° a hexagonal relationship would need.
+   * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
+   * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
+   *
+   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632. */
+  var CELL = { a: 4.96, b: 7.97, c: 5.74 };
+  var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
+  var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
+
   /* the PRNG both tools already use, so a seed means the same thing everywhere */
   function mulberry32(a) {
     a = a >>> 0;
@@ -132,6 +144,29 @@ var OCCVM_VEINS = (function () {
          default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
          twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
          gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
+      /* 1.1b — THE MISFIT WAS TESTED HERE AND DOES NOT EXPRESS. RECORDED, NOT SHIPPED.
+       *
+       * Aragonite's {110} composition planes sit at 2·arctan(b/a) = 116.209° where a hexagonal
+       * relationship needs 120°, a 3.791° deficit at every boundary. That deficit is the whole reason
+       * the habit is called *pseudo*-hexagonal, and a real cyclic twin closes anyway — the misfit is
+       * taken up as strain and leaves a RE-ENTRANT ANGLE at each composition plane. Re-entrant angles
+       * are preferred attachment sites; it is what drives twinned dendritic growth in ice and in ribbon
+       * silicon. So the obvious move is an attachment boost along the seam, at the deficit's own
+       * strength: 3.791/60 = 0.0632.
+       *
+       * IT PRODUCES NOTHING, MEASURED. Folded angular density at the composition plane came back at
+       * 0.15× the plain matrix — below it, not above — and stayed flat at 0.15 across a 10× range in
+       * particle count and a 9× range in lattice area. It is not a resolution limit; it does not
+       * converge. The reason is that DLA is ARRIVAL-limited: the composition plane lies in the screening
+       * shadow of the two arms flanking it, so a walker almost never reaches it, and an attachment boost
+       * only matters conditional on arrival. The re-entrant effect is real, and it belongs to
+       * attachment-limited growth, which this is not.
+       *
+       * Raising the coefficient until a seam appeared would be fudging a derived number to produce a
+       * wanted picture — the exact failure the material model exists to prevent. Shipping the term at
+       * its true strength would be worse: a value computed and consumed by nothing, which is `OCCVM-D12`
+       * one release after closing it. So the term is not here. The arithmetic stays (it is what P2's
+       * fracture angle needs), and the negative result stays with it. */
       return rnd() < Math.pow((1 + align) / 2, habit * 6);
     }
 
@@ -253,6 +288,9 @@ var OCCVM_VEINS = (function () {
     return { svg: svg, particles: g.segs.length / 4 };
   }
 
-  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32 };
+  /* CELL and TWIN_ANGLE are exported because the fracture primitive needs the same arithmetic, and
+     two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. */
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32,
+           CELL: CELL, TWIN_ANGLE: TWIN_ANGLE, MISFIT: MISFIT };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_VEINS;

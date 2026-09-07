@@ -43,6 +43,7 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "veins.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "minerals.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
+  { name: "fracture.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
@@ -50,11 +51,13 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
   { name: "veins.js",     target: "index.html", anchor: "<script>" },
   { name: "minerals.js",  target: "index.html", anchor: "<script>" },
+  { name: "fracture.js",  target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
   { name: "mono.css",     target: REF, anchor: "<style>" },
   { name: "sundial.js",   target: REF, anchor: "<script>" },
   { name: "veins.js",     target: REF, anchor: "<script>" },
   { name: "minerals.js",  target: REF, anchor: "<script>" },
+  { name: "fracture.js",  target: REF, anchor: "<script>" },
 ];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);

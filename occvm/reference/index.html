@@ -654,6 +654,168 @@ footer { margin-top: 34px; }
 </div>
 
 <script>
+/* ==== OCCVM SPINE fracture.js — spliced from occvm/fracture.js. do not edit. ==== */
+/* sha256:d382524cf11b */
+/* OCCVM 1.1b — fracture. The first shared BEHAVIOUR primitive (OCCVM-L11).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * A destructive action should not share a physical vocabulary with a reversible one. Everything else in
+ * these tools fades, slides or settles; those are elastic behaviours, and elastic behaviour implies the
+ * thing could come back. Aragonite does not deform past its limit — it CLEAVES, along fixed planes, at
+ * an angle its own lattice decides, the moment stress exceeds a threshold. That is a different event, and
+ * irreversible actions are a different event.
+ *
+ * THE ANGLE IS NOT CHOSEN. It is 2·arctan(b/a) from the unit cell — the {110} composition-plane angle of
+ * the same cyclic twin the vein generator grows — imported from occvm/veins.js rather than recomputed,
+ * because two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. An
+ * eyeballed crack is decoration wearing this primitive's clothes; the whole extension passes its own test
+ * only if the angle is the mineral's.
+ *
+ * SCOPE IS THE DISCIPLINE. Irreversible only — delete, discard, disconnect. Never a cancel, never a
+ * dismiss, never a close. A vocabulary that marks everything marks nothing, and this one exists to say
+ * "that is not coming back" in a language the rest of the system deliberately does not speak.
+ */
+var OCCVM_FRACTURE = (function () {
+  "use strict";
+
+  var RAD = Math.PI / 180;
+  /* The mineral's own angle, from the generator that already derives it — and from NOWHERE ELSE.
+   *
+   * This began as `... || 116.209`, a fallback for when the generator is absent. A guard written one
+   * commit later caught it: that literal is a second copy of the angle, which is the exact thing this
+   * primitive's header promises it does not have, and in Node it silently *was* the value while the
+   * browser used the real one. A fallback that quietly disagrees with its source is worse than no
+   * fallback. If the generator is not spliced beside this, that is a splice failure and it should be
+   * loud. */
+  var VEINS = (typeof OCCVM_VEINS !== "undefined") ? OCCVM_VEINS
+            : (typeof require !== "undefined" ? require("./veins.js") : null);
+  function twinAngle() {
+    if (!VEINS || !VEINS.TWIN_ANGLE) throw new Error("occvm fracture: veins.js is not spliced beside this — no angle to cleave on");
+    return VEINS.TWIN_ANGLE;
+  }
+
+  /* 220ms, fixed, and deliberately faster than any elastic curve in the system. Fracture is sudden by
+     definition; sharing a duration with a settle would put it back in the vocabulary it exists to leave. */
+  var MS = 220;
+
+  function reduced() {
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+    catch (e) { return false; }
+  }
+
+  /* mulberry32 again rather than Math.random: a fracture is seeded off the element so a given deletion
+     looks the same if it is replayed, and the golden set can pin one. */
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash(s) {
+    var n = 2166136261;
+    for (var i = 0; i < s.length; i++) { n ^= s.charCodeAt(i); n = Math.imul(n, 16777619); }
+    return n >>> 0;
+  }
+
+  /* The split line, in the element's own box: a line at the twin angle through a jittered centre.
+   * Returned as the two clip polygons, each a half-plane intersected with the box, in percent. */
+  function halves(angleDeg, offset) {
+    var t = Math.tan(angleDeg * RAD);
+    /* y = t·(x − 50) + (50 + offset), in percent coordinates; solve at both box edges */
+    var yAt = function (x) { return t * (x - 50) + (50 + offset); };
+    var y0 = yAt(0), y100 = yAt(100);
+    /* clamp the traversal to the box and take the two sides of it */
+    var a = ["0% " + y0 + "%", "100% " + y100 + "%", "100% -60%", "0% -60%"];
+    var b = ["0% " + y0 + "%", "100% " + y100 + "%", "100% 160%", "0% 160%"];
+    return ["polygon(" + a.join(",") + ")", "polygon(" + b.join(",") + ")"];
+  }
+
+  /* cleave(el, done): the element splits along the mineral's angle and the two halves torque apart.
+   *
+   * The element is cloned twice rather than animated in place, because one box cannot move in two
+   * directions. The original is hidden on the same frame the clones appear, so nothing is ever visible
+   * twice. No fade at any point: cleaved material does not become transparent, it becomes absent, and a
+   * fade here would put the elastic vocabulary back into the one event that is meant to be without it. */
+  function cleave(el, done) {
+    if (!el || !el.getBoundingClientRect) { if (done) done(); return; }
+    var box = el.getBoundingClientRect();
+    if (!box.width || !box.height) { if (done) done(); return; }
+
+    if (reduced()) {                       /* the floor is the law's, not this primitive's (L8) */
+      el.style.visibility = "hidden";
+      if (done) done();
+      return;
+    }
+
+    var seed = hash((el.id || "") + "|" + Math.round(box.width) + "x" + Math.round(box.height));
+    var rnd = rng(seed);
+    /* ±8% of the shorter dimension, so two deletions of the same thing do not cleave identically */
+    var offset = (rnd() * 16 - 8);
+    var ang = twinAngle() - 90;            /* the composition plane, as a screen-space slope */
+    var poly = halves(ang, offset);
+
+    var host = document.createElement("div");
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText = "position:fixed;left:" + box.left + "px;top:" + box.top + "px;width:" +
+      box.width + "px;height:" + box.height + "px;pointer-events:none;z-index:9999";
+
+    /* THE CLONE MUST CARRY ITS COMPUTED STYLE, NOT ITS MARKUP.
+     *
+     * The first version cloned the node and stripped its id — necessary, because two elements with one
+     * id is invalid and breaks getElementById — and the halves rendered BLANK. Everything an `#id`
+     * selector had been giving the element (its background, its border, its whole surface) was supplied
+     * by a rule that no longer matched. Every JS assertion still passed: two clones, opposite torque, no
+     * fade, host cleaned up. It was only visible by looking at the frame.
+     *
+     * Copying the resolved style instead is indifferent to how the element was selected — id, class,
+     * inheritance, inline — so a fracture looks like the thing that fractured whatever the tool's CSS
+     * happens to be. Layout properties are overridden afterwards, because the halves are positioned by
+     * this primitive rather than by the page they came from. */
+    var computed = window.getComputedStyle(el);
+    var norm = { x: Math.cos(ang * RAD), y: Math.sin(ang * RAD) };
+    for (var i = 0; i < 2; i++) {
+      var part = el.cloneNode(true);
+      part.removeAttribute("id");
+      for (var k = 0; k < computed.length; k++) {
+        var prop = computed[k];
+        part.style.setProperty(prop, computed.getPropertyValue(prop));
+      }
+      part.style.cssText += ";position:absolute;left:0;top:0;margin:0;width:100%;height:100%" +
+        ";clip-path:" + poly[i] + ";transition:transform " + MS + "ms cubic-bezier(.15,.7,.4,1)";
+      host.appendChild(part);
+    }
+    document.body.appendChild(host);
+    el.style.visibility = "hidden";
+
+    /* separate along the split normal, each half torquing — real cleavage does not slide parallel */
+    requestAnimationFrame(function () {
+      var kids = host.children;
+      for (var i = 0; i < kids.length; i++) {
+        var s = i ? 1 : -1;
+        var dx = -norm.y * s * (box.height * 0.22 + 10);
+        var dy = norm.x * s * (box.height * 0.22 + 10);
+        kids[i].style.transform =
+          "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(" + (s * (2 + rnd() * 4)).toFixed(2) + "deg)";
+      }
+    });
+
+    setTimeout(function () {
+      if (host.parentNode) host.parentNode.removeChild(host);
+      if (done) done();
+    }, MS + 20);
+  }
+
+  return { cleave: cleave, halves: halves, twinAngle: twinAngle, MS: MS };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_FRACTURE;
+/* ==== END OCCVM fracture.js ==== */
+
 /* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
 /* sha256:6ab675b82831 */
 /* OCCVM 1.4 — the mineral set (OCCVM-L6). One implementation, shared by every conforming tool.
@@ -680,7 +842,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
 /* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
-/* sha256:7ad6582dfe4b */
+/* sha256:599ccc64343a */
 /* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -700,6 +862,18 @@ if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
  */
 var OCCVM_VEINS = (function () {
   "use strict";
+
+  /* ARAGONITE'S UNIT CELL, and the one number that follows from it (1.1b).
+   *
+   * a 4.96 Å · b 7.97 Å · c 5.74 Å, orthorhombic, space group Pmcn. The {110} composition planes of the
+   * cyclic twin sit at 2·arctan(b/a) = 116.209°, against the 120° a hexagonal relationship would need.
+   * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
+   * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
+   *
+   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632. */
+  var CELL = { a: 4.96, b: 7.97, c: 5.74 };
+  var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
+  var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
 
   /* the PRNG both tools already use, so a seed means the same thing everywhere */
   function mulberry32(a) {
@@ -815,6 +989,29 @@ var OCCVM_VEINS = (function () {
          default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
          twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
          gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
+      /* 1.1b — THE MISFIT WAS TESTED HERE AND DOES NOT EXPRESS. RECORDED, NOT SHIPPED.
+       *
+       * Aragonite's {110} composition planes sit at 2·arctan(b/a) = 116.209° where a hexagonal
+       * relationship needs 120°, a 3.791° deficit at every boundary. That deficit is the whole reason
+       * the habit is called *pseudo*-hexagonal, and a real cyclic twin closes anyway — the misfit is
+       * taken up as strain and leaves a RE-ENTRANT ANGLE at each composition plane. Re-entrant angles
+       * are preferred attachment sites; it is what drives twinned dendritic growth in ice and in ribbon
+       * silicon. So the obvious move is an attachment boost along the seam, at the deficit's own
+       * strength: 3.791/60 = 0.0632.
+       *
+       * IT PRODUCES NOTHING, MEASURED. Folded angular density at the composition plane came back at
+       * 0.15× the plain matrix — below it, not above — and stayed flat at 0.15 across a 10× range in
+       * particle count and a 9× range in lattice area. It is not a resolution limit; it does not
+       * converge. The reason is that DLA is ARRIVAL-limited: the composition plane lies in the screening
+       * shadow of the two arms flanking it, so a walker almost never reaches it, and an attachment boost
+       * only matters conditional on arrival. The re-entrant effect is real, and it belongs to
+       * attachment-limited growth, which this is not.
+       *
+       * Raising the coefficient until a seam appeared would be fudging a derived number to produce a
+       * wanted picture — the exact failure the material model exists to prevent. Shipping the term at
+       * its true strength would be worse: a value computed and consumed by nothing, which is `OCCVM-D12`
+       * one release after closing it. So the term is not here. The arithmetic stays (it is what P2's
+       * fracture angle needs), and the negative result stays with it. */
       return rnd() < Math.pow((1 + align) / 2, habit * 6);
     }
 
@@ -936,7 +1133,10 @@ var OCCVM_VEINS = (function () {
     return { svg: svg, particles: g.segs.length / 4 };
   }
 
-  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32 };
+  /* CELL and TWIN_ANGLE are exported because the fracture primitive needs the same arithmetic, and
+     two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. */
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32,
+           CELL: CELL, TWIN_ANGLE: TWIN_ANGLE, MISFIT: MISFIT };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
 /* ==== END OCCVM veins.js ==== */

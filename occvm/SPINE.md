@@ -14,6 +14,7 @@ order would be exactly the drift the ledger law exists to prevent.
 |---|---|---|
 | **1.0** | landed | constituted the spine from measurement; inlined it in both tools at zero deltas. Closed D11. |
 | **1.1** | landed | generative fidelity: DLA veins, `--vein-density --vein-habit`. Closed nothing; added L10. Its determinism requirement was met at 1.0. |
+| **1.1b** | landed | the {110} twin angle computed from the unit cell (116.209°, resolving P2's blocker), the first **behaviour** primitive — `occvm/fracture.js`, OCCVM-L11 — and a **tested negative**: the twin misfit has no measurable growth consequence in a diffusion-limited regime, so it is recorded rather than shipped. |
 | **1.1a** | landed | the vein grows **aragonite**, not a generic dendrite: radial from a nucleation point, cyclic-twinned in threes, anisotropy moved from the walk to attachment. 2.0 prep the amended roadmap asks for early, so vein and substrate can become one material without a rework. |
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
 | **1.2a** | landed | closed `OCCVM-D12`: the night floor 1.2 recorded as *moved* to `--amb` had in fact been deleted. Ambient now fills what direct light does not, so the bevel after dark is held up by the term the law always said held it up. First visible change in six releases. |
@@ -356,6 +357,38 @@ check still passes. `field()` therefore returns raw SVG and the caller encodes t
 tools shipped this bug during 1.1 and neither the golden token diff nor a substring check saw it; it was
 found by decoding the URI into an `<img>` and counting inked pixels.
 
+### OCCVM-L11 — fracture
+
+**A destructive action does not share a physical vocabulary with a reversible one.** Everything else in
+these tools fades, slides or settles. Those are elastic behaviours, and elastic behaviour implies the
+thing could come back. Aragonite does not deform past its limit — it **cleaves**, along fixed planes, at
+an angle its own lattice decides. Irreversible actions get that vocabulary and nothing else does.
+
+**The angle is not chosen.** It is `2·arctan(b/a) = 116.209°` from the unit cell — the same {110}
+composition plane the vein generator's cyclic twin is built on — imported from `occvm/veins.js` rather
+than recomputed, because two derivations of one angle is the defect `OCCVM-L3` exists to prevent, one
+material down. An eyeballed crack is decoration wearing this law's clothes.
+
+The primitive is `occvm/fracture.js`, the spine's **first shared behaviour** rather than shared
+appearance: two clipped halves separating along the split normal, each torquing ≤6° because real cleavage
+does not slide parallel; 220 ms, faster than any elastic curve in the system, because sharing a duration
+with a settle would put it back in the vocabulary it exists to leave; and **no fade at any point** —
+cleaved material does not become transparent, it becomes absent.
+
+**Scope is the discipline, not the coverage.** Delete, discard, disconnect. Never a cancel, never a
+dismiss, never a close. A vocabulary that marks everything marks nothing.
+
+*BTC has almost no call sites for this and that is not a gap:* CLAUDE.md §4 makes its ledgers
+ungardenable — withdrawals log as `WITHDRAWN`, nothing is silently deleted — so the tool has very little
+that is irreversible by construction. Rhyme's shelf removal is the first real consumer.
+
+*What the clone taught, recorded because the assertions did not catch it:* the first version cloned the
+element and stripped its `id`, which is necessary (two elements with one id breaks `getElementById`) and
+which rendered the halves **blank** — everything an `#id` rule had been supplying was gone. Two clones,
+opposite torque, no fade, host cleaned up: every assertion passed on an invisible fracture. The clone now
+carries its **resolved** style, so it is indifferent to how the element was selected. Some things are only
+visible by looking at the frame.
+
 ### OCCVM-L9 — night
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
@@ -635,8 +668,8 @@ which is why this table's right-hand column so often reads "nothing".
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.1a, 1.2, 1.2a, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907182547` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.2, 1.2a, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907182548` | — (renders no mono; D3 does not apply) |
+| **BTC Terminal** | 1.0, 1.1, 1.1a, 1.1b, 1.2, 1.2a, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907190822` | — |
+| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.1b, 1.2, 1.2a, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907190822` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**

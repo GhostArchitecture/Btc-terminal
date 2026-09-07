@@ -70,6 +70,45 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM-L11, 1.1b: fracture, and the misfit that was tested and not shipped ------------------ */
+{
+  const VEINS11 = require("../occvm/veins.js");
+  const FRAC = require("../occvm/fracture.js");
+  const fs11 = require("fs"), path11 = require("path");
+  const ROOT11 = path11.resolve(__dirname, "..");
+
+  /* the angle is the mineral's, derived from the cell, not written down */
+  const expected = 2 * Math.atan(VEINS11.CELL.b / VEINS11.CELL.a) * 180 / Math.PI;
+  T("the twin angle is computed from the unit cell", Math.abs(VEINS11.TWIN_ANGLE - expected) < 1e-9,
+    VEINS11.TWIN_ANGLE.toFixed(3));
+  T("it is aragonite's 116.209°, not an eyeballed crack", Math.abs(VEINS11.TWIN_ANGLE - 116.209) < 0.01);
+  T("the misfit follows from it", Math.abs(VEINS11.MISFIT - (120 - VEINS11.TWIN_ANGLE) / 60) < 1e-12);
+  T("fracture takes its angle FROM the generator, never its own copy",
+    FRAC.twinAngle() === VEINS11.TWIN_ANGLE &&
+    !/2\s*\*\s*Math\.atan/.test(fs11.readFileSync(path11.join(ROOT11, "occvm", "fracture.js"), "utf8")));
+
+  /* the split is a real line at that angle, and the two halves are complementary */
+  const [h1, h2] = FRAC.halves(FRAC.twinAngle() - 90, 0);
+  const edge = /polygon\(([^,]+),([^,]+),/;
+  T("both halves share the same split edge", h1.match(edge)[1] === h2.match(edge)[1] && h1.match(edge)[2] === h2.match(edge)[2]);
+  T("the halves take opposite sides of it", h1.includes("-60%") && h2.includes("160%"));
+
+  /* the vocabulary rules L11 states */
+  const src11 = fs11.readFileSync(path11.join(ROOT11, "occvm", "fracture.js"), "utf8");
+  T("fracture is faster than any elastic curve", FRAC.MS <= 250, FRAC.MS + "ms");
+  T("fracture never fades — no opacity anywhere in the primitive", !/opacity/i.test(src11));
+  T("the halves torque rather than sliding parallel", /rotate\(/.test(src11));
+  T("it respects the reduced-motion floor (L8)", /prefers-reduced-motion/.test(src11));
+  T("the clone carries its RESOLVED style, or an #id-styled element fractures blank",
+    /getComputedStyle\(el\)/.test(src11) && /setProperty\(prop/.test(src11));
+
+  /* 1.1b's negative result must stay recorded, or it will be re-attempted */
+  const doc11 = fs11.readFileSync(path11.join(ROOT11, "occvm", "SPINE.md"), "utf8");
+  T("the misfit's negative result is on the record", /no measurable growth consequence|does not express/i.test(doc11));
+  T("no seam term was shipped into the generator",
+    !/seam/.test(fs11.readFileSync(path11.join(ROOT11, "occvm", "veins.js"), "utf8").split("return rnd()")[0].slice(-400)));
+}
+
 /* --- OCCVM 1.9: freeze and stage ----------------------------------------------------------------
  * "None technical. The risk is skipping it." It was skipped once. These pin that the audit is an
  * instrument rather than a paragraph, that what it found stays found, and that the migration table the
@@ -300,7 +339,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const ref = fs6.existsSync(REF) ? fs6.readFileSync(REF, "utf8") : "";
 
   const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0);
-  T("every spine part is spliced into the reference surface", refParts.length === 5, refParts.length);
+  T("every spine part is spliced into the reference surface", refParts.length === 6, refParts.length);
   for (const part of refParts) {
     const f = fence6(part.name);
     const src = fs6.readFileSync(path6.join(ROOT6, "occvm", part.name), "utf8");
