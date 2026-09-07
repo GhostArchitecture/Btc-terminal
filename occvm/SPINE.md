@@ -18,6 +18,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.1a** | landed | the vein grows **aragonite**, not a generic dendrite: radial from a nucleation point, cyclic-twinned in threes, anisotropy moved from the walk to attachment. 2.0 prep the amended roadmap asks for early, so vein and substrate can become one material without a rework. |
 | **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
 | **1.2a** | landed | closed `OCCVM-D12`: the night floor 1.2 recorded as *moved* to `--amb` had in fact been deleted. Ambient now fills what direct light does not, so the bevel after dark is held up by the term the law always said held it up. First visible change in six releases. |
+| **2.0** | landed | **OCCVM-L12, the material model.** Aragonite defined once in `occvm/material.js` — cell, principal indices, hardness, density, stiffness — with the lattice's single owner moved here and `veins.js` reading it. The substrate ramp is **derived** from angular Fresnel at L2's cut geometry rather than authored, with two rejected derivations recorded and pinned. Also fixed a load-order defect that had `cleave()` throwing in the browser since 1.1b. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -88,7 +89,7 @@ wrong table.
 
 ---
 
-## 1. The nine laws
+## 1. The twelve laws
 
 Each law names the release that completes it. A law is stated at 1.0 whether or not both tools satisfy it
 yet; the gap is a defect, and the defect names the release that closes it.
@@ -367,7 +368,18 @@ an angle its own lattice decides. Irreversible actions get that vocabulary and n
 **The angle is not chosen.** It is `2·arctan(b/a) = 116.209°` from the unit cell — the same {110}
 composition plane the vein generator's cyclic twin is built on — imported from `occvm/veins.js` rather
 than recomputed, because two derivations of one angle is the defect `OCCVM-L3` exists to prevent, one
-material down. An eyeballed crack is decoration wearing this law's clothes.
+material down. An eyeballed crack is decoration wearing this law's clothes. *Since 2.0 the chain runs one
+link further back:* the cell itself lives in `occvm/material.js` (L12) and veins reads it, so the angle
+has one derivation and the lattice it comes from has one owner.
+
+*A second load-order defect, found at 2.0 and shipped since 1.1b:* this file captured `OCCVM_VEINS` into a
+module-scope binding while its own IIFE ran. The splicer inserts every part after one anchor, so parts land
+in **reverse** list order and fracture is evaluated *before* veins is assigned — the binding was null and
+`cleave()` threw on every call in the browser, while Node resolved it through `require` and every assertion
+passed. The read is now lazy, which is order-independent, and `test/occvm.js` runs the spliced blocks in
+the page's own order with no `require` available so the guard tests the real condition. 1.1b's replacement
+of a `|| 116.209` fallback with a throw is what made the failure loud instead of silently wrong; the throw
+was right and the capture was not.
 
 The primitive is `occvm/fracture.js`, the spine's **first shared behaviour** rather than shared
 appearance: two clipped halves separating along the split normal, each torquing ≤6° because real cleavage
@@ -388,6 +400,99 @@ which rendered the halves **blank** — everything an `#id` rule had been supply
 opposite torque, no fade, host cleaned up: every assertion passed on an invisible fracture. The clone now
 carries its **resolved** style, so it is indifferent to how the element was selected. Some things are only
 visible by looking at the frame.
+
+### OCCVM-L12 — the material
+
+**A hex is not authored. A material is defined, and the surface values are derived from it.** Until 2.0
+`--sub-hi`, `--sub` and `--sub-lo` were three separate decisions that happened to look related, and the
+only thing holding them in a ramp was that one person mixed them on one afternoon. They are now one
+material, one body colour and one cut geometry, and their **ratios** fall out of the arithmetic.
+
+The material is **aragonite**, CaCO₃, orthorhombic, space group Pmcn. It is not chosen for its looks; it
+is chosen because it has three of everything a slab needs one of. `occvm/material.js` is the definition
+and it owns the lattice:
+
+| property | value | governs |
+|---|---|---|
+| unit cell | a 4.96 · b 7.97 · c 5.74 Å | the {110} twin angle (L10, L11) |
+| principal indices | α 1.530 · β 1.680 · γ 1.685 | the three faces' reflectance |
+| hardness | Mohs 3.5–4 | how sharply a face may be cut (L2) |
+| density | 2.93 g/cm³ | cast weight (L4) |
+| stiffness C11/C22/C33 | 171.1 / 110.1 / 98.4 GPa | anisotropic motion (P1, registered) |
+
+**The lattice has exactly one owner.** `occvm/veins.js` reads the cell from here rather than restating it,
+and `occvm/fracture.js` reads the angle from veins. Before 2.0 the same three lengths were typed in two
+files — two copies of one fact, which is the defect `OCCVM-L3` exists to prevent, one material down, and
+it would have gone unnoticed until somebody edited one of them.
+
+**Three derivations were measured; two are recorded as wrong.** The argument for an orthorhombic system is
+that a slab has three faces sharing one scaled response today, and three principal indices give each its
+own value. That argument is right and the two obvious ways to cash it in are not:
+
+1. **Normal-incidence Fresnel** on α/β/γ gives 4.39% / 6.44% / 6.51% — a spread of **1.48×**, against the
+   **5.74×** linear-luminance spread the tools actually author. Real optics, taken that way, is 3.9×
+   *flatter* than the design. A substrate derived from it is nearly monochrome and both tools lose the
+   structure they are read by.
+2. **Weighting reflectance by incident flux** — `R(θ)·cos θ`, the intuitive fix, adding the sun — is
+   **worse**: the cosine very nearly cancels the Fresnel rise and the whole 0–90° sweep collapses to
+   **1.13×**, peaking at 76.9°. Flux-weighting cannot produce a ramp at all. It is written down because it
+   sounds more physical than what replaced it, and the next person to have the idea should not spend the
+   hour. `test/occvm.js` pins the measurement so it cannot be quietly re-adopted.
+
+**What is in force** is the third: on a dark, glossy solid you do not see a diffuse return, you see the
+**specular** one, so a face's brightness tracks `R` at the angle it presents **to the viewer**. Those
+angles are the slab's own cut geometry — the thing L2 already fixes — not the sun's position:
+
+| face | angle from view normal | index | R |
+|---|---|---|---|
+| front | 0° | α | 4.39% |
+| chamfer | 45° | β | 7.60% |
+| edge | 80° | γ | 41.04% |
+
+**The sun drops out of the ratio, and that is why this derivation is the one kept.** The material owns
+*structure*; the sundial owns *magnitude*, exactly as it has since 1.2. 2.0 therefore does not fight the
+light pipeline or double-apply it — which is precisely what the elevation-parameterised version did: it
+re-sorted its own faces as the sun moved, and let `mid` collide with `hi` at noon and with `lo` at dawn.
+
+**Which index sits on which face is a convention and is flagged as one.** Crystallography establishes that
+there are three principal indices and that they differ; it does not tell you how a rendered rectangle is
+oriented in a lattice, because a rendered rectangle is not in a lattice. α on the front and γ on the edge
+is chosen so the ordering runs the same direction as the ramp the tools already read. This is the same
+honesty flag P1 carries about mapping crystal axes onto screen axes, and it is stated here rather than
+buried in a comment.
+
+**Where the material and the hand disagree, stated rather than fitted:**
+
+| | edge : chamfer : front |
+|---|---|
+| optics | 9.353 : 1.732 : 1.000 |
+| authored today | 5.739 : 2.539 : 1.000 |
+
+Same **ordering**, different **shape**. The material is more convex — it makes the edge carry more of the
+range and the mid-tone less, which is what a cut mineral does and what a hand-mixed ramp tends not to.
+This is **not** corrected by a per-face fudge: a per-face correction is three authored numbers wearing a
+derivation's clothes, which is the exact thing this law exists to remove.
+
+**One value here is not derived, and it is named.** `contrast` is a legibility parameter: an exponent on
+the optical ratio setting how much of the available range the substrate spends. Physics fixes the order
+and the shape; it does not know how readable a terminal has to be at 3am. At contrast 1 the substrate is
+the mineral's; at **0.7816** — derived, `log 5.739 / log 9.353`, and it moves if the material moves — its
+spread equals what the tools author today. It is named in the material for the same reason L7 names
+`--t-num`: a judgment gets called judgment in the place somebody would otherwise mistake it for
+measurement.
+
+**A reflectance ratio is a ratio in linear light.** The body colour is decoded out of sRGB, scaled by one
+gain across all three channels, and re-encoded. *Recorded because the first resolver did neither:* it
+scaled the sRGB bytes directly, so a 9.35× optical spread rendered as **116×** — the transfer function
+applied twice — and it shifted hue, because saturating one channel before another is a colour change
+nobody asked the material for. One gain in linear light is hue-preserving by construction, and
+`test/occvm.js` pins both.
+
+**2.0 defines and derives; it does not yet repaint.** The substrate tokens L1 governs are unchanged in
+both tools this release. What exists now is the definition, the resolver, and the measured distance
+between what the material says and what the tools do — which is the input any repaint needs and which
+nobody had before. Adopting it is a per-surface decision under the migration table (§6b), not a
+side effect of writing the law down.
 
 ### OCCVM-L9 — night
 

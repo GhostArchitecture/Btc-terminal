@@ -25,8 +25,17 @@ var OCCVM_VEINS = (function () {
    * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
    * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
    *
-   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632. */
-  var CELL = { a: 4.96, b: 7.97, c: 5.74 };
+   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632.
+   *
+   * 2.0 — THE CELL MOVED OUT OF HERE AND IS NOW READ, NOT RESTATED. occvm/material.js is the material
+   * definition and owns the lattice; this file grows a habit from it. Until 2.0 the same three lengths
+   * were typed here and in the material, which is two copies of one fact — the defect the fracture
+   * primitive's own header forbids, one level up, and it would have gone unnoticed until somebody edited
+   * one of them. The angle still has exactly one derivation; it just happens where the cell lives. */
+  var MAT = (typeof OCCVM_MATERIAL !== "undefined") ? OCCVM_MATERIAL
+          : (typeof require !== "undefined" ? require("./material.js") : null);
+  if (!MAT) throw new Error("occvm veins: material.js is not spliced beside this — no lattice to grow on");
+  var CELL = MAT.ARAGONITE.cell;
   var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
   var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
 

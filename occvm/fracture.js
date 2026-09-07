@@ -30,12 +30,20 @@ var OCCVM_FRACTURE = (function () {
    * primitive's header promises it does not have, and in Node it silently *was* the value while the
    * browser used the real one. A fallback that quietly disagrees with its source is worse than no
    * fallback. If the generator is not spliced beside this, that is a splice failure and it should be
-   * loud. */
-  var VEINS = (typeof OCCVM_VEINS !== "undefined") ? OCCVM_VEINS
-            : (typeof require !== "undefined" ? require("./veins.js") : null);
+   * loud.
+   *
+   * RESOLVED AT CALL TIME, NOT AT LOAD. The first version captured OCCVM_VEINS into a module-scope
+   * binding while this IIFE ran, and that is wrong in the browser for a reason nothing in Node can show:
+   * the splicer inserts each part after the same anchor, so parts land in reverse list order and this
+   * file is evaluated BEFORE veins.js is assigned. `typeof OCCVM_VEINS` was therefore "undefined" at
+   * capture, the require branch does not exist in a page, and the binding was null — so cleave() threw
+   * on every call from the moment 1.1b shipped. Node resolved it through require and every assertion
+   * passed. A lazy read is order-independent, which is the property this actually needs. */
   function twinAngle() {
-    if (!VEINS || !VEINS.TWIN_ANGLE) throw new Error("occvm fracture: veins.js is not spliced beside this — no angle to cleave on");
-    return VEINS.TWIN_ANGLE;
+    var v = (typeof OCCVM_VEINS !== "undefined" && OCCVM_VEINS) ? OCCVM_VEINS
+          : (typeof require !== "undefined" ? require("./veins.js") : null);
+    if (!v || !v.TWIN_ANGLE) throw new Error("occvm fracture: veins.js is not spliced beside this — no angle to cleave on");
+    return v.TWIN_ANGLE;
   }
 
   /* 220ms, fixed, and deliberately faster than any elastic curve in the system. Fracture is sudden by

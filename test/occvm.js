@@ -338,16 +338,20 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the reference surface exists", fs6.existsSync(REF));
   const ref = fs6.existsSync(REF) ? fs6.readFileSync(REF, "utf8") : "";
 
-  const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0);
-  T("every spine part is spliced into the reference surface", refParts.length === 6, refParts.length);
-  for (const part of refParts) {
-    const f = fence6(part.name);
-    const src = fs6.readFileSync(path6.join(ROOT6, "occvm", part.name), "utf8");
-    T(`reference: ${part.name} is spliced exactly once`,
-      ref.split(f.open).length - 1 === 1 && ref.split(f.close).length - 1 === 1, part.name);
+  /* derived, not a literal: the reference must carry exactly the parts the tool carries. A hardcoded
+     count is one more authored number to forget — it survived 1.8 and had to be hand-edited at 2.0. */
+  const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0).map(p => p.name).sort();
+  const toolParts = PARTS6.filter(p => p.target === "index.html").map(p => p.name).sort();
+  T("the reference surface carries exactly the parts the tool carries",
+    refParts.join(",") === toolParts.join(","), refParts.join(",") + " vs " + toolParts.join(","));
+  for (const name of refParts) {
+    const f = fence6(name);
+    const src = fs6.readFileSync(path6.join(ROOT6, "occvm", name), "utf8");
+    T(`reference: ${name} is spliced exactly once`,
+      ref.split(f.open).length - 1 === 1 && ref.split(f.close).length - 1 === 1, name);
     const a = ref.indexOf(f.open), b = ref.indexOf(f.close);
-    T(`reference: ${part.name} matches occvm/${part.name}`,
-      ref.slice(a, b + f.close.length) === block6(part.name, src), part.name);
+    T(`reference: ${name} matches occvm/${name}`,
+      ref.slice(a, b + f.close.length) === block6(name, src), name);
   }
 
   /* THE LOAD-BEARING ONE. Strip the fences — inside them the spine may of course state values, that is
@@ -768,6 +772,116 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the legacy fallback carries ruby's own vein tint, not a fixed malachite",
     legacy5.includes("8f2740") && legacy5.includes("f5a3b3"));
   T("the legacy fallback no longer hardcodes malachite hex", !legacy5.includes("1c6a45") && !legacy5.includes("3fbf7e"));
+}
+
+/* ── 2.0 — the material model (OCCVM-L12) ─────────────────────────────────────────────────────── */
+{
+  const MAT = require("../occvm/material.js");
+  const VEINS20 = require("../occvm/veins.js");
+  const FRAC20 = require("../occvm/fracture.js");
+  const fs20 = require("fs"), path20 = require("path"), vm20 = require("vm");
+  const A = MAT.ARAGONITE;
+
+  /* the lattice has exactly ONE owner. Until 2.0 the cell was typed in both files — two copies of one
+     fact, the defect fracture.js's own header forbids, one level up. */
+  T("veins.js reads the material's cell rather than restating it", VEINS20.CELL === A.cell);
+  T("material.js does not derive the twin angle a second time", MAT.twinAngle === undefined);
+  T("the twin angle still has one value across all three consumers",
+    Math.abs(VEINS20.TWIN_ANGLE - FRAC20.twinAngle()) < 1e-12 &&
+    Math.abs(VEINS20.TWIN_ANGLE - 2 * Math.atan(A.cell.b / A.cell.a) * 180 / Math.PI) < 1e-12);
+
+  /* REGRESSION GUARD, 1.1b -> 2.0. The splicer inserts every part after one anchor, so parts land in
+     reverse list order and fracture.js is evaluated BEFORE veins.js is assigned. Capturing OCCVM_VEINS
+     at IIFE time therefore left it null in the browser and cleave() threw on every call from the moment
+     1.1b shipped, while Node resolved it through require and every assertion passed. This runs the
+     spliced blocks in the order the PAGE has them, with no require available. */
+  {
+    const src = fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8");
+    const blk = n => { const i = src.indexOf("var " + n + " ="); return src.slice(i, src.indexOf("\nif (typeof module", i)); };
+    const iMat = src.indexOf("var OCCVM_MATERIAL ="), iVein = src.indexOf("var OCCVM_VEINS ="), iFrac = src.indexOf("var OCCVM_FRACTURE =");
+    T("material.js is spliced into index.html", iMat > 0);
+    T("material.js precedes veins.js in the page (veins reads the cell at load)", iMat > 0 && iMat < iVein);
+    const ctx = vm20.createContext({ Math, console });
+    let threw = null;
+    try {
+      vm20.runInContext(blk("OCCVM_MATERIAL"), ctx);
+      vm20.runInContext(blk("OCCVM_FRACTURE"), ctx);
+      vm20.runInContext(blk("OCCVM_VEINS"), ctx);
+      ctx.OCCVM_FRACTURE.twinAngle();
+    } catch (e) { threw = e.message; }
+    T("fracture resolves the twin angle under the page's own load order, with no require", threw === null, threw || "");
+    T("fracture sits before veins in the page, so the guard is testing the real order", iFrac < iVein);
+  }
+
+  /* optics: the three faces, at the slab's cut geometry, in the order the material fixes */
+  const F = MAT.faces(A);
+  T("front face takes alpha at the view normal", F.front.n === A.ri.alpha && F.front.theta === 0);
+  T("edge face takes gamma near tangent", F.edge.n === A.ri.gamma && F.edge.theta === 80);
+  T("reflectance is ordered edge > chamfer > front", F.edge.R > F.chamfer.R && F.chamfer.R > F.front.R);
+  T("normal-incidence Fresnel on alpha is 4.39%", Math.abs(MAT.fresnel(A.ri.alpha, 0) - 0.0439) < 5e-4,
+    (MAT.fresnel(A.ri.alpha, 0) * 100).toFixed(2) + "%");
+  T("the measured optical spread is 9.35x", Math.abs(F.edge.R / F.front.R - 9.353) < 0.01,
+    (F.edge.R / F.front.R).toFixed(3));
+
+  /* THE DOUBLE-GAMMA GUARD. A reflectance ratio is a ratio in linear light. The first resolver scaled
+     sRGB bytes directly and a 9.35x optical spread rendered as 116x. */
+  const lin = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+    .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  const lum = h => { const p = lin(h); return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+  const s1 = MAT.substrate(A, 1);
+  const measured = lum(s1.hi) / lum(s1.lo);
+  T("the rendered spread matches the optical ratio in linear light (no double gamma)",
+    Math.abs(measured / s1.spread - 1) < 0.02, measured.toFixed(3) + " vs " + s1.spread.toFixed(3));
+  T("the rendered spread is nowhere near the sRGB-scaled value the first resolver produced", measured < 20, measured.toFixed(1));
+
+  /* hue is the material's, not an artifact of one channel saturating before another */
+  const hueOf = h => { const p = lin(h); const m = Math.max(...p) || 1; return p.map(v => v / m); };
+  const hb = hueOf(A.body), hh = hueOf(s1.hi);
+  T("scaling preserves hue across the ramp", hb.every((v, i) => Math.abs(v - hh[i]) < 0.02),
+    hb.map(v => v.toFixed(3)).join(",") + " vs " + hh.map(v => v.toFixed(3)).join(","));
+
+  /* contrast is an exponent on the optical ratio: 0 is flat, and it is monotone */
+  const s0 = MAT.substrate(A, 0);
+  T("contrast 0 collapses the ramp to the body colour", s0.hi === s0.mid && s0.mid === s0.lo && s0.lo === A.body);
+  T("spread is monotone in contrast",
+    MAT.substrate(A, 0.5).spread < MAT.substrate(A, 0.8).spread &&
+    MAT.substrate(A, 0.8).spread < MAT.substrate(A, 1.2).spread);
+  T("the substrate ramp is ordered hi > mid > lo", lum(s1.hi) > lum(s1.mid) && lum(s1.mid) > lum(s1.lo));
+
+  /* the authored spread is reproduced at a DERIVED contrast, not a typed one */
+  const kA = MAT.authoredContrast(A);
+  T("authoredContrast is derived from the material, not a literal", Math.abs(kA - 0.7816) < 1e-3, kA.toFixed(4));
+  T("at that contrast the material reproduces the spread the tools author today",
+    Math.abs(MAT.substrate(A, kA).spread - MAT.AUTHORED_SPREAD) < 0.02);
+
+  /* the sun must NOT enter the ratio — material owns structure, the sundial owns magnitude (1.2) */
+  T("substrate takes no light argument", MAT.substrate.length === 2);
+  T("faces takes no light argument", MAT.faces.length === 1);
+
+  /* the flux-weighted derivation that was measured and rejected: R(theta)*cos(theta) is FLATTER than
+     normal incidence, so it cannot produce a ramp. Pinned so nobody re-adopts it as the obvious fix. */
+  {
+    const b = (n, t) => MAT.fresnel(n, t) * Math.cos(t * Math.PI / 180);
+    let hi = 0; for (let t = 0; t < 90; t += 0.1) hi = Math.max(hi, b(A.ri.beta, t));
+    T("flux-weighted reflectance spans under 1.2x — recorded as rejected, not adopted",
+      hi / b(A.ri.beta, 0) < 1.2, (hi / b(A.ri.beta, 0)).toFixed(3));
+  }
+
+  /* the other material properties, each derived rather than typed */
+  T("birefringence is gamma - alpha", Math.abs(MAT.birefringence(A) - 0.155) < 1e-9);
+  T("edge radius derives from hardness and stays inside L2's 4px ceiling",
+    MAT.edgeRadius(A) > 1 && MAT.edgeRadius(A) <= 4);
+  T("cast weight derives from density", Math.abs(MAT.castWeight(A) - A.density / 2.65) < 1e-9);
+  const st = MAT.stiffness(A);
+  T("stiffness normalises to the softest axis and orders a > b > c", st.c === 1 && st.a > st.b && st.b > st.c);
+
+  /* SPINE.md is the law: the material's published constants must appear in it */
+  {
+    const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
+    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93"])
+      T(`SPINE.md records the material constant ${v}`, spine.includes(v));
+    T("SPINE.md declares OCCVM-L12", /OCCVM-L12/.test(spine));
+  }
 }
 
 process.exit(done());
