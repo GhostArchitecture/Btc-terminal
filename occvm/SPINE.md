@@ -21,7 +21,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.5** | landed | the interaction floor. Closed D7. |
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
 | **1.7** | landed | the night model, complete: dusk stages additive over the `--night` ramp, ink on a **phosphor curve** rather than a linear one, and the **moon** as a second light reaching ink alone (real lunar theory, gated on illumination). Deleted BTC's `--bloom` surface glow. |
-| **1.8** | landed | the reference surface: a conforming page that holds no values of its own, one live specimen per law, recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
+| **1.8** | landed | the reference surface, to its full brief: a conforming page holding no values of its own, one live specimen per law, **the light vector swept on a slider rather than a clock**, slabs at every depth, controls in every state, ink at every scale. Recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
 | **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
 
 **All eleven defects are closed.** D1's aliases were shown to be load-bearing by 1.2's golden diff —
@@ -544,7 +544,7 @@ found by measurement after it was written.
 |---|---|---|---|
 | **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907175234` | — |
 | **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907175235` | — (renders no mono; D3 does not apply) |
-| **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907172437` | — (holds no values of its own) |
+| **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
 
@@ -717,6 +717,16 @@ The first draft of this page therefore hand-wrote the bevel, putting channel lit
 file whose entire point is that it has none. The fix is `--occvm-bevel` (§2a, added at 1.8): the cut face as
 one composable value, with `.occvm-slab` defined in terms of it so the primitive and the value cannot drift.
 Neither tool moves — the token is added, nothing existing changes, and neither tool uses `.occvm-slab` yet.
+
+**The sweep, added when the amended roadmap surfaced 1.8's full brief.** The first pass shipped five
+fixed dusk cells; the release actually asks for *the light vector swept from dawn to night on a slider
+rather than a clock*, and the difference is not cosmetic. The slider holds an instant and the sundial is
+driven from it, so **the whole page re-resolves** — every surface, bevel, cast, swatch and token, because
+they all read what the sundial writes and none of them knows the clock was overridden. RESUME hands it
+back. It is also the only way to see 1.7's moon do anything without waiting for a particular night, and
+the page says on its own face why 21:40 and 23:10 can still resolve identically. Slabs at every depth,
+controls in every state — each printing its own measured box rather than claiming the floor — and ink at
+every scale landed with it.
 
 **What it is not.** It cannot tell you a tool conforms. Conformance is decided by `test/occvm.js`, the unit
 suites and the golden diff — assertions that run. This is the eye's instrument beside those, and the page

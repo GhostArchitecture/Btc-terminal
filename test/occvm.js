@@ -257,6 +257,23 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   for (let n = 1; n <= 10; n++)
     T(`OCCVM-L${n} has a section on the reference surface`, ref.includes(`OCCVM-L${n}<`), n);
 
+  /* 1.8's full brief, not just the parts that were convenient: the roadmap asks for the light vector
+     swept on a SLIDER rather than a clock, slabs at every thickness, controls in every state, ink at
+     every scale. The first pass shipped five fixed dusk cells and called the sweep done. */
+  T("the sweep is a real slider over the light", /<input[^>]+type="range"[^>]+id="sweep"/.test(ref));
+  T("the sweep drives the sundial at a held instant, not canned frames",
+    ref.includes("function setHeld") && ref.includes("OCCVM_SUN.tick(document.documentElement, SUN_PLACE, when)"));
+  T("the sweep can be released back to the real clock", ref.includes("function releaseHold") && ref.includes("sweepResume"));
+  T("the clock does not yank the page while the slider holds it", ref.includes("if (held === null) repaint()"));
+  T("the sweep is labelled for a screen reader", /id="sweep"[\s\S]{0,200}aria-label=/.test(ref));
+  T("controls are shown in every state", ref.includes('["rest", {}]') && ref.includes('["pressed"') && ref.includes('["disabled"'));
+  T("each control reports its own measured box, not a claimed one",
+    ref.includes("getBoundingClientRect()") && ref.includes('"×"'));
+  T("slabs are shown at every depth the spine defines",
+    ["--occvm-cast-1", "--occvm-cast-2", "--occvm-cast-3"].every(d => ref.includes(`["${d}"`)));
+  T("ink is shown at every scale, in both faces",
+    ref.includes("21px serif") && ref.includes("9.5px label") && ref.includes("13px mono"));
+
   /* the recorder must actually record it — a surface added and never diffed is decoration */
   const { TOOLS } = require("../occvm/golden/record.js");
   T("the golden recorder carries the reference surface", TOOLS.indexOf("reference") >= 0, TOOLS.join(","));

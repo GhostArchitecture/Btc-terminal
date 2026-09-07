@@ -408,6 +408,42 @@ td.src { color: var(--bone-lo); }
              padding-bottom: 3px; border-bottom: 1px solid color-mix(in srgb, var(--bone) 13%, transparent); }
 .vals span i { font-style: normal; color: var(--bone-lo); }
 
+/* the sweep: 1.8's specified control. The track and thumb are sized to L8's floor like any other. */
+.sweep { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; }
+.sweep label { display: flex; align-items: center; gap: 12px; flex: 1 1 320px; min-height: 44px; }
+.sweep input[type="range"] {
+  flex: 1; min-width: 200px; height: 44px;
+  -webkit-appearance: none; appearance: none; background: none; cursor: pointer;
+}
+.sweep input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px; border: 1px solid var(--edge);
+  background: linear-gradient(90deg, var(--sub-lo), var(--gilt-c), var(--gilt-a), var(--gilt-c), var(--sub-lo));
+}
+.sweep input[type="range"]::-moz-range-track {
+  height: 6px; border-radius: 3px; border: 1px solid var(--edge);
+  background: linear-gradient(90deg, var(--sub-lo), var(--gilt-c), var(--gilt-a), var(--gilt-c), var(--sub-lo));
+}
+.sweep input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 26px; margin-top: -11px;
+  border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--bone); box-shadow: var(--occvm-cast-1);
+}
+.sweep input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 26px; border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--bone); box-shadow: var(--occvm-cast-1);
+}
+.sweep input[type="range"]:focus-visible { outline: 2px solid var(--gilt-b); outline-offset: 2px; }
+.sweep button {
+  min-height: 44px; min-width: 44px; padding: 0 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; border: 1px solid var(--edge);
+  background: var(--sub-hi); color: var(--bone-lo);
+  font-family: var(--serif); font-size: 13px; letter-spacing: .04em;
+  box-shadow: var(--occvm-bevel);
+}
+.sweep button[aria-pressed="true"] { color: var(--bone); border-color: var(--gilt-c); }
+
 .gilt  { color: var(--gilt-a); }
 .dim   { color: var(--bone-lo); }
 .rule  { border: 0; border-top: 1px solid color-mix(in srgb, var(--bone) 13%, transparent); margin: 22px 0 0; }
@@ -527,8 +563,25 @@ footer { margin-top: 34px; }
   a target of at least 44×44px, and one focus ring shared across the system. The floor exempts a target
   inline within a flow of text — WCAG 2.5.8's own carve-out, because a reading surface is a document
   rather than a control panel — and nothing that is chrome takes that exemption.</p>
-  <p class="note" style="margin-top:8px">Specimen: the mineral picker above. Tab to it — the ring is
-  <code>--gilt-b</code>, 2px, offset 2px, and it is the same ring in both tools.</p>
+  <p class="note" style="margin-top:8px">Specimen: the mineral picker above, the sweep below, and the row
+  here. Tab through them — the ring is <code>--gilt-b</code>, 2px, offset 2px, and it is the same ring in
+  both tools. Every target below is at or above the floor; the measured height is printed under each, read
+  off the live box rather than asserted.</p>
+  <div class="pick" id="states"></div>
+</section>
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">SPECIMENS</span><h2>Every thickness, every scale</h2></div>
+  <p>1.8's own brief: <i>slabs at every thickness, controls in every state, ink at every scale.</i> The
+  states are above; the depths and the scale run here. A depth is chosen from the three the spine defines
+  and never authored as an offset — these are the same three <code>--occvm-cast-*</code> values every
+  surface in both tools picks from, and they all rake with the sun as you move the sweep.</p>
+  <div class="specimen" id="depths"></div>
+  <h3 style="margin-top:16px">Ink at every scale</h3>
+  <div id="scales"></div>
+  <p class="note" style="margin-top:10px">Serif for prose and heads, mono for anything a column has to
+  hold. Both faces answer to the same light: at night this whole block shifts with <code>--bone</code> and
+  gains <code>--nglow</code>, and under a moon it recovers part of the way back toward its daylight value.</p>
 </section>
 
 <section class="law occvm-slab">
@@ -540,6 +593,27 @@ footer { margin-top: 34px; }
   <div class="stages" id="l9"></div>
   <p class="note" style="margin-top:10px">Each cell is computed by calling the shared sundial at that
   elevation, not sampled from the clock, so the whole ramp is visible at once from any instant.</p>
+
+  <hr class="rule" style="margin:18px 0 0">
+  <h3 style="margin-top:14px">The sweep — dawn to night, on a slider rather than a clock</h3>
+  <p class="note">This is 1.8's own specified control, and it drives <b>the whole page</b>: every surface,
+  bevel, cast and swatch above re-resolves as you move it, because they all read the same tokens the
+  sundial is writing. Drag from one end to the other and the tool goes through its entire day in front of
+  you. RESUME hands the page back to the real clock.</p>
+  <div class="sweep">
+    <label for="sweep">
+      <span class="lbl">instant</span>
+      <input type="range" id="sweep" min="0" max="1439" step="5" value="0"
+             aria-label="time of day, minutes past local midnight">
+    </label>
+    <button id="sweepResume" type="button" class="occvm-act occvm-focus">RESUME</button>
+    <div class="vals" id="sweepRead"></div>
+  </div>
+  <p class="note" style="margin-top:10px">The moon is on this slider too, and it is the reason a reading
+  taken at 21:40 differs from one at 23:10 at all — past −10° elevation <code>--night</code> is saturated
+  and every other term is a function of it, so without a second light the two instants resolve identically.
+  On a night when the moon is below the horizon at both, they still do, and that is a fact about the sky
+  rather than a gap in the model.</p>
 </section>
 
 <section class="law occvm-slab">
@@ -549,9 +623,13 @@ footer { margin-top: 34px; }
   Nobody authors the branching. Every stroke is a straight segment between a particle and the particle it
   stuck to; a fitted curve would be the bezier arriving back through the renderer.</p>
   <div class="veins" id="l10"></div>
-  <p class="note" style="margin-top:10px">Same seed, three habits. <code>--vein-habit</code> is the
-  anisotropy of the walk: 0 grows the equant dendrite of a manganese oxide, 1 draws it out into an
-  elongated acicular form. It changes how the thing grows, not what is drawn over it afterwards.</p>
+  <p class="note" style="margin-top:10px">Same seed, three habits. The mineral is <b>aragonite</b> — 2.0's
+  anchor, one crystal for substrate and vein alike — so the growth radiates from a nucleation point and
+  twins in threes, the pseudo-hexagonal cyclic twin aragonite is known for. <code>--vein-habit</code> is
+  the anisotropy of that growth, and it lives in <i>attachment</i>, not travel: the walk is unbiased, and
+  what differs by direction is whether a contact is accepted. Biasing the walker instead was measured and
+  did nothing — a walker pushed outward leaves rather than sticking. At habit 0 attachment is indifferent
+  to direction, which is exactly what an equant dendrite is.</p>
 </section>
 
 <hr class="rule">
@@ -1115,7 +1193,7 @@ var OCCVM_SUN = (function () {
  * live document or returned by a spine part. Where this file would have to state a colour to display it,
  * it reads it instead.
  * ------------------------------------------------------------------------------------------------- */
-var BUILD_STAMP = "build-20260907172437";
+var BUILD_STAMP = "build-20260907175747";
 
 var $ = function (id) { return document.getElementById(id); };
 var css = function (k) { return getComputedStyle(document.documentElement).getPropertyValue(k).trim(); };
@@ -1140,11 +1218,68 @@ function swatch(host, token, label) {
 /* ---- the light ---------------------------------------------------------------------------------- */
 var SUN_PLACE = OCCVM_SUN.DAYTON;
 
+/* 1.8's sweep. `held` is null when the page is following the real clock, and an instant when the slider
+   owns it. Nothing else in this file knows the difference: every surface reads the tokens the sundial
+   wrote, so driving the sundial from a different instant drives the whole page — which is the point of
+   the control, and the reason it is a slider over the real model rather than a set of canned frames. */
+var held = null;
+
+function instant() { return held === null ? new Date() : held; }
+
 function sunTick() {
-  var r = OCCVM_SUN.tick(document.documentElement, SUN_PLACE, new Date());
+  var when = instant();
+  var r = OCCVM_SUN.tick(document.documentElement, SUN_PLACE, when);
+  var hh = String(when.getHours()).padStart(2, "0") + ":" + String(when.getMinutes()).padStart(2, "0");
   $("sunline").textContent =
-    "sun " + r.elev.toFixed(1) + "° · " + r.dir + " · " + r.stage + " · " + r.name;
+    (held === null ? "now " : "held ") + hh + " · sun " + r.elev.toFixed(1) + "° · " + r.dir +
+    " · " + r.stage + " · " + r.name;
   return r;
+}
+
+/* the whole page, re-resolved from whatever instant is current */
+function repaint() {
+  sunTick();
+  paintLight();
+  paintSweep();
+  paintTokens();
+}
+
+function paintSweep() {
+  var when = instant();
+  var p = OCCVM_SUN.position(SUN_PLACE.lat, SUN_PLACE.lon, when);
+  var m = OCCVM_SUN.moon(SUN_PLACE.lat, SUN_PLACE.lon, when, p.lam);
+  var host = $("sweepRead");
+  host.textContent = "";
+  var rows = [
+    ["sun elev", p.elev.toFixed(2) + "°"],
+    ["--dusk-stage", css("--dusk-stage")],
+    ["--night", css("--night")],
+    ["--phosphor", css("--phosphor")],
+    ["moon alt", m.alt.toFixed(2) + "°"],
+    ["moon illum", m.illum.toFixed(3)],
+    ["--moon-light", css("--moon-light")],
+    ["--nglow", css("--nglow")]
+  ];
+  for (var i = 0; i < rows.length; i++) {
+    var row = el("span");
+    row.appendChild(el("i", null, rows[i][0]));
+    row.appendChild(el("b", null, rows[i][1]));
+    host.appendChild(row);
+  }
+}
+
+function setHeld(minutes) {
+  var base = new Date();
+  base.setHours(0, 0, 0, 0);
+  held = new Date(base.getTime() + minutes * 60000);
+  $("sweepResume").setAttribute("aria-pressed", "true");
+  repaint();
+}
+
+function releaseHold() {
+  held = null;
+  $("sweepResume").setAttribute("aria-pressed", "false");
+  repaint();
 }
 
 /* ---- the mineral (L6) --------------------------------------------------------------------------- */
@@ -1271,6 +1406,80 @@ function paintStages() {
   }
 }
 
+/* ---- 1.8's remaining brief: every state, every thickness, every scale ---------------------------- */
+
+/* Controls in every state, each reporting its OWN measured height rather than claiming the floor. */
+function paintStates() {
+  var host = $("states");
+  host.textContent = "";
+  var kinds = [
+    ["rest", {}],
+    ["pressed", { pressed: true }],
+    ["disabled", { disabled: true }]
+  ];
+  for (var i = 0; i < kinds.length; i++) {
+    var wrap = el("div");
+    var b = el("button", "occvm-act occvm-focus", kinds[i][0]);
+    b.type = "button";
+    b.setAttribute("aria-pressed", kinds[i][1].pressed ? "true" : "false");
+    if (kinds[i][1].disabled) { b.disabled = true; b.style.opacity = "0.45"; }
+    wrap.appendChild(b);
+    var cap = el("div", "cap", "");
+    wrap.appendChild(cap);
+    host.appendChild(wrap);
+    /* measured after layout, so the number is the browser's and not this file's */
+    (function (btn, out) {
+      requestAnimationFrame(function () {
+        var r = btn.getBoundingClientRect();
+        out.textContent = Math.round(r.width) + "×" + Math.round(r.height) + "px";
+      });
+    })(b, cap);
+  }
+  /* the focus ring is a state too, and it is the one nobody can screenshot by accident */
+  var note = el("div", "cap", "focus — tab to any of these");
+  note.style.flexBasis = "100%";
+  host.appendChild(note);
+}
+
+/* Slabs at every thickness the spine defines — three depths, no fourth, none authored here. */
+function paintDepths() {
+  var host = $("depths");
+  host.textContent = "";
+  var depths = [
+    ["--occvm-cast-1", "shallow — a chip, a control"],
+    ["--occvm-cast-2", "the default — a slab"],
+    ["--occvm-cast-3", "deep — a tile that floats"]
+  ];
+  for (var i = 0; i < depths.length; i++) {
+    var wrap = el("div");
+    var box = el("div", "occvm-slab slabdemo", depths[i][0]);
+    box.style.boxShadow = "var(--occvm-bevel), var(" + depths[i][0] + ")";
+    wrap.appendChild(box);
+    wrap.appendChild(el("div", "cap", depths[i][1]));
+    host.appendChild(wrap);
+  }
+}
+
+/* Ink at every scale this system actually sets, in both faces. */
+function paintScales() {
+  var host = $("scales");
+  host.textContent = "";
+  var scales = [
+    ["21px serif", "font-family:var(--serif);font-size:21px;font-weight:600"],
+    ["15px serif", "font-family:var(--serif);font-size:15px"],
+    ["12.5px serif dim", "font-family:var(--serif);font-size:12.5px;color:var(--bone-lo)"],
+    ["13px mono", "font-family:var(--mono);font-size:13px"],
+    ["11px mono dim", "font-family:var(--mono);font-size:11px;color:var(--bone-lo)"],
+    ["9.5px label", "font-family:var(--serif);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-lo)"]
+  ];
+  for (var i = 0; i < scales.length; i++) {
+    var row = el("div");
+    row.style.cssText = scales[i][1] + ";padding:2px 0";
+    row.textContent = scales[i][0] + " — the quick brown fox 0123456789";
+    host.appendChild(row);
+  }
+}
+
 /* ---- the token table ---------------------------------------------------------------------------- */
 /* Enumerated, never listed: the :root rules of this document's own stylesheet give what the CSS parts
    declare, and the sundial's own return value gives what the light writes. A token added to either
@@ -1360,10 +1569,24 @@ function paintLight() {
 })();
 
 paintLight();
+paintStates();
+paintDepths();
+paintScales();
 paintTokens();
 
-/* the light moves; the page follows it, at the same cadence the tools use */
-setInterval(function () { sunTick(); paintLight(); paintTokens(); }, 60000);
+/* the sweep (1.8): the slider owns the instant while it is held, the clock owns it otherwise */
+(function () {
+  var slider = $("sweep"), now = new Date();
+  slider.value = String(now.getHours() * 60 + now.getMinutes());
+  slider.addEventListener("input", function () { setHeld(+slider.value); });
+  $("sweepResume").setAttribute("aria-pressed", "false");
+  $("sweepResume").addEventListener("click", releaseHold);
+  paintSweep();
+})();
+
+/* the light moves; the page follows it, at the same cadence the tools use — but never while the slider
+   is holding an instant, or the clock would yank the page out from under whoever is sweeping it. */
+setInterval(function () { if (held === null) repaint(); }, 60000);
 </script>
 </body>
 </html>
