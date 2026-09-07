@@ -215,4 +215,36 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the manifest and the theme-color tag agree (section 8)", manifest.theme_color === tag, { manifest: manifest.theme_color, tag });
 }
 
+/* --- OCCVM-L8 / roadmap 1.5: the interaction floor ------------------------------------------------
+ * Exit criteria: every action reachable by keyboard, every state announced, no target under 44px.
+ * Checked structurally here; the rendered halves (real box sizes, no non-button handlers) are checked
+ * in a browser, because a stylesheet cannot tell you what an element actually measures.
+ */
+{
+  const fs = require("fs"), path = require("path");
+  const ROOT = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const spine = fs.readFileSync(path.join(ROOT, "occvm", "spine.css"), "utf8");
+  const markup = html.slice(0, html.indexOf("<script"));
+
+  T("no inline onclick anywhere in the markup", !/\son[a-z]+\s*=/i.test(markup));
+  T("no control is nested inside another", !/<a\b[^>]*>[^<]*<button/i.test(html));
+
+  /* A toggle that carries its state only in a class tells a screen reader nothing. */
+  for (const id of ["viewBtn", "pauseBtn", "callAbove", "callBelow"])
+    T(`${id} announces its state`, new RegExp(`id="${id}"[^>]*aria-pressed`).test(html), id);
+  T("both call buttons keep aria-pressed in sync on click",
+    (html.match(/setAttribute\("aria-pressed"/g) || []).length >= 4);
+
+  T("every control meets the 44px floor in CSS", /button\{[^}]*min-height:44px/.test(html.replace(/\s*\n\s*/g, "")));
+
+  /* One rule, in the spine, rather than a list of selectors a new animation escapes tomorrow. */
+  T("reduced motion is honoured system-wide from the spine",
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\*::after/.test(spine));
+  T("the tool's own unguarded motion is covered by it",
+    /transition:color \.5s/.test(html) && /transition-duration: \.01ms !important/.test(html));
+  T("durations go to .01ms, not 0, so transitionend still fires",
+    !/transition-duration: 0 !important/.test(spine) && /\.01ms/.test(spine));
+}
+
 process.exit(done());

@@ -14,7 +14,7 @@
 <title>BTC/USD — Consensus Spot &amp; Projection Console</title>
 <style>
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:9fd692623cd7 */
+/* sha256:5166f8d25399 */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -111,8 +111,37 @@
   border-top: 1px solid rgba(236, 227, 208, .13);
 }
 
-/* OCCVM-L8 — one focus ring across the system. Adopted at 1.5. */
-.occvm-focus:focus-visible {
+/* OCCVM-L8 (1.5) — an action is a real control.
+ *
+ * This reset lets a <button> carry a surface's own class without the user agent's styling changing how
+ * it looks, so semantics can be corrected without redesigning anything. Everything a UA imposes on a
+ * button and a div does not have is neutralised; nothing else is set, so the surface's own rule still
+ * decides layout, colour and size.
+ *
+ * No pseudo-element is used to enlarge a hit area. Two reasons, both load-bearing: a tool's own class may
+ * already own ::before and ::after (Rhyme's .stone owns both), and an overlay large enough to reach 44px
+ * on a dense inline sequence overlaps the neighbour it exists to distinguish, which trades a size floor
+ * for a wrong target. Where a surface must grow, it grows for real. */
+.occvm-act {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+/* OCCVM-L8 — one focus ring across the system. */
+.occvm-focus:focus-visible,
+.occvm-act:focus-visible {
   outline: 2px solid var(--gilt-b);
   outline-offset: 2px;
 }
@@ -120,6 +149,26 @@
 /* OCCVM-L7 — tabular figures under a column. Adopted at 1.3. */
 .occvm-num {
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* OCCVM-L8 (1.5) — every motion respects the viewer's preference.
+ *
+ * Declared once, in the spine, and deliberately not per-surface: a rule listing the selectors that
+ * animate today is a rule that a new animation escapes tomorrow. Before 1.5 BTC's price readout carried a
+ * half-second colour transition and its collapse chevron a transform, both unguarded, while its only
+ * media query tested no-preference — the inverse of the one that matters.
+ *
+ * Durations go to a hundredth of a millisecond rather than zero so that transitionend and animationend
+ * still fire; a listener waiting on one would otherwise hang forever. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 /* ==== END OCCVM spine.css ==== */
 
@@ -183,7 +232,11 @@
   @supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){ .tile{background-color:#1b1a22} }
 
   /* cast bronze controls; the active one carries the patina */
+  /* OCCVM-L8 (1.5) — the interaction floor. Every control is at least 44px square; inline-flex so the
+     label stays centred as the box grows. Nothing here is inline in a flow of text, so nothing takes the
+     law's reading-surface exemption. */
   button{font:inherit;color:var(--bone);cursor:pointer;letter-spacing:.08em;font-size:11.5px;padding:6px 14px;border-radius:999px;
+    min-height:44px;display:inline-flex;align-items:center;justify-content:center;
     background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
     border:1px solid rgba(0,0,0,.55);
     box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.45), inset var(--cut-x) var(--cut-y) 0 rgba(0,0,0,.5), var(--occvm-cast-1);
@@ -258,7 +311,15 @@
   #armbar input:focus-visible{outline:2px solid var(--gilt-a);outline-offset:1px}
   #armbar input:disabled{opacity:.45}
   .tgl{display:inline-flex;background:rgba(0,0,0,.45);border-radius:999px;padding:2px;gap:2px;box-shadow:inset calc(var(--cut-x)*1) calc(var(--cut-y)*1) 3px rgba(0,0,0,.7)}
-  .tgl button{border:0;background:transparent;color:var(--bone-lo);border-radius:999px;padding:5px 12px;font-size:10.5px;letter-spacing:.1em;box-shadow:none;text-shadow:none}
+  /* the track grows so the buttons inside it clear the floor themselves; a 44px track holding 40px
+     buttons satisfies nothing — OCCVM-L8 sizes the target, not its container. */
+  .tgl button{border:0;background:transparent;color:var(--bone-lo);border-radius:999px;padding:5px 12px;font-size:10.5px;letter-spacing:.1em;box-shadow:none;text-shadow:none;min-height:44px}
+  .tgl{min-height:48px;align-items:center}
+  /* the anchor that used to wrap a button: one control, styled as one */
+  .aslink{font:inherit;color:var(--bone);letter-spacing:.08em;font-size:11.5px;padding:6px 14px;border-radius:999px;min-height:44px;
+    display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
+    border:1px solid rgba(0,0,0,.55);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.45), inset var(--cut-x) var(--cut-y) 0 rgba(0,0,0,.5), var(--occvm-cast-1);
+    text-shadow:0 1px 0 rgba(0,0,0,.45)}
   .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.18)}
   #armBtn{color:#0b0a10;font-weight:700;text-shadow:none;
     background:radial-gradient(60% 60% at calc(50% - var(--lx)*30%) calc(35% + var(--ly)*20%), rgba(255,255,255,.55) 0%, transparent 55%),linear-gradient(180deg,var(--malachite) 0%,var(--malachite-lo) 100%);
@@ -353,7 +414,7 @@
       <span id="armStatus" class="num">IDLE — set a strike to arm the next quarter-hour</span>
       <input id="strikeIn" inputmode="decimal" placeholder="strike — USD level" aria-label="strike price">
       <span class="tgl" role="group" aria-label="call direction">
-        <button id="callAbove" class="sel">ABOVE</button><button id="callBelow">BELOW</button>
+        <button id="callAbove" class="sel" aria-pressed="true">ABOVE</button><button id="callBelow" aria-pressed="false">BELOW</button>
       </span>
       <input id="quoteIn" inputmode="numeric" placeholder="quoted ¢" aria-label="quoted yes price in cents" style="width:6.2em">
       <button id="armBtn">ARM</button>
@@ -537,7 +598,7 @@
       <div class="tgrp"><span class="lbl">Kalshi</span>
         <label>relay URL <input type="text" id="c_kproxy" placeholder="blank = auto (same-origin /api or localhost)" style="width:250px;font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:10px;border:1px solid rgba(236,227,208,.14);background:rgba(255,255,255,.75)"></label>
         <button id="ktestBtn">TEST</button>
-        <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages" target="_blank" rel="noopener"><button type="button">CLOUDFLARE PAGES SETUP ↗</button></a>
+        <a href="https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages" target="_blank" rel="noopener"><span class="aslink">CLOUDFLARE PAGES SETUP ↗</span></a>
         <span id="ktest" class="num" style="color:var(--faint);font-size:10.5px"></span>
       </div>
     </div>
@@ -6052,9 +6113,11 @@ $("strikeIn").addEventListener("keydown",ev=>{ if(ev.key==="Enter") $("armBtn").
 /* one listener per button: set the call before deriving the quote from it, so kSyncQuote never reads the side just left */
 $("callAbove").addEventListener("click",()=>{ S.callSel="ABOVE";
   $("callAbove").classList.add("sel"); $("callBelow").classList.remove("sel");
+  $("callAbove").setAttribute("aria-pressed","true"); $("callBelow").setAttribute("aria-pressed","false");
   S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 $("callBelow").addEventListener("click",()=>{ S.callSel="BELOW";
   $("callBelow").classList.add("sel"); $("callAbove").classList.remove("sel");
+  $("callBelow").setAttribute("aria-pressed","true"); $("callAbove").setAttribute("aria-pressed","false");
   S.k.quoteManual=false; kSyncQuote(); renderArmBar(); });
 setInterval(()=>{
   $("clock").textContent=new Date().toLocaleTimeString();
@@ -6093,7 +6156,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907000602";
+const BUILD_STAMP="build-20260907003826";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -6110,5 +6173,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907000602 -->
+<!-- build-20260907003826 -->
 </html>

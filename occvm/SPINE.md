@@ -1,10 +1,32 @@
-# OCCVM 1.6 — the spine
+# OCCVM — the spine
 
 The shared visual system of the Ghost Codex tools. This document is the law; `occvm/spine.css` is the
 machine-readable half; `occvm/tools/splice-spine.js` puts it into a tool. All three are committed identically
 to every conforming repository.
 
 **Constituted at 1.0 on 2026-09-06 from measurement, not from memory.**
+
+**Releases have landed out of sequence, by choice, and this table is the version rather than a single
+number** — a lone "1.6" after shipping 1.5 would read as a regression, and a renumbering to tidy the
+order would be exactly the drift the ledger law exists to prevent.
+
+| release | state | what it did |
+|---|---|---|
+| **1.0** | landed | constituted the spine from measurement; inlined it in both tools at zero deltas. Closed D11. |
+| 1.1 | outstanding | DLA veins, `--vein-density --vein-habit`. Its determinism requirement was met at 1.0. |
+| **1.2** | landed | one light, completed. Closed D2, D8, D9, D10. |
+| 1.3 | outstanding | the numeric face. D3. |
+| 1.4 | outstanding | mineral as preference. D6. |
+| **1.5** | landed | the interaction floor. Closed D7. |
+| **1.6** | landed | architecture conformance. Closed D4, D5. |
+| 1.7 | outstanding | the night model. |
+| 1.8 | outstanding | the reference surface. |
+| 1.9 | outstanding | freeze and stage. |
+
+Four of eleven defects remain: **D1** (BTC's expired alias block, 1.9), **D3** (the numeric face, 1.3),
+**D6** (BTC has no mineral system, 1.4). D1's aliases were shown to be load-bearing by 1.2's golden diff —
+`--ink --meas --dim` all moved with the tokens they alias — so the block is a live dependency, not dead
+weight, and sweeping it is a migration rather than a deletion.
 
 **1.6 — *architecture conformance*** — closes `OCCVM-D4` and `D5`. Rhyme's JSX is compiled at author time
 and React is inlined from a committed vendor copy, so the artifact fetches nothing at load and
@@ -179,7 +201,17 @@ Every action is a real control: correct element semantics, reachable by keyboard
 (`aria-pressed` on a toggle), a target of at least 44×44px, and one focus ring shared across the system.
 Every motion respects `prefers-reduced-motion`.
 
-Completed at **1.5**. Rhyme has no `<button>`, no `aria-*`, no `role`, no `tabIndex`: `OCCVM-D7`.
+**The size floor exempts a target inline within a flow of text**, and that exemption is not a convenience.
+It is WCAG 2.5.8's own carve-out for targets in a sentence, and it exists because a reading surface is a
+document, not a control panel. Rhyme's stones are 25×20px gems sitting inside a word inside a line of a
+poem: enlarging them restructures the poem, and an overlay large enough to reach 44px overlaps the
+neighbouring stone it exists to distinguish — trading a size floor for a wrong target. Anything that is
+*chrome* — a control, a list row, a chip in a picker — takes the floor with no exemption.
+
+The primitives are `.occvm-act` (§3), a reset that lets a `<button>` carry a surface's existing class
+unchanged, and the shared focus ring.
+
+Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`, no `tabIndex`: `OCCVM-D7`.
 
 ### OCCVM-L9 — night
 
@@ -264,6 +296,7 @@ a flex row in Rhyme — so an un-namespaced spine primitive breaks a tool on the
 | `.occvm-slab` | a cut surface: radius, bevel, edge | L2 | 1.0 |
 | `.occvm-rule` | a hairline division | L1 | 1.0 |
 | `.occvm-focus` | the one focus ring | L8 | 1.5 |
+| `.occvm-act` | a real control wearing a surface's own class | L8 | 1.5 |
 | `.occvm-num` | tabular figures in a column | L7 | 1.3 |
 
 At 1.0 these are declared and unused. Adoption is per-surface and per-release; nothing is rewired by the
@@ -315,7 +348,7 @@ found by measurement after it was written.
 | **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **closed 1.6** |
 | **D5** | BTC | half-installed PWA: `manifest.webmanifest` and four icons ship, with zero `serviceWorker` registration | **closed 1.6** |
 | **D6** | BTC | no mineral system at all. `--amethyst` is declared once and referenced zero times | **1.4** |
-| **D7** | Rhyme | no interaction floor: 0 `<button>`, 53 `onClick`, 0 `aria-*`, 0 `role`, 0 `tabIndex` | **1.5** |
+| **D7** | Rhyme | no interaction floor: 0 `<button>`, 53 `onClick`, 0 `aria-*`, 0 `role`, 0 `tabIndex` | **closed 1.5** |
 | **D8** | BTC | `--glow` is a `calc()` expression, so it never resolves to a number at token level and no law can read it (L3) | **closed 1.2** |
 | **D9** | BTC | the light vector keeps tracking the sun below the horizon (−0.516, −0.856 at −39°) instead of resolving neutral overhead (L3) | **closed 1.2** |
 | **D10** | Rhyme | `--bone` is derived from twilight while `--bone-lo` stays fixed, separating a pair that must move together (L1) | **closed 1.2** |
@@ -327,8 +360,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.6 | `build-20260907000602` | D1, D3, D6 |
-| **Rhyme Instrument** | 1.6 | `build-20260907000648` | D3, D7 |
+| **BTC Terminal** | 1.0, 1.2, 1.5, 1.6 | `build-20260907003826` | D1, D3, D6 |
+| **Rhyme Instrument** | 1.0, 1.2, 1.5, 1.6 | `build-20260907003827` | D3 |
 | **Reference surface** | — | not built | — (1.8) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
@@ -379,6 +412,24 @@ tag now agree, closing the cosmetic split CLAUDE.md §8 had left open.
 1.6 changed **no rendered value in either tool** — the golden set moved by three metadata entries, all of
 them the vendored-request list going empty. An architectural release that moves a pixel has done something
 it did not say it would.
+
+**1.5** made every action in Rhyme a real control. 53 handlers on divs and spans became 20 button call
+sites, 30 of them through two components — `Cast` (28 call sites) and `Stone` — so the tree reached the
+floor without 50 hand edits. `.occvm-act` is the spine reset that lets a `<button>` wear a surface's own
+class unchanged, which is what made the conversion a semantics change rather than a redesign: the golden
+set moved by nothing.
+
+The size floor took a refinement, not an exception. L8 now states WCAG 2.5.8's own carve-out for targets
+inline within a flow of text, because Rhyme's stones are 25×20px gems inside a word inside a line of a
+poem: enlarging them restructures the poem, and an overlay wide enough to reach 44px covers the
+neighbouring stone it exists to distinguish — trading a size floor for a wrong target. Everything that is
+chrome takes the floor with no exemption, and BTC — which the roadmap called "largely conforming" — turned
+out to have six controls between 25 and 31px, plus a `<button>` nested inside an `<a>`.
+
+Reduced motion became one rule in the spine rather than a list of selectors per tool. BTC's price readout
+carried an unguarded half-second colour transition and its collapse chevron an unguarded transform, while
+its only media query tested `no-preference` — the inverse of the one that matters. A selector list is a
+rule the next animation escapes; a universal rule is not.
 
 **1.2 did not** delete BTC's surface bloom, adopt any primitive class onto a surface beyond the cast, or
 touch the numeric face, the mineral system or the interaction floor. Those are 1.7, 1.3, 1.4 and 1.5.

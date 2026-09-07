@@ -94,8 +94,37 @@
   border-top: 1px solid rgba(236, 227, 208, .13);
 }
 
-/* OCCVM-L8 — one focus ring across the system. Adopted at 1.5. */
-.occvm-focus:focus-visible {
+/* OCCVM-L8 (1.5) — an action is a real control.
+ *
+ * This reset lets a <button> carry a surface's own class without the user agent's styling changing how
+ * it looks, so semantics can be corrected without redesigning anything. Everything a UA imposes on a
+ * button and a div does not have is neutralised; nothing else is set, so the surface's own rule still
+ * decides layout, colour and size.
+ *
+ * No pseudo-element is used to enlarge a hit area. Two reasons, both load-bearing: a tool's own class may
+ * already own ::before and ::after (Rhyme's .stone owns both), and an overlay large enough to reach 44px
+ * on a dense inline sequence overlaps the neighbour it exists to distinguish, which trades a size floor
+ * for a wrong target. Where a surface must grow, it grows for real. */
+.occvm-act {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+/* OCCVM-L8 — one focus ring across the system. */
+.occvm-focus:focus-visible,
+.occvm-act:focus-visible {
   outline: 2px solid var(--gilt-b);
   outline-offset: 2px;
 }
@@ -103,4 +132,24 @@
 /* OCCVM-L7 — tabular figures under a column. Adopted at 1.3. */
 .occvm-num {
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* OCCVM-L8 (1.5) — every motion respects the viewer's preference.
+ *
+ * Declared once, in the spine, and deliberately not per-surface: a rule listing the selectors that
+ * animate today is a rule that a new animation escapes tomorrow. Before 1.5 BTC's price readout carried a
+ * half-second colour transition and its collapse chevron a transform, both unguarded, while its only
+ * media query tested no-preference — the inverse of the one that matters.
+ *
+ * Durations go to a hundredth of a millisecond rather than zero so that transitionend and animationend
+ * still fire; a listener waiting on one would otherwise hang forever. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

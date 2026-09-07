@@ -998,6 +998,15 @@ recorder is online and no browser sits on an old one; and the **cache name is th
 `?v=`, so the worker's script URL changes every deploy and nothing is hand-bumped. `theme_color` and the
 `theme-color` tag now agree, closing §8's cosmetic split.
 
+**1.5 — the interaction floor.** Every control is at least 44×44px (`button` gained `min-height:44px` and
+inline-flex centring; the `.tgl` track grew to 48 so its own buttons clear the floor rather than its
+container doing it); ABOVE/BELOW carried their state in a class only and now keep `aria-pressed` in sync;
+the CLOUDFLARE link had a `<button>` nested inside an `<a>`, which is two controls in one place. Reduced
+motion is now one universal rule in the spine — this file's price readout carried an unguarded
+`transition:color .5s` and the collapse chevron an unguarded transform, while the only media query here
+tested `no-preference`, the inverse of the one that matters. Closed D7 in Rhyme; this tool's own gaps are
+closed with it.
+
 **Open against this tool:** `OCCVM-D1` (the expired `--ink --meas --bondi` block — 1.2's golden diff showed
 `--ink --meas --dim` all moving with the tokens they alias, so it is load-bearing, not dead weight),
 `D3` (OS-supplied numeric face, closes at 1.3), `D6` (no mineral system; `--amethyst` is declared once and
