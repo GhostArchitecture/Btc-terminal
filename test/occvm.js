@@ -70,6 +70,66 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM-L9, 1.7 (complete): the phosphor curve and the moon ----------------------------------
+ * The dusk staging shipped first and the other two halves of the release did not. This pins them, and
+ * pins the boundary the moon may not cross: it is a light for INK, and L3 still owns every surface.
+ */
+{
+  const h7 = load();
+  const R = (elev, moonAlt, illum, moonAz) => h7.R(
+    `OCCVM_SUN.respond({elev:${elev},az:180${moonAlt === undefined ? "" :
+      `,moon:{alt:${moonAlt},illum:${illum},az:${moonAz === undefined ? 90 : moonAz}}`}})`);
+
+  /* the phosphor curve: saturating, exact at both ends, and NOT the linear ramp it replaced */
+  const ph = n => parseFloat(h7.R(`OCCVM_SUN.respond({elev:${-2 - n * 8},az:180})["--phosphor"]`));
+  T("--phosphor is 0 where night begins", ph(0) === 0, ph(0));
+  T("--phosphor reaches exactly 1 at full night", ph(1) === 1, ph(1));
+  T("--phosphor is not linear — it saturates",
+    ph(0.25) > 0.5 && ph(0.5) > 0.78 && ph(0.25) > 2 * 0.25, { q: ph(0.25), half: ph(0.5) });
+  T("--phosphor rises monotonically", ph(0) < ph(0.25) && ph(0.25) < ph(0.5) && ph(0.5) < ph(1));
+
+  /* the moon needs all three: up, lit, and dark. Any one missing and it contributes nothing. */
+  const ml = r => parseFloat(r["--moon-light"]);
+  T("a moon below the horizon gives no light", ml(R(-30, -10, 1)) === 0);
+  T("a new moon high in the sky gives no light", ml(R(-30, 60, 0)) === 0);
+  T("a full moon at noon gives no light", ml(R(50, 60, 1)) === 0);
+  T("a full moon high on a dark night gives full light", ml(R(-30, 60, 1)) > 0.9, ml(R(-30, 60, 1)));
+
+  /* it reaches ink, and only ink — L3 still owns every surface */
+  const dark = R(-30, -10, 0), moonlit = R(-30, 60, 1);
+  T("moonlight moves the ink (--bone)", dark["--bone"] !== moonlit["--bone"], { dark: dark["--bone"], moonlit: moonlit["--bone"] });
+  T("moonlight moves the ink halo (--nglow)", dark["--nglow"] !== moonlit["--nglow"]);
+  for (const surface of ["--sub", "--sub-hi", "--sub-lo", "--rake", "--hi-a", "--cut-a", "--shade-a", "--amb", "--lx", "--ly"])
+    T(`moonlight does not touch ${surface} — L3 owns every surface`, dark[surface] === moonlit[surface], surface);
+
+  /* --glow is consumed as an opacity and already saturates at night; a moon term there would be
+     clamped away invisibly, so it must NOT be routed through it */
+  T("--glow stays within an opacity's range", parseFloat(moonlit["--glow"]) <= 1);
+  T("--glow carries no moon term (it would be clamped)", dark["--glow"] === moonlit["--glow"]);
+
+  /* the vector points somewhere real when the moon is up, and nowhere when it is not */
+  const up = R(-30, 40, 1, 90), down = R(-30, -5, 1, 90);
+  T("the moon vector is a unit direction while it is up",
+    Math.abs(Math.hypot(parseFloat(up["--moon-x"]), parseFloat(up["--moon-y"])) - 1) < 2e-3);
+  T("the moon vector is zero once it has set",
+    parseFloat(down["--moon-x"]) === 0 && parseFloat(down["--moon-y"]) === 0);
+
+  /* the lunar model has to be the real thing, not a plausible oscillator */
+  const lunar = h7.R(`(function(){
+    var L = OCCVM_SUN.DAYTON, out = [];
+    for (var i = 0; i < 60; i++) {
+      var d = new Date(Date.UTC(2026, 8, 1) + i * 86400000);
+      var p = OCCVM_SUN.position(L.lat, L.lon, d);
+      out.push(OCCVM_SUN.moon(L.lat, L.lon, d, p.lam).illum);
+    }
+    return out; })()`);
+  const peaks = lunar.map((v, i) => [i, v]).filter(([i, v]) => i > 0 && i < 59 && v > lunar[i - 1] && v > lunar[i + 1]);
+  T("illumination cycles with the synodic month", peaks.length >= 2 && Math.abs((peaks[1][0] - peaks[0][0]) - 29.53) < 1.6,
+    peaks.length >= 2 ? peaks[1][0] - peaks[0][0] : "no cycle");
+  T("illumination spans a full new-to-full range", Math.max(...lunar) > 0.99 && Math.min(...lunar) < 0.01,
+    { max: Math.max(...lunar).toFixed(3), min: Math.min(...lunar).toFixed(3) });
+}
+
 /* --- OCCVM-L10, 1.1a: the vein grows ARAGONITE, not a generic dendrite --------------------------
  * The roadmap's 2.0 anchors substrate and vein to one crystal, and says to build the right growth
  * parameters now rather than reworking them later. Aragonite radiates from a nucleation point and twins

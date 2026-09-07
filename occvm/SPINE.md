@@ -20,7 +20,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
-| **1.7** | landed | the dusk stages, additive over the 1.0 `--night` ramp; deleted BTC's tool-local `--bloom` surface glow now that OCCVM-L9's "no surface takes a glow" has an owner. |
+| **1.7** | landed | the night model, complete: dusk stages additive over the `--night` ramp, ink on a **phosphor curve** rather than a linear one, and the **moon** as a second light reaching ink alone (real lunar theory, gated on illumination). Deleted BTC's `--bloom` surface glow. |
 | **1.8** | landed | the reference surface: a conforming page that holds no values of its own, one live specimen per law, recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
 | **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
 
@@ -113,7 +113,14 @@ An element too small to read as a cut slab at 4px takes an exception in §5 rath
 
 ### OCCVM-L3 — one light
 
-There is exactly one light, and it is the real sun.
+There is exactly one light on any **surface**, and it is the real sun.
+
+**Amended at 1.7, and the amendment is narrow on purpose.** The moon is a second light and it reaches
+**ink only** — `--bone` and `--nglow`, at night. It casts nothing, bevels nothing, and moves no substrate,
+so every statement below about surfaces is unchanged and there is still exactly one thing that can put a
+shadow on this page. The moon's own terms are governed under `OCCVM-L9`, which is where night lives; this
+clause exists so that the sentence "exactly one light" cannot be read as forbidding what 1.7 shipped.
+Nothing else may become a light without amending this law again, in the open, with its own release.
 
 - **Position** is computed from latitude, longitude and the clock. The canonical implementation is the **full
   NOAA algorithm** — Julian century, equation of centre, obliquity with nutation — evaluated in **UTC**. The
@@ -345,6 +352,36 @@ Night acts on **ink only**. No surface takes a glow. `--glow` is the ink bloom a
 substrate. BTC's `--bloom` — a malachite glow on `.tile`, renamed rather than removed at 1.2 specifically
 so 1.7 could retire it under this law — is deleted, not replaced: the tile takes no glow of any kind now.
 
+**Ink's response to night is a phosphor curve, not a ramp** (1.7). `--phosphor` is `1 − e^(−3.2·night)`,
+normalised so the ends stay exactly 0 and 1: 0.58 by a quarter of the way into night, 0.83 by half, then
+flat. The linear ramp it replaced went on brightening the page through a range where the eye has long
+since adapted, which is what a placeholder looks like once you plot it. `--glow` and `--nglow` ride the
+curve; `--night` itself is untouched, exactly as the staging above is.
+
+**The moon is a second light, and it reaches ink alone** (1.7, amending L3 for this case and no other).
+`OCCVM-L3`'s "exactly one light" still governs every **surface**: the moon casts nothing, bevels nothing,
+and moves no substrate. What it touches is `--bone` and `--nglow`, at night, and that is the whole of its
+authority. Position is real low-precision lunar theory (Meeus ch. 47) in the same shared implementation as
+the sun — verified against its own physics rather than asserted: synodic period 29 d against a true 29.53,
+illumination spanning exactly 0.000 to 1.000, transit sliding 44–50 min later each day against a true ~50,
+with the variation itself real orbital eccentricity.
+
+**Illumination is not optional and altitude is not enough.** `--moon-light` is the product of three terms
+that must all hold — the moon is up, the moon is lit, and the sun is gone — so a new moon at the zenith
+contributes exactly nothing rather than a little. Over sixty nights at Dayton the term spends 57% of night
+hours at essentially zero and 9% near full, which is the distribution a real sky has.
+
+**Where it is routed was decided by reading the consumers, not by assuming.** `--glow` is used as an
+*opacity* (Rhyme's `.stone::before`) and already reaches 1.0 on a moonless night, so a moon term there
+would have been clamped away invisibly. `--nglow` is a blur radius in px and has headroom; `--bone` is the
+ink itself. A full moon recovers ink about 30% of the way back toward its daylight value.
+
+**The 1.7 exit, measured rather than claimed.** The roadmap asks that *"a screenshot at 21:40 and one at
+23:10 are visibly different tools."* Over thirty nights at Dayton the two frames differ on **18**. On the
+other twelve the moon is below the horizon at both instants, so there is no light to differ by — and
+manufacturing one would be authoring a sky. The criterion is met whenever there is a moon to meet it with,
+and that is the honest form of it.
+
 *BTC's `--night` was a binary step at −2° before 1.2: closed `OCCVM-D2`.*
 
 ---
@@ -392,13 +429,16 @@ now-redundant tool declaration is per-surface adoption work, done at the release
 
 ### 2ab. Governed since 1.2 — written by the sundial
 
-`--lx --ly --elev --night --dusk-stage --amb --rake --sheen --hi-a --cut-a --shade-a --glow --lxpx --lypx
---nglow --nglow-s --sub --sub-hi --sub-lo --bone --bone-lo`
+`--lx --ly --elev --night --dusk-stage --phosphor --amb --rake --sheen --hi-a --cut-a --shade-a --glow
+--lxpx --lypx --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y --sub --sub-hi
+--sub-lo --bone --bone-lo`
 
 All resolved scalars or hexes, all written by `occvm/sundial.js` at most once a minute, none a `calc()`.
 `--bone-lo` is derived from `--bone` rather than authored beside it (L1). `--dusk-stage`, added at 1.7, is
 the one entry here that is neither a scalar nor a hex — a discrete stage name — because the quantity it
-carries (which of day/civil/nautical/astronomical/night the instant falls in) has no continuous value.
+carries (which of day/civil/nautical/astronomical/night the instant falls in) has no continuous value. The five `--moon-*`
+entries and `--phosphor` arrived at 1.7: the moon is a second light reaching ink alone (see L9), and it
+is measured in the same shared implementation rather than a second sky.
 
 ### 2b. Registered, not yet spine — promoted at the release named
 
@@ -502,8 +542,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907174421` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907174421` | — (renders no mono; D3 does not apply) |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907175234` | — |
+| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907175235` | — (renders no mono; D3 does not apply) |
 | **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907172437` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**

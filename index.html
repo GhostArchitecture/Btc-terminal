@@ -1145,7 +1145,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
 /* ==== END OCCVM veins.js ==== */
 
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
-/* sha256:f107e7aa8e92 */
+/* sha256:6647c61ccbd4 */
 /* OCCVM 1.2/1.7 — the sundial. One light, shared by every conforming tool (OCCVM-L3).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1201,7 +1201,51 @@ var OCCVM_SUN = (function () {
     var zen = Math.acos(clamp(cz, -1, 1));
     var az = Math.acos(clamp(((Math.sin(lat * RAD) * Math.cos(zen)) - Math.sin(dec)) / (Math.cos(lat * RAD) * Math.sin(zen)), -1, 1)) / RAD;
     az = ha > 0 ? (az + 180) % 360 : (540 - az) % 360;
-    return { elev: 90 - zen / RAD, az: az };
+    /* `lam` — the sun's apparent ecliptic longitude — is returned because the moon's phase is its
+       elongation from the sun, and computing the sun's position twice to get it would be two
+       implementations of the same thing, which is the defect OCCVM-L3 exists to prevent. */
+    return { elev: 90 - zen / RAD, az: az, lam: app };
+  }
+
+  /* ---- the moon: a secondary, weaker light, and ink's only other source (1.7) ---------------------
+   *
+   * OCCVM-L3 says there is exactly one light and it is the sun. That still holds for every SURFACE: the
+   * moon casts nothing, bevels nothing, and moves no substrate. What it reaches is ink, and only at
+   * night, which is the boundary OCCVM-L9 already draws.
+   *
+   * Low-precision lunar theory (Meeus ch. 47, principal terms). Accurate to roughly a degree, which is
+   * far inside the tolerance of a light vector — the same argument SPINE.md §L3 already makes for
+   * permitting a Fourier approximation of the sun's position but not a second implementation of it.
+   *
+   * ILLUMINATION IS NOT OPTIONAL. A moon above the horizon at new phase delivers no light at all, and a
+   * model that lights the page by altitude alone would put a full moon's worth of ink glow into the
+   * darkest night of the month. The phase is the elongation from the sun, so the sun's own longitude is
+   * an input rather than a second sun.
+   */
+  function moon(lat, lon, date, sunLam) {
+    var d = date.getTime() / 86400000 + 2440587.5 - 2451545.0;   /* days since J2000 */
+    var L = 218.316 + 13.176396 * d;                             /* mean longitude */
+    var M = 134.963 + 13.064993 * d;                             /* mean anomaly */
+    var F = 93.272 + 13.229350 * d;                              /* argument of latitude */
+    var lam = (L + 6.289 * Math.sin(M * RAD)) * RAD;             /* ecliptic longitude */
+    var bet = (5.128 * Math.sin(F * RAD)) * RAD;                 /* ecliptic latitude */
+    var ec = 23.4397 * RAD;
+
+    var dec = Math.asin(Math.sin(bet) * Math.cos(ec) + Math.cos(bet) * Math.sin(ec) * Math.sin(lam));
+    var ra = Math.atan2(Math.sin(lam) * Math.cos(ec) - Math.tan(bet) * Math.sin(ec), Math.cos(lam));
+
+    var lst = (280.16 + 360.9856235 * d + lon) * RAD;            /* local sidereal time */
+    var H = lst - ra;
+    var alt = Math.asin(Math.sin(lat * RAD) * Math.sin(dec) + Math.cos(lat * RAD) * Math.cos(dec) * Math.cos(H));
+    var az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(lat * RAD) - Math.tan(dec) * Math.cos(lat * RAD));
+    az = (az / RAD + 180) % 360;                                  /* from south → clockwise from north */
+    if (az < 0) az += 360;
+
+    /* phase: elongation from the sun, illuminated fraction (1 − cos ψ)/2 — 0 at new, 1 at full */
+    var elong = Math.abs(((lam / RAD - (sunLam === undefined ? 0 : sunLam)) % 360 + 540) % 360 - 180);
+    var illum = (1 - Math.cos(elong * RAD)) / 2;
+
+    return { alt: alt / RAD, az: az, illum: illum, elong: elong };
   }
 
   /* ---- response: the surface behaviour the position produces -------------------------------------- */
@@ -1241,6 +1285,25 @@ var OCCVM_SUN = (function () {
       : elev >= -18 ? "astronomical"
       : "night";
 
+    /* OCCVM-L9, 1.7 — the PHOSPHOR RESPONSE. Ink's answer to darkness is not linear in `night`, and the
+       linear ramp it replaced was a placeholder that read as one: the page went on getting steadily more
+       lit right through a range where the eye has already fully adapted. A phosphor's emission against
+       its excitation saturates, and the standard form for that is 1 − e^(−kx), normalised so the ends
+       stay exactly 0 and 1. It rises fast and then stops: 0.58 by a quarter of the way into night, 0.83
+       by half, which is what "the tool becomes a night instrument quickly, then holds" looks like as a
+       curve rather than as an intention. */
+    var phosphor = (1 - Math.exp(-3.2 * night)) / (1 - Math.exp(-3.2));
+
+    /* The moon reaches ink and nothing else (see moon(), above, and OCCVM-L9). Its weight is the product
+       of three things that must ALL hold for there to be moonlight: it is above the horizon, it is lit,
+       and the sun is gone. Any one of them missing and the term is zero — a moon at new, or below the
+       horizon, or at noon, contributes exactly nothing rather than a little. */
+    var mAlt = p.moon ? p.moon.alt : -90;
+    var mUp = clamp(mAlt / 45, 0, 1);                       /* full weight once it is well up */
+    var moonLight = p.moon ? mUp * p.moon.illum * night : 0;
+    var mx = (p.moon && mAlt > 0) ? Math.sin(p.moon.az * RAD) : 0;
+    var my = (p.moon && mAlt > 0) ? -Math.cos(p.moon.az * RAD) : 0;
+
     /* The night floor lives in ambient, not in elevation: a bevel stays legible after dark because
        ambient is 0.53 there, not because elevation is pretended to be 0.15 (D2). */
     var amb = 0.45 + 0.55 * e * (1 - night) + 0.18 * night;
@@ -1248,6 +1311,10 @@ var OCCVM_SUN = (function () {
 
     var sub = mix(mix(SUB, SUB_DUSK, dusk), SUB_NIGHT, night);
     var bone = mix(mix(BONE, BONE_DUSK, dusk), BONE_NIGHT, night);
+    /* 1.7 — moonlight lifts ink toward its daylight value and nothing else on the page moves with
+       it. This is the whole of the moon's authority over the surface (OCCVM-L9), and it is small
+       on purpose: a full moon at the zenith recovers about a tenth of the way back toward day. */
+    if (moonLight > 0) bone = mix(bone, BONE, 0.30 * moonLight);
 
     /* OCCVM-L1: a derived token derives with its whole family. --bone-lo is --bone carried a quarter of
        the way to --edge, so the pair cannot separate again (D10). At the noon anchor that reads #b4ada0
@@ -1267,12 +1334,26 @@ var OCCVM_SUN = (function () {
       "--hi-a": (0.30 * e + 0.06).toFixed(3),
       "--cut-a": (0.40 * e + 0.06).toFixed(3),
       "--shade-a": (0.45 + 0.3 * e).toFixed(3),
-      /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). */
-      "--glow": (0.45 + 0.25 * (1 - e) + 0.30 * night).toFixed(2),
+      /* OCCVM-L9: the ink bloom, a resolved scalar and never a calc(), so a law can read it (D8). Since
+         1.7 it rides the phosphor curve rather than `night` directly, and moonlight lifts it further —
+         a lit night is a brighter-inked night, which is the one thing the moon is allowed to do here. */
+      /* --glow is consumed as an OPACITY (Rhyme's .stone::before) and already reaches 1.0 on a
+         moonless night, so a moon term here would be clamped away invisibly. Moonlight reaches ink
+         through --bone and --nglow instead, both of which have headroom. Checked against the
+         consumers rather than assumed. */
+      "--glow": (0.45 + 0.25 * (1 - e) + 0.30 * phosphor).toFixed(3),
+      "--phosphor": phosphor.toFixed(3),
+      /* the moon: a secondary vector for ink only. --moon-light is zero unless it is up, lit, and dark. */
+      "--moon-alt": mAlt.toFixed(2),
+      "--moon-illum": (p.moon ? p.moon.illum : 0).toFixed(3),
+      "--moon-light": moonLight.toFixed(3),
+      "--moon-x": mx.toFixed(3),
+      "--moon-y": my.toFixed(3),
       "--lxpx": (lx * 0.9).toFixed(2) + "px",
       "--lypx": (ly * 0.9).toFixed(2) + "px",
-      "--nglow": (6 * night).toFixed(1) + "px",
-      "--nglow-s": (3 * night).toFixed(1) + "px",
+      /* the night halo: a blur radius in px, so it has room to carry the moon as well as the ramp */
+      "--nglow": (6 * phosphor + 3 * moonLight).toFixed(2) + "px",
+      "--nglow-s": (3 * phosphor + 1.5 * moonLight).toFixed(2) + "px",
       "--sub": hex(sub),
       "--sub-hi": hex(mix(sub, [255, 255, 255], 0.14 * (0.5 + e))),
       "--sub-lo": hex(mix(sub, [0, 0, 0], 0.42)),
@@ -1286,7 +1367,9 @@ var OCCVM_SUN = (function () {
   /* tick(): position, respond, write. Returns the reading for a tool's own display. */
   function tick(el, loc, date) {
     var place = (loc && isFinite(loc.lat)) ? loc : DAYTON;
-    var p = position(place.lat, place.lon, date || new Date());
+    var when = date || new Date();
+    var p = position(place.lat, place.lon, when);
+    p.moon = moon(place.lat, place.lon, when, p.lam);
     var t = respond(p);
     if (el && el.style) for (var k in t) if (Object.prototype.hasOwnProperty.call(t, k)) el.style.setProperty(k, t[k]);
     return {
@@ -1300,7 +1383,7 @@ var OCCVM_SUN = (function () {
     };
   }
 
-  return { position: position, respond: respond, tick: tick, DAYTON: DAYTON, DIRS: DIRS };
+  return { position: position, moon: moon, respond: respond, tick: tick, DAYTON: DAYTON, DIRS: DIRS };
 })();
 /* ==== END OCCVM sundial.js ==== */
 
@@ -7082,7 +7165,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260907174421";
+const BUILD_STAMP="build-20260907175234";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7099,5 +7182,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260907174421 -->
+<!-- build-20260907175234 -->
 </html>
