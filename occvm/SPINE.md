@@ -1,10 +1,22 @@
-# OCCVM 1.2 — the spine
+# OCCVM 1.6 — the spine
 
 The shared visual system of the Ghost Codex tools. This document is the law; `occvm/spine.css` is the
 machine-readable half; `occvm/tools/splice-spine.js` puts it into a tool. All three are committed identically
 to every conforming repository.
 
-**Constituted at 1.0 on 2026-09-06 from measurement, not from memory.** 1.2 — *one light, completed* —
+**Constituted at 1.0 on 2026-09-06 from measurement, not from memory.**
+
+**1.6 — *architecture conformance*** — closes `OCCVM-D4` and `D5`. Rhyme's JSX is compiled at author time
+and React is inlined from a committed vendor copy, so the artifact fetches nothing at load and
+`babel-standalone` is gone; BTC ships the service worker its manifest had been promising since the
+beginning. Both tools now derive their cache name from the build stamp rather than a hand-bumped literal.
+
+*The roadmap's note on this release — "this release introduces the first author-time generated region" —
+was already false when written and is now false four times over: Rhyme's `build.js` and BTC's
+`resplice.js` both predate it, and the spine's two spliced parts arrived at 1.0. 1.6 adopts the practice
+those established rather than founding it.*
+
+**1.2 — *one light, completed*** —
 closes `OCCVM-D2`, `D8`, `D9` and `D10`, promotes twelve tokens from registered to governed, and puts the
 whole light layer in one shared implementation (`occvm/sundial.js`).
 
@@ -300,8 +312,8 @@ found by measurement after it was written.
 | **D1** | BTC | the expired `--ink --meas --bondi` alias block, past its removal window and still referenced (lines 26–27, 352, 359, 388, 1253) | 1.9 |
 | **D2** | BTC | one light incomplete: no `--amb --rake --sheen --hi-a --cut-a --shade-a`, 15 fixed `box-shadow` offsets, `--elev` on a different scale with a 0.15 night floor, `--night` a binary step | **closed 1.2** |
 | **D3** | both | the numeric face is OS-supplied; metrics vary per platform under a column | **1.3** |
-| **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **1.6** |
-| **D5** | BTC | half-installed PWA: `manifest.webmanifest` and four icons ship, with zero `serviceWorker` registration | **1.6** |
+| **D4** | Rhyme | a runtime compiler: JSX compiled in the browser by `babel-standalone`, fetched with React and ReactDOM from a CDN. **With cdnjs unreachable the tool renders nothing** — measured, not inferred | **closed 1.6** |
+| **D5** | BTC | half-installed PWA: `manifest.webmanifest` and four icons ship, with zero `serviceWorker` registration | **closed 1.6** |
 | **D6** | BTC | no mineral system at all. `--amethyst` is declared once and referenced zero times | **1.4** |
 | **D7** | Rhyme | no interaction floor: 0 `<button>`, 53 `onClick`, 0 `aria-*`, 0 `role`, 0 `tabIndex` | **1.5** |
 | **D8** | BTC | `--glow` is a `calc()` expression, so it never resolves to a number at token level and no law can read it (L3) | **closed 1.2** |
@@ -315,8 +327,8 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.2 | `build-20260906232814` | D1, D3, D5, D6 |
-| **Rhyme Instrument** | 1.2 | `build-20260906232814` | D3, D4, D7 |
+| **BTC Terminal** | 1.6 | `build-20260907000602` | D1, D3, D6 |
+| **Rhyme Instrument** | 1.6 | `build-20260907000648` | D3, D7 |
 | **Reference surface** | — | not built | — (1.8) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
@@ -349,6 +361,24 @@ inverted, throwing shadows toward the sun rather than away from it. It survived 
 plausible and because no rule connected the offset to the light that was supposed to cause it. That is the
 argument for L4, and it is pinned now by a directional assertion at three bearings rather than by a string
 match.
+
+**1.6** removed a 2.98 MB runtime compiler and 143 KB of CDN dependency from Rhyme by inlining 144 KB of
+pinned, committed React — a net simplification measured in requests, not bytes: **three external requests
+to zero.** The tool now renders with the network entirely refused, which is the exit criterion rather than
+a harness convenience, and it is what makes its service-worker shell complete: before 1.6 the shell
+precached the libraries only *after* a successful online load, which is precisely the load that failed
+when the CDN was unreachable.
+
+BTC's half was the missing worker. Three rules govern it and the first two are about not lying: market
+data is **never** cached, because a cached price is a wrong price and this tool is only measurement; the
+page is **network-first**, because the deploy procedure verifies by build stamp and a cache-first shell
+would let a browser sit on an old one; and the cache name is the stamp, passed as `?v=`, so the worker's
+own script URL changes on every deploy and nothing is hand-bumped. `theme_color` and the `theme-color`
+tag now agree, closing the cosmetic split CLAUDE.md §8 had left open.
+
+1.6 changed **no rendered value in either tool** — the golden set moved by three metadata entries, all of
+them the vendored-request list going empty. An architectural release that moves a pixel has done something
+it did not say it would.
 
 **1.2 did not** delete BTC's surface bloom, adopt any primitive class onto a surface beyond the cast, or
 touch the numeric face, the mineral system or the interaction floor. Those are 1.7, 1.3, 1.4 and 1.5.

@@ -31,7 +31,7 @@ const REPOS = {
   btc:   { root: path.resolve(HERE, "..", ".."), seedKey: "btc.seed",
            /* --vein is written only by veinLayer(); it has no CSS default, so it cannot pass while dead */
            ready: () => getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
-  rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed", needsVendor: true,
+  rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed",
            /* the binding only exists once React has mounted and rendered */
            ready: () => !!document.querySelector(".binding") },
 };
@@ -42,15 +42,11 @@ const CASES = [
   { name: "high",  iso: "2026-09-06T17:45:00Z", note: "elev +56.40 deg, az 184.5 (S) — near solar noon" },
   { name: "night", iso: "2026-09-07T04:00:00Z", note: "elev -39.21 deg, az 328.9 — night in both tools" },
 ];
-/* Rhyme compiles its own JSX in the browser and pulls React, ReactDOM and Babel from a CDN, so it
-   cannot boot without three external requests — a cold load with cdnjs unreachable renders nothing.
-   A determinism instrument must not depend on that, so the recorder serves them from a local cache and
-   records them as vendored rather than external. The cache is gitignored: 3.1 MB, mostly babel. */
-const VENDOR = {
-  "https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js": "react_18.3.1_umd_react.production.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js": "react-dom_18.3.1_umd_react-dom.production.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js": "babel-standalone_7.26.4_babel.min.js",
-};
+/* Nothing is vendored any more. Until OCCVM 1.6 Rhyme pulled React, ReactDOM and babel-standalone from
+   a CDN and could not boot without them, so the recorder served them from a local cache to keep the
+   measurement off the network. 1.6 inlined React and deleted the compiler; both tools now refuse all
+   egress and still render, which is the exit criterion rather than a harness convenience. */
+const VENDOR = {};
 const VENDOR_DIR = path.join(HERE, ".vendor");
 function ensureVendor() {
   fs.mkdirSync(VENDOR_DIR, { recursive: true });
@@ -60,7 +56,7 @@ function ensureVendor() {
     console.log("  fetching " + f + " ...");
     const r = require("child_process").spawnSync("curl", ["-sSL", "--max-time", "120", u, "-o", dest], { stdio: "inherit" });
     if (r.status !== 0 || !fs.existsSync(dest) || !fs.statSync(dest).size)
-      throw new Error(`could not vendor ${u}\n  fetch it by hand into ${VENDOR_DIR}/${f} and re-run`);
+      throw new Error(`could not vendor ${u}`);
   }
 }
 

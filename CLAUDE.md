@@ -312,8 +312,11 @@ records what differs, what is broken, and how the repo is worked from a clone.
 ### 10.1 Working from a clone
 
 - **Deploy = push to `main`.** Cloudflare Pages and GitHub Pages both build from it; the same-origin `/api`
-  function deploys with the Pages build. Verify by stamp exactly as in §1 step 4. The stamp on line 2725
-  (`<!-- build-YYYYMMDDHHMMSS -->`) is still replaced by hand — assert the replacement (§7.2).
+  function deploys with the Pages build. Verify by stamp exactly as in §1 step 4. The stamp is still
+  replaced by hand — assert the replacement (§7.2) — and **since OCCVM 1.6 it lives in two places**: the
+  `<!-- build-YYYYMMDDHHMMSS -->` comment at the foot of the file and `BUILD_STAMP` in the script, which
+  the service worker's cache name derives from. One replace-all covers both; `test/occvm.js` fails if they
+  disagree, so a missed site cannot ship.
 - **Before editing:** `git status` must be clean and `git diff origin/main` empty (§7.1 in git terms). Check for
   duplicate top-level definitions: `grep -oE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(' index.html | sort | uniq -d`
   must print nothing.
@@ -975,11 +978,30 @@ the measured inventory the spine was then authored from.
   duplicate-definition check §7.1 required by hand, the splice-reproducibility check §6 required by hand,
   the spine check, and a BTC-only golden diff on Chromium.
 
-**Open against this tool at 1.0:** `OCCVM-D1` (the expired `--ink --meas --bondi` block, still referenced),
-`D2` (one light incomplete), `D3` (OS-supplied numeric face), `D5` (half-installed PWA — manifest and icons
-ship with no service worker), `D6` (no mineral system; `--amethyst` is declared once and referenced zero
-times), `D8` (`--glow` is a `calc()` and never resolves to a number), `D9` (the light vector tracks the sun
-below the horizon). Each names the release that closes it in SPINE.md §6.
+**1.2 — one light, completed.** The light is now one implementation, `occvm/sundial.js`, spliced into both
+tools: full NOAA position (this tool's) plus Rhyme's derivation of surface response from it. `solarPosition()`
+is gone from this file and `sunTick()` is the display shape around a shared reading. `--night` is a ramp,
+`--elev` drops its 1.4 scale and its 0.15 night floor moves to `--amb`, the light vector resolves neutral
+overhead below −6°, `--glow` is a resolved scalar, and substrate and ink move with twilight. Closed D2, D8,
+D9, D10.
+
+*It also found that every fixed cast offset in both tools pointed the wrong way.* `(--lx, --ly)` points
+**toward** the sun, so a lit bevel belongs at `+(lx, ly)` and a cast at `−(lx, ly)`; the tile's
+`0 16px 36px` threw its shadow down-screen, which at noon is toward the sun. It survived because it looked
+plausible and no rule connected the offset to the light meant to cause it. `test/occvm.js` now pins the
+direction at three bearings — the same treatment §5's colour rule gets, and for the same reason.
+
+**1.6 — architecture conformance.** `sw.js` ships and the page registers it, closing D5. Three rules, and
+the first two are about not lying: **market data is never cached** (a cached price is a wrong price, and
+this tool is only measurement — §9); the page is **network-first**, so a new stamp lands the moment the
+recorder is online and no browser sits on an old one; and the **cache name is the build stamp**, passed as
+`?v=`, so the worker's script URL changes every deploy and nothing is hand-bumped. `theme_color` and the
+`theme-color` tag now agree, closing §8's cosmetic split.
+
+**Open against this tool:** `OCCVM-D1` (the expired `--ink --meas --bondi` block — 1.2's golden diff showed
+`--ink --meas --dim` all moving with the tokens they alias, so it is load-bearing, not dead weight),
+`D3` (OS-supplied numeric face, closes at 1.3), `D6` (no mineral system; `--amethyst` is declared once and
+referenced zero times, closes at 1.4). Each names its release in SPINE.md §6.
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.

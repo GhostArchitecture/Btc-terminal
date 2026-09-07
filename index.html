@@ -6082,6 +6082,22 @@ setInterval(()=>{
 },1000);
 requestAnimationFrame(loop);
 
+/* OCCVM-D5, roadmap 1.6 — the manifest and four icons shipped with no worker behind them, so the tool
+   installed to a home screen and then would not open without a network. This registers the other half.
+
+   BUILD_STAMP must equal the <!-- build-... --> comment at the foot of this file. It is a second site for
+   one value — covered by the deploy replace-all and asserted by test/occvm.js — because the worker's
+   cache name derives from it: passing it as ?v= changes the worker's script URL on every deploy, which is
+   what makes the browser install the new one. Nothing is hand-bumped, so nothing can be forgotten.
+
+   Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
+   single script as an architectural property, and test/lib/load.js reads the block by first-open to
+   last-close. A second tag breaks every harness. */
+const BUILD_STAMP="build-20260907000602";
+if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
+  addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
+}
+
 (async function init(){
   loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); shockLoad();
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
@@ -6094,5 +6110,5 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-<!-- build-20260906232814 -->
+<!-- build-20260907000602 -->
 </html>

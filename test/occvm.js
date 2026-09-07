@@ -182,4 +182,37 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   }
 }
 
+/* --- OCCVM-D5 / roadmap 1.6: the PWA is whole, and the cache name cannot go stale ------------------ */
+{
+  const fs = require("fs"), path = require("path");
+  const ROOT = path.resolve(__dirname, "..");
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+
+  T("a service worker ships", fs.existsSync(path.join(ROOT, "sw.js")));
+  T("the page registers it", /serviceWorker\.register\("\.\/sw\.js\?v="/.test(html));
+
+  /* The stamp lives in two places by design — the deploy comment and BUILD_STAMP — because the worker's
+     cache name derives from the second. One replace-all covers both; this is what catches a miss. */
+  const comment = (html.match(/<!--\s*(build-\d{14})\s*-->/) || [])[1];
+  const konst = (html.match(/BUILD_STAMP\s*=\s*"(build-\d{14})"/) || [])[1];
+  T("BUILD_STAMP equals the deploy stamp", !!comment && comment === konst, { comment, konst });
+
+  const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
+  T("the cache name comes from the registration, not a literal", /searchParams\.get\("v"\)/.test(sw));
+
+  /* Market data is never cached: a cached price is a wrong price, and this tool is only measurement. */
+  T("the worker passes cross-origin and /api straight through",
+    /url\.origin !== self\.location\.origin \|\| url\.pathname\.startsWith\("\/api"\)/.test(sw));
+  T("the page is network-first so a new stamp lands", sw.indexOf("fetch(req)") < sw.indexOf("caches.match(req)"));
+
+  /* CLAUDE.md section 2 records one style block and one script as an architectural property, and
+     test/lib/load.js reads the script by first-open to last-close. A second tag breaks every harness. */
+  T("still one <script> and one <style>",
+    (html.match(/<script/g) || []).length === 1 && (html.match(/<style/g) || []).length === 1);
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "manifest.webmanifest"), "utf8"));
+  const tag = (html.match(/<meta name="theme-color" content="([^"]+)"/) || [])[1];
+  T("the manifest and the theme-color tag agree (section 8)", manifest.theme_color === tag, { manifest: manifest.theme_color, tag });
+}
+
 process.exit(done());
