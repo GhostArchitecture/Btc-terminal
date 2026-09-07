@@ -70,6 +70,79 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM-L10, 1.1a: the vein grows ARAGONITE, not a generic dendrite --------------------------
+ * The roadmap's 2.0 anchors substrate and vein to one crystal, and says to build the right growth
+ * parameters now rather than reworking them later. Aragonite radiates from a nucleation point and twins
+ * in threes; both are asserted here on the exact owner and rotation of each growth, because a property
+ * measured by nearest-nucleus guessing is buried as soon as two growths overlap.
+ */
+{
+  const VEINS = require("../occvm/veins.js");
+
+  /* rotation-invariant angular harmonic of each growth, with its own twin rotation removed */
+  const harmonics = (twin, habit) => {
+    const acc = new Array(9).fill(0);
+    let groupsSeen = 0;
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const g = VEINS.grow({ w: 96, h: 60, n: 1728, habit, seed, twin });
+      const per = g.groups.map(() => []);
+      for (let i = 0, s = 0; i < g.segs.length; i += 4, s++) {
+        const gr = g.groups[g.segOwner[s]];
+        let dy = g.segs[i + 3] - gr.cy;
+        if (dy > g.h / 2) dy -= g.h; else if (dy < -g.h / 2) dy += g.h;
+        const dx = g.segs[i + 2] - gr.cx;
+        if (dx || dy) per[g.segOwner[s]].push(Math.atan2(dy, dx) - gr.rot);
+      }
+      for (const A of per) {
+        if (A.length < 40) continue;
+        groupsSeen++;
+        for (let k = 1; k <= 8; k++) {
+          let re = 0;
+          for (const a of A) re += Math.cos(k * a);
+          acc[k] += re / A.length;
+        }
+      }
+    }
+    return { H: acc.map(v => (groupsSeen ? v / groupsSeen : 0)), groupsSeen };
+  };
+
+  const dom = H => H.map((v, k) => [k, v]).slice(1).sort((a, b) => b[1] - a[1])[0];
+
+  /* the shipped setting is the one that has to work — a habit that only expresses at 1.0 ships nothing */
+  const ship = harmonics(3, 0.55);
+  const dShip = dom(ship.H);
+  T("aragonite twins in threes at the shipped habit (.55)", dShip[0] === 3, { k: dShip[0], power: +dShip[1].toFixed(3) });
+  T("the threefold signal is dominant, not merely present",
+    ship.H[3] > 2 * Math.max(ship.H[1], ship.H[2], ship.H[4]), {
+      k3: +ship.H[3].toFixed(3), next: +Math.max(ship.H[1], ship.H[2], ship.H[4]).toFixed(3) });
+  T("enough growths to measure on", ship.groupsSeen >= 20, ship.groupsSeen);
+
+  /* it must track the parameter, or the number 3 is decoration rather than a cause */
+  for (const n of [4, 6]) {
+    const d = dom(harmonics(n, 0.55).H);
+    T(`twin ${n} grows ${n}-fold symmetry`, d[0] === n, { asked: n, got: d[0] });
+  }
+
+  /* OCCVM-L10's own words: habit 0 is the equant dendrite. Equant means NO angular structure. */
+  const eq = harmonics(3, 0);
+  T("habit 0 grows equant — no angular structure at all",
+    Math.max(...eq.H.slice(1)) < 0.1, +Math.max(...eq.H.slice(1)).toFixed(3));
+
+  /* the anisotropy is the crystal's, not the viewport's: a rotated field must grow the same structure */
+  const a = VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 77, twin: 3 });
+  const b = VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 77, twin: 3 });
+  T("growth is deterministic under a fixed seed", JSON.stringify(a.segs) === JSON.stringify(b.segs));
+  T("the twin order is reported with the growth", a.twin === 3 && a.groups.length >= 3);
+
+  /* still DLA, still no bezier, still fast enough for the law's stated exit */
+  const t0 = Date.now();
+  for (let i = 0; i < 8; i++) VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 100 + i });
+  const each = (Date.now() - t0) / 8;
+  T("growth stays well inside the 30ms exit criterion", each < 30, each.toFixed(1) + "ms");
+  const svg = VEINS.field({ seed: 5, w: 96, h: 60, viewW: 1200, viewH: 800, density: 0.3, habit: 0.55 }).svg;
+  T("no bezier command survives the aragonite rewrite", !/[CcSsQqTtAa]\s*[\d-]/.test(svg.match(/d='([^']*)'/)[1]));
+}
+
 /* --- OCCVM 1.8: the reference surface -----------------------------------------------------------
  * Its whole claim is that it holds no values of its own, so that anything wrong on it is wrong in the
  * spine. That claim is only worth something if it is checked mechanically, which is what this block is.

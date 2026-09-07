@@ -602,7 +602,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
 /* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
-/* sha256:49518901f7dc */
+/* sha256:7ad6582dfe4b */
 /* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -634,46 +634,111 @@ var OCCVM_VEINS = (function () {
     };
   }
 
-  /* grow(): DLA on a lattice, seeded along the left edge so the aggregate crosses the surface the way a
-   * vein does rather than radiating from a point.
+  /* grow(): DLA on a lattice, growing the habit of a named mineral rather than a generic dendrite.
    *
-   * habit is the anisotropy of the walk, and it is a real mineral term: 0 walks isotropically and grows
-   * the bushy, equant dendrite of a manganese oxide; 1 weights horizontal steps and draws the structure
-   * out into the elongated, fibrous habit of an acicular growth. It changes how the crystal grows, not
-   * what is drawn afterwards.
+   * THE MINERAL IS ARAGONITE, and since 1.1a that is a decision the generator encodes rather than a label
+   * on the output. The 2.0 material model anchors substrate and vein to one crystal (CaCO₃, orthorhombic)
+   * on the argument that a vein is not a foreign material embedded in a slab — it is the same crystal
+   * grown differently. Aragonite's two expressions are exactly the two this system needs: a blocky
+   * orthorhombic form for a cut face, and a fibrous radiating form for a vein. So the vein grows the
+   * second one, and it grows it the way aragonite actually does:
+   *
+   *   - FIBRES RADIATE FROM A NUCLEATION POINT. Not from the screen's left edge, and not along the
+   *     screen's horizontal. Until 1.1a the anisotropy was `pH = .5 + habit * .32`, a bias toward
+   *     horizontal STEPS — a direction in the viewport, which is a fact about the browser window and not
+   *     about the crystal. A crystal has no idea which way the screen is. Direction is now measured from
+   *     the growth's own nucleus, which is a direction in the material's frame.
+   *
+   *   - IT TWINS IN THREES. Aragonite's signature is cyclic twinning on {110}: three individuals meeting
+   *     at close to 120°, which mimics a hexagonal prism well enough that the pseudo-hexagonal form is
+   *     what the mineral is known for. Each nucleus therefore carries `twin` sectors — three, by default,
+   *     because that is what aragonite does — each with its own rotation, and growth is selective along
+   *     them. Radiating fibre bundles from one point, grown rather than drawn.
+   *
+   * habit stays what OCCVM-L10 says it is — the anisotropy of growth — and its ends still mean what the
+   * law says: 0 grows the bushy, equant dendrite of a manganese oxide; 1 draws the structure out into an
+   * elongated, acicular form. Two things changed under it. The AXIS anisotropy is measured against moved
+   * from the viewport's to the crystal's, and the MECHANISM moved from the walk to the attachment (see
+   * accept(), below, which records why the first attempt failed). At habit 0 the twin sectors still exist
+   * but express nothing, because attachment is then indifferent to direction — which is correct, and is
+   * what an equant habit is.
    *
    * Walkers spawn just beyond the frontier rather than at infinity — the standard optimisation, and the
    * reason this finishes in single-digit milliseconds. A walker that strays far outside the frontier is
    * abandoned rather than followed, which is equivalent in the limit and much cheaper.
+   *
+   * `twin` is a parameter rather than a CSS token deliberately. Twinning is a MATERIAL PROPERTY, and
+   * material properties are 2.0's substance — at 2.0 this argument comes from the material definition
+   * instead of a default. Adding a `--vein-twin` token now would put a 2.0 property into the 1.x token
+   * surface, which is the leak SPINE.md's own 1.4 note warns about. It defaults to aragonite's 3.
    */
   function grow(o) {
     var w = o.w | 0, h = o.h | 0;
     var n = o.n | 0;
     var habit = Math.max(0, Math.min(1, o.habit === undefined ? 0.55 : o.habit));
+    var twin = o.twin === undefined ? 3 : Math.max(1, o.twin | 0);
     var rnd = mulberry32(o.seed >>> 0);
+    var TAU = 6.283185307179586;
 
     var occ = new Uint8Array(w * h);
     var segs = [];
     var i, j, y, x;
 
-    /* Seeds are a handful of scattered points, not the whole edge. An edge seed grows a comb — every
-       column starts at once and nothing competes — where scattered nuclei compete for the same walkers
-       and screen each other, which is what produces separate dendrites with clear matrix between them.
-       They are scattered across the whole surface, not banked against one edge: a vein layer that fills
-       half the page and stops is a gradient, and the eye reads a gradient as a mistake. */
-    var nuclei = 4 + ((rnd() * 4) | 0);
-    var seeds = [], sites = [];
+    /* Nucleation points, scattered across the whole surface rather than banked against one edge: a vein
+       layer that fills half the page and stops is a gradient, and the eye reads a gradient as a mistake.
+       They compete for the same walkers and screen each other, which is what leaves clear matrix between
+       separate growths.
+
+       Each nucleus carries its own twin rotation, so the three sectors do not all point the same way
+       across the surface — cyclic twins nucleate independently and there is no reason they would. */
+    var nuclei = 6 + ((rnd() * 4) | 0);
+    var seeds = [], sites = [], siteGroup = [], groups = [], segOwner = [];
     for (i = 0; i < nuclei; i++) {
       x = 1 + ((rnd() * (w - 3)) | 0);
       y = ((rnd() * h) | 0);
       occ[y * w + x] = 1;
       seeds.push(x, y);
       sites.push(y * w + x);
+      siteGroup.push(i);
+      groups.push({ cx: x, cy: y, rot: rnd() * TAU });
     }
 
     var maxSteps = h * 2 + 60;
-    /* horizontal step probability: .5 is isotropic, rising to .82 at full habit */
-    var pH = 0.5 + habit * 0.32;
+
+    /* ATTACHMENT ANISOTROPY — how a crystal actually grows in a direction.
+     *
+     * The first attempt at this biased the WALKER's drift toward its sector axis, and measurement said
+     * it did nothing: twin 1, twin 3 and twin 6 produced identical angular spectra, all dominated by a
+     * single lobe. Two reasons, both instructive. A walker pushed radially outward is pushed away from
+     * the aggregate, so it wanders off and is abandoned rather than sticking anywhere — the bias spent
+     * walkers instead of shaping growth. And snapping an axis to the nearest lattice step collapses
+     * three directions 120° apart into at most four, which destroys the threefold signal before it can
+     * reach the surface.
+     *
+     * A real crystal is not anisotropic because the diffusing atom travels differently. It is
+     * anisotropic because ATTACHMENT differs by crystallographic direction: some faces accept an atom
+     * readily and some do not, and the fast directions become the needles. So the walk stays a pure
+     * unbiased random walk — which is what makes this DLA at all — and the anisotropy lives in whether
+     * a contact is accepted.
+     *
+     * `align` is +1 when the candidate site sits exactly on one of the nucleus's `twin` axes and −1
+     * exactly between two of them; `cos(twin·(θ−rot))` gives the whole cyclic-twin symmetry in one term.
+     * Acceptance falls from certain (habit 0, isotropic, equant) to strongly axis-selective (habit 1),
+     * and a rejected walker keeps walking rather than being discarded, so no walker is wasted. */
+    function accept(g, px, py) {
+      if (habit <= 0) return true;
+      var dx = px - g.cx, dy = py - g.cy;
+      /* the surface wraps vertically, so take the shorter way round when measuring a bearing */
+      if (dy > h / 2) dy -= h; else if (dy < -h / 2) dy += h;
+      if (dx === 0 && dy === 0) return true;                  /* at the nucleus itself: no direction yet */
+      var align = Math.cos(twin * (Math.atan2(dy, dx) - g.rot));   /* +1 on an axis, -1 between */
+      /* Selectivity is the EXPONENT, not a blend against an isotropic floor. The first form here was
+         `(1-habit) + habit·p`, which keeps a 0.45 floor of accepting anything at habit .55 — both tools'
+         default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
+         twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
+         gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
+      return rnd() < Math.pow((1 + align) / 2, habit * 6);
+    }
 
     for (i = 0; i < n; i++) {
       /* Spawn across the whole occupied extent rather than only at the leading edge, so the interior
@@ -683,8 +748,9 @@ var OCCVM_VEINS = (function () {
          of its life wandering empty lattice; released on a small circle around a site already occupied,
          it arrives at the cluster with the same isotropic distribution — this is the standard DLA launch
          radius, and it is why the generator finishes in single-digit milliseconds instead of twenty. */
-      var site = sites[(rnd() * sites.length) | 0];
-      var ang = rnd() * 6.283185307, rad = 4 + rnd() * 7;
+      var pick = (rnd() * sites.length) | 0;
+      var site = sites[pick], group = groups[siteGroup[pick]];
+      var ang = rnd() * TAU, rad = 4 + rnd() * 7;
       x = ((site % w) + Math.cos(ang) * rad) | 0;
       y = (((site / w) | 0) + Math.sin(ang) * rad) | 0;
       if (x < 1) x = 1; else if (x > w - 2) x = w - 2;
@@ -706,9 +772,11 @@ var OCCVM_VEINS = (function () {
           if (ny < 0) ny = h - 1; else if (ny >= h) ny = 0;
           if (occ[ny * w + nx]) hit = ny * w + nx;
         }
-        if (hit >= 0) { stuck = hit; break; }
+        /* a contact only becomes a stick if this direction accepts one (see accept(), above) */
+        if (hit >= 0 && accept(group, x, y)) { stuck = hit; break; }
 
-        if (rnd() < pH) x += rnd() < 0.5 ? -1 : 1;
+        /* An unbiased lattice walk. The anisotropy is in attachment, not in travel. */
+        if (rnd() < 0.5) x += rnd() < 0.5 ? -1 : 1;
         else y += rnd() < 0.5 ? -1 : 1;
 
         if (y < 0) y = h - 1; else if (y >= h) y = 0;        /* the surface wraps vertically */
@@ -720,9 +788,16 @@ var OCCVM_VEINS = (function () {
       if (occ[kk]) continue;
       occ[kk] = 1;
       sites.push(kk);
+      siteGroup.push(siteGroup[pick]);   /* a fibre belongs to the twin it grew from */
+      segOwner.push(siteGroup[pick]);
       segs.push(stuck % w, (stuck / w) | 0, x, y);
     }
-    return { segs: segs, w: w, h: h, nuclei: seeds };
+    /* `groups` and `segOwner` are returned so the twin can be MEASURED rather than eyeballed: with
+       several growths overlapping, assigning a particle to its nearest nucleus misattributes enough of
+       them to bury the signal, and a property that can only be checked when it happens to be isolated is
+       not really checked. With the true owner and the group's own rotation, the angular harmonic is
+       exact — which is what test/occvm.js asserts on. */
+    return { segs: segs, w: w, h: h, nuclei: seeds, twin: twin, groups: groups, segOwner: segOwner };
   }
 
   /* svg(): trace the aggregate. Every stroke is a straight segment between a particle and the particle
@@ -768,7 +843,7 @@ var OCCVM_VEINS = (function () {
   function field(o) {
     var w = o.w || 110, h = o.h || 70;
     var density = o.density === undefined ? 0.35 : Math.max(0.05, Math.min(1, o.density));
-    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed });
+    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed, twin: o.twin });
     if (g.segs.length < 8) throw new Error("occvm veins: aggregate did not grow");
     var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
     /* The geometry is written once and referenced twice. Serialising the same few tens of kilobytes of
