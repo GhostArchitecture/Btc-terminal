@@ -18,7 +18,7 @@
  *                     timezone moves its day-of-year and therefore its declination)
  *   - the seed       (sessionStorage btc.seed / tome:seed, written before any page script evaluates)
  *
- * Usage:  node occvm/golden/record.js [--tool btc|rhyme] [--out DIR]
+ * Usage:  node occvm/golden/record.js [--tool btc|rhyme|reference] [--out DIR]
  *         node occvm/golden/verify.js            (re-records and diffs tier 1 only)
  *
  * Requires playwright and a Chromium; both are present in the Claude Code web environment.
@@ -34,6 +34,13 @@ const REPOS = {
   rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed",
            /* the binding only exists once React has mounted and rendered */
            ready: () => !!document.querySelector(".binding") },
+  /* OCCVM 1.8 — the reference surface is recorded like a tool, and it is the only one of the three whose
+     drift can ONLY be the spine's: it holds no values of its own, so anything that moves here moved in a
+     part. It lives inside this repository, so unlike `rhyme` it is always present in a checkout. */
+  reference: { root: path.resolve(HERE, "..", "reference"), seedKey: "occvm.seed",
+               /* the token table is the last thing the page paints, and it needs every part alive */
+               ready: () => document.querySelectorAll("#tok tr").length > 0
+                            && getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
 };
 
 /* Pinned instants over Dayton. Elevations are from occvm/tools/solar-compare.js, not asserted here. */
@@ -206,4 +213,4 @@ async function main() {
   }
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { record, tokenNames, CASES, SEED, TZ };
+module.exports = { record, tokenNames, CASES, SEED, TZ, TOOLS: Object.keys(REPOS) };

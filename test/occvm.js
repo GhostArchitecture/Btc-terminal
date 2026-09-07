@@ -70,6 +70,67 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
+/* --- OCCVM 1.8: the reference surface -----------------------------------------------------------
+ * Its whole claim is that it holds no values of its own, so that anything wrong on it is wrong in the
+ * spine. That claim is only worth something if it is checked mechanically, which is what this block is.
+ */
+{
+  const fs6 = require("fs"), path6 = require("path");
+  const ROOT6 = path6.resolve(__dirname, "..");
+  const REF = path6.join(ROOT6, "occvm", "reference", "index.html");
+  const { block: block6, fence: fence6, PARTS: PARTS6 } = require("../occvm/tools/splice-spine");
+
+  T("the reference surface exists", fs6.existsSync(REF));
+  const ref = fs6.existsSync(REF) ? fs6.readFileSync(REF, "utf8") : "";
+
+  const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0);
+  T("every spine part is spliced into the reference surface", refParts.length === 5, refParts.length);
+  for (const part of refParts) {
+    const f = fence6(part.name);
+    const src = fs6.readFileSync(path6.join(ROOT6, "occvm", part.name), "utf8");
+    T(`reference: ${part.name} is spliced exactly once`,
+      ref.split(f.open).length - 1 === 1 && ref.split(f.close).length - 1 === 1, part.name);
+    const a = ref.indexOf(f.open), b = ref.indexOf(f.close);
+    T(`reference: ${part.name} matches occvm/${part.name}`,
+      ref.slice(a, b + f.close.length) === block6(part.name, src), part.name);
+  }
+
+  /* THE LOAD-BEARING ONE. Strip the fences — inside them the spine may of course state values, that is
+     what a spine is — and nothing resembling an authored colour may remain. A reference surface that
+     carries its own hex is describing a design rather than resolving one, and it would keep looking
+     right after the spine underneath it had stopped being applied. */
+  const unfenced = ref.replace(/\/\* ==== OCCVM SPINE [\s\S]*?==== \*\/[\s\S]*?\/\* ==== END OCCVM [\s\S]*?==== \*\//g, "");
+  const styleBlock = (unfenced.match(/<style>([\s\S]*?)<\/style>/) || [, ""])[1];
+  const scriptBlocks = (unfenced.match(/<script>[\s\S]*?<\/script>/g) || []).join("\n");
+  T("the reference surface's own CSS authors no hex literal",
+    !/#[0-9a-fA-F]{3,8}\b/.test(styleBlock), (styleBlock.match(/#[0-9a-fA-F]{3,8}\b/g) || [])[0]);
+  T("the reference surface's own CSS authors no rgb()/rgba() triplet",
+    !/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+/.test(styleBlock), (styleBlock.match(/rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+[^)]*\)/g) || [])[0]);
+  T("the reference surface's own CSS names no colour keyword",
+    !/(?<![\w-])(white|black|red|green|blue|gray|grey|silver|gold)(?![\w-])/.test(styleBlock));
+  T("the reference surface's own JS authors no hex literal",
+    !/#[0-9a-fA-F]{3,8}\b/.test(scriptBlocks), (scriptBlocks.match(/#[0-9a-fA-F]{3,8}\b/g) || [])[0]);
+
+  /* it must wear the spine's primitives rather than reimplement them — that is the difference between a
+     surface that conforms and a surface that merely resembles one */
+  T("its sections wear the spine's own .occvm-slab", (ref.match(/class="law occvm-slab"/g) || []).length >= 10);
+  T("it composes bevel and cast rather than re-authoring either",
+    ref.includes("var(--occvm-bevel), var(--occvm-cast-2)"));
+  T("its controls carry the interaction primitives (L8)", ref.includes("occvm-act occvm-focus"));
+
+  /* one specimen per law, and the ids the wiring paints into must exist */
+  for (const id of ["l1", "l3", "l5", "l6", "l9", "l10", "tok", "pick"])
+    T(`the reference surface carries a #${id} specimen`, ref.includes(`id="${id}"`), id);
+  for (let n = 1; n <= 10; n++)
+    T(`OCCVM-L${n} has a section on the reference surface`, ref.includes(`OCCVM-L${n}<`), n);
+
+  /* the recorder must actually record it — a surface added and never diffed is decoration */
+  const { TOOLS } = require("../occvm/golden/record.js");
+  T("the golden recorder carries the reference surface", TOOLS.indexOf("reference") >= 0, TOOLS.join(","));
+  T("the reference surface has a recorded golden set",
+    fs6.existsSync(path6.join(ROOT6, "occvm", "golden", "reference", "tokens.json")));
+}
+
 /* --- OCCVM-L9, 1.7: civil/nautical/astronomical dusk staging, additive over the existing --night ramp -- */
 {
   const h = load();
@@ -120,7 +181,10 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const doc = fs.readFileSync(path.join(ROOT, "occvm", "SPINE.md"), "utf8");
   const { block, fence, PARTS } = require("../occvm/tools/splice-spine");
 
-  for (const part of PARTS) {
+  /* filtered to the parts spliced into THIS file: since 1.8 a part is spliced into more than one target
+     (the tool and the reference surface), and an unfiltered loop would check index.html twice per part
+     and call the duplicate coverage. The reference surface has its own block below. */
+  for (const part of PARTS.filter(p => p.target === "index.html")) {
     const f = fence(part.name);
     const src = fs.readFileSync(path.join(ROOT, "occvm", part.name), "utf8");
     T(`${part.name} is spliced exactly once`,

@@ -31,6 +31,13 @@ const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
 /* A part names its source, the file it is spliced into, and the anchor it follows. Anchors put the spine
    ABOVE the tool's own declarations, so the tool wins every collision by ordinary cascade and load order.
    A null anchor means the top of the file. */
+/* The reference surface (1.8) is a splice target like a tool, and for the same reason: it must carry the
+   spine's actual bytes rather than a description of them. It is not duplicated into Rhyme — it renders
+   the numeric face, which lives only where mono is rendered, and it sits beside occvm/golden/ because
+   both are conformance instruments rather than spine content. The law and the five parts are what every
+   repository carries identically; the instruments that check them live in one place. */
+const REF = path.join("occvm", "reference", "index.html");
+
 const PARTS = IS_RHYME ? [
   { name: "spine.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
   { name: "sundial.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
@@ -43,6 +50,11 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
   { name: "veins.js",     target: "index.html", anchor: "<script>" },
   { name: "minerals.js",  target: "index.html", anchor: "<script>" },
+  { name: "spine.css",    target: REF, anchor: "<style>" },
+  { name: "mono.css",     target: REF, anchor: "<style>" },
+  { name: "sundial.js",   target: REF, anchor: "<script>" },
+  { name: "veins.js",     target: REF, anchor: "<script>" },
+  { name: "minerals.js",  target: REF, anchor: "<script>" },
 ];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);
@@ -105,7 +117,9 @@ function main() {
     if (r.state === "STALE" || r.state === "ABSENT") bad++;
   }
   if (!any) { console.error("no part matched — nothing spliced"); process.exit(1); }
-  const stamp = PARTS.map(p => `${p.name}:${sha(fs.readFileSync(path.join(OCCVM, p.name), "utf8"))}`).join(" ");
+  /* one hash per PART FILE, not per splice site — since 1.8 a part is spliced into more than one target */
+  const stamp = [...new Set(PARTS.map(p => p.name))]
+    .map(n => `${n}:${sha(fs.readFileSync(path.join(OCCVM, n), "utf8"))}`).join(" ");
   console.log(check ? (bad ? `SPINE DRIFT: ${bad} part(s) out of date. Run: node occvm/tools/splice-spine.js` : `SPINE OK: ${stamp}`) : `spine ${stamp}`);
   process.exit(bad ? 1 : 0);
 }

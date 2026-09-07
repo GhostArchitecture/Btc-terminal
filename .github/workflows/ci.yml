@@ -63,3 +63,9 @@ jobs:
       # checkout does not have.
       - name: Golden set — BTC token manifest
         run: npm run golden:verify -- --tool btc
+
+      # OCCVM 1.8. The reference surface lives in this repository, so unlike Rhyme it is always present.
+      # It is the sharper of the two signals: it holds no values of its own, so a difference here can
+      # only be the spine's — where a difference on BTC might be the tool's.
+      - name: Golden set — reference surface (OCCVM 1.8)
+        run: npm run golden:verify -- --tool reference

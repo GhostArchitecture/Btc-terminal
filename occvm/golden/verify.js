@@ -9,11 +9,11 @@
  * migration process (section 7) is exactly the thing you must not ship. Read the delta. If it is the
  * change you intended, re-record and commit the new baseline (migration section 8).
  *
- * Usage:  node occvm/golden/verify.js [--tool btc|rhyme]
+ * Usage:  node occvm/golden/verify.js [--tool btc|rhyme|reference]
  */
 "use strict";
 const fs = require("fs"), os = require("os"), path = require("path");
-const { record } = require("./record");
+const { record, TOOLS } = require("./record");
 
 const HERE = __dirname;
 
@@ -37,7 +37,10 @@ async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "occvm-golden-"));
   let failures = 0, checked = 0;
 
-  for (const tool of ["btc", "rhyme"]) {
+  /* the list comes from the recorder, never from a copy here: a surface added to record.js but not
+     to this array would be recorded and then never diffed, which is a golden set that quietly
+     stops covering what it grew. (1.8 added the reference surface and hit exactly that.) */
+  for (const tool of TOOLS) {
     if (only && tool !== only) continue;
     const goldenFile = path.join(HERE, tool, "tokens.json");
     if (!fs.existsSync(goldenFile)) { console.log(`  ${tool}: no golden set recorded — skipping`); continue; }

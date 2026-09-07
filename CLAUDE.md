@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907170219` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260907172541` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
 stores and exports. One file, 6,331 lines,
@@ -29,6 +29,13 @@ GhostArchitecture/Btc-terminal   (main)
 │   ├─ {volspace,calendar,detect,reversal,schema,prereg,regime}/{code.js,test.js,*.md}
 │   ├─ run.js                    runs every unit suite
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
+├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
+│   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
+│   ├─ {spine.css,sundial.js,veins.js,minerals.js}   the shared parts, spliced into both tools
+│   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
+│   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
+│   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
+│   └─ tools/splice-spine.js     puts each part into each target, idempotently, under a fence
 └─ .nojekyll
 ```
 
@@ -1181,8 +1188,28 @@ rewriting it wasn't this release's job. `--bloom`, the malachite tile glow renam
 1.2, is deleted outright — not replaced with `--glow` on the surface, since `OCCVM-L9` reserves that for
 ink and says plainly that no surface takes one.
 
-**Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 closes no
-numbered defect but completes L9's dusk-stage refinement and the `--bloom` deletion it named in advance.
+**1.8 — the reference surface.** `occvm/reference/index.html` is a conforming page that exists only to be
+looked at: one live specimen per law, drawn from the five spine parts spliced into it. It lives here rather
+than in both repositories because it renders the numeric face (which ships only where mono is rendered) and
+because it is a conformance *instrument*, like `occvm/golden/` beside it — the law and the parts are what
+both repositories carry identically. It is served with the rest of this repo, so it is readable at
+`btc-terminal.pages.dev/occvm/reference/`.
+
+**It holds no values of its own, and that is enforced, not intended.** `test/occvm.js` strips the spliced
+fences and fails on any hex, `rgb()`/`rgba()` triplet or colour keyword left in the page's own CSS or JS.
+Everything on it resolves through a spine token or a `color-mix()` of one — so it cannot keep looking
+correct after the spine stops applying to it. It is recorded into the golden set as a third surface and
+checked in CI, and it is the sharpest of the three signals: a delta on this tool might be this tool's, a
+delta there can only be the spine's.
+
+It also found a real gap in its own first section: `.occvm-slab` and `.occvm-cast` both own `box-shadow`,
+so no surface could wear both, which is why every surface that wanted a cut face *and* a cast re-authored
+the bevel by hand. `--occvm-bevel` (spine.css, L2) is the fix. Nothing in this tool moves — the token is
+added, no existing value changes, and this tool does not use `.occvm-slab`.
+
+**Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
+no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
+advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.

@@ -20,7 +20,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **1.5** | landed | the interaction floor. Closed D7. |
 | **1.6** | landed | architecture conformance. Closed D4, D5. |
 | **1.7** | landed | the dusk stages, additive over the 1.0 `--night` ramp; deleted BTC's tool-local `--bloom` surface glow now that OCCVM-L9's "no surface takes a glow" has an owner. |
-| 1.8 | outstanding | the reference surface. |
+| **1.8** | landed | the reference surface: a conforming page that holds no values of its own, one live specimen per law, recorded into the golden set as a third surface. Added `--occvm-bevel` (L2) — a gap it found on itself. |
 | **1.9** | landed (narrow) | D1 closed: the expired `--ink --meas --bondi` alias block swept to its canonical names. The roadmap's fuller sketch — a full token audit beyond this block, a migration table for other divergences, promoting every remaining divergence to a law amendment or exception — was not performed; nothing else in the spine currently has an open alias needing it. |
 
 **All eleven defects are closed.** D1's aliases were shown to be load-bearing by 1.2's golden diff —
@@ -346,6 +346,16 @@ bevel components `--lit-x --lit-y --cut-x --cut-y`. A surface picks a depth or m
 by its own; it never authors an offset. The depth multipliers are anchored so each reproduces at high sun
 the offset it replaced, so the noon frame barely moves and the low-sun frames carry the change.
 
+**Added at 1.8 (OCCVM-L2):** `--occvm-bevel`, the whole cut face as a single composable value. `.occvm-slab`
+and `.occvm-cast` both own `box-shadow`, so a surface could not wear both — the later rule won and the other
+was silently lost, which meant every surface wanting a cut face *and* a cast re-authored the bevel by hand,
+which is how channel literals get back into a tool that had removed them. A surface now writes
+`box-shadow: var(--occvm-bevel), var(--occvm-cast-2)`. `.occvm-slab` is defined in terms of it, so the
+primitive and the composable value cannot drift. **Found by the reference surface on its own first
+section** — the instrument built to catch this class of gap caught one before it had finished being built.
+Neither tool's rendering moves: the token is added, no existing value changes, and neither tool uses
+`.occvm-slab` yet.
+
 `--serif` is spine-governed in one canonical spelling. Both tools also still declare their own — the same five
 faces in the same order, differing only in whitespace — and at 1.0 that shadowing declaration **stays**. The
 spine is inlined above the tool's CSS and nothing else changes (2.0 migration process §3.2); deleting a
@@ -463,9 +473,9 @@ found by measurement after it was written.
 
 | tool | version | build stamp | violates |
 |---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.9 | `build-20260907170219` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7 | `build-20260907170225` | — (renders no mono; D3 does not apply) |
-| **Reference surface** | — | not built | — (1.8) |
+| **BTC Terminal** | 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907172541` | — |
+| **Rhyme Instrument** | 1.0, 1.1, 1.2, 1.4, 1.5, 1.6, 1.7, 1.8 | `build-20260907172553` | — (renders no mono; D3 does not apply) |
+| **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907172437` | — (holds no values of its own) |
 
 **At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
 
@@ -608,5 +618,39 @@ step and 0.15 `--elev` floor "deliberately, not as desired," directly contradict
 immediately below it. Both are artifacts of documenting a release before it shipped and never revisiting
 the sentence once it did — the same failure class as the `--model`/`--bondi` mention 1.4 caught in the
 tool-local token list.
+
+**1.8** built the reference surface, `occvm/reference/index.html`: one live specimen per law, drawn from
+the five spine parts spliced into it rather than from a copy of their values. It is a *conformance
+instrument*, not spine content, so it is not duplicated into Rhyme — it renders the numeric face, which
+ships only where mono is rendered, and it sits beside `occvm/golden/` for the same reason that directory
+does. What every repository carries identically is the law and the five parts; what checks them lives in
+one place.
+
+**Its whole claim is that it holds no values of its own**, and that claim is checked rather than asserted.
+`test/occvm.js` strips the spliced fences out of the file — inside them the spine may of course state
+values, that is what a spine is — and fails on any hex, any `rgb()`/`rgba()` triplet and any colour keyword
+left in the page's own CSS or JS. Every surface, rule and piece of ink on it resolves through a spine token
+or a `color-mix()` of one. The consequence is that this page cannot keep looking right after the spine
+underneath it has stopped applying: it does not degrade to something that looks deliberate, it goes flat
+and obviously wrong, which is the behaviour a reference surface should have and the reason the no-colour
+rule is worth enforcing rather than merely intending.
+
+It is recorded into the golden set as a third surface, and it is the sharpest of the three: a difference on
+BTC or Rhyme might be that tool's, while a difference here can only be the spine's. `verify.js` no longer
+carries its own copy of the surface list — it reads it from the recorder, because 1.8 added a surface to
+`record.js` and the hardcoded `["btc", "rhyme"]` in the verifier would have recorded it and then never
+diffed it. A golden set that quietly stops covering what it grew is the same failure the token-set guard
+was added for.
+
+**It found a real gap on its own first section, before it was finished.** `.occvm-slab` and `.occvm-cast`
+both own `box-shadow`, so no surface could wear both — the later rule won and the other was silently lost.
+The first draft of this page therefore hand-wrote the bevel, putting channel literals straight back into a
+file whose entire point is that it has none. The fix is `--occvm-bevel` (§2a, added at 1.8): the cut face as
+one composable value, with `.occvm-slab` defined in terms of it so the primitive and the value cannot drift.
+Neither tool moves — the token is added, nothing existing changes, and neither tool uses `.occvm-slab` yet.
+
+**What it is not.** It cannot tell you a tool conforms. Conformance is decided by `test/occvm.js`, the unit
+suites and the golden diff — assertions that run. This is the eye's instrument beside those, and the page
+says so in its own first section rather than leaving a reader to assume otherwise.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.
