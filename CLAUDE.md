@@ -1345,6 +1345,14 @@ derived, on an unworn class, consumed by nothing (D12). The auditor gained `--st
 regenerated, not typed once) and a two-way `--check`; it also had a bug of its own — `SIBLING` hardcoded,
 so from Rhyme it measured Rhyme twice under two names and passed. **7 in force, 1 diverged, 4 unmeasured.**
 
+*And CI was red for three pushes while every local gate read green.* Run 38 was the golden job catching
+`--occvm-r` landing unrecorded (superseded by its deletion); 39 and 40 were one harness assertion that
+demanded `PARTIAL` whenever a tool was `ABSENT` — written against a full checkout, where no tool ever is,
+and wrong on the runner, where L2's own divergence correctly rolls up `DIVERGED` over the absent sibling.
+The auditor now takes `OCCVM_SIBLING` so the harness simulates the partial checkout itself instead of
+waiting for the runner to; the CI shape is asserted locally on every run. Recorded because "gates green"
+was reported from the clone, and the standing rule is CI via the API.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

@@ -1210,8 +1210,28 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("no law reports IN FORCE without a tool measured as conforming",
       j.every(l => l.overall !== "IN FORCE" || l.per.some(p => p.state === "CONFORMS")),
       "unadopted + unmeasured rolling up to IN FORCE is how a declared law reads as a working one");
+    /* A partial checkout is what CI is: each repository's runner has itself and not its sibling. The
+       first version of this assertion demanded PARTIAL whenever a row was ABSENT and was measured only
+       against a full checkout, where no row ever is; on the runner it failed twice, because a law whose
+       present tool DIVERGES rolls up DIVERGED — a measured divergence outranks an absent tool, and that
+       is correct. What ABSENT must never do is roll up to IN FORCE. Simulated here rather than waited
+       for: the auditor is pointed at a sibling that does not exist. */
+    const jp = JSON.parse(cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--json"],
+      { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) }).stdout);
+    T("with the sibling absent, every law carries an ABSENT row",
+      jp.length === 12 && jp.every(l => l.per.some(p => p.state === "ABSENT")));
     T("a tool absent from the checkout is never counted as conforming",
-      j.every(l => l.per.every(p => p.state !== "ABSENT" || l.overall === "PARTIAL")));
+      jp.every(l => l.overall === "PARTIAL" || l.overall === "DIVERGED"),
+      "IN FORCE / UNADOPTED / UNMEASURED with one tool unread is a verdict on a tool nobody looked at");
+    T("and a measured divergence still outranks the absence",
+      jp.some(l => l.overall === "DIVERGED" && l.per.some(p => p.state === "ABSENT")),
+      "this is the row the first assertion rejected; it is the correct rollup");
+    const chk = cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--check"],
+      { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) });
+    T("the law gate passes on a partial checkout when its own tool's divergences are recorded", chk.status === 0,
+      chk.stdout.slice(-300));
 
     /* the gate must FAIL on a hidden divergence. This is asserted by actually hiding one, because the
        first version of the check passed while a law's own block claimed conformance — it was satisfied

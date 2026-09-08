@@ -39,7 +39,12 @@ const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
 /* The sibling is the OTHER repository. The first version resolved "../Rhyme-Instrument" unconditionally,
    so run from Rhyme it read Rhyme's own built index.html and reported it as BTC — measuring one tool
    twice under two names, and passing. Every Rhyme-side LAW AUDIT OK before this line was that. */
-const SIBLING = path.resolve(ROOT, "..", IS_RHYME ? "Btc-terminal" : "Rhyme-Instrument");
+const SIBLING = process.env.OCCVM_SIBLING
+  ? path.resolve(process.env.OCCVM_SIBLING)
+  : path.resolve(ROOT, "..", IS_RHYME ? "Btc-terminal" : "Rhyme-Instrument");
+/* OCCVM_SIBLING exists so a test can point the auditor at a directory that is not there and watch
+   what a partial checkout does — which is what CI is. The first partial-checkout assertion was written
+   against a full one, passed locally, and failed on the runner twice. */
 
 /* Each tool names the files that carry its OWN declarations — never the spliced spine, which is the law
    speaking rather than the tool answering. The fences are stripped before measurement for that reason. */
