@@ -137,7 +137,7 @@ table {
 /* ==== END OCCVM mono.css ==== */
 
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:fcab4686015e */
+/* sha256:4cca3279f50b */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -219,12 +219,13 @@ table {
     inset var(--lit-x) var(--lit-y) 0 rgba(255, 255, 255, var(--hi-a, .12)),
     inset var(--cut-x) var(--cut-y) 0 rgba(0, 0, 0, var(--cut-a, .35));
 
-  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
-     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
-     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
-     acquiring a second generator. */
+  /* OCCVM-L10 (1.1, re-derived 2.8) — vein habit. density is the VOLUME FRACTION of the suspension: the
+     particle count as a fraction of the lattice, the same number it has been since 1.1 under the
+     walker-budget reading. Below ~.15 the flocs stay separate; at .3 the suspension is past its gel point
+     and the network spans the surface. --vein-habit was RETIRED at 2.8: a fluid has no crystallographic
+     direction to be anisotropic along, and the one axis colloid science offers (sticking probability,
+     diffusion- versus reaction-limited) was measured and does not express on this lattice. */
   --vein-density: .3;
-  --vein-habit: .55;
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
@@ -672,18 +673,38 @@ footer { margin-top: 34px; }
 
 <section class="law occvm-slab">
   <div class="hd"><span class="id">OCCVM-L10</span><h2>Vein habit</h2></div>
-  <p>Veins are <b>grown, not drawn</b> — diffusion-limited aggregation, where a walker sticks the instant
-  it touches the aggregate and branching is dendritic because a protruding tip screens the interior.
-  Nobody authors the branching. Every stroke is a straight segment between a particle and the particle it
-  stuck to; a fitted curve would be the bezier arriving back through the renderer.</p>
+  <p>Veins are <b>grown, not drawn</b> — since 2.8 by diffusion-limited <i>cluster</i> aggregation, which
+  is how a colloidal suspension actually gels: every particle diffuses, clusters stick to clusters on
+  contact, and the flocs join into a network suspended in the fluid. Nobody authors the branching. Every
+  stroke is a straight segment between two particles that bonded; a fitted curve would be the bezier
+  arriving back through the renderer.</p>
   <div class="veins" id="l10"></div>
-  <p class="note" style="margin-top:10px">Same seed, three habits. The mineral is <b>aragonite</b> — 2.0's
-  anchor, one crystal for substrate and vein alike — so the growth radiates from a nucleation point and
-  twins in threes, the pseudo-hexagonal cyclic twin aragonite is known for. <code>--vein-habit</code> is
-  the anisotropy of that growth, and it lives in <i>attachment</i>, not travel: the walk is unbiased, and
-  what differs by direction is whether a contact is accepted. Biasing the walker instead was measured and
-  did nothing — a walker pushed outward leaves rather than sticking. At habit 0 attachment is indifferent
-  to direction, which is exactly what an equant dendrite is.</p>
+  <p class="note" style="margin-top:10px">Same seed, three concentrations. The axis a fluid has is
+  <b>volume fraction</b>, and <code>--vein-density</code> is that number: at .08 the flocs are isolated,
+  at .15 they are separate with matrix between them, at .3 — what both tools ship — the suspension is
+  past its gel point and the network spans the field. The mass–radius dimension climbs 1.38 → 1.46 →
+  1.61 along that row, toward the 2-D DLCA literature's 1.44 in the dilute limit and past it in the gel,
+  as a space-filling network must. <code>--vein-habit</code> is retired: a suspension has no direction to
+  be anisotropic along, and the sticking-probability axis was measured on this lattice and does not
+  express. The crystal's threefold twin, which this page showed until 2.7, left with the crystal.</p>
+</section>
+
+<hr class="rule">
+
+<section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L11</span><h2>Yield</h2></div>
+  <p>An irreversible action does not share a physical vocabulary with a reversible one. Everything else
+  fades, slides or settles — elastic behaviours, which imply the thing could come back. A yield-stress
+  fluid past its limit <b>yields</b>: the filament necks at one point, pinches off, and the two bodies
+  retract from the break and <b>stop</b> — in finite time, at an exact instant, which no elastic easing
+  in the system does. No fade at any point: yielded material becomes absent, not transparent.</p>
+  <div class="specimen" id="l11"></div>
+  <p class="note" style="margin-top:10px">The retraction runs on the cessation curve derived from the
+  substance (rheology.js): at its τ₀ the decay is yield-dominated, velocity falls linearly to zero and the
+  position is the quadratic <code>1 − (1−u)²</code>, handed to CSS as <code>linear()</code>. The
+  millisecond counts are authored and named as authored; the shape and the hard stop are the substance's.
+  Until 2.7 this specimen would have cleaved along aragonite's 116.209° composition plane. A fluid has no
+  plane.</p>
 </section>
 
 <hr class="rule">
@@ -708,8 +729,181 @@ footer { margin-top: 34px; }
 </div>
 
 <script>
+/* ==== OCCVM SPINE yield.js — spliced from occvm/yield.js. do not edit. ==== */
+/* sha256:45f7621c146e */
+/* OCCVM 2.8 — yield. The shared BEHAVIOUR primitive for irreversible actions (OCCVM-L11), second basis.
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Replaces occvm/fracture.js. A crystal past its limit CLEAVES along a plane its lattice decides; that
+ * primitive split the element along aragonite's {110} angle and torqued the halves apart. A fluid has
+ * no plane and no angle. What a yield-stress fluid does past its limit is YIELD: below τ₀ it holds and
+ * nothing moves, at τ₀ it flows, and a filament of it that is pulled thins at one point — capillary
+ * necking — until it PINCHES OFF into two bodies that retract from the break and come to rest. Three
+ * phases, hold → neck → pinch-off, and the last is the one that makes the event irreversible: a
+ * filament that has pinched does not rejoin.
+ *
+ * WHAT THE PRIMITIVE KEEPS FROM FRACTURE, because it was right for reasons that survive the substance:
+ * a destructive action must not share a physical vocabulary with a reversible one. Everything else in
+ * these tools fades, slides or settles, and those are elastic behaviours — elastic behaviour implies
+ * the thing could come back. No fade at any point: yielded material does not become transparent, it
+ * becomes absent. Two clones carrying the element's RESOLVED style, so an #id-styled element does not
+ * pinch blank (1.1b's lesson, kept verbatim). Reduced motion honoured from the spine's rule. Seeded off
+ * the element, so a replayed deletion looks the same and the golden set can pin one.
+ *
+ * WHAT DISTINGUISHES IT FROM THE ELASTIC VOCABULARY, now that speed does not. Fracture claimed "faster
+ * than any elastic curve", and a fluid has no reason to be quick. The distinction is the STOP. Every
+ * elastic easing in the system approaches rest asymptotically and never technically arrives; a
+ * yield-stress fluid stops in finite time, at an exact instant, with the velocity reaching zero rather
+ * than tending to it (rheology.js, `cessation`). The retraction here runs on that curve — sampled from
+ * the integrated Herschel-Bulkley decay and handed to CSS as `linear()` — and it is the only motion in
+ * either tool that ends. That is the vocabulary.
+ *
+ * WHAT IS AUTHORED, named. The roadmap wanted the duration derived from γ̇ = ((τ−τ₀)/k)^(1/n). With
+ * n = 0.19 that exponent is 5.26 and a 100× range in stress spans 1.9e18 in rate: no monotone map from
+ * that onto a few hundred milliseconds exists that is not doing all the work itself (rheology.js, 2.5).
+ * So the millisecond counts below are authored, as fracture's 220 ms was, and the SHAPE of the
+ * retraction is derived. The hold phase is zero for a click-driven action: the click is the stress, and
+ * it is above τ₀ by definition — that is what makes it a deletion. A hold that is visible would read as
+ * lag, not as a material refusing to move.
+ *
+ * SCOPE IS THE DISCIPLINE. Irreversible only — delete, discard, disconnect. Never a cancel, never a
+ * dismiss, never a close. A vocabulary that marks everything marks nothing.
+ */
+var OCCVM_YIELD = (function () {
+  "use strict";
+
+  /* The substance, resolved at CALL time and never at load. fracture.js captured its dependency into a
+     module binding while its IIFE ran; the splicer lands parts in reverse list order, so the binding was
+     null in every browser and cleave() threw on every call for a release and a half while Node resolved
+     it through require. A lazy read is order-independent, which is the property this needs. No fallback
+     to a literal: a curve typed here would be a second copy of the derivation. */
+  function substance() {
+    var r = (typeof OCCVM_RHEOLOGY !== "undefined" && OCCVM_RHEOLOGY) ? OCCVM_RHEOLOGY
+          : (typeof require !== "undefined" ? require("./rheology.js") : null);
+    if (!r) throw new Error("occvm yield: rheology.js is not spliced beside this — no substance to yield");
+    return r;
+  }
+
+  /* Authored, and named as authored: the thinning and the retraction, in milliseconds. */
+  var NECK_MS = 140;
+  var RETRACT_MS = 260;
+  /* v₀ in the model's own units. It fixes the regime (rheology.js: k·v₀ⁿ/τ₀) and with it the exponent of
+     the ease-out; at the substance's τ₀ any v₀ under ~3,000 is yield-dominated and the curve is the
+     quadratic with a hard stop. Open item #12 stands: nothing maps a click onto this number. */
+  var V0 = 1;
+
+  function reduced() {
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+    catch (e) { return false; }
+  }
+
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash(s) {
+    var n = 2166136261;
+    for (var i = 0; i < s.length; i++) { n ^= s.charCodeAt(i); n = Math.imul(n, 16777619); }
+    return n >>> 0;
+  }
+
+  /* The neck. The filament is the element's width; it thins at one point along it, `at` (percent of
+     width), and the two bodies either side taper toward that point. Returned as the two clip polygons,
+     in percent, for a given taper `t` (0 = untouched rectangle, 1 = drawn to a point). Same vertex
+     count at every t, so CSS interpolates the polygon rather than snapping. */
+  function halves(at, t) {
+    var tp = 50 * t;                            /* how far each corner at the neck has moved toward mid-height */
+    var L = "polygon(0% 0%," + at + "% " + tp + "%," + at + "% 50%," + at + "% " + (100 - tp) + "%,0% 100%)";
+    var R = "polygon(100% 0%," + at + "% " + tp + "%," + at + "% 50%," + at + "% " + (100 - tp) + "%,100% 100%)";
+    return [L, R];
+  }
+
+  /* the retraction's easing, from the substance — the one place the curve is decided */
+  function easing() {
+    var r = substance();
+    return r.cssEasing(r.SUBSTANCE, V0);
+  }
+
+  /* pinch(el, done): the element necks at a point along its width, pinches off, and the two bodies
+   * retract from the break on the cessation curve and STOP.
+   *
+   * Cloned twice rather than animated in place, because one box cannot move in two directions. The
+   * original is hidden on the same frame the clones appear, so nothing is ever visible twice. */
+  function pinch(el, done) {
+    if (!el || !el.getBoundingClientRect) { if (done) done(); return; }
+    var box = el.getBoundingClientRect();
+    if (!box.width || !box.height) { if (done) done(); return; }
+
+    if (reduced()) {                       /* the floor is the law's, not this primitive's */
+      el.style.visibility = "hidden";
+      if (done) done();
+      return;
+    }
+
+    var seed = hash((el.id || "") + "|" + Math.round(box.width) + "x" + Math.round(box.height));
+    var rnd = rng(seed);
+    /* the neck forms somewhere in the middle third: a filament thins where it is thinnest, and a
+       jittered point keeps two deletions of the same thing from pinching identically */
+    var at = 35 + rnd() * 30;
+    var whole = halves(at, 0), necked = halves(at, 1);
+    var curve = easing();
+
+    var host = document.createElement("div");
+    host.setAttribute("aria-hidden", "true");
+    host.style.cssText = "position:fixed;left:" + box.left + "px;top:" + box.top + "px;width:" +
+      box.width + "px;height:" + box.height + "px;pointer-events:none;z-index:9999";
+
+    var computed = window.getComputedStyle(el);
+    for (var i = 0; i < 2; i++) {
+      var part = el.cloneNode(true);
+      part.removeAttribute("id");
+      for (var k = 0; k < computed.length; k++) {
+        var prop = computed[k];
+        part.style.setProperty(prop, computed.getPropertyValue(prop));
+      }
+      part.style.cssText += ";position:absolute;left:0;top:0;margin:0;width:100%;height:100%" +
+        ";clip-path:" + whole[i] +
+        ";transition:clip-path " + NECK_MS + "ms linear,transform " + RETRACT_MS + "ms " + curve + " " + NECK_MS + "ms";
+      host.appendChild(part);
+    }
+    document.body.appendChild(host);
+    el.style.visibility = "hidden";
+
+    requestAnimationFrame(function () {
+      var kids = host.children;
+      for (var i = 0; i < kids.length; i++) {
+        /* the neck draws in, then each body retracts AWAY from the break along the filament's own axis —
+           surface tension pulling a severed thread back into itself. No rotation: a fluid body has no
+           edge to torque about. The retraction is a fraction of the body's own length, so a short
+           element does not fly. */
+        var s = i ? 1 : -1;
+        var reach = box.width * (i ? (100 - at) : at) / 100;
+        kids[i].style.clipPath = necked[i];
+        kids[i].style.transform = "translateX(" + (s * reach * 0.55).toFixed(1) + "px)";
+      }
+    });
+
+    setTimeout(function () {
+      if (host.parentNode) host.parentNode.removeChild(host);
+      if (done) done();
+    }, NECK_MS + RETRACT_MS + 20);
+  }
+
+  return { pinch: pinch, halves: halves, easing: easing, NECK_MS: NECK_MS, RETRACT_MS: RETRACT_MS, V0: V0 };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_YIELD;
+/* ==== END OCCVM yield.js ==== */
+
 /* ==== OCCVM SPINE rheology.js — spliced from occvm/rheology.js. do not edit. ==== */
-/* sha256:ca7b589c8c28 */
+/* sha256:aadf887c5aa4 */
 /* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -969,18 +1163,116 @@ var OCCVM_RHEOLOGY = (function () {
   function inGlassPhase(m) { return noiseTemperature(m) < 1; }
 
   /* ---- vein habit --------------------------------------------------------------------------------
-   * occvm/veins.js grows by diffusion-limited aggregation, which is generic and survives the pivot
-   * untouched as a MECHANISM — DLCA is real colloid science, not a crystal borrowing. What does not
-   * survive is the {110} twin angle, which was a fact about a lattice and has no fluid counterpart.
-   * The replacement constant is the DLCA fractal dimension (Lin et al. 1989), and it governs how the
-   * aggregate fills space rather than what angle it branches at.
+   * occvm/veins.js grows by diffusion-limited CLUSTER aggregation since 2.8 — every particle mobile,
+   * clusters sticking to clusters — which is how a colloidal suspension actually gels and is what
+   * ketchup is: a particulate gel. The {110} twin angle was a fact about a lattice and has no fluid
+   * counterpart; nothing replaces it as an INPUT, because DLCA takes no constant from the substance.
    *
-   * NOTE FOR WHOEVER WIRES THIS: the twin angle also fed occvm/fracture.js, which cleaved along it.
-   * Retiring the angle therefore retires fracture's geometry, not only veins' — that is why `yield.js`
-   * replaces fracture wholesale rather than taking a new constant.
+   * The fractal dimension is an OUTPUT of the process, and the literature values are recorded here so
+   * the generator can be measured against them rather than quoted as if it produced them:
+   *
+   *   DLCA_D          1.75   three dimensions, gold colloids, Weitz & Oliveria 1984 — the figure the
+   *                          roadmap carries. Lin et al. 1989 put the same regime at 1.86 and the
+   *                          reaction-limited one at 2.1. None of these is reachable on a 2-D lattice.
+   *   DLCA_D_LATTICE  1.44   two dimensions, Meakin 1983 / Kolb, Botet & Jullien 1983 — what a planar
+   *                          simulation of the same mechanism produces in the dilute limit, and the
+   *                          number test/occvm.js holds the generator to at low density.
+   *
+   * At the density the tools ship (.3) the suspension is past its gel point and the measured dimension
+   * climbs toward 2 above the correlation length, as it must — a gel is space-filling at large scale
+   * and fractal only below ξ. Measured 1.61 at .3 against 1.45 at .15 (test/occvm.js). That is not a
+   * discrepancy with the literature; it is the difference between a floc and a gel, and the reference
+   * surface's L10 specimens now show exactly that transition.
+   *
+   * The twin angle also fed occvm/fracture.js, which cleaved along it. Retiring the angle retired
+   * fracture's geometry with it, which is why occvm/yield.js replaced fracture wholesale (2.8).
    */
   var DLCA_D = 1.75;
+  var DLCA_D_LATTICE = 1.44;
   function fractalDimension() { return DLCA_D; }
+
+  /* ---- cessation: how disturbed material comes to rest ---------------------------------------------
+   * A Newtonian fluid never stops: its velocity decays exponentially and only approaches zero. A
+   * yield-stress fluid STOPS, in finite, provable time (Huilgol, Mena & Piau 2002 for Bingham; the
+   * Herschel-Bulkley case follows the same argument). The roadmap's reduced model, unit effective mass:
+   *
+   *      dv/dt = −(τ₀ + k·vⁿ)
+   *
+   * with the analytic bracket  v₀/(τ₀ + k·v₀ⁿ) ≤ t_stop ≤ v₀/τ₀. Both are reproduced here and the
+   * integration is checked against both (test/rheology.js).
+   *
+   * WHAT THE DERIVATION ACTUALLY DECIDES, and what it does not. The roadmap read the shape as "normal
+   * deceleration, then a linear terminal phase" and attributed the tightness of the lower bound to the
+   * yield term dominating. Measured, the opposite holds at the roadmap's τ₀ = 0.03 Pa: the rate term
+   * k·vⁿ is larger than τ₀ until v falls to 3e-12, so the yield term governs the last 10⁻¹² of the
+   * decay and nothing else — the lower bound is tight because n = 0.19 makes vⁿ nearly flat, so the
+   * RATE term stays at its maximum. At the τ₀ this file carries (21.15 Pa), the yield term governs from
+   * t = 0 for any v₀ below about 3,000. Two regimes, one ratio deciding between them: k·v₀ⁿ/τ₀.
+   *
+   * Both regimes stop in finite time and both have a closed form for the POSITION, which is what an
+   * easing curve is:
+   *
+   *      yield-dominated  (k·v₀ⁿ ≪ τ₀)   v = v₀ − τ₀t         s(u) = 1 − (1−u)²
+   *      rate-dominated   (k·v₀ⁿ ≫ τ₀)   v^(1−n) linear in t  s(u) = 1 − (1−u)^(1 + 1/(1−n))  = 1 − (1−u)^2.235
+   *
+   * So the shape is a power ease-out with a HARD STOP — velocity reaches zero exactly at u = 1, which no
+   * cubic-bezier keyword does — and the exponent lies between 2 and 2.235. The roadmap's "linear
+   * terminal phase" is the yield-dominated velocity, whose position is the quadratic; it is not a third
+   * phase. `easing()` samples the integrated curve for CSS `linear()`, which encodes either exactly.
+   *
+   * WHAT IS AUTHORED, named as such. v₀ is the roadmap's open item #12: no derivation maps a UI
+   * disturbance onto an initial velocity, and with v₀ free the regime — hence the exponent — is chosen
+   * by choosing v₀. The absolute duration is the same story one step on: t_stop is in the model's own
+   * units, and a real millisecond count needs a scale nothing here supplies. The primitive therefore
+   * takes its DURATION as an authored constant, exactly as fracture's 220 ms was, and takes its SHAPE
+   * from here. That is the honest split: the derivation owns the curve and the hard stop; a person owns
+   * how long it lasts. Stating it this way is what keeps the exponent from being quietly tuned to a
+   * wanted feel and called physics.
+   */
+  function decel(m, v) { return m.tau0 + m.k * Math.pow(Math.max(v, 0), m.n); }
+  function stoppingBracket(m, v0) { return { lo: v0 / decel(m, v0), hi: v0 / m.tau0 }; }
+  function stoppingTime(m, v0, dt) {
+    dt = dt || v0 / decel(m, v0) / 2000;
+    var v = v0, t = 0;
+    while (v > 0) { v -= decel(m, v) * dt; t += dt; }
+    return t;
+  }
+  /* position fraction at `samples` evenly spaced time fractions, 0 → 1 inclusive; the curve CSS needs */
+  function easing(m, v0, samples) {
+    samples = samples || 17;
+    var T = stoppingTime(m, v0), dt = T / 4000, v = v0, t = 0, x = 0, pts = [0], next = 1;
+    while (t < T && next < samples) {
+      v = Math.max(0, v - decel(m, v) * dt); x += v * dt; t += dt;
+      if (t >= T * next / (samples - 1)) { pts.push(x); next++; }
+    }
+    var X = pts[pts.length - 1] || 1;
+    while (pts.length < samples) pts.push(X);
+    return pts.map(function (p) { return +(p / X).toFixed(4); });
+  }
+  /* the regime this v₀ lands in: the ratio that decides the exponent */
+  function regime(m, v0) { return m.k * Math.pow(v0, m.n) / m.tau0; }
+  function cssEasing(m, v0) {
+    return "linear(" + easing(m, v0, 17).join(", ") + ")";
+  }
+
+  /* ---- trap depth: CLOSES OPEN ITEM #4 -------------------------------------------------------------
+   * The roadmap records "no formula converts a poll interval to an energy". SGR has one: an element
+   * caged in a well of depth E escapes at a rate ∝ exp(−E/x), so its residence time is
+   * τ = τ_a · exp(E/x) and E = x · ln(τ/τ_a). A cadence is a residence time, and the fastest tier is
+   * the attempt time τ_a — the reference from which the others are measured, at depth 0. With x = 1−n:
+   *
+   *      exchange feeds   3 s      E = 0
+   *      CoinGecko       60 s      E = 0.81 · ln 20  = 2.43
+   *      Kalshi ladder  300 s      E = 0.81 · ln 100 = 3.73
+   *
+   * in units of x·kT. Derived, and CONSUMED BY NOTHING — recorded here for the same reason P1's
+   * durations were: the arithmetic is right, and wiring it before a surface expresses it would be a
+   * token nobody reads (OCCVM-D12). The roadmap's item #7, the scale mismatch of applying ensemble
+   * statistics to six named elements, stands and is not answered by this.
+   */
+  function trapDepth(m, periodMs, attemptMs) {
+    return noiseTemperature(m) * Math.log(periodMs / attemptMs);
+  }
 
   return {
     KETCHUP: KETCHUP, SUBSTANCE: SUBSTANCE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
@@ -990,517 +1282,13 @@ var OCCVM_RHEOLOGY = (function () {
     capillaryLength: capillaryLength, puddleHeight: puddleHeight,
     radiusPx: radiusPx, standingStress: standingStress, MM_PER_PX: MM_PER_PX,
     noiseTemperature: noiseTemperature, inGlassPhase: inGlassPhase,
-    fractalDimension: fractalDimension
+    DLCA_D_LATTICE: DLCA_D_LATTICE, fractalDimension: fractalDimension,
+    decel: decel, stoppingBracket: stoppingBracket, stoppingTime: stoppingTime, easing: easing,
+    regime: regime, cssEasing: cssEasing, trapDepth: trapDepth
   };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_RHEOLOGY;
 /* ==== END OCCVM rheology.js ==== */
-
-/* ==== OCCVM SPINE material.js — spliced from occvm/material.js. do not edit. ==== */
-/* sha256:01b93a1feca9 */
-/* OCCVM 2.0 — the material model (OCCVM-L12). One definition, shared by every conforming tool.
- *
- * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
- * spliced copy — the next splice reverts it silently.
- *
- * THE BREAK: a hex stops being authored and starts being derived. `--sub-hi`, `--sub` and `--sub-lo` were
- * three separate decisions that happened to look related. They are now one material, one body colour and
- * one cut geometry, and their RATIOS fall out of the arithmetic.
- *
- * ─── three derivations were measured before this one was kept ────────────────────────────────────
- *
- * The roadmap's argument for an orthorhombic system is that a slab has three faces sharing one scaled
- * response today, and that three principal indices give each face its own value from one definition.
- * That argument is right. Two obvious ways to cash it in are wrong, and both were measured:
- *
- *   1. NORMAL-INCIDENCE Fresnel on α/β/γ gives 4.39% / 6.44% / 6.51% — a spread of 1.48×, against the
- *      5.74× linear-luminance spread the tools actually author. Real optics, taken that way, is 3.9×
- *      FLATTER than the design; a substrate derived from it is nearly monochrome and both tools lose the
- *      structure they are read by.
- *
- *   2. Adding the sun and weighting reflectance by incident flux — R(θ)·cos θ, the intuitive fix — is
- *      WORSE, not better: the cosine very nearly cancels the Fresnel rise, and the whole 0–90° sweep
- *      collapses to 1.13×, peaking at 76.9°. Flux-weighting cannot produce a ramp at all. It was tried
- *      because it sounds more physical than what replaced it; it is recorded because the next person to
- *      have that idea should not have to spend the hour.
- *
- * What is kept is the third: on a dark, glossy solid you do not see a diffuse return, you see the
- * SPECULAR one, so a face's brightness tracks R at the angle it presents TO THE VIEWER. Those angles are
- * the slab's own cut geometry — the thing OCCVM-L2 already fixes — not the sun's position:
- *
- *      front  0°  n=α  R= 4.39%      chamfer 45°  n=β  R= 7.60%      edge 80°  n=γ  R=41.04%
- *
- * ─── what that decomposition buys, and it is the reason it is the one kept ───────────────────────
- *
- * The sun DROPS OUT of the ratio. Material owns structure; the sundial owns magnitude, exactly as it has
- * since 1.2. 2.0 therefore does not fight the light pipeline or double-apply it — the failure mode of the
- * elevation-parameterised version, which re-sorted its own faces as the sun moved and let `mid` collide
- * with `hi` at noon and with `lo` at dawn.
- *
- * ─── where the material and the hand disagree, stated rather than fitted ─────────────────────────
- *
- *      optics    edge : chamfer : front  =  9.353 : 1.732 : 1.000
- *      authored  hi   : mid     : lo     =  5.739 : 2.539 : 1.000
- *
- * Same ORDERING, different SHAPE. The material is more convex: it makes the edge carry more of the range
- * and the mid-tone less, which is what a cut mineral does and what a hand-mixed ramp tends not to. This
- * is NOT corrected by fitting a per-face fudge — a per-face correction is three authored numbers wearing
- * a derivation's clothes, which is the exact thing 2.0 exists to remove. The shape is the material's.
- *
- * ─── the one value here that is NOT derived, said plainly ────────────────────────────────────────
- *
- * `contrast` is a legibility parameter, not a material property: an exponent on the optical ratio setting
- * how much of the available range the substrate spends. Physics fixes the order and the shape; it does
- * not know how readable a terminal has to be at 3am. At contrast 1 the substrate is the mineral's;
- * at 1.177 its spread matches what the tools RENDER at high sun (measured: log 13.881 / log 9.353).
- * *Until 2.4 this sentence anchored to 5.739 — the spread of the `:root` fallback the sundial overwrites
- * before first paint — which is the same error that sank 2.3, one level down. The anchor is a named
- * rendered instant now.* It is named here, in the material, for the same reason OCCVM-L7 names
- * `--t-num` — a judgment gets called judgment in the place somebody would otherwise mistake it for
- * measurement.
- */
-var OCCVM_MATERIAL = (function () {
-  "use strict";
-
-  var RAD = Math.PI / 180;
-  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
-
-  /* ---- the definition ---------------------------------------------------------------------------
-   * Aragonite, CaCO₃, orthorhombic, space group Pmcn. Every number is published and none is chosen:
-   * cell from diffraction, indices from optical mineralogy, elastic constants from Brillouin
-   * spectroscopy on natural single-crystal aragonite at ambient conditions.
-   */
-  var ARAGONITE = {
-    name: "aragonite",
-    formula: "CaCO3",
-    system: "orthorhombic",
-    group: "Pmcn",
-    cell: { a: 4.96, b: 7.97, c: 5.74 },              /* Å */
-    ri: { alpha: 1.530, beta: 1.680, gamma: 1.685 },  /* biaxial, three principal indices */
-    hardness: 3.75,                                   /* Mohs 3.5–4 */
-    density: 2.93,                                    /* g/cm³ */
-    /* stiffness tensor, GPa — C11/C22/C33 are the three axes P1's motion derives from */
-    C: { 11: 171.1, 22: 110.1, 33: 98.4, 44: 39.3, 55: 24.2, 66: 40.2, 12: 60.3, 13: 27.8, 23: 41.9 },
-    /* THE BODY COLOUR: what the material absorbs to. NOT derived, and named as judgment for the same
-       reason `contrast` is — a mineral's colour comes from trace chemistry and defects, not from its
-       lattice, so no amount of crystallography produces it. The material says how light BEHAVES on a
-       surface; this says what is left after.
-     *
-     * ANCHORED to OCCVM-L1's own declared substrate floor, `--sub-lo #0e0d13`, replacing an arbitrary
-     * #12111a. This is the same move `renderedContrast` makes and it carries the same objection: setting
-     * the material's one free value FROM the tools is fitting, and somebody should say so. The answer is
-     * that a free parameter has to be set from something, and the alternative was a number with no reason
-     * at all.
-     *
-     * WHAT THIS PARAGRAPH USED TO CLAIM, AND WHY IT NO LONGER DOES. 2.3 reported that at contrast 0.7816
-     * the material reproduced the substrate ramp's endpoints `#2c2a36` and `#0e0d13` to the byte, and
-     * called it the strongest evidence L12 had. Those hexes are the `:root` FALLBACK. The sundial
-     * overwrites all three substrate tokens every minute, starting before first paint, so the ramp was
-     * matched against values nobody renders — and every assertion passed, because every assertion
-     * compared the material against a declaration instead of a render. 2.3 is reverted; this anchor is
-     * kept only because matching L1's declared floor is a defensible way to fix a free parameter, NOT
-     * because it predicts anything. The material's real agreement with the tools is measured in 2.4,
-     * against what the sundial actually paints. */
-    body: "#0e0d13",
-    luster: "vitreous"
-  };
-
-  /* birefringence, derived rather than stated: γ − α */
-  function birefringence(m) { return m.ri.gamma - m.ri.alpha; }
-
-  /* The {110} composition-plane angle is NOT computed here, deliberately. occvm/veins.js derives it from
-     this file's cell and occvm/fracture.js reads it from veins; adding a third site would be the same
-     duplicate-derivation defect those two exist to avoid. The material owns the lattice; the habit and
-     the cleavage own the angle. */
-
-  /* ---- optics -----------------------------------------------------------------------------------
-   * Unpolarised Fresnel reflectance at an interface, as a function of index and incidence angle.
-   * Total internal reflection is not reachable here (light enters from the less dense side), so the
-   * square root is always real.
-   */
-  function fresnel(n, thetaDeg) {
-    var th = clamp(thetaDeg, 0, 89.9) * RAD;
-    var s = Math.sin(th), c = Math.cos(th);
-    var k = Math.sqrt(Math.max(0, 1 - (s / n) * (s / n)));
-    var rs = Math.pow((c - n * k) / (c + n * k), 2);
-    var rp = Math.pow((k - n * c) / (k + n * c), 2);
-    return (rs + rp) / 2;
-  }
-
-  /* ---- the three faces --------------------------------------------------------------------------
-   * A slab presents three surfaces to the viewer and each takes its own principal index. The angles are
-   * the cut geometry OCCVM-L2 already governs — the flat front, the chamfer L2 permits, and the edge seen
-   * near tangent — so the faces are fixed by the slab, not by the sun (see the header for what happens
-   * when they are not).
-   *
-   * WHICH INDEX GOES ON WHICH FACE IS A CONVENTION, and is flagged as one here rather than buried. What
-   * the crystallography establishes is that there ARE three principal indices and that they differ; it
-   * does not tell you how a rendered rectangle is oriented in the lattice, because a rendered rectangle
-   * is not in a lattice. α on the front and γ on the edge is chosen so the ordering the optics produces
-   * runs the same direction as the ramp the tools already read — the same honesty flag P1 carries about
-   * mapping crystal axes onto screen axes.
-   */
-  var CUT = { front: 0, chamfer: 45, edge: 80 };   /* degrees from the view normal — L2 geometry */
-
-  function faces(m) {
-    return {
-      front:   { axis: "a", n: m.ri.alpha, theta: CUT.front,   R: fresnel(m.ri.alpha, CUT.front) },
-      chamfer: { axis: "b", n: m.ri.beta,  theta: CUT.chamfer, R: fresnel(m.ri.beta,  CUT.chamfer) },
-      edge:    { axis: "c", n: m.ri.gamma, theta: CUT.edge,    R: fresnel(m.ri.gamma, CUT.edge) }
-    };
-  }
-
-  /* ---- resolve ----------------------------------------------------------------------------------
-   * material -> the substrate family. A reflectance ratio is a ratio in LINEAR light, so the body colour
-   * is decoded out of sRGB, scaled, and re-encoded. The first version scaled the sRGB bytes directly and
-   * a 9.35× optical spread rendered as 116× — the transfer function applied twice — and it shifted hue,
-   * because saturating one channel before another is a colour change nobody asked the material for. One
-   * gain across all three linear channels is hue-preserving by construction.
-   */
-  function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-  function linearToSrgb(v) { return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; }
-  function parse(h) { return [1, 3, 5].map(function (i) { return srgbToLinear(parseInt(h.substr(i, 2), 16) / 255); }); }
-  function hex(c) {
-    return "#" + c.map(function (v) {
-      return clamp(Math.round(linearToSrgb(clamp(v, 0, 1)) * 255), 0, 255).toString(16).padStart(2, "0");
-    }).join("");
-  }
-
-  /* THE RENDERED SPREAD, and a correction. Until 2.4 this constant was 5.739 — the spread of the
-   * `:root` FALLBACK declaration `#2c2a36 / #1b1a22 / #0e0d13`, which the sundial overwrites every
-   * minute before first paint. It is the same error that sank 2.3, sitting one level down and shipped
-   * since 2.0: a number fitted to hexes nobody renders.
-   *
-   * What the tools actually paint, measured from the golden set, is a spread that MOVES WITH THE SUN:
-   * 13.881 at high sun, 5.160 at low, 5.537 at night. There is therefore no single "authored spread",
-   * and `authoredContrast` had to be re-specified rather than re-valued: it now anchors to the
-   * rendered spread at a NAMED instant, because a free parameter fitted to an unnamed average is the
-   * same evasion in a longer form. High sun is the anchor — it is where the substrate carries the most
-   * structure and where a shape difference is most visible. */
-  var RENDERED_SPREAD_HIGH = 13.881;
-
-  function substrate(m, contrast) {
-    var k = contrast === undefined ? 1 : contrast;
-    var f = faces(m);
-    var base = f.front.R;                       /* the darkest face is the reference, by geometry */
-    var body = parse(m.body);
-    function face(R) {
-      var gain = Math.pow(R / base, k);         /* contrast is an exponent on the optical ratio */
-      return hex(body.map(function (v) { return v * gain; }));
-    }
-    return {
-      hi: face(f.edge.R), mid: face(f.chamfer.R), lo: face(f.front.R),
-      R: { front: f.front.R, chamfer: f.chamfer.R, edge: f.edge.R },
-      spread: Math.pow(f.edge.R / base, k),
-      ratios: [Math.pow(f.edge.R / base, k), Math.pow(f.chamfer.R / base, k), 1]
-    };
-  }
-
-  /* The contrast at which the material's spread equals what the tools RENDER at high sun. Derived, not
-     typed: it moves if the material moves, which is the whole point of it being here rather than in a
-     stylesheet. Anchoring here is a fit, and it is the same fit `body` makes — a free parameter has to
-     come from somewhere. What it is NOT any more is a fit to a declaration nobody paints. */
-  function renderedContrast(m) {
-    var f = faces(m);
-    return Math.log(RENDERED_SPREAD_HIGH) / Math.log(f.edge.R / f.front.R);
-  }
-
-  /* The two face offsets the sundial applies, derived rather than authored (2.4, OCCVM-L12).
-     Returned as luminance ratios relative to the MID face, because that is the base the sundial owns:
-     it supplies the substrate colour, this supplies how far the other two faces sit from it. */
-  function faceRatios(m, contrast) {
-    var r = substrate(m, contrast === undefined ? renderedContrast(m) : contrast).ratios;
-    return { hi: r[0] / r[1], lo: 1 / r[1] };
-  }
-
-  /* ---- what the other properties govern ---------------------------------------------------------
-   * Stated as derivations rather than applied here, because each belongs to the law that owns the
-   * surface it touches; this file is the material, not the renderer.
-   */
-  /* OCCVM-L2 — hardness sets how sharply a face can be cut. Mohs 3.5–4 is soft enough to be cut into
-     rather than merely faceted, which is the roadmap's own argument for aragonite over topaz. Mapped
-     against the 4px ceiling L2 already fixes: softer mineral, larger permissible radius. */
-  function edgeRadius(m) { return clamp(4 * (m.hardness / 10), 1, 4); }
-
-  /* OCCVM-L4 — density sets cast weight. Aragonite at 2.93 against a nominal 2.65 (quartz) is the
-     reference ratio; a denser material throws a heavier shadow and carries more apparent mass. */
-  function castWeight(m) { return m.density / 2.65; }
-
-  /* P1 — anisotropic motion. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
-   *
-   * The stiffness ratio the three axes move at, normalised to the softest (C33):
-   *     a 1.7388   b 1.1189   c 1.0000
-   */
-  function stiffness(m) {
-    return { a: m.C[11] / m.C[33], b: m.C[22] / m.C[33], c: 1 };
-  }
-
-  /* Duration scalar per axis. A stiffer axis settles faster, and the relation is the oscillator's, not
-     the spring's: T = 2π√(m/k), so duration ∝ 1/√k. The alternative — static compliance, 1/k — was the
-     other candidate and is wrong for a TEMPORAL quantity; it describes how far a thing deflects, not how
-     long it takes. Both are recorded because they differ enough to matter:
-         1/√k   a 0.7584   b 0.9454   c 1.0000     ← in force
-         1/k    a 0.5751   b 0.8937   c 1.0000     ← rejected, static not temporal            */
-  function motion(m) {
-    var k = stiffness(m);
-    return { a: 1 / Math.sqrt(k.a), b: 1 / Math.sqrt(k.b), c: 1 / Math.sqrt(k.c) };
-  }
-
-  /* ---- WHY P1 IS NOT WIRED TO A TOKEN --------------------------------------------------------------
-   *
-   * Anisotropy is only observable as a DIFFERENCE BETWEEN TWO DIRECTIONS IN THE SAME VIEW. Censused
-   * across both tools and the spine at 2.0:
-   *
-   *     translateX     0 animated sites          <- zero, in either tool
-   *     translateY     3 animated sites          (.edge:active 260ms, rise 380ms, and BTC's chevron)
-   *     translate(x,y) every site is a STATIC light-vector offset, calc(var(--lx) * Npx), not a motion
-   *
-   * There is no pair. The one genuinely animated 2D direction anywhere is fracture's separation along
-   * the twin normal, and projecting the per-axis scalars onto it gives 194.4ms against the isotropic
-   * 220ms — an 11.6% change. But the fracture angle is FIXED: one direction, every time, with nothing
-   * beside it to be faster or slower than. That is not anisotropy, it is 220 renamed to 194.
-   *
-   * Shipping `--dur-a/--dur-b/--dur-c` here would be three tokens computed and consumed by nothing,
-   * which is OCCVM-D12 exactly — closed at 1.2a, one release before this one. The arithmetic stays
-   * because it is right and cheap; the wiring waits for a second axis to exist. `test/occvm.js` holds a
-   * SELF-RETIRING guard: it asserts the translateX count is still zero, so the day somebody animates a
-   * horizontal motion the suite fails and says P1 has become expressible.                              */
-  /* P4 — unit-cell spacing. DERIVED, MEASURED, AND NOT SHIPPED. Read the negative before using it.
-   *
-   * The three cell edges, normalised to the shortest, are a spacing triple with a reason behind it where
-   * an 8px grid has none:  a 1.0000 : c 1.1573 : b 1.6069.
-   *
-   * TWO MEASUREMENTS KILL IT, and the second is the one that matters.
-   *
-   * 1. IT DOES NOT DESCRIBE THE TOOLS. Censused over 213 real padding/margin/gap declarations across both
-   *    tools: 19 distinct pixel values, weighted mean error against the cell ladder 10.79%. A plain 4px
-   *    grid covers more of them (42.3% within 6%, against 32.4%). Adopting the cell scale would therefore
-   *    MOVE 213 declarations by ~11% — a redesign wearing a derivation's coat, and the opposite of what
-   *    the substrate did at 2.0, where the material REPRODUCED the authored ramp at a derived contrast.
-   *
-   * 2. IT DOES NOT SURVIVE TO THE SCREEN. Spacing quantises to whole pixels, and 84.5% of both tools'
-   *    spacing is under 12px, where rounding destroys the ratio outright:
-   *
-   *        base 4  -> 4 / 5 / 6    renders 1.000 : 1.250 : 1.500
-   *        base 6  -> 6 / 7 / 10   renders 1.000 : 1.167 : 1.667
-   *        base 8  -> 8 / 9 / 13   renders 1.000 : 1.125 : 1.625
-   *        base 2  -> 2 / 2 / 3    two of the three steps COLLAPSE
-   *
-   *    The rendered ratios wander by ±8% and are never the cell's. The derivation is present in the
-   *    source and absent from the render, which is a value computed and consumed by nothing wearing a
-   *    third disguise.
-   *
-   * AND THE RATIO IS NOT DISTINGUISHABLE FROM THE ONE IT REPLACES. b/a = 1.6069 against the golden ratio
-   * 1.6180 differs by 0.04px at step 1, 0.35px at step 3, and only reaches a whole pixel at step 5 —
-   * past the largest spacing either tool uses. Over the range where all the spacing actually lives they
-   * are the same number. What the cell buys is provenance, not appearance, and that is worth having; it
-   * is not worth 213 moved declarations.
-   *
-   * THE GUARD SHIPS EVEN THOUGH THE SCALE DOES NOT, and precisely because the two ratios are
-   * indistinguishable: somebody will eventually "correct" 1.6069 to 1.6180 on the grounds that it looks
-   * like a typo for the golden ratio. It is not. It is 7.97/4.96, and the whole point of L12 is that a
-   * value has a reason. `test/occvm.js` fails on the golden ratio appearing as a spacing constant. */
-  function spacing(m) {
-    var c = m.cell;
-    return { a: 1, c: c.c / c.a, b: c.b / c.a };
-  }
-  var GOLDEN_RATIO = (1 + Math.sqrt(5)) / 2;   /* named ONLY so a guard can reject it, never to be used */
-  var P4_UNEXPRESSED = {
-    reason: "the cell ratio does not survive integer-pixel quantisation at the sizes 84.5% of spacing uses",
-    declarationsCensused: 213,
-    distinctValues: 19,
-    meanErrorVsCellLadder: 0.1079,
-    censusedAt: "2.1"
-  };
-
-  var P1_UNEXPRESSED = {
-    reason: "no animated horizontal motion exists in either tool; anisotropy needs two directions in one view",
-    translateXSites: 0,
-    fractureProjection: 0.8837,
-    censusedAt: "2.0"
-  };
-
-  return {
-    ARAGONITE: ARAGONITE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH,
-    fresnel: fresnel, faces: faces, substrate: substrate, renderedContrast: renderedContrast, faceRatios: faceRatios,
-    birefringence: birefringence,
-    edgeRadius: edgeRadius, castWeight: castWeight, stiffness: stiffness,
-    motion: motion, P1_UNEXPRESSED: P1_UNEXPRESSED,
-    spacing: spacing, GOLDEN_RATIO: GOLDEN_RATIO, P4_UNEXPRESSED: P4_UNEXPRESSED
-  };
-})();
-if (typeof module !== "undefined") module.exports = OCCVM_MATERIAL;
-/* ==== END OCCVM material.js ==== */
-
-/* ==== OCCVM SPINE fracture.js — spliced from occvm/fracture.js. do not edit. ==== */
-/* sha256:27859f9cc43a */
-/* OCCVM 1.1b — fracture. The first shared BEHAVIOUR primitive (OCCVM-L11).
- *
- * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
- * spliced copy — the next splice reverts it silently.
- *
- * A destructive action should not share a physical vocabulary with a reversible one. Everything else in
- * these tools fades, slides or settles; those are elastic behaviours, and elastic behaviour implies the
- * thing could come back. Aragonite does not deform past its limit — it CLEAVES, along fixed planes, at
- * an angle its own lattice decides, the moment stress exceeds a threshold. That is a different event, and
- * irreversible actions are a different event.
- *
- * THE ANGLE IS NOT CHOSEN. It is 2·arctan(b/a) from the unit cell — the {110} composition-plane angle of
- * the same cyclic twin the vein generator grows — imported from occvm/veins.js rather than recomputed,
- * because two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. An
- * eyeballed crack is decoration wearing this primitive's clothes; the whole extension passes its own test
- * only if the angle is the mineral's.
- *
- * SCOPE IS THE DISCIPLINE. Irreversible only — delete, discard, disconnect. Never a cancel, never a
- * dismiss, never a close. A vocabulary that marks everything marks nothing, and this one exists to say
- * "that is not coming back" in a language the rest of the system deliberately does not speak.
- */
-var OCCVM_FRACTURE = (function () {
-  "use strict";
-
-  var RAD = Math.PI / 180;
-  /* The mineral's own angle, from the generator that already derives it — and from NOWHERE ELSE.
-   *
-   * This began as `... || 116.209`, a fallback for when the generator is absent. A guard written one
-   * commit later caught it: that literal is a second copy of the angle, which is the exact thing this
-   * primitive's header promises it does not have, and in Node it silently *was* the value while the
-   * browser used the real one. A fallback that quietly disagrees with its source is worse than no
-   * fallback. If the generator is not spliced beside this, that is a splice failure and it should be
-   * loud.
-   *
-   * RESOLVED AT CALL TIME, NOT AT LOAD. The first version captured OCCVM_VEINS into a module-scope
-   * binding while this IIFE ran, and that is wrong in the browser for a reason nothing in Node can show:
-   * the splicer inserts each part after the same anchor, so parts land in reverse list order and this
-   * file is evaluated BEFORE veins.js is assigned. `typeof OCCVM_VEINS` was therefore "undefined" at
-   * capture, the require branch does not exist in a page, and the binding was null — so cleave() threw
-   * on every call from the moment 1.1b shipped. Node resolved it through require and every assertion
-   * passed. A lazy read is order-independent, which is the property this actually needs. */
-  function twinAngle() {
-    var v = (typeof OCCVM_VEINS !== "undefined" && OCCVM_VEINS) ? OCCVM_VEINS
-          : (typeof require !== "undefined" ? require("./veins.js") : null);
-    if (!v || !v.TWIN_ANGLE) throw new Error("occvm fracture: veins.js is not spliced beside this — no angle to cleave on");
-    return v.TWIN_ANGLE;
-  }
-
-  /* 220ms, fixed, and deliberately faster than any elastic curve in the system. Fracture is sudden by
-     definition; sharing a duration with a settle would put it back in the vocabulary it exists to leave. */
-  var MS = 220;
-
-  function reduced() {
-    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
-    catch (e) { return false; }
-  }
-
-  /* mulberry32 again rather than Math.random: a fracture is seeded off the element so a given deletion
-     looks the same if it is replayed, and the golden set can pin one. */
-  function rng(seed) {
-    var a = seed >>> 0;
-    return function () {
-      a = (a + 0x6D2B79F5) | 0;
-      var t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function hash(s) {
-    var n = 2166136261;
-    for (var i = 0; i < s.length; i++) { n ^= s.charCodeAt(i); n = Math.imul(n, 16777619); }
-    return n >>> 0;
-  }
-
-  /* The split line, in the element's own box: a line at the twin angle through a jittered centre.
-   * Returned as the two clip polygons, each a half-plane intersected with the box, in percent. */
-  function halves(angleDeg, offset) {
-    var t = Math.tan(angleDeg * RAD);
-    /* y = t·(x − 50) + (50 + offset), in percent coordinates; solve at both box edges */
-    var yAt = function (x) { return t * (x - 50) + (50 + offset); };
-    var y0 = yAt(0), y100 = yAt(100);
-    /* clamp the traversal to the box and take the two sides of it */
-    var a = ["0% " + y0 + "%", "100% " + y100 + "%", "100% -60%", "0% -60%"];
-    var b = ["0% " + y0 + "%", "100% " + y100 + "%", "100% 160%", "0% 160%"];
-    return ["polygon(" + a.join(",") + ")", "polygon(" + b.join(",") + ")"];
-  }
-
-  /* cleave(el, done): the element splits along the mineral's angle and the two halves torque apart.
-   *
-   * The element is cloned twice rather than animated in place, because one box cannot move in two
-   * directions. The original is hidden on the same frame the clones appear, so nothing is ever visible
-   * twice. No fade at any point: cleaved material does not become transparent, it becomes absent, and a
-   * fade here would put the elastic vocabulary back into the one event that is meant to be without it. */
-  function cleave(el, done) {
-    if (!el || !el.getBoundingClientRect) { if (done) done(); return; }
-    var box = el.getBoundingClientRect();
-    if (!box.width || !box.height) { if (done) done(); return; }
-
-    if (reduced()) {                       /* the floor is the law's, not this primitive's (L8) */
-      el.style.visibility = "hidden";
-      if (done) done();
-      return;
-    }
-
-    var seed = hash((el.id || "") + "|" + Math.round(box.width) + "x" + Math.round(box.height));
-    var rnd = rng(seed);
-    /* ±8% of the shorter dimension, so two deletions of the same thing do not cleave identically */
-    var offset = (rnd() * 16 - 8);
-    var ang = twinAngle() - 90;            /* the composition plane, as a screen-space slope */
-    var poly = halves(ang, offset);
-
-    var host = document.createElement("div");
-    host.setAttribute("aria-hidden", "true");
-    host.style.cssText = "position:fixed;left:" + box.left + "px;top:" + box.top + "px;width:" +
-      box.width + "px;height:" + box.height + "px;pointer-events:none;z-index:9999";
-
-    /* THE CLONE MUST CARRY ITS COMPUTED STYLE, NOT ITS MARKUP.
-     *
-     * The first version cloned the node and stripped its id — necessary, because two elements with one
-     * id is invalid and breaks getElementById — and the halves rendered BLANK. Everything an `#id`
-     * selector had been giving the element (its background, its border, its whole surface) was supplied
-     * by a rule that no longer matched. Every JS assertion still passed: two clones, opposite torque, no
-     * fade, host cleaned up. It was only visible by looking at the frame.
-     *
-     * Copying the resolved style instead is indifferent to how the element was selected — id, class,
-     * inheritance, inline — so a fracture looks like the thing that fractured whatever the tool's CSS
-     * happens to be. Layout properties are overridden afterwards, because the halves are positioned by
-     * this primitive rather than by the page they came from. */
-    var computed = window.getComputedStyle(el);
-    var norm = { x: Math.cos(ang * RAD), y: Math.sin(ang * RAD) };
-    for (var i = 0; i < 2; i++) {
-      var part = el.cloneNode(true);
-      part.removeAttribute("id");
-      for (var k = 0; k < computed.length; k++) {
-        var prop = computed[k];
-        part.style.setProperty(prop, computed.getPropertyValue(prop));
-      }
-      part.style.cssText += ";position:absolute;left:0;top:0;margin:0;width:100%;height:100%" +
-        ";clip-path:" + poly[i] + ";transition:transform " + MS + "ms cubic-bezier(.15,.7,.4,1)";
-      host.appendChild(part);
-    }
-    document.body.appendChild(host);
-    el.style.visibility = "hidden";
-
-    /* separate along the split normal, each half torquing — real cleavage does not slide parallel */
-    requestAnimationFrame(function () {
-      var kids = host.children;
-      for (var i = 0; i < kids.length; i++) {
-        var s = i ? 1 : -1;
-        var dx = -norm.y * s * (box.height * 0.22 + 10);
-        var dy = norm.x * s * (box.height * 0.22 + 10);
-        kids[i].style.transform =
-          "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(" + (s * (2 + rnd() * 4)).toFixed(2) + "deg)";
-      }
-    });
-
-    setTimeout(function () {
-      if (host.parentNode) host.parentNode.removeChild(host);
-      if (done) done();
-    }, MS + 20);
-  }
-
-  return { cleave: cleave, halves: halves, twinAngle: twinAngle, MS: MS };
-})();
-if (typeof module !== "undefined") module.exports = OCCVM_FRACTURE;
-/* ==== END OCCVM fracture.js ==== */
 
 /* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
 /* sha256:6ab675b82831 */
@@ -1528,47 +1316,54 @@ if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
 /* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
-/* sha256:225f96ea3833 */
-/* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
+/* sha256:f96ae350d96b */
+/* OCCVM 1.1 → 2.8 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
  * spliced copy — the next splice reverts it silently.
  *
  * Veins are GROWN, not drawn. Both tools drew three displaced cubic beziers and called the result a
  * mineral vein; a bezier is a shape that resembles the outcome, and the eye eventually catches the
- * smooth curvature because nothing in a real dendrite is smooth at every scale.
+ * smooth curvature because nothing in a real aggregate is smooth at every scale.
  *
- * This is diffusion-limited aggregation: a walker starts in the matrix, moves at random, and sticks the
- * instant it touches the aggregate. Growth is dendritic because a tip that protrudes intercepts walkers
- * before they can reach the shielded interior — the screening effect, which nobody has to author. That
- * is the roadmap's discipline for 2.0 arriving early: simulate the process, never the resulting shape.
+ * 2.8 — THE MECHANISM CHANGED WITH THE SUBSTANCE. From 1.1 to 2.7 this was particle-cluster DLA: a
+ * fixed aggregate seeded at a few nuclei, walkers arriving one at a time and sticking. That is how a
+ * crystal grows from a nucleation point, and it was grown as one — aragonite's cyclic twin, with the
+ * {110} angle read from the material's unit cell. A fluid has no lattice, no nucleus and no angle, and
+ * a colloidal suspension does not aggregate that way. Ketchup is a particulate gel: tomato cell-wall
+ * fragments in suspension, every one of them diffusing, sticking to each other on contact, the clusters
+ * they form diffusing in turn until the whole suspension has joined into one network. That is
+ * DIFFUSION-LIMITED CLUSTER AGGREGATION (Meakin 1983; Kolb, Botet & Jullien 1983), and it is what this
+ * file now simulates: every particle starts mobile, every cluster moves as a rigid body with a mobility
+ * that falls with its size, and two clusters that touch become one.
+ *
+ * What that does to the picture, measured rather than asserted (test/occvm.js): the vein layer stops
+ * being a few dendrites radiating from points in clear matrix and becomes a network SUSPENDED IN the
+ * material — open, tenuous, everywhere at once. The roadmap's own visual note (§5.4) asked for exactly
+ * that, and it turns out not to be a rendering choice; it is what the mechanism produces at the density
+ * the tools already ship. At `--vein-density .3` the suspension is above its gel point and the clusters
+ * span the field; at .15 they are separate flocs with matrix between them; at .08 they are isolated.
+ * The axis a fluid has is CONCENTRATION, and the reference surface's specimens now run along it.
+ *
+ * `--vein-habit` IS RETIRED, and the reason is a measurement, not a preference. The crystal's habit was
+ * attachment anisotropy — which crystallographic directions accept a particle — and a fluid has no
+ * directions to be anisotropic along. The one axis colloid science does offer, the sticking probability
+ * that separates diffusion-limited from reaction-limited aggregation (Lin et al. 1989: D_f 1.86 → 2.1
+ * in three dimensions), was tried here as the token's new meaning and DOES NOT EXPRESS on this lattice:
+ * at the shipped density the mass-radius dimension moved 1.61 → 1.54 across a 20× range in sticking
+ * probability, and in the dilute regime 1.38 → 1.39, inside the estimator's own error both times. A
+ * token whose effect is below measurement is OCCVM-D12 with a physical story attached. `field()` still
+ * accepts `habit` and ignores it, so a caller written against 1.1 does not throw; the spine carries the
+ * declaration one minor cycle marked deprecated per its versioning contract, and nothing reads it.
  *
  * Seeded and pure. Same seed plus same parameters yields the same bytes, which is what the golden set
- * and the injected session seed exist for (SPINE.md section 4).
+ * and the injected session seed exist for (SPINE.md section 4). No substance module is read: DLCA takes
+ * no constant from the fluid, and the fractal dimension is an OUTPUT of the process, measured in the
+ * tests against the literature, never an input to it. That also removes the load-order dependency that
+ * had material.js needing to precede this file.
  */
 var OCCVM_VEINS = (function () {
   "use strict";
-
-  /* ARAGONITE'S UNIT CELL, and the one number that follows from it (1.1b).
-   *
-   * a 4.96 Å · b 7.97 Å · c 5.74 Å, orthorhombic, space group Pmcn. The {110} composition planes of the
-   * cyclic twin sit at 2·arctan(b/a) = 116.209°, against the 120° a hexagonal relationship would need.
-   * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
-   * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
-   *
-   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632.
-   *
-   * 2.0 — THE CELL MOVED OUT OF HERE AND IS NOW READ, NOT RESTATED. occvm/material.js is the material
-   * definition and owns the lattice; this file grows a habit from it. Until 2.0 the same three lengths
-   * were typed here and in the material, which is two copies of one fact — the defect the fracture
-   * primitive's own header forbids, one level up, and it would have gone unnoticed until somebody edited
-   * one of them. The angle still has exactly one derivation; it just happens where the cell lives. */
-  var MAT = (typeof OCCVM_MATERIAL !== "undefined") ? OCCVM_MATERIAL
-          : (typeof require !== "undefined" ? require("./material.js") : null);
-  if (!MAT) throw new Error("occvm veins: material.js is not spliced beside this — no lattice to grow on");
-  var CELL = MAT.ARAGONITE.cell;
-  var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
-  var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
 
   /* the PRNG both tools already use, so a seed means the same thing everywhere */
   function mulberry32(a) {
@@ -1581,204 +1376,119 @@ var OCCVM_VEINS = (function () {
     };
   }
 
-  /* grow(): DLA on a lattice, growing the habit of a named mineral rather than a generic dendrite.
+  /* grow(): cluster-cluster aggregation on a lattice.
    *
-   * THE MINERAL IS ARAGONITE, and since 1.1a that is a decision the generator encodes rather than a label
-   * on the output. The 2.0 material model anchors substrate and vein to one crystal (CaCO₃, orthorhombic)
-   * on the argument that a vein is not a foreign material embedded in a slab — it is the same crystal
-   * grown differently. Aragonite's two expressions are exactly the two this system needs: a blocky
-   * orthorhombic form for a cut face, and a fibrous radiating form for a vein. So the vein grows the
-   * second one, and it grows it the way aragonite actually does:
+   *   w, h     lattice; the surface wraps vertically and has walls at the sides, as before
+   *   n        particle count — the volume fraction times the lattice
+   *   seed     mulberry32 seed
+   *   stick    probability that a contact becomes a bond (1 = diffusion-limited). Accepted, measured,
+   *            and not exposed as a token — see the header.
+   *   target   stop when this many clusters remain. The suspension is not driven to a single cluster,
+   *            because a gel is a network of many flocs that have joined, and the last few merges are
+   *            the slowest by a wide margin (a cluster's mobility falls as s^-½).
+   *   budget   a hard cap on steps, so a pathological seed cannot hang a page
    *
-   *   - FIBRES RADIATE FROM A NUCLEATION POINT. Not from the screen's left edge, and not along the
-   *     screen's horizontal. Until 1.1a the anisotropy was `pH = .5 + habit * .32`, a bias toward
-   *     horizontal STEPS — a direction in the viewport, which is a fact about the browser window and not
-   *     about the crystal. A crystal has no idea which way the screen is. Direction is now measured from
-   *     the growth's own nucleus, which is a direction in the material's frame.
-   *
-   *   - IT TWINS IN THREES. Aragonite's signature is cyclic twinning on {110}: three individuals meeting
-   *     at close to 120°, which mimics a hexagonal prism well enough that the pseudo-hexagonal form is
-   *     what the mineral is known for. Each nucleus therefore carries `twin` sectors — three, by default,
-   *     because that is what aragonite does — each with its own rotation, and growth is selective along
-   *     them. Radiating fibre bundles from one point, grown rather than drawn.
-   *
-   * habit stays what OCCVM-L10 says it is — the anisotropy of growth — and its ends still mean what the
-   * law says: 0 grows the bushy, equant dendrite of a manganese oxide; 1 draws the structure out into an
-   * elongated, acicular form. Two things changed under it. The AXIS anisotropy is measured against moved
-   * from the viewport's to the crystal's, and the MECHANISM moved from the walk to the attachment (see
-   * accept(), below, which records why the first attempt failed). At habit 0 the twin sectors still exist
-   * but express nothing, because attachment is then indifferent to direction — which is correct, and is
-   * what an equant habit is.
-   *
-   * Walkers spawn just beyond the frontier rather than at infinity — the standard optimisation, and the
-   * reason this finishes in single-digit milliseconds. A walker that strays far outside the frontier is
-   * abandoned rather than followed, which is equivalent in the limit and much cheaper.
-   *
-   * `twin` is a parameter rather than a CSS token deliberately. Twinning is a MATERIAL PROPERTY, and
-   * material properties are 2.0's substance — at 2.0 this argument comes from the material definition
-   * instead of a default. Adding a `--vein-twin` token now would put a 2.0 property into the 1.x token
-   * surface, which is the leak SPINE.md's own 1.4 note warns about. It defaults to aragonite's 3.
+   * Every particle begins as its own cluster at a random empty site. Each step picks a cluster at
+   * random, moves it one lattice step in a random direction as a rigid body — accepted with probability
+   * s^-½, the standard size-dependent mobility, so a monomer moves every time it is picked and a cluster
+   * of a hundred moves one time in ten — and then looks for contact with any other cluster on the Moore
+   * neighbourhood of every particle it moved. A contact merges the two with probability `stick`. The
+   * bond recorded is the pair of particles that touched, kept as INDICES rather than coordinates: the
+   * clusters keep moving after they join, and a bond stored as a position at the moment of contact is
+   * wrong the next time either of its ends moves (the prototype did exactly that and rendered confetti).
    */
   function grow(o) {
     var w = o.w | 0, h = o.h | 0;
     var n = o.n | 0;
-    var habit = Math.max(0, Math.min(1, o.habit === undefined ? 0.55 : o.habit));
-    var twin = o.twin === undefined ? 3 : Math.max(1, o.twin | 0);
+    var stick = o.stick === undefined ? 1 : Math.max(0.005, Math.min(1, o.stick));
+    var target = o.target === undefined ? 8 : Math.max(1, o.target | 0);
+    var budget = o.budget === undefined ? 400000 : o.budget | 0;
     var rnd = mulberry32(o.seed >>> 0);
-    var TAU = 6.283185307179586;
 
-    var occ = new Uint8Array(w * h);
-    var segs = [];
-    var i, j, y, x;
-
-    /* Nucleation points, scattered across the whole surface rather than banked against one edge: a vein
-       layer that fills half the page and stops is a gradient, and the eye reads a gradient as a mistake.
-       They compete for the same walkers and screen each other, which is what leaves clear matrix between
-       separate growths.
-
-       Each nucleus carries its own twin rotation, so the three sectors do not all point the same way
-       across the surface — cyclic twins nucleate independently and there is no reason they would. */
-    var nuclei = 6 + ((rnd() * 4) | 0);
-    var seeds = [], sites = [], siteGroup = [], groups = [], segOwner = [];
-    for (i = 0; i < nuclei; i++) {
-      x = 1 + ((rnd() * (w - 3)) | 0);
-      y = ((rnd() * h) | 0);
-      occ[y * w + x] = 1;
-      seeds.push(x, y);
-      sites.push(y * w + x);
-      siteGroup.push(i);
-      groups.push({ cx: x, cy: y, rot: rnd() * TAU });
+    var occ = new Int32Array(w * h);            /* particle index + 1, or 0 */
+    var px = new Int16Array(n), py = new Int16Array(n), cid = new Int32Array(n);
+    var members = [];                           /* cluster id -> array of particle indices, or null */
+    var placed = 0, tries = 0, i, m, q;
+    while (placed < n && tries < n * 50) {
+      tries++;
+      var x = 1 + ((rnd() * (w - 2)) | 0), y = (rnd() * h) | 0, k = y * w + x;
+      if (occ[k]) continue;
+      occ[k] = placed + 1; px[placed] = x; py[placed] = y; cid[placed] = placed;
+      members.push([placed]); placed++;
     }
+    n = placed;
+    var alive = [];
+    for (i = 0; i < n; i++) alive.push(i);
 
-    var maxSteps = h * 2 + 60;
+    var bonds = [], clusters = n, steps = 0;
+    var DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+    function wrapY(v) { return v < 0 ? v + h : (v >= h ? v - h : v); }
 
-    /* ATTACHMENT ANISOTROPY — how a crystal actually grows in a direction.
-     *
-     * The first attempt at this biased the WALKER's drift toward its sector axis, and measurement said
-     * it did nothing: twin 1, twin 3 and twin 6 produced identical angular spectra, all dominated by a
-     * single lobe. Two reasons, both instructive. A walker pushed radially outward is pushed away from
-     * the aggregate, so it wanders off and is abandoned rather than sticking anywhere — the bias spent
-     * walkers instead of shaping growth. And snapping an axis to the nearest lattice step collapses
-     * three directions 120° apart into at most four, which destroys the threefold signal before it can
-     * reach the surface.
-     *
-     * A real crystal is not anisotropic because the diffusing atom travels differently. It is
-     * anisotropic because ATTACHMENT differs by crystallographic direction: some faces accept an atom
-     * readily and some do not, and the fast directions become the needles. So the walk stays a pure
-     * unbiased random walk — which is what makes this DLA at all — and the anisotropy lives in whether
-     * a contact is accepted.
-     *
-     * `align` is +1 when the candidate site sits exactly on one of the nucleus's `twin` axes and −1
-     * exactly between two of them; `cos(twin·(θ−rot))` gives the whole cyclic-twin symmetry in one term.
-     * Acceptance falls from certain (habit 0, isotropic, equant) to strongly axis-selective (habit 1),
-     * and a rejected walker keeps walking rather than being discarded, so no walker is wasted. */
-    function accept(g, px, py) {
-      if (habit <= 0) return true;
-      var dx = px - g.cx, dy = py - g.cy;
-      /* the surface wraps vertically, so take the shorter way round when measuring a bearing */
-      if (dy > h / 2) dy -= h; else if (dy < -h / 2) dy += h;
-      if (dx === 0 && dy === 0) return true;                  /* at the nucleus itself: no direction yet */
-      var align = Math.cos(twin * (Math.atan2(dy, dx) - g.rot));   /* +1 on an axis, -1 between */
-      /* Selectivity is the EXPONENT, not a blend against an isotropic floor. The first form here was
-         `(1-habit) + habit·p`, which keeps a 0.45 floor of accepting anything at habit .55 — both tools'
-         default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
-         twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
-         gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
-      /* 1.1b — THE MISFIT WAS TESTED HERE AND DOES NOT EXPRESS. RECORDED, NOT SHIPPED.
-       *
-       * Aragonite's {110} composition planes sit at 2·arctan(b/a) = 116.209° where a hexagonal
-       * relationship needs 120°, a 3.791° deficit at every boundary. That deficit is the whole reason
-       * the habit is called *pseudo*-hexagonal, and a real cyclic twin closes anyway — the misfit is
-       * taken up as strain and leaves a RE-ENTRANT ANGLE at each composition plane. Re-entrant angles
-       * are preferred attachment sites; it is what drives twinned dendritic growth in ice and in ribbon
-       * silicon. So the obvious move is an attachment boost along the seam, at the deficit's own
-       * strength: 3.791/60 = 0.0632.
-       *
-       * IT PRODUCES NOTHING, MEASURED. Folded angular density at the composition plane came back at
-       * 0.15× the plain matrix — below it, not above — and stayed flat at 0.15 across a 10× range in
-       * particle count and a 9× range in lattice area. It is not a resolution limit; it does not
-       * converge. The reason is that DLA is ARRIVAL-limited: the composition plane lies in the screening
-       * shadow of the two arms flanking it, so a walker almost never reaches it, and an attachment boost
-       * only matters conditional on arrival. The re-entrant effect is real, and it belongs to
-       * attachment-limited growth, which this is not.
-       *
-       * Raising the coefficient until a seam appeared would be fudging a derived number to produce a
-       * wanted picture — the exact failure the material model exists to prevent. Shipping the term at
-       * its true strength would be worse: a value computed and consumed by nothing, which is `OCCVM-D12`
-       * one release after closing it. So the term is not here. The arithmetic stays (it is what P2's
-       * fracture angle needs), and the negative result stays with it. */
-      return rnd() < Math.pow((1 + align) / 2, habit * 6);
-    }
+    while (clusters > target && steps < budget) {
+      steps++;
+      var ai = (rnd() * alive.length) | 0, c = alive[ai], mem = members[c], s = mem.length;
+      if (s > 1 && rnd() > 1 / Math.sqrt(s)) continue;   /* mobility ∝ s^-½ */
+      var d = (rnd() * 4) | 0, dx = DX[d], dy = DY[d];
 
-    for (i = 0; i < n; i++) {
-      /* Spawn across the whole occupied extent rather than only at the leading edge, so the interior
-         keeps thickening while the tips advance. Launching only at the frontier grows one filament and
-         leaves the body starved. */
-      /* Launch near the aggregate, not at infinity. A walker released far out in the matrix spends most
-         of its life wandering empty lattice; released on a small circle around a site already occupied,
-         it arrives at the cluster with the same isotropic distribution — this is the standard DLA launch
-         radius, and it is why the generator finishes in single-digit milliseconds instead of twenty. */
-      var pick = (rnd() * sites.length) | 0;
-      var site = sites[pick], group = groups[siteGroup[pick]];
-      var ang = rnd() * TAU, rad = 4 + rnd() * 7;
-      x = ((site % w) + Math.cos(ang) * rad) | 0;
-      y = (((site / w) | 0) + Math.sin(ang) * rad) | 0;
-      if (x < 1) x = 1; else if (x > w - 2) x = w - 2;
-      if (y < 0) y += h; else if (y >= h) y -= h;
-      var stuck = -1;
-
-      for (var st = 0; st < maxSteps; st++) {
-        var k = y * w + x;
-        if (occ[k]) break;                                   /* landed inside: discard */
-        /* Moore neighbourhood: a walker sticks on diagonal contact too, so the aggregate grows at 45
-           degrees as readily as along the axes. Von Neumann sticking is what makes a lattice DLA look
-           like circuit routing rather than a mineral. */
-        var hit = -1;
-        for (j = 0; j < 8 && hit < 0; j++) {
-          var dx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
-          var dy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
-          var nx = x + dx, ny = y + dy;
-          if (nx < 0 || nx >= w) continue;
-          if (ny < 0) ny = h - 1; else if (ny >= h) ny = 0;
-          if (occ[ny * w + nx]) hit = ny * w + nx;
-        }
-        /* a contact only becomes a stick if this direction accepts one (see accept(), above) */
-        if (hit >= 0 && accept(group, x, y)) { stuck = hit; break; }
-
-        /* An unbiased lattice walk. The anisotropy is in attachment, not in travel. */
-        if (rnd() < 0.5) x += rnd() < 0.5 ? -1 : 1;
-        else y += rnd() < 0.5 ? -1 : 1;
-
-        if (y < 0) y = h - 1; else if (y >= h) y = 0;        /* the surface wraps vertically */
-        if (x < 1) x = 1; else if (x >= w - 1) x = w - 2;
+      /* can the whole cluster take the step? a wall or another cluster in the way blocks it */
+      var blocked = false, contacts = [];
+      for (m = 0; m < s; m++) {
+        q = mem[m];
+        var nx = px[q] + dx, ny = wrapY(py[q] + dy);
+        if (nx < 1 || nx > w - 2) { blocked = true; break; }
+        var o2 = occ[ny * w + nx];
+        if (o2 && cid[o2 - 1] !== c) { blocked = true; contacts.push(q, o2 - 1); }
       }
-      if (stuck < 0) continue;
-
-      var kk = y * w + x;
-      if (occ[kk]) continue;
-      occ[kk] = 1;
-      sites.push(kk);
-      siteGroup.push(siteGroup[pick]);   /* a fibre belongs to the twin it grew from */
-      segOwner.push(siteGroup[pick]);
-      segs.push(stuck % w, (stuck / w) | 0, x, y);
+      if (!blocked) {
+        for (m = 0; m < s; m++) { q = mem[m]; occ[py[q] * w + px[q]] = 0; }
+        for (m = 0; m < s; m++) { q = mem[m]; px[q] += dx; py[q] = wrapY(py[q] + dy); occ[py[q] * w + px[q]] = q + 1; }
+        /* Moore contact: diagonal touch bonds too, or the network reads as circuit routing (1.1) */
+        for (m = 0; m < s; m++) {
+          q = mem[m];
+          for (var j = 0; j < 8; j++) {
+            var ddx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
+            var ddy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
+            var xx = px[q] + ddx, yy = wrapY(py[q] + ddy);
+            if (xx < 0 || xx >= w) continue;
+            var o3 = occ[yy * w + xx];
+            if (o3 && cid[o3 - 1] !== c) contacts.push(q, o3 - 1);
+          }
+        }
+      }
+      if (contacts.length && rnd() < stick) {
+        var seen = {};
+        for (var t = 0; t < contacts.length; t += 2) {
+          var a = contacts[t], b = contacts[t + 1], cb = cid[b];
+          if (cb === c || seen[cb]) continue;
+          seen[cb] = 1;
+          bonds.push(a, b);
+          var mb = members[cb];
+          for (m = 0; m < mb.length; m++) { cid[mb[m]] = c; mem.push(mb[m]); }
+          members[cb] = null; clusters--;
+          var idx = alive.indexOf(cb);
+          alive[idx] = alive[alive.length - 1]; alive.pop();
+        }
+      }
     }
-    /* `groups` and `segOwner` are returned so the twin can be MEASURED rather than eyeballed: with
-       several growths overlapping, assigning a particle to its nearest nucleus misattributes enough of
-       them to bury the signal, and a property that can only be checked when it happens to be isolated is
-       not really checked. With the true owner and the group's own rotation, the angular harmonic is
-       exact — which is what test/occvm.js asserts on. */
-    return { segs: segs, w: w, h: h, nuclei: seeds, twin: twin, groups: groups, segOwner: segOwner };
+
+    /* resolve bonds to where the particles ENDED, not where they met */
+    var segs = [];
+    for (i = 0; i < bonds.length; i += 2) {
+      var A = bonds[i], B = bonds[i + 1];
+      segs.push(px[A], py[A], px[B], py[B]);
+    }
+    return { segs: segs, bonds: bonds, w: w, h: h, particles: n, clusters: clusters, steps: steps,
+             px: px, py: py, cid: cid, members: members };
   }
 
-  /* svg(): trace the aggregate. Every stroke is a straight segment between a particle and the particle
-   * it stuck to — the record of how it grew. No curve is fitted over it, because a fitted curve is the
-   * bezier coming back in through the renderer.
+  /* paths(): trace the aggregate. Every stroke is a straight segment between two particles that bonded
+   * — the record of how it formed. No curve is fitted over it, because a fitted curve is the bezier
+   * coming back in through the renderer.
    */
   function paths(g, o) {
     var sc = o.scale || 1, jx = o.ox || 0, jy = o.oy || 0;
-    /* The lattice is a discretisation of the walk, not a fact about the mineral, so the trace carries a
-       deterministic sub-cell offset per particle. It breaks the grid without fitting a curve over the
-       growth — a fitted curve is the bezier coming back in through the renderer. */
+    /* The lattice is a discretisation of the walk, not a fact about the substance, so the trace carries
+       a deterministic sub-cell offset per particle. It breaks the grid without fitting a curve. */
     var jit = o.jitter === undefined ? 0.42 : o.jitter;
     var r = mulberry32((o.seed >>> 0) ^ 0x5bf03635);
     var d = [], i;
@@ -1796,42 +1506,44 @@ var OCCVM_VEINS = (function () {
     return d.join("");
   }
 
-  /* field(): the whole vein layer as a data URI, so both tools share the assembly and not just the
-   * growth. Two strokes over one path — a wide deep one and a fine bright one offset by nothing — read
-   * as a vein with depth rather than a wire.
+  /* field(): the whole vein layer as raw SVG, so both tools share the assembly and not just the growth.
    *
-   * density is the walker budget as a fraction of the lattice; habit is the growth anisotropy. Both are
-   * read from --vein-density and --vein-habit by the caller, so a tool can tune its own surface without
-   * a second generator.
+   * Two strokes over one path, as since 1.1 — but the wide, deep one is now BLURRED and the fine one
+   * sits lower in opacity. A crystal vein is a seam in a solid and reads crisp; a floc is suspended in
+   * a fluid and has no hard boundary against it. `soft` is the blur's standard deviation in viewBox
+   * units; 0 restores the seam. This is the one authored rendering value in the file and is named as
+   * one — the mechanism gives the structure, not the focus.
+   *
+   * density is the volume fraction: the particle count as a fraction of the lattice. It is the same
+   * number `--vein-density` has always been (a walker budget was the same fraction under the old
+   * mechanism); only what it means physically has sharpened. `habit` is accepted and ignored (header).
    *
    * RETURNS RAW SVG. The caller must encodeURIComponent it before putting it in a url(). Both the
-   * fragment reference and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
+   * fragment references and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
    * the URI at a fragment — while pre-encoding it to %23 leaves the parsed SVG holding the two literal
    * characters "%23", so href="%23v" resolves to nothing and the layer renders empty. That failure is
    * invisible to a token diff and to any check that only looks for the string: it has to be looked at.
    */
   function field(o) {
     var w = o.w || 110, h = o.h || 70;
-    var density = o.density === undefined ? 0.35 : Math.max(0.05, Math.min(1, o.density));
-    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed, twin: o.twin });
-    if (g.segs.length < 8) throw new Error("occvm veins: aggregate did not grow");
+    var density = o.density === undefined ? 0.3 : Math.max(0.02, Math.min(0.6, o.density));
+    var g = grow({ w: w, h: h, n: Math.round(w * h * density), seed: o.seed, stick: o.stick, target: o.target });
+    if (g.segs.length < 8) throw new Error("occvm veins: suspension did not aggregate");
     var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
-    /* The geometry is written once and referenced twice. Serialising the same few tens of kilobytes of
-       path data a second time is the single largest cost in producing this layer. */
+    var soft = o.soft === undefined ? 1.4 : Math.max(0, o.soft);
     var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
       (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
-      "<defs><path id='v' d='" + d + "'/></defs>" +
-      "<g fill='none' stroke-linecap='round'>" +
-      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.5'/>" +
-      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.85'/>" +
+      "<defs><path id='v' d='" + d + "'/>" +
+      (soft > 0 ? "<filter id='s' x='-3%' y='-3%' width='106%' height='106%'><feGaussianBlur stdDeviation='" + soft + "'/></filter>" : "") +
+      "</defs>" +
+      "<g fill='none' stroke-linecap='round' stroke-linejoin='round'>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
+      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.7'/>" +
       "</g></svg>";
-    return { svg: svg, particles: g.segs.length / 4 };
+    return { svg: svg, particles: g.particles, clusters: g.clusters, bonds: g.segs.length / 4 };
   }
 
-  /* CELL and TWIN_ANGLE are exported because the fracture primitive needs the same arithmetic, and
-     two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. */
-  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32,
-           CELL: CELL, TWIN_ANGLE: TWIN_ANGLE, MISFIT: MISFIT };
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32 };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_VEINS;
 /* ==== END OCCVM veins.js ==== */
@@ -2314,14 +2026,15 @@ function paintVeins() {
   host.textContent = "";
   var m = OCCVM_MINERALS[mineral] || OCCVM_MINERALS.amethyst;
   var density = parseFloat(css("--vein-density"));
-  var habits = [0, 0.55, 1];
-  for (var i = 0; i < habits.length; i++) {
+  /* 2.8 — the specimens run along CONCENTRATION, the axis a suspension has; the last is what ships */
+  var densities = [0.08, 0.15, isFinite(density) ? density : 0.3];
+  for (var i = 0; i < densities.length; i++) {
     var wrap = el("div");
     var box = el("div", "veinbox");
     try {
       var out = OCCVM_VEINS.field({
         seed: VEIN_SEED, w: 72, h: 40, viewW: 400, viewH: 220,
-        density: isFinite(density) ? density : 0.3, habit: habits[i],
+        density: densities[i],
         lo: m.lo, hi: m.hi, wide: 3.4, fine: 1.1
       });
       box.style.backgroundImage = "url(\"data:image/svg+xml;utf8," + encodeURIComponent(out.svg) + "\")";
@@ -2329,19 +2042,48 @@ function paintVeins() {
       box.appendChild(el("div", "cap", "growth failed: " + (e && e.message)));
     }
     wrap.appendChild(box);
-    wrap.appendChild(el("div", "cap", "--vein-habit " + habits[i].toFixed(2)));
+    wrap.appendChild(el("div", "cap", "--vein-density " + densities[i].toFixed(2) + (i === 2 ? " (shipped)" : "")));
     host.appendChild(wrap);
   }
   /* the page's own layer follows the chosen mineral too, so the surface and the specimens agree */
   try {
     var field = OCCVM_VEINS.field({
       seed: VEIN_SEED, w: 96, h: 60, viewW: 1200, viewH: 800,
-      density: isFinite(density) ? density : 0.3, habit: parseFloat(css("--vein-habit")) || 0.55,
+      density: isFinite(density) ? density : 0.3,
       lo: m.lo, hi: m.hi, wide: 4.5, fine: 1.3
     });
     document.documentElement.style.setProperty(
       "--vein", "url(\"data:image/svg+xml;utf8," + encodeURIComponent(field.svg) + "\")");
   } catch (e) { /* L10 requires a fallback in a tool; a reference surface reports instead of pretending */ }
+}
+
+/* ---- yield (L11) --------------------------------------------------------------------------------
+ * One live specimen: a row that pinches off on request and comes back so it can be looked at again. The
+ * primitive is called exactly as Rhyme's shelf calls it; the only thing this page adds is the restore,
+ * which a real deletion never has. The easing string the substance produced is printed beside it so what
+ * the eye sees and what the derivation says can be compared on the same screen. */
+function paintYield() {
+  var host = $("l11");
+  host.textContent = "";
+  var wrap = el("div");
+  var row = el("div", "occvm-slab", "a draft on the shelf — remove pinches it off");
+  row.id = "l11row";
+  row.style.cssText = "padding:10px 14px;min-width:280px;color:var(--bone)";
+  var b = el("button", "occvm-act occvm-focus", "REMOVE");
+  b.style.marginTop = "8px";
+  var cap = el("div", "cap", "");
+  try { cap.textContent = "retraction easing " + OCCVM_YIELD.easing() + " · neck " + OCCVM_YIELD.NECK_MS + "ms · retract " + OCCVM_YIELD.RETRACT_MS + "ms"; }
+  catch (e) { cap.textContent = "yield unavailable: " + (e && e.message); }
+  b.addEventListener("click", function () {
+    if (b.disabled) return;
+    b.disabled = true;
+    OCCVM_YIELD.pinch(row, function () {
+      /* a reference surface restores what a tool never would, so the specimen can be seen twice */
+      setTimeout(function () { row.style.visibility = ""; b.disabled = false; }, 600);
+    });
+  });
+  wrap.appendChild(row); wrap.appendChild(b); wrap.appendChild(cap);
+  host.appendChild(wrap);
 }
 
 /* ---- the dusk strip (L9) ------------------------------------------------------------------------ */
@@ -2499,6 +2241,7 @@ applyMineral();
 buildPicker();
 paintMineralSwatches();
 paintVeins();
+paintYield();
 paintStages();
 
 /* L3 — the scalars the light writes, read back off the document it just wrote them to. Refreshed with

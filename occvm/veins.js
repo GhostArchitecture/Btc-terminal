@@ -1,43 +1,50 @@
-/* OCCVM 1.1 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
+/* OCCVM 1.1 → 2.8 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
  * spliced copy — the next splice reverts it silently.
  *
  * Veins are GROWN, not drawn. Both tools drew three displaced cubic beziers and called the result a
  * mineral vein; a bezier is a shape that resembles the outcome, and the eye eventually catches the
- * smooth curvature because nothing in a real dendrite is smooth at every scale.
+ * smooth curvature because nothing in a real aggregate is smooth at every scale.
  *
- * This is diffusion-limited aggregation: a walker starts in the matrix, moves at random, and sticks the
- * instant it touches the aggregate. Growth is dendritic because a tip that protrudes intercepts walkers
- * before they can reach the shielded interior — the screening effect, which nobody has to author. That
- * is the roadmap's discipline for 2.0 arriving early: simulate the process, never the resulting shape.
+ * 2.8 — THE MECHANISM CHANGED WITH THE SUBSTANCE. From 1.1 to 2.7 this was particle-cluster DLA: a
+ * fixed aggregate seeded at a few nuclei, walkers arriving one at a time and sticking. That is how a
+ * crystal grows from a nucleation point, and it was grown as one — aragonite's cyclic twin, with the
+ * {110} angle read from the material's unit cell. A fluid has no lattice, no nucleus and no angle, and
+ * a colloidal suspension does not aggregate that way. Ketchup is a particulate gel: tomato cell-wall
+ * fragments in suspension, every one of them diffusing, sticking to each other on contact, the clusters
+ * they form diffusing in turn until the whole suspension has joined into one network. That is
+ * DIFFUSION-LIMITED CLUSTER AGGREGATION (Meakin 1983; Kolb, Botet & Jullien 1983), and it is what this
+ * file now simulates: every particle starts mobile, every cluster moves as a rigid body with a mobility
+ * that falls with its size, and two clusters that touch become one.
+ *
+ * What that does to the picture, measured rather than asserted (test/occvm.js): the vein layer stops
+ * being a few dendrites radiating from points in clear matrix and becomes a network SUSPENDED IN the
+ * material — open, tenuous, everywhere at once. The roadmap's own visual note (§5.4) asked for exactly
+ * that, and it turns out not to be a rendering choice; it is what the mechanism produces at the density
+ * the tools already ship. At `--vein-density .3` the suspension is above its gel point and the clusters
+ * span the field; at .15 they are separate flocs with matrix between them; at .08 they are isolated.
+ * The axis a fluid has is CONCENTRATION, and the reference surface's specimens now run along it.
+ *
+ * `--vein-habit` IS RETIRED, and the reason is a measurement, not a preference. The crystal's habit was
+ * attachment anisotropy — which crystallographic directions accept a particle — and a fluid has no
+ * directions to be anisotropic along. The one axis colloid science does offer, the sticking probability
+ * that separates diffusion-limited from reaction-limited aggregation (Lin et al. 1989: D_f 1.86 → 2.1
+ * in three dimensions), was tried here as the token's new meaning and DOES NOT EXPRESS on this lattice:
+ * at the shipped density the mass-radius dimension moved 1.61 → 1.54 across a 20× range in sticking
+ * probability, and in the dilute regime 1.38 → 1.39, inside the estimator's own error both times. A
+ * token whose effect is below measurement is OCCVM-D12 with a physical story attached. `field()` still
+ * accepts `habit` and ignores it, so a caller written against 1.1 does not throw; the spine carries the
+ * declaration one minor cycle marked deprecated per its versioning contract, and nothing reads it.
  *
  * Seeded and pure. Same seed plus same parameters yields the same bytes, which is what the golden set
- * and the injected session seed exist for (SPINE.md section 4).
+ * and the injected session seed exist for (SPINE.md section 4). No substance module is read: DLCA takes
+ * no constant from the fluid, and the fractal dimension is an OUTPUT of the process, measured in the
+ * tests against the literature, never an input to it. That also removes the load-order dependency that
+ * had material.js needing to precede this file.
  */
 var OCCVM_VEINS = (function () {
   "use strict";
-
-  /* ARAGONITE'S UNIT CELL, and the one number that follows from it (1.1b).
-   *
-   * a 4.96 Å · b 7.97 Å · c 5.74 Å, orthorhombic, space group Pmcn. The {110} composition planes of the
-   * cyclic twin sit at 2·arctan(b/a) = 116.209°, against the 120° a hexagonal relationship would need.
-   * The 3.791° deficit is computed here from the cell rather than written down, so the cell is the only
-   * thing anyone has to get right — and so that a different mineral, at 2.0, changes one line.
-   *
-   * MISFIT is that deficit measured against the sector half-width (60°): 0.0632.
-   *
-   * 2.0 — THE CELL MOVED OUT OF HERE AND IS NOW READ, NOT RESTATED. occvm/material.js is the material
-   * definition and owns the lattice; this file grows a habit from it. Until 2.0 the same three lengths
-   * were typed here and in the material, which is two copies of one fact — the defect the fracture
-   * primitive's own header forbids, one level up, and it would have gone unnoticed until somebody edited
-   * one of them. The angle still has exactly one derivation; it just happens where the cell lives. */
-  var MAT = (typeof OCCVM_MATERIAL !== "undefined") ? OCCVM_MATERIAL
-          : (typeof require !== "undefined" ? require("./material.js") : null);
-  if (!MAT) throw new Error("occvm veins: material.js is not spliced beside this — no lattice to grow on");
-  var CELL = MAT.ARAGONITE.cell;
-  var TWIN_ANGLE = 2 * Math.atan(CELL.b / CELL.a) * 180 / Math.PI;   /* 116.209° */
-  var MISFIT = (120 - TWIN_ANGLE) / 60;                              /* 0.0632 */
 
   /* the PRNG both tools already use, so a seed means the same thing everywhere */
   function mulberry32(a) {
@@ -50,204 +57,119 @@ var OCCVM_VEINS = (function () {
     };
   }
 
-  /* grow(): DLA on a lattice, growing the habit of a named mineral rather than a generic dendrite.
+  /* grow(): cluster-cluster aggregation on a lattice.
    *
-   * THE MINERAL IS ARAGONITE, and since 1.1a that is a decision the generator encodes rather than a label
-   * on the output. The 2.0 material model anchors substrate and vein to one crystal (CaCO₃, orthorhombic)
-   * on the argument that a vein is not a foreign material embedded in a slab — it is the same crystal
-   * grown differently. Aragonite's two expressions are exactly the two this system needs: a blocky
-   * orthorhombic form for a cut face, and a fibrous radiating form for a vein. So the vein grows the
-   * second one, and it grows it the way aragonite actually does:
+   *   w, h     lattice; the surface wraps vertically and has walls at the sides, as before
+   *   n        particle count — the volume fraction times the lattice
+   *   seed     mulberry32 seed
+   *   stick    probability that a contact becomes a bond (1 = diffusion-limited). Accepted, measured,
+   *            and not exposed as a token — see the header.
+   *   target   stop when this many clusters remain. The suspension is not driven to a single cluster,
+   *            because a gel is a network of many flocs that have joined, and the last few merges are
+   *            the slowest by a wide margin (a cluster's mobility falls as s^-½).
+   *   budget   a hard cap on steps, so a pathological seed cannot hang a page
    *
-   *   - FIBRES RADIATE FROM A NUCLEATION POINT. Not from the screen's left edge, and not along the
-   *     screen's horizontal. Until 1.1a the anisotropy was `pH = .5 + habit * .32`, a bias toward
-   *     horizontal STEPS — a direction in the viewport, which is a fact about the browser window and not
-   *     about the crystal. A crystal has no idea which way the screen is. Direction is now measured from
-   *     the growth's own nucleus, which is a direction in the material's frame.
-   *
-   *   - IT TWINS IN THREES. Aragonite's signature is cyclic twinning on {110}: three individuals meeting
-   *     at close to 120°, which mimics a hexagonal prism well enough that the pseudo-hexagonal form is
-   *     what the mineral is known for. Each nucleus therefore carries `twin` sectors — three, by default,
-   *     because that is what aragonite does — each with its own rotation, and growth is selective along
-   *     them. Radiating fibre bundles from one point, grown rather than drawn.
-   *
-   * habit stays what OCCVM-L10 says it is — the anisotropy of growth — and its ends still mean what the
-   * law says: 0 grows the bushy, equant dendrite of a manganese oxide; 1 draws the structure out into an
-   * elongated, acicular form. Two things changed under it. The AXIS anisotropy is measured against moved
-   * from the viewport's to the crystal's, and the MECHANISM moved from the walk to the attachment (see
-   * accept(), below, which records why the first attempt failed). At habit 0 the twin sectors still exist
-   * but express nothing, because attachment is then indifferent to direction — which is correct, and is
-   * what an equant habit is.
-   *
-   * Walkers spawn just beyond the frontier rather than at infinity — the standard optimisation, and the
-   * reason this finishes in single-digit milliseconds. A walker that strays far outside the frontier is
-   * abandoned rather than followed, which is equivalent in the limit and much cheaper.
-   *
-   * `twin` is a parameter rather than a CSS token deliberately. Twinning is a MATERIAL PROPERTY, and
-   * material properties are 2.0's substance — at 2.0 this argument comes from the material definition
-   * instead of a default. Adding a `--vein-twin` token now would put a 2.0 property into the 1.x token
-   * surface, which is the leak SPINE.md's own 1.4 note warns about. It defaults to aragonite's 3.
+   * Every particle begins as its own cluster at a random empty site. Each step picks a cluster at
+   * random, moves it one lattice step in a random direction as a rigid body — accepted with probability
+   * s^-½, the standard size-dependent mobility, so a monomer moves every time it is picked and a cluster
+   * of a hundred moves one time in ten — and then looks for contact with any other cluster on the Moore
+   * neighbourhood of every particle it moved. A contact merges the two with probability `stick`. The
+   * bond recorded is the pair of particles that touched, kept as INDICES rather than coordinates: the
+   * clusters keep moving after they join, and a bond stored as a position at the moment of contact is
+   * wrong the next time either of its ends moves (the prototype did exactly that and rendered confetti).
    */
   function grow(o) {
     var w = o.w | 0, h = o.h | 0;
     var n = o.n | 0;
-    var habit = Math.max(0, Math.min(1, o.habit === undefined ? 0.55 : o.habit));
-    var twin = o.twin === undefined ? 3 : Math.max(1, o.twin | 0);
+    var stick = o.stick === undefined ? 1 : Math.max(0.005, Math.min(1, o.stick));
+    var target = o.target === undefined ? 8 : Math.max(1, o.target | 0);
+    var budget = o.budget === undefined ? 400000 : o.budget | 0;
     var rnd = mulberry32(o.seed >>> 0);
-    var TAU = 6.283185307179586;
 
-    var occ = new Uint8Array(w * h);
-    var segs = [];
-    var i, j, y, x;
-
-    /* Nucleation points, scattered across the whole surface rather than banked against one edge: a vein
-       layer that fills half the page and stops is a gradient, and the eye reads a gradient as a mistake.
-       They compete for the same walkers and screen each other, which is what leaves clear matrix between
-       separate growths.
-
-       Each nucleus carries its own twin rotation, so the three sectors do not all point the same way
-       across the surface — cyclic twins nucleate independently and there is no reason they would. */
-    var nuclei = 6 + ((rnd() * 4) | 0);
-    var seeds = [], sites = [], siteGroup = [], groups = [], segOwner = [];
-    for (i = 0; i < nuclei; i++) {
-      x = 1 + ((rnd() * (w - 3)) | 0);
-      y = ((rnd() * h) | 0);
-      occ[y * w + x] = 1;
-      seeds.push(x, y);
-      sites.push(y * w + x);
-      siteGroup.push(i);
-      groups.push({ cx: x, cy: y, rot: rnd() * TAU });
+    var occ = new Int32Array(w * h);            /* particle index + 1, or 0 */
+    var px = new Int16Array(n), py = new Int16Array(n), cid = new Int32Array(n);
+    var members = [];                           /* cluster id -> array of particle indices, or null */
+    var placed = 0, tries = 0, i, m, q;
+    while (placed < n && tries < n * 50) {
+      tries++;
+      var x = 1 + ((rnd() * (w - 2)) | 0), y = (rnd() * h) | 0, k = y * w + x;
+      if (occ[k]) continue;
+      occ[k] = placed + 1; px[placed] = x; py[placed] = y; cid[placed] = placed;
+      members.push([placed]); placed++;
     }
+    n = placed;
+    var alive = [];
+    for (i = 0; i < n; i++) alive.push(i);
 
-    var maxSteps = h * 2 + 60;
+    var bonds = [], clusters = n, steps = 0;
+    var DX = [1, -1, 0, 0], DY = [0, 0, 1, -1];
+    function wrapY(v) { return v < 0 ? v + h : (v >= h ? v - h : v); }
 
-    /* ATTACHMENT ANISOTROPY — how a crystal actually grows in a direction.
-     *
-     * The first attempt at this biased the WALKER's drift toward its sector axis, and measurement said
-     * it did nothing: twin 1, twin 3 and twin 6 produced identical angular spectra, all dominated by a
-     * single lobe. Two reasons, both instructive. A walker pushed radially outward is pushed away from
-     * the aggregate, so it wanders off and is abandoned rather than sticking anywhere — the bias spent
-     * walkers instead of shaping growth. And snapping an axis to the nearest lattice step collapses
-     * three directions 120° apart into at most four, which destroys the threefold signal before it can
-     * reach the surface.
-     *
-     * A real crystal is not anisotropic because the diffusing atom travels differently. It is
-     * anisotropic because ATTACHMENT differs by crystallographic direction: some faces accept an atom
-     * readily and some do not, and the fast directions become the needles. So the walk stays a pure
-     * unbiased random walk — which is what makes this DLA at all — and the anisotropy lives in whether
-     * a contact is accepted.
-     *
-     * `align` is +1 when the candidate site sits exactly on one of the nucleus's `twin` axes and −1
-     * exactly between two of them; `cos(twin·(θ−rot))` gives the whole cyclic-twin symmetry in one term.
-     * Acceptance falls from certain (habit 0, isotropic, equant) to strongly axis-selective (habit 1),
-     * and a rejected walker keeps walking rather than being discarded, so no walker is wasted. */
-    function accept(g, px, py) {
-      if (habit <= 0) return true;
-      var dx = px - g.cx, dy = py - g.cy;
-      /* the surface wraps vertically, so take the shorter way round when measuring a bearing */
-      if (dy > h / 2) dy -= h; else if (dy < -h / 2) dy += h;
-      if (dx === 0 && dy === 0) return true;                  /* at the nucleus itself: no direction yet */
-      var align = Math.cos(twin * (Math.atan2(dy, dx) - g.rot));   /* +1 on an axis, -1 between */
-      /* Selectivity is the EXPONENT, not a blend against an isotropic floor. The first form here was
-         `(1-habit) + habit·p`, which keeps a 0.45 floor of accepting anything at habit .55 — both tools'
-         default — and measurement showed the threefold signal absent there: dominant harmonic k=1, the
-         twin invisible at exactly the setting that ships. As an exponent the limits are exact (habit 0
-         gives p⁰ = 1, accept everything, equant) and selectivity rises smoothly with no dead band. */
-      /* 1.1b — THE MISFIT WAS TESTED HERE AND DOES NOT EXPRESS. RECORDED, NOT SHIPPED.
-       *
-       * Aragonite's {110} composition planes sit at 2·arctan(b/a) = 116.209° where a hexagonal
-       * relationship needs 120°, a 3.791° deficit at every boundary. That deficit is the whole reason
-       * the habit is called *pseudo*-hexagonal, and a real cyclic twin closes anyway — the misfit is
-       * taken up as strain and leaves a RE-ENTRANT ANGLE at each composition plane. Re-entrant angles
-       * are preferred attachment sites; it is what drives twinned dendritic growth in ice and in ribbon
-       * silicon. So the obvious move is an attachment boost along the seam, at the deficit's own
-       * strength: 3.791/60 = 0.0632.
-       *
-       * IT PRODUCES NOTHING, MEASURED. Folded angular density at the composition plane came back at
-       * 0.15× the plain matrix — below it, not above — and stayed flat at 0.15 across a 10× range in
-       * particle count and a 9× range in lattice area. It is not a resolution limit; it does not
-       * converge. The reason is that DLA is ARRIVAL-limited: the composition plane lies in the screening
-       * shadow of the two arms flanking it, so a walker almost never reaches it, and an attachment boost
-       * only matters conditional on arrival. The re-entrant effect is real, and it belongs to
-       * attachment-limited growth, which this is not.
-       *
-       * Raising the coefficient until a seam appeared would be fudging a derived number to produce a
-       * wanted picture — the exact failure the material model exists to prevent. Shipping the term at
-       * its true strength would be worse: a value computed and consumed by nothing, which is `OCCVM-D12`
-       * one release after closing it. So the term is not here. The arithmetic stays (it is what P2's
-       * fracture angle needs), and the negative result stays with it. */
-      return rnd() < Math.pow((1 + align) / 2, habit * 6);
-    }
+    while (clusters > target && steps < budget) {
+      steps++;
+      var ai = (rnd() * alive.length) | 0, c = alive[ai], mem = members[c], s = mem.length;
+      if (s > 1 && rnd() > 1 / Math.sqrt(s)) continue;   /* mobility ∝ s^-½ */
+      var d = (rnd() * 4) | 0, dx = DX[d], dy = DY[d];
 
-    for (i = 0; i < n; i++) {
-      /* Spawn across the whole occupied extent rather than only at the leading edge, so the interior
-         keeps thickening while the tips advance. Launching only at the frontier grows one filament and
-         leaves the body starved. */
-      /* Launch near the aggregate, not at infinity. A walker released far out in the matrix spends most
-         of its life wandering empty lattice; released on a small circle around a site already occupied,
-         it arrives at the cluster with the same isotropic distribution — this is the standard DLA launch
-         radius, and it is why the generator finishes in single-digit milliseconds instead of twenty. */
-      var pick = (rnd() * sites.length) | 0;
-      var site = sites[pick], group = groups[siteGroup[pick]];
-      var ang = rnd() * TAU, rad = 4 + rnd() * 7;
-      x = ((site % w) + Math.cos(ang) * rad) | 0;
-      y = (((site / w) | 0) + Math.sin(ang) * rad) | 0;
-      if (x < 1) x = 1; else if (x > w - 2) x = w - 2;
-      if (y < 0) y += h; else if (y >= h) y -= h;
-      var stuck = -1;
-
-      for (var st = 0; st < maxSteps; st++) {
-        var k = y * w + x;
-        if (occ[k]) break;                                   /* landed inside: discard */
-        /* Moore neighbourhood: a walker sticks on diagonal contact too, so the aggregate grows at 45
-           degrees as readily as along the axes. Von Neumann sticking is what makes a lattice DLA look
-           like circuit routing rather than a mineral. */
-        var hit = -1;
-        for (j = 0; j < 8 && hit < 0; j++) {
-          var dx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
-          var dy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
-          var nx = x + dx, ny = y + dy;
-          if (nx < 0 || nx >= w) continue;
-          if (ny < 0) ny = h - 1; else if (ny >= h) ny = 0;
-          if (occ[ny * w + nx]) hit = ny * w + nx;
-        }
-        /* a contact only becomes a stick if this direction accepts one (see accept(), above) */
-        if (hit >= 0 && accept(group, x, y)) { stuck = hit; break; }
-
-        /* An unbiased lattice walk. The anisotropy is in attachment, not in travel. */
-        if (rnd() < 0.5) x += rnd() < 0.5 ? -1 : 1;
-        else y += rnd() < 0.5 ? -1 : 1;
-
-        if (y < 0) y = h - 1; else if (y >= h) y = 0;        /* the surface wraps vertically */
-        if (x < 1) x = 1; else if (x >= w - 1) x = w - 2;
+      /* can the whole cluster take the step? a wall or another cluster in the way blocks it */
+      var blocked = false, contacts = [];
+      for (m = 0; m < s; m++) {
+        q = mem[m];
+        var nx = px[q] + dx, ny = wrapY(py[q] + dy);
+        if (nx < 1 || nx > w - 2) { blocked = true; break; }
+        var o2 = occ[ny * w + nx];
+        if (o2 && cid[o2 - 1] !== c) { blocked = true; contacts.push(q, o2 - 1); }
       }
-      if (stuck < 0) continue;
-
-      var kk = y * w + x;
-      if (occ[kk]) continue;
-      occ[kk] = 1;
-      sites.push(kk);
-      siteGroup.push(siteGroup[pick]);   /* a fibre belongs to the twin it grew from */
-      segOwner.push(siteGroup[pick]);
-      segs.push(stuck % w, (stuck / w) | 0, x, y);
+      if (!blocked) {
+        for (m = 0; m < s; m++) { q = mem[m]; occ[py[q] * w + px[q]] = 0; }
+        for (m = 0; m < s; m++) { q = mem[m]; px[q] += dx; py[q] = wrapY(py[q] + dy); occ[py[q] * w + px[q]] = q + 1; }
+        /* Moore contact: diagonal touch bonds too, or the network reads as circuit routing (1.1) */
+        for (m = 0; m < s; m++) {
+          q = mem[m];
+          for (var j = 0; j < 8; j++) {
+            var ddx = (j === 0 || j === 3 || j === 5) ? -1 : (j === 2 || j === 4 || j === 7) ? 1 : 0;
+            var ddy = (j === 0 || j === 1 || j === 2) ? -1 : (j === 5 || j === 6 || j === 7) ? 1 : 0;
+            var xx = px[q] + ddx, yy = wrapY(py[q] + ddy);
+            if (xx < 0 || xx >= w) continue;
+            var o3 = occ[yy * w + xx];
+            if (o3 && cid[o3 - 1] !== c) contacts.push(q, o3 - 1);
+          }
+        }
+      }
+      if (contacts.length && rnd() < stick) {
+        var seen = {};
+        for (var t = 0; t < contacts.length; t += 2) {
+          var a = contacts[t], b = contacts[t + 1], cb = cid[b];
+          if (cb === c || seen[cb]) continue;
+          seen[cb] = 1;
+          bonds.push(a, b);
+          var mb = members[cb];
+          for (m = 0; m < mb.length; m++) { cid[mb[m]] = c; mem.push(mb[m]); }
+          members[cb] = null; clusters--;
+          var idx = alive.indexOf(cb);
+          alive[idx] = alive[alive.length - 1]; alive.pop();
+        }
+      }
     }
-    /* `groups` and `segOwner` are returned so the twin can be MEASURED rather than eyeballed: with
-       several growths overlapping, assigning a particle to its nearest nucleus misattributes enough of
-       them to bury the signal, and a property that can only be checked when it happens to be isolated is
-       not really checked. With the true owner and the group's own rotation, the angular harmonic is
-       exact — which is what test/occvm.js asserts on. */
-    return { segs: segs, w: w, h: h, nuclei: seeds, twin: twin, groups: groups, segOwner: segOwner };
+
+    /* resolve bonds to where the particles ENDED, not where they met */
+    var segs = [];
+    for (i = 0; i < bonds.length; i += 2) {
+      var A = bonds[i], B = bonds[i + 1];
+      segs.push(px[A], py[A], px[B], py[B]);
+    }
+    return { segs: segs, bonds: bonds, w: w, h: h, particles: n, clusters: clusters, steps: steps,
+             px: px, py: py, cid: cid, members: members };
   }
 
-  /* svg(): trace the aggregate. Every stroke is a straight segment between a particle and the particle
-   * it stuck to — the record of how it grew. No curve is fitted over it, because a fitted curve is the
-   * bezier coming back in through the renderer.
+  /* paths(): trace the aggregate. Every stroke is a straight segment between two particles that bonded
+   * — the record of how it formed. No curve is fitted over it, because a fitted curve is the bezier
+   * coming back in through the renderer.
    */
   function paths(g, o) {
     var sc = o.scale || 1, jx = o.ox || 0, jy = o.oy || 0;
-    /* The lattice is a discretisation of the walk, not a fact about the mineral, so the trace carries a
-       deterministic sub-cell offset per particle. It breaks the grid without fitting a curve over the
-       growth — a fitted curve is the bezier coming back in through the renderer. */
+    /* The lattice is a discretisation of the walk, not a fact about the substance, so the trace carries
+       a deterministic sub-cell offset per particle. It breaks the grid without fitting a curve. */
     var jit = o.jitter === undefined ? 0.42 : o.jitter;
     var r = mulberry32((o.seed >>> 0) ^ 0x5bf03635);
     var d = [], i;
@@ -265,41 +187,43 @@ var OCCVM_VEINS = (function () {
     return d.join("");
   }
 
-  /* field(): the whole vein layer as a data URI, so both tools share the assembly and not just the
-   * growth. Two strokes over one path — a wide deep one and a fine bright one offset by nothing — read
-   * as a vein with depth rather than a wire.
+  /* field(): the whole vein layer as raw SVG, so both tools share the assembly and not just the growth.
    *
-   * density is the walker budget as a fraction of the lattice; habit is the growth anisotropy. Both are
-   * read from --vein-density and --vein-habit by the caller, so a tool can tune its own surface without
-   * a second generator.
+   * Two strokes over one path, as since 1.1 — but the wide, deep one is now BLURRED and the fine one
+   * sits lower in opacity. A crystal vein is a seam in a solid and reads crisp; a floc is suspended in
+   * a fluid and has no hard boundary against it. `soft` is the blur's standard deviation in viewBox
+   * units; 0 restores the seam. This is the one authored rendering value in the file and is named as
+   * one — the mechanism gives the structure, not the focus.
+   *
+   * density is the volume fraction: the particle count as a fraction of the lattice. It is the same
+   * number `--vein-density` has always been (a walker budget was the same fraction under the old
+   * mechanism); only what it means physically has sharpened. `habit` is accepted and ignored (header).
    *
    * RETURNS RAW SVG. The caller must encodeURIComponent it before putting it in a url(). Both the
-   * fragment reference and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
+   * fragment references and the colours carry a literal "#", and a "#" left raw inside a data: URI ends
    * the URI at a fragment — while pre-encoding it to %23 leaves the parsed SVG holding the two literal
    * characters "%23", so href="%23v" resolves to nothing and the layer renders empty. That failure is
    * invisible to a token diff and to any check that only looks for the string: it has to be looked at.
    */
   function field(o) {
     var w = o.w || 110, h = o.h || 70;
-    var density = o.density === undefined ? 0.35 : Math.max(0.05, Math.min(1, o.density));
-    var g = grow({ w: w, h: h, n: Math.round(w * h * density), habit: o.habit, seed: o.seed, twin: o.twin });
-    if (g.segs.length < 8) throw new Error("occvm veins: aggregate did not grow");
+    var density = o.density === undefined ? 0.3 : Math.max(0.02, Math.min(0.6, o.density));
+    var g = grow({ w: w, h: h, n: Math.round(w * h * density), seed: o.seed, stick: o.stick, target: o.target });
+    if (g.segs.length < 8) throw new Error("occvm veins: suspension did not aggregate");
     var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
-    /* The geometry is written once and referenced twice. Serialising the same few tens of kilobytes of
-       path data a second time is the single largest cost in producing this layer. */
+    var soft = o.soft === undefined ? 1.4 : Math.max(0, o.soft);
     var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
       (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
-      "<defs><path id='v' d='" + d + "'/></defs>" +
-      "<g fill='none' stroke-linecap='round'>" +
-      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.5'/>" +
-      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.85'/>" +
+      "<defs><path id='v' d='" + d + "'/>" +
+      (soft > 0 ? "<filter id='s' x='-3%' y='-3%' width='106%' height='106%'><feGaussianBlur stdDeviation='" + soft + "'/></filter>" : "") +
+      "</defs>" +
+      "<g fill='none' stroke-linecap='round' stroke-linejoin='round'>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
+      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.7'/>" +
       "</g></svg>";
-    return { svg: svg, particles: g.segs.length / 4 };
+    return { svg: svg, particles: g.particles, clusters: g.clusters, bonds: g.segs.length / 4 };
   }
 
-  /* CELL and TWIN_ANGLE are exported because the fracture primitive needs the same arithmetic, and
-     two derivations of one angle is the defect OCCVM-L3 exists to prevent, one material down. */
-  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32,
-           CELL: CELL, TWIN_ANGLE: TWIN_ANGLE, MISFIT: MISFIT };
+  return { grow: grow, paths: paths, field: field, mulberry32: mulberry32 };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_VEINS;

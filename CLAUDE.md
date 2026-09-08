@@ -31,7 +31,7 @@ GhostArchitecture/Btc-terminal   (main)
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
-│   ├─ {spine.css,sundial.js,veins.js,minerals.js}   the shared parts, spliced into both tools
+│   ├─ {spine.css,serif.css,sundial.js,rheology.js,veins.js,minerals.js,yield.js}   the shared parts, spliced into both tools
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
 │   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
 │   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
@@ -1352,6 +1352,26 @@ and wrong on the runner, where L2's own divergence correctly rolls up `DIVERGED`
 The auditor now takes `OCCVM_SIBLING` so the harness simulates the partial checkout itself instead of
 waiting for the runner to; the CI shape is asserted locally on every run. Recorded because "gates green"
 was reported from the clone, and the standing rule is CI via the API.
+
+**2.8 — the crystal leaves.** The roadmap's §3 disposition, executed with the corrections the branch
+had already recorded. **Veins** are diffusion-limited *cluster* aggregation now — every particle mobile,
+clusters sticking to clusters — which is how a colloid gels and what ketchup is; the layer stops being
+dendrites from nuclei in clear matrix and becomes a network suspended in the material, blurred where it
+was crisp. The fractal dimension is measured as an output (1.46 dilute against the 2-D literature's 1.44,
+1.61 at the shipped density as a gel must), never fed in; the roadmap's 1.75 is the 3-D value and is
+recorded as unreachable on a planar lattice. **`--vein-habit` is retired by measurement**: the one
+meaning a fluid could give it, sticking probability, moved the dimension inside the estimator's error.
+**`fracture.js` → `yield.js`**: hold, neck, pinch-off, and a retraction on the cessation curve derived in
+`rheology.js` with a hard stop, which is the property that now distinguishes the irreversible vocabulary
+from every elastic easing. The roadmap's cessation derivation reproduces to four figures and its
+attribution is inverted: at its τ₀ the rate term dominates, at ours the yield term does, and the shape is
+a power ease-out whose exponent is fixed by a free v₀ — so the curve is derived and the duration is
+authored, and both are named as such. Trap depth derived from SGR's escape law (roadmap #4, "no formula
+exists"; E = x·ln(t/t₀) is one), unwired. `material.js` deleted, P1 and P4 retired with the tensor and the
+cell, and the splicer learned to **retire** a part — until now it could add and update but never take
+away, and a dropped part would have shipped stale under its fence forever. This tool's own change is one
+line: `veinLayer()` stops passing a habit. **Roadmap items closed: #1 (meaningless), #4, #5. 349
+occvm assertions, 48 rheology.**
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

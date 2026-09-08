@@ -205,11 +205,15 @@ const LAWS = [
         : { state: "DIVERGES", detail: `${calls} unguarded call(s) to the drawn-bezier fallback` };
     } },
 
-  { id: "L11", name: "fracture",
-    claim: "the cleave vocabulary is used for irreversible actions and nothing else",
+  { id: "L11", name: "yield",
+    claim: "the yield vocabulary is used for irreversible actions and nothing else",
     measure(tool) {
-      const calls = (tool.own.match(/OCCVM_FRACTURE\.cleave/g) || []).length;
-      if (!calls) return { state: "UNADOPTED", detail: "no cleave call site" };
+      /* 2.8: fracture's cleave became yield's pinch. A surviving cleave call is a divergence — it names a
+         primitive the spine no longer carries, and in a page it throws. */
+      const stale = (tool.own.match(/OCCVM_FRACTURE\.cleave/g) || []).length;
+      if (stale) return { state: "DIVERGES", detail: `${stale} call(s) to the retired cleave` };
+      const calls = (tool.own.match(/OCCVM_YIELD\.pinch/g) || []).length;
+      if (!calls) return { state: "UNADOPTED", detail: "no pinch call site" };
       return { state: "UNMEASURED", detail: `${calls} call site(s); whether each is irreversible needs an eye` };
     } },
 

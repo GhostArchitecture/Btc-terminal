@@ -79,12 +79,13 @@
     inset var(--lit-x) var(--lit-y) 0 rgba(255, 255, 255, var(--hi-a, .12)),
     inset var(--cut-x) var(--cut-y) 0 rgba(0, 0, 0, var(--cut-a, .35));
 
-  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
-     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
-     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
-     acquiring a second generator. */
+  /* OCCVM-L10 (1.1, re-derived 2.8) — vein habit. density is the VOLUME FRACTION of the suspension: the
+     particle count as a fraction of the lattice, the same number it has been since 1.1 under the
+     walker-budget reading. Below ~.15 the flocs stay separate; at .3 the suspension is past its gel point
+     and the network spans the surface. --vein-habit was RETIRED at 2.8: a fluid has no crystallographic
+     direction to be anisotropic along, and the one axis colloid science offers (sticking probability,
+     diffusion- versus reaction-limited) was measured and does not express on this lattice. */
   --vein-density: .3;
-  --vein-habit: .55;
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------

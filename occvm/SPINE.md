@@ -23,6 +23,10 @@ order would be exactly the drift the ledger law exists to prevent.
 | **2.2** | landed | `--amb` renamed **`--fill`**, values byte-identical. The non-monotonicity 1.2a deferred to 2.0 was measured and is not a defect: consumers weight the term by `(1−e)`, which cuts a 28% dip in the token to 1% in what reaches the surface, so the token was only ever mis-named. `--amb` is pinned out of both repositories. |
 | **2.3** | **reverted** | tried to adopt L12 on Rhyme's `.slab` and matched the material against the `:root` **fallback** rather than the rendered substrate, which the sundial overwrites every minute. The adopted surface lost its twilight response. Reverted; `body` stays anchored to L1's floor; the real adoption target — replacing the sundial's two authored face offsets with the material's ratios — is registered in L12, unbuilt. |
 | **2.4** | landed | **L12 adopted where it belongs.** The sundial's two authored face offsets (`0.14·(0.5+e)`, `0.42`) become the material's face ratios; `authoredContrast` — fitted to the fallback, 2.3's error one level down — is deleted for `renderedContrast`, anchored to the rendered high-sun spread. Directionality and mix-toward-light are kept, both for measured reasons. Costs +1.75 L* at noon and +5.00 at low sun, the latter because the shadow face gains directionality it never had. |
+| **2.5** | landed | **The rheological pivot, step A.** `occvm/rheology.js` — ketchup as a Herschel-Bulkley fluid with SGR beneath it — spliced *beside* `material.js` as a strangler, and the sundial's face offsets re-derived from the fluid's optics (one index, three angles: 14.148× against the crystal's 9.353×, legibility exponent 0.9928). The substance reaches 2 of 70 rendered tokens; measured, not fudged. Two roadmap errors corrected on the way: the optics port and the unusable duration formula. |
+| **2.6** | landed | **L2 from capillarity.** λc = √(γ/ρg) = 1.891 mm = 7.15 px, and τ₀ corrected 0.03 → 21.15 Pa by a consistency criterion (the range floor holds a 2.7 µm blob). The derived radius was measured against L2's *declared* 4px rather than the rendered radii — the third time a declaration was read as a render — and `--occvm-r` was later deleted as D12. |
+| **2.7** | landed | **The laws re-authored around a measurement.** `occvm/tools/law-audit.js` measures every law per tool; each carries a generated STATE block; the conformance table is generated. L4, L6 fixed; L7's real defect was the serif, now owned (Fraunces, Faustina); L2 re-authored as vessel and meniscus and honestly DIVERGED at the spine's 1px bevel. |
+| **2.8** | landed | **The crystal leaves.** Veins re-derived as diffusion-limited *cluster* aggregation — a gel suspended in the fluid, dimension measured (1.46 dilute, 1.61 at the shipped density) against the literature rather than quoted; `--vein-habit` retired by measurement. `fracture.js` → `yield.js`: hold, neck, pinch-off, retraction on the derived cessation curve with a hard stop. Cessation and trap depth derived, the roadmap's attribution of the former corrected, its open items #1, #4, #5 closed. `material.js` deleted; P1 and P4 retired with the tensor and the cell; the splicer learned to retire a part. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
 | **1.5** | landed | the interaction floor. Closed D7. |
@@ -401,124 +405,143 @@ Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-Veins are **grown, not drawn**. The generator is diffusion-limited aggregation: a walker enters the
-matrix, moves at random, and sticks the instant it touches the aggregate. Branching is dendritic because a
-protruding tip intercepts walkers before they reach the shielded interior — the screening effect, which
-nobody authors. `--vein-density` is the walker budget as a fraction of the lattice; `--vein-habit` is the
-anisotropy of growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated acicular
-form.
+Veins are **grown, not drawn**. Since 2.8 the generator is diffusion-limited **cluster** aggregation
+(Meakin 1983; Kolb, Botet & Jullien 1983): every particle in the suspension diffuses, two that touch stick,
+the cluster they form diffuses in turn with a mobility that falls as `s^-½`, and the flocs join until the
+suspension has gelled into one network. That is how a colloidal suspension actually aggregates and it is what
+the substance *is* — ketchup is a particulate gel of tomato cell-wall fragments. Nobody authors the branching;
+the screening effect that makes a protruding tip intercept walkers before the interior does is the same as
+before, one level up, between clusters rather than between a walker and a seed.
 
-**The mineral is aragonite, and since 1.1a the generator encodes that rather than labelling it** (roadmap
-2.0: substrate and vein anchor to one crystal, because a vein is not a foreign material embedded in a slab
-— it is the same crystal grown differently). Two properties of real aragonite are grown here:
+**What the mechanism change did to the picture, measured.** Particle-cluster DLA (1.1–2.7) grew a few
+dendrites radiating from nuclei in clear matrix: how a crystal grows from a nucleation point, and it was
+grown as one, with aragonite's threefold twin read from the material's cell. Cluster-cluster aggregation
+produces a network **suspended in** the material — open, tenuous, everywhere at once — which is what the
+roadmap's visual note (§5.4) asked for and turns out not to be a rendering choice: it is what the mechanism
+yields at the density the tools already ship. `--vein-density` is the **volume fraction**, the same number
+it has been since 1.1 under the walker-budget reading, and it is the one axis a suspension has:
 
-- **Fibres radiate from a nucleation point.** Anisotropy is measured from the growth's own nucleus, a
-  direction in the material's frame. Until 1.1a it was a bias toward *horizontal steps* — a direction in
-  the viewport, which is a fact about the browser window. A crystal has no idea which way the screen is.
-- **It twins in threes.** Aragonite's signature is cyclic twinning on {110}: three individuals near 120°,
-  mimicking a hexagonal prism closely enough that the pseudo-hexagonal form is what the mineral is known
-  for. Each nucleus carries three sectors with its own rotation.
+| `--vein-density` | what the suspension is | mass–radius dimension, measured |
+|---|---|---|
+| .08 | isolated flocs | 1.38 |
+| .15 | separate flocs, matrix between | **1.46** — the 2-D DLCA literature's 1.44 |
+| **.30** — shipped | **past the gel point**; the network spans the field | 1.61, climbing toward 2 as a space-filling gel must |
 
-**The mechanism is attachment, not travel**, and that distinction was established by measurement rather
-than chosen. The first implementation biased the walker's *drift* toward its sector axis; the angular
-harmonics of the result were identical at threefold, onefold and sixfold, all dominated by a single lobe.
-A walker pushed radially outward is pushed *away* from the aggregate and is abandoned rather than
-sticking, so the bias spent walkers instead of shaping growth — and snapping an axis to the nearest
-lattice step collapses three directions 120° apart into four. A real crystal is not anisotropic because
-the diffusing atom travels differently; it is anisotropic because **attachment differs by crystallographic
-direction**. The walk is now a pure unbiased random walk and the anisotropy lives in whether a contact is
-accepted. Measured on the exact owner and rotation of each growth, the angular harmonic at the twin order
-dominates: **0.665 at the shipped habit of .55**, against 0.116 for the next strongest, and it tracks the
-parameter — fourfold gives k=4, sixfold gives k=6, and habit 0 gives no angular structure at all, which is
-what an equant habit is.
+The dimension is an **output** of the process. The literature values are recorded in `rheology.js` so the
+generator is held to them rather than quoting them: **1.44** for a planar lattice (Meakin; Kolb, Botet &
+Jullien) and **1.75** in three dimensions (Weitz & Oliveria 1984; Lin et al. 1989 put the same regime at 1.86
+and the reaction-limited one at 2.1). The roadmap carried 1.75 as "the DLCA fractal dimension"; a 2-D lattice
+cannot produce it and this document does not claim it. `test/occvm.js` measures the generator in the dilute
+regime against 1.44, with an estimator validated on a disk and a line first.
 
-*`twin` is a generator parameter and deliberately **not** a CSS token. Twinning is a material property,
-material properties are 2.0's substance, and a `--vein-twin` token would put one into the 1.x token
-surface — the leak the 1.4 note warns about. At 2.0 it comes from the material definition.*
+**`--vein-habit` is retired, by measurement.** The crystal's habit was attachment anisotropy — which
+crystallographic directions accept a particle — and a suspension has no direction to be anisotropic along.
+The one axis colloid science does offer is the sticking probability that separates diffusion-limited from
+reaction-limited aggregation. It was tried as the token's new meaning and **does not express on this
+lattice**: at the shipped density the dimension moved 1.61 → 1.54 across a 20× range in sticking
+probability, and in the dilute regime 1.38 → 1.39 — inside the estimator's own error both times. A token
+whose effect is below measurement is `OCCVM-D12` with a physical story attached, so the declaration is gone
+(§2a, §6b), the generator accepts and ignores the argument so a 1.1-era caller does not throw, and both
+tools stopped reading it. The reference surface's three specimens now run along concentration instead.
 
-**No curve is fitted over the aggregate.** Every stroke is a straight segment between a particle and the
-particle it stuck to — the record of how it grew. A fitted curve is the bezier arriving back through the
+**No curve is fitted over the aggregate.** Every stroke is a straight segment between two particles that
+bonded — the record of how the network formed. A fitted curve is the bezier arriving back through the
 renderer, and both tools previously drew three displaced cubic beziers and called the result a vein.
+**The deep stroke is now blurred** and the fine one sits lower in opacity: a seam in a solid reads crisp; a
+floc in a fluid has no hard boundary against it. The blur is the one authored rendering value in the file
+and is named as one — the mechanism gives the structure, not the focus.
 
-This law is 2.0's discipline arriving early: *simulate the process, never the resulting shape.* It is the
-first test of whether that discipline survives contact with a real surface, which is why 1.1 comes before
-everything else in the roadmap's sequence.
+**The generator reads no substance module.** DLCA takes no constant from the fluid, so the load-order
+dependency that had `material.js` needing to precede this file is gone with the file: `veins.js` loads and
+aggregates with nothing spliced before it, and `test/occvm.js` runs it that way.
 
-Completed at **1.1**. The generator is `occvm/veins.js`, seeded and pure (§4), with each tool falling back
-to its previous generator if growth fails.
+**What was verified, and what was not.** No bezier, verified structurally (`M` and `L` and nothing else,
+asserted on the path data). Deterministic under the injected seed (§4). **9 ms per aggregation in Node** at
+the lattice each tool uses, against the 30 ms exit; a cold mobile load still cannot be measured from here and
+is still not claimed. The side-by-side against a photograph has still not been performed — what was done is
+that the output was rendered and looked at, the way it was at 1.1, and the first prototype was rejected on
+sight: it recorded bonds as coordinates at the moment of contact, the clusters kept moving, and it rendered
+confetti. Bonds are indices now, resolved where the particles ended.
 
-**What was verified, and what was not.** The roadmap's exit is *"veins pass a side-by-side against
-photographed mineral without the eye catching a bezier"* and *"generation under 30 ms on a cold mobile
-load."* Recorded honestly:
+*One thing the mechanism change did not alter, recorded because it was found the hard way at 1.1:* the layer
+is a **data URI, and both the fragment references and the colours carry a literal `#`.** Left raw inside the
+URI it ends the URI at a fragment; pre-encoded to `%23` it survives into the parsed SVG as two literal
+characters and `href="%23v"` resolves to nothing — the layer renders empty while every string check still
+passes. `field()` therefore returns raw SVG and the caller encodes the whole document.
 
-- **No bezier, verified structurally.** The traced path uses `M` and `L` and nothing else, asserted in both
-  tools against the path data rather than the surrounding markup.
-- **The side-by-side against a photograph was not performed.** There is no photographed mineral in this
-  environment to hold it against. What was done instead: the output was rendered and looked at, and the
-  first two attempts were rejected on sight — a von Neumann lattice produced axis-aligned staircases that
-  read as circuit routing, and an edge seed grew a comb with all its mass banked against one side. Moore
-  sticking, scattered nuclei, a full particle budget and a sub-cell trace offset fixed both. That is a
-  weaker test than the criterion names and is recorded as such.
-- **Timing: 6.4 ms warm and ~30 ms on the first call, measured in Chromium in this container** at the
-  lattice each tool actually uses. The first call is dominated by JIT compilation of the generator, not by
-  growth — every later call is single-digit. **A cold mobile load cannot be measured from here**, so the
-  criterion is not claimed as met; the measurement is on the record with its instrument named.
+*History.* 1.1 replaced the beziers with particle-cluster DLA. 1.1a grew it as aragonite: radial from a
+nucleation point, cyclic-twinned in threes, with the anisotropy moved from the walk to attachment after a
+walker-drift bias was measured and found to do nothing. 1.1b tested the twin's re-entrant misfit as an
+attachment boost and recorded that it does not express in arrival-limited growth (0.15× the plain matrix, flat
+across a 10× range in particle count). 2.0 moved the cell to a single owner in `material.js`. All of it was
+right about a crystal, and all of it left with the crystal at 2.8.
 
-The layer is a **data URI, and both the fragment reference and the colours carry a literal `#`.** Left raw
-inside the URI it ends the URI at a fragment; pre-encoded to `%23` it survives into the parsed SVG as two
-literal characters and `href="%23v"` resolves to nothing — the layer renders empty while every string
-check still passes. `field()` therefore returns raw SVG and the caller encodes the whole document. Both
-tools shipped this bug during 1.1 and neither the golden token diff nor a substring check saw it; it was
-found by decoding the URI into an `<img>` and counting inked pixels.
-
-### OCCVM-L11 — fracture
+### OCCVM-L11 — yield
 
 > **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **UNADOPTED** — no cleave call site
+> - BTC Terminal: **UNADOPTED** — no pinch call site
 > - Rhyme Instrument: **UNMEASURED** — 1 call site(s); whether each is irreversible needs an eye
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
 **A destructive action does not share a physical vocabulary with a reversible one.** Everything else in
-these tools fades, slides or settles. Those are elastic behaviours, and elastic behaviour implies the
-thing could come back. Aragonite does not deform past its limit — it **cleaves**, along fixed planes, at
-an angle its own lattice decides. Irreversible actions get that vocabulary and nothing else does.
+these tools fades, slides or settles. Those are elastic behaviours, and elastic behaviour implies the thing
+could come back. Irreversible actions get a different vocabulary and nothing else does.
 
-**The angle is not chosen.** It is `2·arctan(b/a) = 116.209°` from the unit cell — the same {110}
-composition plane the vein generator's cyclic twin is built on — imported from `occvm/veins.js` rather
-than recomputed, because two derivations of one angle is the defect `OCCVM-L3` exists to prevent, one
-material down. An eyeballed crack is decoration wearing this law's clothes. *Since 2.0 the chain runs one
-link further back:* the cell itself lives in `occvm/material.js` (L12) and veins reads it, so the angle
-has one derivation and the lattice it comes from has one owner.
+**Since 2.8 that vocabulary is yield.** A yield-stress fluid below τ₀ *holds* — nothing moves, not slowly,
+not at all (`rheology.js`, `shearRate`). Past it the material flows, and a filament of it that is pulled
+thins at one point — capillary **necking** — until it **pinches off** into two bodies that retract from the
+break and come to rest. Hold → neck → pinch-off, and the last is what makes the event irreversible: a
+filament that has pinched does not rejoin. The primitive is `occvm/yield.js`, `pinch(el, done)`; the
+vocabulary word is *pinch*, and `cleave` is pinned out of both repositories.
 
-*A second load-order defect, found at 2.0 and shipped since 1.1b:* this file captured `OCCVM_VEINS` into a
-module-scope binding while its own IIFE ran. The splicer inserts every part after one anchor, so parts land
-in **reverse** list order and fracture is evaluated *before* veins is assigned — the binding was null and
-`cleave()` threw on every call in the browser, while Node resolved it through `require` and every assertion
-passed. The read is now lazy, which is order-independent, and `test/occvm.js` runs the spliced blocks in
-the page's own order with no `require` available so the guard tests the real condition. 1.1b's replacement
-of a `|| 116.209` fallback with a throw is what made the failure loud instead of silently wrong; the throw
-was right and the capture was not.
+**What distinguishes it from the elastic vocabulary, now that speed does not.** Fracture claimed "faster
+than any elastic curve in the system"; a fluid has no reason to be quick. The distinction is the **stop**.
+Every elastic easing approaches rest asymptotically and never technically arrives. A yield-stress fluid
+stops in finite time, at an exact instant, with the velocity reaching zero rather than tending to it — the
+cessation derivation in L12 — and the retraction runs on that curve, sampled from the integrated
+Herschel-Bulkley decay and handed to CSS as `linear()`. It is the only motion in either tool that *ends*.
+At the substance's τ₀ the curve is the quadratic `1 − (1−u)²` with a hard stop; `test/occvm.js` asserts the
+last step of the sampled curve is under a tenth of the first.
 
-The primitive is `occvm/fracture.js`, the spine's **first shared behaviour** rather than shared
-appearance: two clipped halves separating along the split normal, each torquing ≤6° because real cleavage
-does not slide parallel; 220 ms, faster than any elastic curve in the system, because sharing a duration
-with a settle would put it back in the vocabulary it exists to leave; and **no fade at any point** —
-cleaved material does not become transparent, it becomes absent.
+**What is authored, named.** The roadmap wanted the duration derived from `γ̇ = ((τ−τ₀)/k)^(1/n)`. With
+n = 0.19 that exponent is 5.26 and a 100× range in stress spans 1.9×10¹⁸ in rate; no monotone map from that
+onto a few hundred milliseconds exists that is not doing all the work itself (2.5, pinned). So the two
+millisecond counts — 140 ms of necking, 260 ms of retraction — are authored, as fracture's 220 ms was, and
+the **shape** is derived. The hold is zero for a click-driven action: the click is the stress, above τ₀ by
+definition, which is what makes it a deletion; a hold that showed would read as lag, not as material
+refusing to move. The roadmap's "3×τ₀ click multiple" (its open item #1) is not an unexamined constant; it is
+a stress that produces a shear rate of ~10⁻¹² s⁻¹, and it is closed as meaningless.
+
+**What is kept from fracture, because it was right for reasons that survive the substance.** No fade at any
+point: yielded material does not become transparent, it becomes absent. Two clones carrying the element's
+**resolved** style, so an `#id`-styled element does not pinch blank. Seeded off the element, so a replayed
+deletion looks the same and the golden set can pin one. Reduced motion honoured from the spine's rule. And
+the dependency is **resolved at call time** — the lesson of the null capture below — so the splicer's
+reverse insertion order cannot leave the primitive throwing in a page while Node resolves it through
+`require`.
+
+**No angle.** A fluid has no plane. The neck forms at a jittered point in the middle third of the
+filament's width, the two bodies taper to it, and they retract along the filament's own axis with no
+rotation, because a fluid body has no edge to torque about.
 
 **Scope is the discipline, not the coverage.** Delete, discard, disconnect. Never a cancel, never a
-dismiss, never a close. A vocabulary that marks everything marks nothing.
+dismiss, never a close. A vocabulary that marks everything marks nothing. *BTC has no call site and that is
+not a gap:* CLAUDE.md §4 makes its ledgers ungardenable — withdrawals log as `WITHDRAWN`, nothing is silently
+deleted — so the tool has very little that is irreversible by construction. Rhyme's shelf removal is the
+consumer, as it was fracture's. The reference surface carries one live specimen that restores itself so the
+event can be seen twice, which a real deletion never can.
 
-*BTC has almost no call sites for this and that is not a gap:* CLAUDE.md §4 makes its ledgers
-ungardenable — withdrawals log as `WITHDRAWN`, nothing is silently deleted — so the tool has very little
-that is irreversible by construction. Rhyme's shelf removal is the first real consumer.
-
-*What the clone taught, recorded because the assertions did not catch it:* the first version cloned the
-element and stripped its `id`, which is necessary (two elements with one id breaks `getElementById`) and
-which rendered the halves **blank** — everything an `#id` rule had been supplying was gone. Two clones,
-opposite torque, no fade, host cleaned up: every assertion passed on an invisible fracture. The clone now
-carries its **resolved** style, so it is indifferent to how the element was selected. Some things are only
-visible by looking at the frame.
+*History.* 1.1b shipped fracture: two clipped halves torquing apart along aragonite's {110} composition
+plane, `2·arctan(b/a) = 116.209°`, imported from the vein generator rather than recomputed because two
+derivations of one angle is the defect L3 exists to prevent. A `|| 116.209` fallback was caught one commit
+later as a second copy of the angle that silently *was* the value in Node. 2.0 found that the primitive
+captured `OCCVM_VEINS` into a module binding while its IIFE ran — the splicer lands parts in reverse list
+order, so the binding was null in every browser and `cleave()` threw on every call from 1.1b to 2.0, while
+Node resolved it through `require` and every assertion passed; in Rhyme the throw landed before the `done`
+callback, so **deleting a draft silently did nothing**. And the first clone stripped its `id` and rendered
+blank, every assertion passing on an invisible fracture. Each of those lessons is carried into yield; the
+angle is not, because there is nothing for it to be the angle of.
 
 ### OCCVM-L12 — the material
 
@@ -528,104 +551,125 @@ visible by looking at the frame.
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-**A hex is not authored. A material is defined, and the surface values are derived from it.** Until 2.0
-`--sub-hi`, `--sub` and `--sub-lo` were three separate decisions that happened to look related, and the
-only thing holding them in a ramp was that one person mixed them on one afternoon. They are now one
-material, one body colour and one cut geometry, and their **ratios** fall out of the arithmetic.
+**A hex is not authored. A substance is defined, and the surface values are derived from it.** Until 2.0
+`--sub-hi`, `--sub` and `--sub-lo` were three separate decisions that happened to look related. They are now
+one substance, one body colour and one cut geometry, and their **ratios** fall out of the arithmetic.
 
-The material is **aragonite**, CaCO₃, orthorhombic, space group Pmcn. It is not chosen for its looks; it
-is chosen because it has three of everything a slab needs one of. `occvm/material.js` is the definition
-and it owns the lattice:
+**The substance, since 2.5, is tomato ketchup as a Herschel-Bulkley fluid**, τ = τ₀ + k·γ̇ⁿ, with Soft
+Glassy Rheology (Sollich 1997/98) beneath it as the mechanism — mesoscopic elements caged in energy wells,
+escaping by *yielding*, which is why yield is the right word for L11 rather than a metaphor. It replaced
+aragonite on the owner's aesthetic judgment, which is a legitimate call and is recorded as one rather than
+dressed as a defect. `occvm/rheology.js` is the definition, and it names the substance by its **role**
+(`SUBSTANCE`) at every consumer, because the pivot cost what it did partly because the consumers named the
+mineral.
 
-| property | value | governs |
-|---|---|---|
-| unit cell | a 4.96 · b 7.97 · c 5.74 Å | the {110} twin angle (L10, L11) |
-| principal indices | α 1.530 · β 1.680 · γ 1.685 | the three faces' reflectance |
-| hardness | Mohs 3.5–4 | how sharply a face may be cut (L2) |
-| density | 2.93 g/cm³ | cast weight (L4) |
-| stiffness C11/C22/C33 | 171.1 / 110.1 / 98.4 GPa | anisotropic motion (P1, registered) |
-
-**The lattice has exactly one owner.** `occvm/veins.js` reads the cell from here rather than restating it,
-and `occvm/fracture.js` reads the angle from veins. Before 2.0 the same three lengths were typed in two
-files — two copies of one fact, which is the defect `OCCVM-L3` exists to prevent, one material down, and
-it would have gone unnoticed until somebody edited one of them.
-
-**Three derivations were measured; two are recorded as wrong.** The argument for an orthorhombic system is
-that a slab has three faces sharing one scaled response today, and three principal indices give each its
-own value. That argument is right and the two obvious ways to cash it in are not:
-
-1. **Normal-incidence Fresnel** on α/β/γ gives 4.39% / 6.44% / 6.51% — a spread of **1.48×**, against the
-   **5.74×** linear-luminance spread the tools actually author. Real optics, taken that way, is 3.9×
-   *flatter* than the design. A substrate derived from it is nearly monochrome and both tools lose the
-   structure they are read by.
-2. **Weighting reflectance by incident flux** — `R(θ)·cos θ`, the intuitive fix, adding the sun — is
-   **worse**: the cosine very nearly cancels the Fresnel rise and the whole 0–90° sweep collapses to
-   **1.13×**, peaking at 76.9°. Flux-weighting cannot produce a ramp at all. It is written down because it
-   sounds more physical than what replaced it, and the next person to have the idea should not spend the
-   hour. `test/occvm.js` pins the measurement so it cannot be quietly re-adopted.
-
-**What is in force** is the third: on a dark, glossy solid you do not see a diffuse return, you see the
-**specular** one, so a face's brightness tracks `R` at the angle it presents **to the viewer**. Those
-angles are the slab's own cut geometry — the thing L2 already fixes — not the sun's position:
-
-| face | angle from view normal | index | R |
+| property | value | source | governs |
 |---|---|---|---|
-| front | 0° | α | 4.39% |
-| chamfer | 45° | β | 7.60% |
-| edge | 80° | γ | 41.04% |
+| yield stress τ₀ | **21.15 Pa** | consistency criterion, inside the published 10–40 Pa band (below) | hold (L11), stopping time, puddle height |
+| consistency k | 4.6 Pa·sⁿ | Koocheki et al. 2009, control formulation | flow, cessation regime |
+| flow index n | 0.19 | same | shear thinning; noise temperature x = 1 − n = **0.81** |
+| refractive index | 1.381 | ICUMSA at 30 °Brix, 20 °C — Brix is *defined* refractometrically | the three faces' reflectance |
+| density | 1.14 g/cm³ | composition tables | capillary length, standing stress |
+| surface tension γ | 0.040 N/m | **estimate**, the least-sourced number here, flagged | capillary length (L2) |
+| body | `#0e0d13` | L1's declared floor | the one free colour value, anchored |
 
-**The sun drops out of the ratio, and that is why this derivation is the one kept.** The material owns
-*structure*; the sundial owns *magnitude*, exactly as it has since 1.2. 2.0 therefore does not fight the
-light pipeline or double-apply it — which is precisely what the elevation-parameterised version did: it
-re-sorted its own faces as the sun moved, and let `mid` collide with `hi` at noon and with `lo` at dawn.
+**τ₀ was corrected, and the roadmap's choice of it was the problem.** The handoff fixed τ₀ at 0.03 Pa,
+"the published range floor", which reads conservative and is the one value that breaks the model: a layer
+stands only while τ₀ ≥ ρgh, so at 0.03 Pa the tallest standing blob is **2.7 µm** and this ketchup sheets
+off the plate like water. Re-entered at 21.15 Pa by a consistency criterion rather than by position in the
+range: the stress at which the puddle height τ₀/ρg equals the capillary length √(γ/ρg) — the blob is as
+tall as surface tension makes it round. Inside the published band, not chosen from it.
 
-**Which index sits on which face is a convention and is flagged as one.** Crystallography establishes that
-there are three principal indices and that they differ; it does not tell you how a rendered rectangle is
-oriented in a lattice, because a rendered rectangle is not in a lattice. α on the front and γ on the edge
-is chosen so the ordering runs the same direction as the ramp the tools already read. This is the same
-honesty flag P1 carries about mapping crystal axes onto screen axes, and it is stated here rather than
-buried in a comment.
+**What derives from the substance, and where each lands:**
 
-**Where the material and the hand disagree, stated rather than fitted:**
+- **The three faces (2.5).** The roadmap said the optics "have no fluid equivalent — deleted, not ported";
+  deleting them would have stopped both tools painting, because since 2.4 the sundial calls `faceRatios()`
+  every tick. They port because 2.4's mechanism was never biaxiality: **one slab presents three angles to
+  the viewer**, and Fresnel varies with angle at any fixed index. At L2's cut — front 0°, chamfer 45°, edge
+  80° — one index gives 2.56% / 3.41% / 36.23%, a spread of **14.148×** against the crystal's 9.353× and the
+  **13.881×** the tools render at high sun. The legibility exponent that reproduces the rendered spread is
+  **0.9928**, within 1% of unity: the substance carries the substrate essentially unaided, where the crystal
+  needed 1.177. One fewer authored decision as well — the crystal paired each face with a principal index
+  and flagged the pairing as a convention; a fluid has one index and the convention is gone.
+- **The capillary length (2.6, L2).** λc = √(γ/ρg) = 1.891 mm = **7.15 px** at 96 dpi, the radius surface
+  tension puts on every free edge whether anyone wants it or not. L2 records it as the fluid's meniscus and
+  the spine's 1px bevel as the divergence.
+- **The noise temperature (2.5, open item #5 closed).** x = 1 is SGR's glass transition and a yield stress
+  exists only below it, so x < 1 is a constraint the measured τ₀ imposes; near the transition n and x are
+  complementary, x = 1 − n = 0.81. The constraint is physics; the functional form is judgment and is flagged.
+- **Cessation (2.8, the roadmap's §6, checked rather than cited).** A Newtonian fluid never stops; a
+  yield-stress fluid stops in finite, provable time (Huilgol, Mena & Piau 2002). The reduced model
+  `dv/dt = −(τ₀ + k·vⁿ)` and its bracket `v₀/(τ₀ + k·v₀ⁿ) ≤ t_stop ≤ v₀/τ₀` are both reproduced, and the
+  integration matches the roadmap's three printed stopping times to the figures it gave. **Its attribution
+  is inverted.** At the roadmap's τ₀ the rate term dominates until v ≈ 3×10⁻¹²; the lower bound is tight
+  because n = 0.19 makes vⁿ nearly flat, so the *rate* term stays at its maximum, and the "linear terminal
+  phase" occupies the last 10⁻¹² of the decay. At the substance's τ₀ the yield term dominates from t = 0 for
+  any v₀ under ~3,000. Two regimes, one ratio deciding: `k·v₀ⁿ/τ₀`. Both have a closed-form position —
+  yield-dominated `1 − (1−u)²`, rate-dominated `1 − (1−u)^2.235` — so the shape is a power ease-out with a
+  **hard stop**, which no `cubic-bezier` keyword has and CSS `linear()` encodes exactly. **What is authored,
+  named:** v₀ (the roadmap's #12 — nothing maps a click onto it, and with v₀ free the regime is chosen by
+  choosing v₀) and the absolute duration (the model's units carry no milliseconds). The derivation owns the
+  curve and the stop; a person owns how long it lasts. L11 consumes it.
+- **Trap depth (2.8, open item #4 closed, unwired).** The roadmap says no formula converts a poll interval to
+  an energy. SGR's escape law is one: residence time τ = τ_a·exp(E/x), so E = x·ln(τ/τ_a). With the fastest
+  tier as the attempt time, BTC's three cadences sit at **0, 2.43, 3.73** in units of x·kT. Derived and
+  consumed by nothing, recorded for the reason P1's durations were: wiring it before a surface expresses it
+  is a token nobody reads. The roadmap's #7, the scale mismatch of ensemble statistics on six named elements,
+  stands.
+- **The vein's dimension (2.8, L10).** Recorded as an output the generator is held to, never fed in: 1.44
+  on a planar lattice, 1.75 in three dimensions.
 
-| | edge : chamfer : front |
-|---|---|
-| optics | 9.353 : 1.732 : 1.000 |
-| authored today | 5.739 : 2.539 : 1.000 |
+**What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
+fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
+three principal indices owned a face-to-index convention. A fluid has none of those, so each retires rather
+than being ported to a substance that cannot carry it — a derivation whose input is gone is an authored
+number wearing its old name. P1 and P4 had shipped no token and carried self-retiring guards; the guards
+retire with them (2.8). `material.js` and `fracture.js` are deleted, listed as `RETIRED` in the splicer, and
+`--check` fails while a block of either lingers in any target.
 
-Same **ordering**, different **shape**. The material is more convex — it makes the edge carry more of the
-range and the mid-tone less, which is what a cut mineral does and what a hand-mixed ramp tends not to.
-This is **not** corrected by a per-face fudge: a per-face correction is three authored numbers wearing a
-derivation's clothes, which is the exact thing this law exists to remove.
+**The roadmap's other errors about this substance, recorded so they are not re-imported:** `sundial.js`
+"survives unchanged, substance-agnostic" (it was the first file that had to change); the duration formula
+above; the mono stack as the open L7 defect (it was owned since 1.3; the serif was the defect, 2.7);
+`--w-name/--w-head/--w-mark` "carry over" (they exist in neither repository); and Faustina "untouched"
+(it had never shipped until 2.7).
 
-**One value here is not derived, and it is named.** `contrast` is a legibility parameter: an exponent on
-the optical ratio setting how much of the available range the substrate spends. Physics fixes the order
-and the shape; it does not know how readable a terminal has to be at 3am. At contrast 1 the substrate is
-the mineral's; at **0.7816** — derived, `log 5.739 / log 9.353`, and it moves if the material moves — its
-spread equals what the tools author today. It is named in the material for the same reason L7 names
-`--t-num`: a judgment gets called judgment in the place somebody would otherwise mistake it for
-measurement.
+**What is judgment here, each named in the place someone would otherwise mistake it for measurement:** the
+body colour; γ; the functional form of x; v₀ and the two durations in L11; the vein layer's blur. Everything
+else in the table is a published value or follows from one.
 
 **A reflectance ratio is a ratio in linear light.** The body colour is decoded out of sRGB, scaled by one
-gain across all three channels, and re-encoded. *Recorded because the first resolver did neither:* it
-scaled the sRGB bytes directly, so a 9.35× optical spread rendered as **116×** — the transfer function
-applied twice — and it shifted hue, because saturating one channel before another is a colour change
-nobody asked the material for. One gain in linear light is hue-preserving by construction, and
-`test/occvm.js` pins both.
+gain across all three channels, and re-encoded. *Recorded because the first resolver did neither:* it scaled
+the sRGB bytes directly, so a 9.35× optical spread rendered as **116×** — the transfer function applied
+twice — and it shifted hue. One gain in linear light is hue-preserving by construction, and both suites pin
+it on the fluid now as they did on the crystal.
 
-**2.0 defined and derived without repainting, and 2.3 tried to spend it on one surface and was wrong.**
-The attempt is kept on the record here in full, because the mistake is more instructive than the result
-and it is exactly the failure OCCVM-L1 and the golden set exist to catch.
+**The sun does not enter the ratio.** The substance owns *structure* — how far the lit and shaded faces sit
+from the base — and the sundial owns *magnitude*: the base colour and the `(0.5+e)` directionality term.
+That division was established under the crystal and the reason survives the substance: adopting a constant
+ratio without the directionality term does not flatten the day, it **inverts** it, measured at −7.9 L* on
+the noon highlight against +8.0 at night. The operation stays a mix *toward the light* rather than a scale of
+the base, because on a dielectric the specular return carries the source's colour and a highlight
+desaturates.
 
-**What 2.3 claimed.** Anchoring the material's one free value — `body`, a mineral's colour being trace
-chemistry rather than lattice — to `#0e0d13`, the material reproduced the substrate ramp's endpoints
-**to the byte**: `--sub-hi #2c2a36` predicted, unfitted, and `--sub-lo` the anchor itself, with the
-disagreement confined to a mid-tone 3.91 L* darker. Three generated tokens were spliced and Rhyme's
-`.slab` adopted them.
+#### The first basis — aragonite, 2.0 to 2.4 — and what it taught
 
-**What was actually true.** `#2c2a36 / #1b1a22 / #0e0d13` is the `:root` **fallback declaration**, and the
-sundial overwrites all three every minute, starting before first paint. Nobody has ever seen those hexes.
-The **rendered** substrate is this, from the golden set:
+The crystal was not wrong and did not fail a measurement. What it established is still in force under the
+fluid, so it is kept here rather than deleted.
+
+**Three derivations were measured at 2.0 and two are recorded as wrong**, because each sounds more physical
+than the one in force. Normal-incidence Fresnel on α/β/γ spans **1.48×** against the 5.74× the tools
+authored — real optics taken that way is 3.9× *flatter* than the design. Weighting reflectance by incident
+flux, `R(θ)·cos θ`, is worse: the cosine nearly cancels the Fresnel rise and the sweep collapses to
+**1.13×**. What is in force is the third: on a dark, glossy surface you see the **specular** return, so a face
+tracks `R` at the angle it presents *to the viewer* — the slab's own cut geometry, not the sun's position.
+That is the mechanism the fluid inherited, and it is why the port at 2.5 was one index and three angles.
+
+**2.3 tried to spend the derivation on one surface and was wrong, and the mistake is more instructive than
+the result.** It anchored `body` to `#0e0d13`, found the derived ramp reproduced `--sub-hi` and `--sub-lo`
+**to the byte**, spliced three generated tokens, and Rhyme's `.slab` adopted them. Every assertion passed.
+All of them compared the material against the `:root` **fallback declaration**, which the sundial overwrites
+every minute before first paint. Nobody has ever seen those hexes. The **rendered** substrate, from the
+golden set:
 
 | instant | `--sub-hi` | `--sub` | `--sub-lo` | face ratio hi : sub : lo |
 |---|---|---|---|---|
@@ -633,48 +677,18 @@ The **rendered** substrate is this, from the golden set:
 | low sun | `#362e31` | `#251c1f` | `#151012` | 2.238 : 1.000 : 0.434 |
 | night | `#1f1f2a` | `#0e0e1a` | `#08080f` | 2.984 : 1.000 : 0.539 |
 
-So the ramp was matched against a static declaration nobody renders, and the live substrate's face ratios
-**swing 2.9× across the day** against the material's single 3.736. The adopted slab therefore also lost its
-twilight response outright — a constant sitting beside neighbours that move.
+The live face ratios **swing 2.9× across the day** against the material's single value, and the adopted slab
+lost its twilight response outright. Reverted in full; `body` stays anchored; `test/occvm.js` carries the
+check that was missing — the rendered substrate is sundial-written, and its face ratio is not constant.
+*The lesson this document keeps relearning:* every assertion passed because every assertion compared a
+declaration against a declaration. Measure against what renders.
 
-**2.3 is reverted:** `.slab` reads the sundial's tokens again, and the generated `--m-sub-*` are gone
-rather than left declared and unconsumed, which would have been `OCCVM-D12` in the same release that
-cited it. `body` stays anchored — matching L1's declared floor is an improvement whatever consumes it.
-
-**What the measurement did establish, and it is the real adoption target.** The sundial already implements
-2.0's decomposition: a base colour moved by twilight, and face offsets applied to it. But those offsets are
-**authored constants** — `mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)` — and they are exactly
-what L12 is for. Adopting the material means replacing *those two expressions* with the material's face
-ratios, leaving the base colour to the sundial. That is a visible change to both tools and is not something
-a correction commit does; it is registered here, unbuilt, as the shape any real adoption has to take.
-
-*The lesson is the one this document keeps relearning:* every assertion 2.3 shipped passed, because every
-assertion compared the material against a declaration rather than against a render. `test/occvm.js` now
-carries the check that would have caught it — that the rendered substrate is sundial-written and not the
-`:root` fallback.
-
-**2.4 — the substrate's face offsets become the material's, and this is the adoption 2.3 should have
-been.** The sundial's `mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)` were the last authored
-values in the substrate: two magic numbers with no derivation. They are now the material's face ratios,
-taken relative to the base colour the sundial owns.
-
-**The free parameter is re-anchored, which is a correction in its own right.** `authoredContrast` fitted
-to 5.739 — the spread of the `:root` **fallback** — which is 2.3's error one level down, shipped since
-2.0. It is replaced by `renderedContrast`, anchored to the spread the tools actually paint at **high sun,
-13.881**, a named instant rather than an average, because a fit to an unnamed average is the same evasion
-in a longer form. `authoredContrast` is deleted rather than re-valued.
-
-**The division of labour is 2.0's, unchanged:** material owns *structure* — how far the lit and shaded
-faces sit from the base — and the sundial owns *magnitude*, being the base colour and the `(0.5+e)`
-directionality term. That term is kept deliberately: specular contrast between faces depends on how
-directional the light is, and adopting the material's ratio **without** it does not flatten the day, it
-**inverts** it — measured at −7.9 L* on the noon highlight against +8.0 at night. The operation also stays
-a *mix toward the light* rather than a scale of the base: on a dielectric the specular return carries the
-source's colour, so a highlight desaturates, and scaling the base's own linear RGB would keep its hue and
-render as tinted glass. The material sets how far; this file still decides toward what.
-
-**What it costs, stated over the whole day rather than at the anchor.** Anchoring at high sun *guarantees*
-high sun barely moves, so the honest figure is the range:
+**2.4 adopted the material where it belongs**: the sundial's two authored face offsets,
+`mix(sub, white, 0.14·(0.5+e))` and `mix(sub, black, 0.42)`, became the material's face ratios relative to
+the base colour the sundial owns — and it corrected `authoredContrast`, fitted to the fallback's 5.739
+(2.3's error one level down), into `renderedContrast`, anchored to the rendered high-sun spread at a named
+instant. What it cost, over the whole day rather than at the anchor, because anchoring at high sun
+*guarantees* high sun barely moves:
 
 | instant | ΔL* highlight | ΔL* shadow | spread before → after |
 |---|---|---|---|
@@ -682,80 +696,19 @@ high sun barely moves, so the honest figure is the range:
 | low sun | **+5.00** | **+4.47** | 5.16 → 4.05 |
 | night | +0.05 | +1.59 | 5.54 → 3.32 |
 
-**The large move is at low sun, and its cause is named:** the shadow face gains directionality it never
-had. The authored `0.42` was flat at every elevation — a shade face equally deep at noon and at dusk —
-while the material's ratio, modulated like the highlight's, lifts it as the light turns diffuse. That is
-physically the better model and it is also a visible change, so it is written here rather than left for
-someone to discover in a screenshot.
+The large move was at low sun and its cause was named: the shadow face gained directionality it never had,
+the authored `0.42` having been flat at every elevation. 2.5 then swapped the substance under that same
+mechanism and moved the substrate by +6.98 L* on the noon highlight — measured, two tokens at every instant
+and nothing else — which is the first time a substance swap in this system was a contained, attributable
+change rather than a redesign.
 
-**P1 — anisotropic motion: derived, measured, and deliberately not wired.** The stiffness tensor gives
-each axis a settling time, and the relation is the oscillator's rather than the spring's: `T = 2π√(m/k)`,
-so duration ∝ `1/√k`. The other candidate — static compliance, `1/k` — is wrong for a *temporal* quantity;
-it describes how far a thing deflects, not how long it takes. Both are recorded because they differ enough
-to matter:
-
-| | a | b | c |
-|---|---|---|---|
-| `1/√k` — in force | **0.7584** | 0.9454 | 1.0000 |
-| `1/k` — rejected, static not temporal | 0.5751 | 0.8937 | 1.0000 |
-
-**It ships no token, and the census is why.** Anisotropy is only observable as a difference between **two
-directions in the same view**. Across both tools and the spine at 2.0:
-
-- `translateX` — **zero animated sites**, in either tool;
-- `translateY` — three (`.edge:active` 260 ms, `rise` 380 ms, BTC's chevron);
-- `translate(x, y)` — eight sites, and **every one is a static light-vector offset**, `calc(var(--lx) * Npx)`,
-  not a motion.
-
-There is no pair. The one genuinely animated 2D direction anywhere is fracture's separation along the twin
-normal, and projecting the per-axis scalars onto it gives **194.4 ms against the isotropic 220 ms**, an
-11.6% change. But the fracture angle is **fixed** — one direction, every time, with nothing beside it to be
-faster or slower than. That is not anisotropy; it is 220 renamed to 194.
-
-Shipping `--dur-a/--dur-b/--dur-c` would be three tokens computed and consumed by nothing, which is
-`OCCVM-D12` exactly — closed at 1.2a, one release before this one. **The arithmetic stays because it is
-right and cheap; the wiring waits for a second axis to exist.** Each repository's suite holds a
-**self-retiring guard** over its own files: it counts animated horizontal motion and asserts the count is
-still zero, so the day somebody adds one the suite fails and says P1 has become expressible. *This is the
-same disposition 1.1b gave the twin misfit, and for the same reason:* a physically-motivated extension that
-produces nothing measurable in the regime these tools are actually in is a finding, and raising a
-coefficient until it produced a visible result would be fudging a derived number to reach a wanted picture.
-
-**P4 — unit-cell spacing: derived, measured, and not wired.** The three cell edges normalised to the
-shortest are a spacing triple with a reason behind them where an 8 px grid has none:
-**a 1.0000 : c 1.1573 : b 1.6069**. Two measurements kill it, and the second is the one that matters.
-
-**It does not describe the tools.** Censused over **213 real padding/margin/gap declarations** across both
-tools: 19 distinct pixel values, weighted mean error against the cell ladder **10.79%**, and a plain 4 px
-grid covers more of them (42.3% within 6%, against 32.4%). Adopting the cell scale would move 213
-declarations by ~11% — a redesign wearing a derivation's coat, and the exact opposite of what the substrate
-did at 2.0, where the material *reproduced* the authored ramp at a derived contrast.
-
-**It does not survive to the screen.** Spacing quantises to whole pixels, and **84.5% of both tools'
-spacing is under 12 px**, where rounding destroys the ratio:
-
-| base | renders | rendered ratio |
-|---|---|---|
-| 2 px | 2 / 2 / 3 | **two of the three steps collapse** |
-| 4 px | 4 / 5 / 6 | 1.000 : 1.250 : 1.500 |
-| 6 px | 6 / 7 / 10 | 1.000 : 1.167 : 1.667 |
-| 8 px | 8 / 9 / 13 | 1.000 : 1.125 : 1.625 |
-
-The rendered c-step wanders **1.125–1.250** across the bases these tools use — a function of the base, not
-of the material — and straddles the cell's own 1.157 without ever equalling it. The derivation is present
-in the source and absent from the render, which is a value computed and consumed by nothing wearing a third
-disguise.
-
-**And the ratio is not distinguishable from the one it would replace.** `b/a = 1.6069` against the golden
-ratio 1.6180 differs by **0.04 px at step 1**, 0.35 px at step 3, and does not reach a whole pixel until
-step 5 — past the largest spacing either tool uses. Over the range where all the spacing actually lives
-they are the same number. What the cell buys is **provenance, not appearance**. That is worth having; it is
-not worth 213 moved declarations.
-
-**The guard ships even though the scale does not, and precisely because they are indistinguishable.**
-Somebody will eventually "correct" 1.6069 to 1.6180 on the grounds that it looks like a typo for φ. It is
-not a typo. It is 7.97/4.96, and the whole point of L12 is that a value has a reason. The suite fails on a
-golden-ratio constant appearing in the spine, and fails on a spacing token shipping while P4 is unexpressed.
+**P1 and P4** were derived from the tensor and the cell at 2.1, measured, and deliberately not wired: P1
+because `translateX` had zero animated sites in either tool and a per-axis duration with nothing beside it
+to differ from is 220 renamed to 194; P4 because a spacing scale censused over 213 declarations at 10.79%
+mean error does not survive integer-pixel rounding at the sizes 84.5% of spacing uses (rendered c-step
+1.125–1.250, straddling the cell's 1.157 without ever equalling it), and 1.6069 is indistinguishable on
+screen from the golden ratio it would have been "corrected" to. Both retired at 2.8 with the quantities they
+derived from.
 
 ### OCCVM-L9 — night
 
@@ -826,7 +779,9 @@ Measured identical in both tools at all three golden instants. These are what `o
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
 
-**Added at 1.1 (OCCVM-L10):** `--vein-density` and `--vein-habit`.
+**Added at 1.1 (OCCVM-L10):** `--vein-density`. The growth-anisotropy token added beside it was **retired at
+2.8** (L10, §6b): a suspension has no direction to be anisotropic along, and the one axis colloid science
+offers was measured on the lattice and does not express.
 
 **Added at 1.3 (OCCVM-L7):** `--mono`, now an owned stack whose first entry ships with the tool, and
 `--t-num`. Both are declared in `occvm/mono.css` rather than `spine.css`, because the part that declares
@@ -977,8 +932,8 @@ CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
 ### What 2.0 does to each class
 
 2.0's break is that **a hex stops being authored and starts being derived**: `--sub: #1b1a22` becomes
-`material(obsidian)` resolving to a surface response, with aragonite (CaCO₃, orthorhombic, biaxial) as the
-anchor for substrate and vein alike. The table is by class, because the class is what decides the fate:
+`material(obsidian)` resolving to a surface response. At 2.0 the anchor was aragonite (CaCO₃, orthorhombic,
+biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12), and the crystal left at 2.8. The table is by class, because the class is what decides the fate:
 
 | class | tokens | at 2.0 | what a migrator does |
 |---|---|---|---|
@@ -989,7 +944,7 @@ anchor for substrate and vein alike. The table is by class, because the class is
 | **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
-| **Vein** | `--vein-density --vein-habit --vein --veins` | **`twin` joins them from the material.** The generator already grows aragonite's habit as of 1.1a; at 2.0 the twin order stops being a default and comes from the material definition. | Nothing. |
+| **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
 | **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
@@ -1002,8 +957,8 @@ introduced and nobody looked at again. Rhyme consumes all four, so with both clo
 audit saw them consumed and said nothing. **CI checks out one repository, and that is where it surfaced.**
 
 Both halves are fixed. `veinLayer()` now reads `--vein-hi`/`--vein-lo` the same way it already read
-`--vein-density`/`--vein-habit`, so the tokens `applyMineral()` writes are the ones the layer is grown
-from; and BTC's mineral picker wears the mineral it is offering, which is what `--mineral`/`--mineral-lo`
+`--vein-density` (and, until 2.8, the habit), so the tokens `applyMineral()` writes are the ones the layer is
+grown from; and BTC's mineral picker wears the mineral it is offering, which is what `--mineral`/`--mineral-lo`
 are for.
 
 **And the instrument had the golden recorder's own old defect, one level up.** Its `--check` gated on
@@ -1065,7 +1020,7 @@ law are generated from that run.
 | **L8** | the interaction floor | IN FORCE | CONFORMS | CONFORMS |
 | **L9** | night | UNMEASURED | UNMEASURED | UNMEASURED |
 | **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
-| **L11** | fracture | UNMEASURED | UNADOPTED | UNMEASURED |
+| **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
 
 **7 in force · 1 diverged · 4 unmeasured · 0 unadopted**
@@ -1279,5 +1234,17 @@ every scale landed with it.
 **What it is not.** It cannot tell you a tool conforms. Conformance is decided by `test/occvm.js`, the unit
 suites and the golden diff — assertions that run. This is the eye's instrument beside those, and the page
 says so in its own first section rather than leaving a reader to assume otherwise.
+
+**2.8** is the release the pivot was for, and it is the first one that changes what either tool *looks*
+like below the substrate ramp. The vein layer is a different object: not dendrites from nuclei in clear
+matrix but a network suspended in the material, everywhere at once, blurred where it was crisp — produced by
+changing the mechanism to the one a colloid actually has, not by restyling the old one. Deleting a draft in
+Rhyme now necks and pinches off and *stops*, on a curve the substance derived, where it used to cleave along
+a crystal's plane. And a token died: `--vein-habit`, retired because the one meaning a fluid could give it
+was measured and found below the estimator's error. That is the disposition this document has given every
+derived quantity since 1.1b — the twin misfit, P1, P4, trap depth — applied for the first time to something
+already shipped. **What 2.8 did not do:** it did not widen the meniscus bevel (L2 stays DIVERGED at the
+spine's 1px), and it did not touch BTC's lock, the koan, or anything from the roadmap's foil pair; those are
+2.9, with the disposition of the whole roadmap written into §9.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.

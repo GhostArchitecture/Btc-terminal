@@ -66,10 +66,12 @@ T("the refractive index is the refractometric Brix value, not a convenience",
   const r = R.faceRatios(K);
   T("faceRatios returns the same shape the sundial already calls",
     typeof r.hi === "number" && typeof r.lo === "number" && r.hi > 1 && r.lo < 1);
-  const M = require("../occvm/material.js");
-  const c = M.faceRatios(M.ARAGONITE);
-  T("and it is NOT identical to the crystal's — the swap is a visible change, not a no-op",
-    Math.abs(r.hi - c.hi) > 1, `ketchup hi ${r.hi.toFixed(2)} vs aragonite ${c.hi.toFixed(2)}`);
+  /* the crystal it replaced is gone (2.8), so the comparison is against its RECORDED ratio: aragonite's
+     optics gave edge:front 9.353 at the same cut, the fluid gives 14.148 — the swap was a visible change */
+  const F = R.faces(K);
+  T("and it is NOT the crystal's — the swap was a visible change, not a no-op",
+    Math.abs(F.edge.R / F.front.R - 14.148) < 0.01 && Math.abs(F.edge.R / F.front.R - 9.353) > 1,
+    (F.edge.R / F.front.R).toFixed(3));
 }
 
 /* ── flow, and the property yield.js is built on ────────────────────────────────────────────────── */
@@ -103,8 +105,47 @@ T("the refractive index is the refractometric Brix value, not a convenience",
 }
 
 /* ── vein habit ─────────────────────────────────────────────────────────────────────────────────── */
-T("the DLCA fractal dimension replaces the twin angle", Math.abs(R.fractalDimension() - 1.75) < 1e-9);
+T("the DLCA fractal dimension replaces the twin angle — as a recorded output, not an input", Math.abs(R.fractalDimension() - 1.75) < 1e-9);
+T("the 3-D and the 2-D lattice values are both recorded, and they differ", R.DLCA_D === 1.75 && R.DLCA_D_LATTICE === 1.44);
 T("no lattice survives on the substance: a fluid has no unit cell", K.cell === undefined);
 T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal", K.C === undefined);
+
+/* ── cessation: finite stopping time, the roadmap's derivation checked rather than cited ────────── */
+{
+  /* the roadmap's table, at ITS τ₀ (0.03 Pa): v₀ 0.01 / 0.1 / 1 → 0.0063 / 0.041 / 0.266 */
+  const rm = { tau0: 0.03, k: 4.6, n: 0.19 };
+  const tab = [[0.01, 0.0063], [0.1, 0.041], [1, 0.266]];
+  T("the integration reproduces the roadmap's three stopping times to the figures it printed",
+    tab.every(([v0, t]) => Math.abs(R.stoppingTime(rm, v0) / t - 1) < 0.01),
+    tab.map(([v0]) => R.stoppingTime(rm, v0).toFixed(4)).join(" "));
+  T("and every one sits inside the analytic bracket",
+    [0.01, 0.1, 1].every(v0 => { const b = R.stoppingBracket(K, v0), t = R.stoppingTime(K, v0); return t >= b.lo * 0.999 && t <= b.hi * 1.001; }));
+  T("stopping is FINITE: the integrator terminates, which a Newtonian decay never would", isFinite(R.stoppingTime(K, 1)));
+
+  /* THE ATTRIBUTION THE ROADMAP INVERTED. At its τ₀ the rate term dominates until v ~ 3e-12; at the
+     substance's, the yield term dominates from the first instant for any v₀ under ~3,000. */
+  T("at the roadmap's τ₀ the regime is rate-dominated (k·v₀ⁿ ≫ τ₀), so the bound is tight for the OPPOSITE reason it gave",
+    R.regime(rm, 1) > 100);
+  T("at the substance's τ₀ the regime is yield-dominated for any plausible v₀", R.regime(K, 1) < 1 && R.regime(K, 100) < 1);
+  T("the crossover v₀ is about 3,000 in the model's units", Math.abs(Math.pow(K.tau0 / K.k, 1 / K.n) / 3070 - 1) < 0.02);
+
+  /* both regimes have a closed-form position, and the sampled curve matches each */
+  const e1 = R.easing(K, 1, 17), e2 = R.easing(rm, 1, 17);
+  T("yield-dominated: position is 1 − (1−u)²", e1.every((v, i) => Math.abs(v - (1 - Math.pow(1 - i / 16, 2))) < 0.01));
+  T("rate-dominated: position is 1 − (1−u)^(1 + 1/(1−n)) = 2.235", e2.every((v, i) => Math.abs(v - (1 - Math.pow(1 - i / 16, 1 + 1 / (1 - K.n)))) < 0.01));
+  T("the curve is monotone, starts at 0 and ends at exactly 1", e1[0] === 0 && e1[16] === 1 && e1.every((v, i) => i === 0 || v >= e1[i - 1]));
+  T("cssEasing hands CSS a linear() it can consume", /^linear\(0, [\d., ]+1\)$/.test(R.cssEasing(K, 1)));
+  T("the roadmap's 'linear terminal phase' is a velocity, and its position is the quadratic — not a third phase",
+    Math.abs((e1[16] - e1[15]) / (e1[1] - e1[0])) < 0.05);
+}
+
+/* ── trap depth: open item #4, closed by SGR's own escape law ───────────────────────────────────── */
+{
+  const E = [3000, 60000, 300000].map(t => R.trapDepth(K, t, 3000));
+  T("the fastest tier is the attempt time and sits at depth zero", E[0] === 0);
+  T("depth is x·ln(t/t₀): 2.43 at a minute, 3.73 at five", Math.abs(E[1] - 2.43) < 0.01 && Math.abs(E[2] - 3.73) < 0.01, E.map(v => v.toFixed(2)).join(" "));
+  T("it is logarithmic in the cadence, so a 100× slower poll is not 100× deeper", E[2] / E[1] < 2);
+  T("derived and consumed by nothing: no trap token ships", !require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "spine.css"), "utf8").includes("--trap"));
+}
 
 process.exit(done());

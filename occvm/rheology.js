@@ -257,18 +257,116 @@ var OCCVM_RHEOLOGY = (function () {
   function inGlassPhase(m) { return noiseTemperature(m) < 1; }
 
   /* ---- vein habit --------------------------------------------------------------------------------
-   * occvm/veins.js grows by diffusion-limited aggregation, which is generic and survives the pivot
-   * untouched as a MECHANISM — DLCA is real colloid science, not a crystal borrowing. What does not
-   * survive is the {110} twin angle, which was a fact about a lattice and has no fluid counterpart.
-   * The replacement constant is the DLCA fractal dimension (Lin et al. 1989), and it governs how the
-   * aggregate fills space rather than what angle it branches at.
+   * occvm/veins.js grows by diffusion-limited CLUSTER aggregation since 2.8 — every particle mobile,
+   * clusters sticking to clusters — which is how a colloidal suspension actually gels and is what
+   * ketchup is: a particulate gel. The {110} twin angle was a fact about a lattice and has no fluid
+   * counterpart; nothing replaces it as an INPUT, because DLCA takes no constant from the substance.
    *
-   * NOTE FOR WHOEVER WIRES THIS: the twin angle also fed occvm/fracture.js, which cleaved along it.
-   * Retiring the angle therefore retires fracture's geometry, not only veins' — that is why `yield.js`
-   * replaces fracture wholesale rather than taking a new constant.
+   * The fractal dimension is an OUTPUT of the process, and the literature values are recorded here so
+   * the generator can be measured against them rather than quoted as if it produced them:
+   *
+   *   DLCA_D          1.75   three dimensions, gold colloids, Weitz & Oliveria 1984 — the figure the
+   *                          roadmap carries. Lin et al. 1989 put the same regime at 1.86 and the
+   *                          reaction-limited one at 2.1. None of these is reachable on a 2-D lattice.
+   *   DLCA_D_LATTICE  1.44   two dimensions, Meakin 1983 / Kolb, Botet & Jullien 1983 — what a planar
+   *                          simulation of the same mechanism produces in the dilute limit, and the
+   *                          number test/occvm.js holds the generator to at low density.
+   *
+   * At the density the tools ship (.3) the suspension is past its gel point and the measured dimension
+   * climbs toward 2 above the correlation length, as it must — a gel is space-filling at large scale
+   * and fractal only below ξ. Measured 1.61 at .3 against 1.45 at .15 (test/occvm.js). That is not a
+   * discrepancy with the literature; it is the difference between a floc and a gel, and the reference
+   * surface's L10 specimens now show exactly that transition.
+   *
+   * The twin angle also fed occvm/fracture.js, which cleaved along it. Retiring the angle retired
+   * fracture's geometry with it, which is why occvm/yield.js replaced fracture wholesale (2.8).
    */
   var DLCA_D = 1.75;
+  var DLCA_D_LATTICE = 1.44;
   function fractalDimension() { return DLCA_D; }
+
+  /* ---- cessation: how disturbed material comes to rest ---------------------------------------------
+   * A Newtonian fluid never stops: its velocity decays exponentially and only approaches zero. A
+   * yield-stress fluid STOPS, in finite, provable time (Huilgol, Mena & Piau 2002 for Bingham; the
+   * Herschel-Bulkley case follows the same argument). The roadmap's reduced model, unit effective mass:
+   *
+   *      dv/dt = −(τ₀ + k·vⁿ)
+   *
+   * with the analytic bracket  v₀/(τ₀ + k·v₀ⁿ) ≤ t_stop ≤ v₀/τ₀. Both are reproduced here and the
+   * integration is checked against both (test/rheology.js).
+   *
+   * WHAT THE DERIVATION ACTUALLY DECIDES, and what it does not. The roadmap read the shape as "normal
+   * deceleration, then a linear terminal phase" and attributed the tightness of the lower bound to the
+   * yield term dominating. Measured, the opposite holds at the roadmap's τ₀ = 0.03 Pa: the rate term
+   * k·vⁿ is larger than τ₀ until v falls to 3e-12, so the yield term governs the last 10⁻¹² of the
+   * decay and nothing else — the lower bound is tight because n = 0.19 makes vⁿ nearly flat, so the
+   * RATE term stays at its maximum. At the τ₀ this file carries (21.15 Pa), the yield term governs from
+   * t = 0 for any v₀ below about 3,000. Two regimes, one ratio deciding between them: k·v₀ⁿ/τ₀.
+   *
+   * Both regimes stop in finite time and both have a closed form for the POSITION, which is what an
+   * easing curve is:
+   *
+   *      yield-dominated  (k·v₀ⁿ ≪ τ₀)   v = v₀ − τ₀t         s(u) = 1 − (1−u)²
+   *      rate-dominated   (k·v₀ⁿ ≫ τ₀)   v^(1−n) linear in t  s(u) = 1 − (1−u)^(1 + 1/(1−n))  = 1 − (1−u)^2.235
+   *
+   * So the shape is a power ease-out with a HARD STOP — velocity reaches zero exactly at u = 1, which no
+   * cubic-bezier keyword does — and the exponent lies between 2 and 2.235. The roadmap's "linear
+   * terminal phase" is the yield-dominated velocity, whose position is the quadratic; it is not a third
+   * phase. `easing()` samples the integrated curve for CSS `linear()`, which encodes either exactly.
+   *
+   * WHAT IS AUTHORED, named as such. v₀ is the roadmap's open item #12: no derivation maps a UI
+   * disturbance onto an initial velocity, and with v₀ free the regime — hence the exponent — is chosen
+   * by choosing v₀. The absolute duration is the same story one step on: t_stop is in the model's own
+   * units, and a real millisecond count needs a scale nothing here supplies. The primitive therefore
+   * takes its DURATION as an authored constant, exactly as fracture's 220 ms was, and takes its SHAPE
+   * from here. That is the honest split: the derivation owns the curve and the hard stop; a person owns
+   * how long it lasts. Stating it this way is what keeps the exponent from being quietly tuned to a
+   * wanted feel and called physics.
+   */
+  function decel(m, v) { return m.tau0 + m.k * Math.pow(Math.max(v, 0), m.n); }
+  function stoppingBracket(m, v0) { return { lo: v0 / decel(m, v0), hi: v0 / m.tau0 }; }
+  function stoppingTime(m, v0, dt) {
+    dt = dt || v0 / decel(m, v0) / 2000;
+    var v = v0, t = 0;
+    while (v > 0) { v -= decel(m, v) * dt; t += dt; }
+    return t;
+  }
+  /* position fraction at `samples` evenly spaced time fractions, 0 → 1 inclusive; the curve CSS needs */
+  function easing(m, v0, samples) {
+    samples = samples || 17;
+    var T = stoppingTime(m, v0), dt = T / 4000, v = v0, t = 0, x = 0, pts = [0], next = 1;
+    while (t < T && next < samples) {
+      v = Math.max(0, v - decel(m, v) * dt); x += v * dt; t += dt;
+      if (t >= T * next / (samples - 1)) { pts.push(x); next++; }
+    }
+    var X = pts[pts.length - 1] || 1;
+    while (pts.length < samples) pts.push(X);
+    return pts.map(function (p) { return +(p / X).toFixed(4); });
+  }
+  /* the regime this v₀ lands in: the ratio that decides the exponent */
+  function regime(m, v0) { return m.k * Math.pow(v0, m.n) / m.tau0; }
+  function cssEasing(m, v0) {
+    return "linear(" + easing(m, v0, 17).join(", ") + ")";
+  }
+
+  /* ---- trap depth: CLOSES OPEN ITEM #4 -------------------------------------------------------------
+   * The roadmap records "no formula converts a poll interval to an energy". SGR has one: an element
+   * caged in a well of depth E escapes at a rate ∝ exp(−E/x), so its residence time is
+   * τ = τ_a · exp(E/x) and E = x · ln(τ/τ_a). A cadence is a residence time, and the fastest tier is
+   * the attempt time τ_a — the reference from which the others are measured, at depth 0. With x = 1−n:
+   *
+   *      exchange feeds   3 s      E = 0
+   *      CoinGecko       60 s      E = 0.81 · ln 20  = 2.43
+   *      Kalshi ladder  300 s      E = 0.81 · ln 100 = 3.73
+   *
+   * in units of x·kT. Derived, and CONSUMED BY NOTHING — recorded here for the same reason P1's
+   * durations were: the arithmetic is right, and wiring it before a surface expresses it would be a
+   * token nobody reads (OCCVM-D12). The roadmap's item #7, the scale mismatch of applying ensemble
+   * statistics to six named elements, stands and is not answered by this.
+   */
+  function trapDepth(m, periodMs, attemptMs) {
+    return noiseTemperature(m) * Math.log(periodMs / attemptMs);
+  }
 
   return {
     KETCHUP: KETCHUP, SUBSTANCE: SUBSTANCE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
@@ -278,7 +376,9 @@ var OCCVM_RHEOLOGY = (function () {
     capillaryLength: capillaryLength, puddleHeight: puddleHeight,
     radiusPx: radiusPx, standingStress: standingStress, MM_PER_PX: MM_PER_PX,
     noiseTemperature: noiseTemperature, inGlassPhase: inGlassPhase,
-    fractalDimension: fractalDimension
+    DLCA_D_LATTICE: DLCA_D_LATTICE, fractalDimension: fractalDimension,
+    decel: decel, stoppingBracket: stoppingBracket, stoppingTime: stoppingTime, easing: easing,
+    regime: regime, cssEasing: cssEasing, trapDepth: trapDepth
   };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_RHEOLOGY;
