@@ -114,7 +114,6 @@ yet; the gap is a defect, and the defect names the release that closes it.
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-
 The ground is obsidian; the mark on it is bone. Three substrate weights and three ink weights, no more.
 
 ```
@@ -130,16 +129,40 @@ today: `OCCVM-D10`.
 ### OCCVM-L2 — cut geometry
 
 > **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **DIVERGES** — 23 of 25 declarations exceed 4px: 10, 12, 16, 18, 20, 22, 999px (including 9 full pills)
-> - Rhyme Instrument: **DIVERGES** — 2 of 34 declarations exceed 4px: 5, 9px
+> - BTC Terminal: **DIVERGES** — vessel 16 radii 2-22px + 9 pills; meniscus: spine bevel 1px against lc 7.15px — the crystal's chisel; widening it is the adoption candidate
+> - Rhyme Instrument: **DIVERGES** — vessel 34 radii 1-9px; meniscus: spine bevel 1px against lc 7.15px — the crystal's chisel; widening it is the adoption candidate
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
+**A surface is a contained fluid, and its geometry is two things that used to be conflated.** Until 2.7
+this law read "a surface is cut, not rounded: corner radius ≤ 4px" — a crystal's arris, written as if it
+governed both tools, while BTC painted 10–22px with nine full pills and Rhyme painted 2–4px. The audit
+measured that as diverged in both. Re-authored on the fluid basis, and the physics separates the two
+quantities the old law fused:
 
-A surface is cut, not rounded. Corner radius **≤ 4px** on any slab, tile, control or binding. Bevels are
-struck from the light vector (`OCCVM-L3`), never from a fixed offset.
+**The plan-view radius is the vessel's, not the fluid's.** A fluid at rest on an open plate has no
+corners at all — its outline is a circle. A rectangular surface is therefore a *contained* fluid, and its
+corner radius belongs to whatever contains it. That is an authored quantity, per tool, and this law
+**records it rather than judging it**: BTC's vessel is round-cornered (16–22px panels, pill controls),
+Rhyme's is tight (2–4px). Two vessels, one fluid. The conformance block above lists each tool's radii as
+the record of its vessel; neither is a violation of the other.
 
-An element too small to read as a cut slab at 4px takes an exception in §5 rather than a larger radius.
+**The edge is the fluid's, and it is derived.** Where a fluid meets a wall it forms a meniscus of width
+`λc = √(γ/ρg)` — the capillary length, **7.15 px** for the substance in force (`occvm/rheology.js`,
+`radiusPx()`), and not fitted: it is what the substance's density and surface tension produce. On a
+surface that is the fillet along every edge, and in these tools the edge is the **bevel** —
+`--occvm-bevel`, whose inset offset is `--lit-x/--lit-y = ±1px`. **That 1px is the crystal's chisel.** A
+fluid's edge is not a hairline; it is a 7px meniscus, soft, and that is the single largest visible
+difference between a cut mineral and a held fluid — larger than the substrate ramp (one gradient stop,
+measured at 2.5) and larger than any border-radius (an unworn class, measured at 2.6).
+
+**The meniscus is derived and not yet adopted, and the state block says so.** The spine's bevel still
+paints the 1px chisel, so this law is DIVERGED at the spine, in both tools, until the bevel width becomes
+λc. That is a visible change to every beveled surface and it is the adoption candidate — to be prototyped
+on the reference surface, not applied blind. No `--occvm-r`/`--occvm-lc` token is declared until then: a
+token derived and consumed by nothing is `OCCVM-D12`, and 2.6 shipped exactly that for one release.
+
+Bevels are struck from the light vector (`OCCVM-L3`), never from a fixed offset — unchanged.
 
 ### OCCVM-L3 — one light
 
@@ -148,7 +171,6 @@ An element too small to read as a cut slab at 4px takes an exception in §5 rath
 > - Rhyme Instrument: **CONFORMS** — no local solar implementation
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 There is exactly one light on any **surface**, and it is the real sun.
 
@@ -230,12 +252,11 @@ golden set a delta it cannot attribute.
 
 ### OCCVM-L4 — cast shadow
 
-> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — 15 casts, all light-derived or inset
-> - Rhyme Instrument: **DIVERGES** — 1 of 23 casts use a fixed offset
+> - Rhyme Instrument: **CONFORMS** — 23 casts, all light-derived or inset
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 Every cast shadow derives from `--lx --ly --rake --shade-a`. **No fixed `box-shadow` offset exists outside
 the primitives.** The primitive is `.occvm-cast` (§3).
@@ -258,7 +279,6 @@ Completed at **1.2**. BTC carries 15 fixed offsets today: `OCCVM-D2`.
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-
 The gilt ramp `--gilt-c #7a5510 → --gilt-b #d9a52c → --gilt-a #ffe9a3` marks **what decides** and nothing
 else. Malachite and ruby carry outcome; verdigris carries seams and age; bronze carries binding.
 
@@ -266,12 +286,11 @@ A surface that is merely important is not gilt. A number that settles something 
 
 ### OCCVM-L6 — the mineral set is frozen, with fixed meanings
 
-> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **DIVERGES** — 2 mineral accent hex restated outside minerals.js (3 outcome-colour declarations are the section 5 exception, not counted)
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — no accent restated; 3 outcome colours are the granted exception
 > - Rhyme Instrument: **CONFORMS** — no local mineral hex
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 The mineral is the reader's choice of accent, and the set is closed:
 
@@ -313,12 +332,11 @@ halves: the mineral drives the vein layer, and switching it never inline-sets an
 
 ### OCCVM-L7 — figure discipline
 
-> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **DIVERGES** — depends on 2 unembedded face(s): Iowan Old Style, Palatino (tool does embed at least one face)
-> - Rhyme Instrument: **DIVERGES** — depends on 2 unembedded face(s): Iowan Old Style, Palatino (tool embeds none)
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — stack leads with an embedded face ("OCCVM Serif")
+> - Rhyme Instrument: **CONFORMS** — stack leads with an embedded face ("OCCVM Serif")
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 Numerals in a column are tabular. Numerals in running text are lining. A tool depends on **no font the
 visitor's operating system supplies** for any numeral that carries meaning.
@@ -359,7 +377,6 @@ Completed at **1.3** for BTC. `OCCVM-D3` closed.
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-
 Every action is a real control: correct element semantics, reachable by keyboard, state announced
 (`aria-pressed` on a toggle), a target of at least 44×44px, and one focus ring shared across the system.
 Every motion respects `prefers-reduced-motion`.
@@ -383,7 +400,6 @@ Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`
 > - Rhyme Instrument: **CONFORMS** — no drawn fallback
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 Veins are **grown, not drawn**. The generator is diffusion-limited aggregation: a walker enters the
 matrix, moves at random, and sticks the instant it touches the aggregate. Branching is dendritic because a
@@ -463,7 +479,6 @@ found by decoding the URI into an `<img>` and counting inked pixels.
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-
 **A destructive action does not share a physical vocabulary with a reversible one.** Everything else in
 these tools fades, slides or settles. Those are elastic behaviours, and elastic behaviour implies the
 thing could come back. Aragonite does not deform past its limit — it **cleaves**, along fixed planes, at
@@ -512,7 +527,6 @@ visible by looking at the frame.
 > - Rhyme Instrument: **CONFORMS** — 3 :root fallback(s), overwritten by the sundial
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
-
 
 **A hex is not authored. A material is defined, and the surface values are derived from it.** Until 2.0
 `--sub-hi`, `--sub` and `--sub-lo` were three separate decisions that happened to look related, and the
@@ -751,7 +765,6 @@ golden-ratio constant appearing in the spine, and fails on a spacing token shipp
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
 A binary step cannot express the civil / nautical / astronomical dusk stages, so the ramp is the 1.0 law
 and the staging is additive over it — `--dusk-stage`, landed at **1.7**: `day` at or above the horizon,
@@ -970,7 +983,7 @@ anchor for substrate and vein alike. The table is by class, because the class is
 | class | tokens | at 2.0 | what a migrator does |
 |---|---|---|---|
 | **Substrate & ink** | `--sub --sub-hi --sub-lo --edge --bone --bone-lo --bone-dim` | **derived from the material.** Three substrate weights become the three faces an orthorhombic crystal actually has — lit face, shade face, edge — each taking its own principal refractive index (α/β/γ) rather than one scaled response. | Stop declaring them. Declare a material; read the same names back. The names do not change, which is deliberate: the migration is in where the value comes from, not in what a surface calls it. |
-| **Material (L12)** | `--occvm-r` | **Derived, never authored.** L2's corner radius is the substance's capillary length `√(γ/ρg)` = 7.15 px, asserted against `occvm/rheology.js` so the two cannot drift. It replaces the crystal's authored 4 px ceiling and is deliberately larger — a fluid cannot hold an arris. | Nothing; it is generated from the substance. |
+| **Faces (L7)** | `--serif --reading` | **Owned since 2.7.** `--serif` leads with "OCCVM Serif" (Fraunces, `occvm/serif.css`, both tools); `--reading` is "OCCVM Reading" (Faustina, `occvm/reading.css`, Rhyme only — the one tool that sets running text in a serif). The fallback stacks stay behind the owned face. Neither tool restates either token; the spine governs both. | Nothing; delete any local `--serif` restatement. |
 | **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
 | **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
@@ -1043,19 +1056,19 @@ law are generated from that run.
 | law | | state | BTC Terminal | Rhyme Instrument |
 |---|---|---|---|---|
 | **L1** | substrate and inscription | UNMEASURED | UNMEASURED | UNMEASURED |
-| **L2** | cut geometry | DIVERGED | DIVERGES | DIVERGES |
+| **L2** | geometry: the vessel and the meniscus | DIVERGED | DIVERGES | DIVERGES |
 | **L3** | one light | IN FORCE | CONFORMS | CONFORMS |
-| **L4** | cast shadow | DIVERGED | CONFORMS | DIVERGES |
+| **L4** | cast shadow | IN FORCE | CONFORMS | CONFORMS |
 | **L5** | gilt is reserved | UNMEASURED | UNMEASURED | UNMEASURED |
-| **L6** | the mineral set is frozen | DIVERGED | DIVERGES | CONFORMS |
-| **L7** | figure discipline | DIVERGED | DIVERGES | DIVERGES |
+| **L6** | the mineral set is frozen | IN FORCE | CONFORMS | CONFORMS |
+| **L7** | figure discipline | IN FORCE | CONFORMS | CONFORMS |
 | **L8** | the interaction floor | IN FORCE | CONFORMS | CONFORMS |
 | **L9** | night | UNMEASURED | UNMEASURED | UNMEASURED |
 | **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | fracture | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
 
-**4 in force · 4 diverged · 4 unmeasured · 0 unadopted**
+**7 in force · 1 diverged · 4 unmeasured · 0 unadopted**
 
 ### What the four states mean, and why four rather than two
 

@@ -30,9 +30,12 @@
   --verdigris: #3f9a86;
   --verdigris-lo: #23574c;
 
-  /* OCCVM-L7 — the serif carries section heads in both tools. The mono face is OS-supplied in both and
-     is registered, not governed, until 1.3 closes D3. */
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  /* OCCVM-L7 — the serif carries section heads in both tools, and since 2.7 it is OWNED: "OCCVM Serif"
+     is Fraunces, embedded by occvm/serif.css and spliced beside this. The fallbacks stay so a failed
+     @font-face still renders a serif — but they are fallbacks now, not the face. Until 2.7 this stack was
+     nothing but fallbacks, and the law audit measured that as L7 diverged in both tools: Iowan Old Style
+     ships only on Apple systems, so most viewers were reading the heads in Palatino or Georgia. */
+  --serif: "OCCVM Serif", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
 
   /* OCCVM-L4 (1.2) — cast depth. A surface picks a depth; it never authors an offset.
    *
@@ -96,28 +99,21 @@
 .occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
 .occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
 
-/* OCCVM-L2 (2.6) — a surface is HELD, not cut: radius from the substance's capillary length.
+/* OCCVM-L2 (2.7) — a surface is a CONTAINED fluid: the plan-view radius is the vessel's, the edge is the
+ * fluid's.
  *
- * This law read "a surface is cut, not rounded: radius <= 4px" for six releases, and that ceiling was a
- * crystal's arris — a cut mineral holds a sharp edge, so 4px was a real property of the material the
- * system was made of. A yield-stress fluid cannot hold one: surface tension rounds every free edge to
- * the capillary length whether anyone wants it to or not.
+ * The radius below is the vessel's — authored, 3px, the value this primitive has carried since 1.0. 2.6
+ * briefly derived it from the substance's capillary length (7.15px) and measured that against L2's
+ * declared ceiling instead of against what either tool paints; both tools' vessels are their own and the
+ * law now records them rather than judging them.
  *
- *   --occvm-r = lc = sqrt(gamma / rho*g) = 1.891 mm = 7.15 px at 96 dpi
- *
- * DERIVED, NOT AUTHORED, and asserted against occvm/rheology.js by test/occvm.js so the two cannot drift.
- *
- * WHAT IT DOES NOT YET DO, MEASURED RATHER THAN ASSUMED. `.occvm-slab` is worn by ZERO elements in either
- * tool, so this token currently reaches nothing — the primitive set has been declared and unadopted since
- * 1.0 and this changes that in no way. And the ceiling it replaces is not what the tools paint: BTC's own
- * surfaces run 16–22px with nine 999px pills, Rhyme's run 2–4px. So L2 is obeyed by one tool and ignored
- * by the other, and 7.15px would ROUND Rhyme while SHARPENING BTC. Which of those is a violation to fix
- * and which a divergence to legitimise is a design decision, not a measurement, and it blocks adoption
- * rather than being answered by this derivation. */
-:root { --occvm-r: 7.15px; }
+ * The fluid's contribution is the MENISCUS, lc = sqrt(gamma/rho*g) = 7.15px, and its surface is the bevel
+ * below: --occvm-bevel's inset offset is +-1px, which is the crystal's chisel. Widening it to lc is the
+ * adoption candidate, prototyped on the reference surface first. No token for lc is declared until a
+ * consumer exists — 2.6's --occvm-r reached nothing, which is OCCVM-D12. */
 
 .occvm-slab {
-  border-radius: var(--occvm-r);
+  border-radius: 3px;
   background: var(--sub, #1b1a22);
   border: 1px solid var(--edge);
   box-shadow: var(--occvm-bevel);

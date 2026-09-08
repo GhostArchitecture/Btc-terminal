@@ -1325,6 +1325,26 @@ barely moves, so the range is the honest figure: **+1.75 L\*** highlight at high
 the shadow face gains directionality it never had, the authored `0.42` having been flat at every
 elevation. `test/occvm.js` 313 → 322.
 
+**2.7 — the laws re-authored around a measurement, and three of the five divergences closed.** The
+conformance table had read `violates: —` for six releases; `occvm/tools/law-audit.js` measured five laws
+diverged. This release: **L4** — Rhyme's one fixed-offset cast now struck from the light vector. **L6** —
+this tool restated `--amethyst`/`--amethyst-lo` in `:root` for a `--mineral` fallback chain that nothing
+in CSS ever read; four dead declarations deleted (the token audit missed it because it accepts a `var()`
+reference as consumption even when the consuming token is itself unconsumed — a chain to nowhere). **L7**
+— the defect was the *serif*, not the mono the roadmap named: `--serif` was every face somebody else's,
+Apple-only at the front. Now owned, 1.3's treatment applied twice: `occvm/serif.css` embeds Fraunces
+(OFL, SOFT 35 / WONK 1 per the handoff, `opsz` and `wght` kept variable — this tool renders it at 12px
+where the handoff's pinned 40 is wrong) into both tools; `occvm/reading.css` embeds Faustina for Rhyme's
+running text, which had been sharing `--serif` with the heads. This tool drops its own `--serif`
+restatement; the spine governs it. **L2** is re-authored, not fixed: the plan-view radius is the
+*vessel's* — authored per tool, recorded (this tool 10–22px and pills; Rhyme 2–4px), not judged — and the
+edge is the *fluid's*, a 7.15px meniscus derived from the substance. The spine's bevel is still the
+crystal's 1px chisel, so L2 reads DIVERGED at the spine, honestly, and widening the bevel is the adoption
+candidate — the first change that would make either tool *look* fluid. 2.6's `--occvm-r` is deleted:
+derived, on an unworn class, consumed by nothing (D12). The auditor gained `--stamp` (state blocks are
+regenerated, not typed once) and a two-way `--check`; it also had a bug of its own — `SIBLING` hardcoded,
+so from Rhyme it measured Rhyme twice under two names and passed. **7 in force, 1 diverged, 4 unmeasured.**
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

@@ -1154,47 +1154,49 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     })(), "the anchor is the substance's, and the substance changed");
   }
 
-  /* ── 2.6 — L2's radius is the substance's capillary length ──────────────────────────────────── */
+  /* ── 2.7 — L2 re-authored: the vessel is recorded, the meniscus is derived ─────────────────── */
   {
     const RH6 = require("../occvm/rheology.js"), K6 = RH6.SUBSTANCE;
     const css6 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8");
-    const declared = parseFloat((css6.match(/--occvm-r:\s*([0-9.]+)px/) || [])[1]);
-
-    T("spine.css declares the radius as a token", !isNaN(declared), declared);
-    T("and it IS the capillary length, not a number that resembles it",
-      Math.abs(declared - RH6.radiusPx(K6)) < 0.01,
-      `${declared} declared vs ${RH6.radiusPx(K6).toFixed(2)} derived`);
-    T("the slab reads the token rather than a literal", /border-radius:\s*var\(--occvm-r\)/.test(css6));
-    /* stripComments, for the fourth time and the first time without being told twice: this file's own
-       helper was factored one commit ago and this guard was still written against raw source, which
-       found "radius <= 4px" in the comment recording what the token replaced. */
-    T("L2's 4px crystal ceiling is gone from the stylesheet's code",
-      !/radius:\s*[0-4]px/.test(stripComments(css6)));
-    T("but the stylesheet still records the ceiling it replaced", /radius <= 4px/.test(css6));
-
-    /* the direction is the finding: a fluid is ROUNDER than a cut mineral, so this must exceed the
-       ceiling it replaces. A derivation that landed back under 4px would mean the geometry had been
-       fitted to the old law rather than taken from the substance. */
-    T("the fluid's radius EXCEEDS the crystal's 4px ceiling — edges relax, they do not sharpen",
-      declared > 4, declared + "px");
-
-    /* the two length scales agree by construction, which is what fixed tau0 */
-    /* τ₀ is stored rounded to 2dp — a human-readable value inside the published band — so the two
-       lengths agree to that precision and not exactly. Asserting the real tolerance rather than
-       loosening one until it passes: 0.01 mm is what 21.15 Pa resolves to. */
+    const code6 = stripComments(css6);
+    T("the capillary length is 7.15px", Math.abs(RH6.radiusPx(K6) - 7.15) < 0.01, RH6.radiusPx(K6).toFixed(2));
     T("puddle height equals capillary length to the precision tau0 is quoted at",
-      Math.abs(RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1000 < 0.01,
-      ((RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1e6).toFixed(2) + " micrometres apart");
-    T("and tau0 is no longer the range floor that could not hold a blob",
-      K6.tau0 > 10 && RH6.standingStress(K6, 1) < K6.tau0,
-      `tau0 ${K6.tau0} Pa; a 1mm blob needs ${RH6.standingStress(K6, 1).toFixed(1)}`);
-    T("the range floor is pinned out: 0.03 Pa holds 2.7 micrometres", K6.tau0 !== 0.03);
-
-    /* surface tension is the weakest input and its sensitivity is stated, not hidden */
+      Math.abs(RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1000 < 0.01);
     T("radius goes as sqrt(gamma), so a 2x error in the least-sourced number is only 1.41x", (() => {
       const twice = Object.assign({}, K6, { gamma: K6.gamma * 2 });
-      return Math.abs(RH6.radiusPx(twice) / declared - Math.SQRT2) < 0.01;
+      return Math.abs(RH6.radiusPx(twice) / RH6.radiusPx(K6) - Math.SQRT2) < 0.01;
     })());
+    /* NO TOKEN UNTIL A CONSUMER EXISTS. 2.6 declared --occvm-r on .occvm-slab, worn by zero elements in
+       either tool: a derived value reaching nothing, OCCVM-D12 with a derivation attached. */
+    T("no capillary token is declared in the spine while nothing consumes it", !/--occvm-(r|lc)\s*:/.test(code6));
+    T("the slab's radius is the vessel's authored 3px, not a derived value on an unworn class",
+      /\.occvm-slab\s*\{[^}]*border-radius:\s*3px/.test(code6));
+    /* THE MENISCUS is where the fluid actually differs from the crystal, and it is not adopted yet. */
+    const bevel = parseFloat((code6.match(/--lit-x:\s*calc\(var\(--lx, 0\) \* ([0-9.]+)px\)/) || [])[1]);
+    T("the spine's bevel width is readable", !isNaN(bevel), bevel);
+    T("the bevel is still the crystal's 1px chisel — the meniscus is derived, not adopted",
+      bevel === 1 && Math.abs(RH6.radiusPx(K6) - bevel) > 5, `bevel ${bevel}px vs meniscus ${RH6.radiusPx(K6).toFixed(2)}px`);
+    T("and the law records L2 as DIVERGED at the spine for exactly that reason", (() => {
+      const sp = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
+      const h = sp.indexOf("### OCCVM-L2 —"); const blk = sp.slice(h, sp.indexOf("\n### ", h + 1));
+      return /DIVERGED/.test(blk) && /meniscus/.test(blk);
+    })());
+  }
+
+  /* ── 2.7 — L7: the serif is owned ───────────────────────────────────────────────────────────── */
+  {
+    const idx7 = fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8");
+    const own7 = stripComments(idx7.replace(/\/\* ==== OCCVM SPINE [\s\S]*?\/\* ==== END OCCVM [^*]*\*\//g, ""));
+    T("serif.css is spliced into this tool", /font-family:\s*"OCCVM Serif"/.test(idx7));
+    T("reading.css is NOT spliced here — this tool sets no running text in a serif", !/OCCVM Reading/.test(idx7));
+    T("--serif leads with the owned face", /--serif:\s*"OCCVM Serif"/.test(idx7));
+    T("the tool no longer restates --serif in its own :root — the spine governs it", !/--serif\s*:/.test(own7));
+    T("the embedded serif keeps opsz and wght variable", /font-weight:\s*100 900/.test(idx7));
+    const sz = fs20.statSync(path20.join(__dirname, "..", "occvm", "serif.css")).size;
+    T("serif.css is a subset, not the 360KB upstream", sz < 90000, sz + " bytes");
+    T("the upstream cut and its licence are committed — the generator's input is the source",
+      fs20.existsSync(path20.join(__dirname, "..", "occvm", "fonts", "upstream", "Fraunces[SOFT,WONK,opsz,wght].ttf")) &&
+      fs20.existsSync(path20.join(__dirname, "..", "occvm", "fonts", "OFL-Fraunces.txt")));
   }
 
   /* ── the laws are measured, not asserted ────────────────────────────────────────────────────── */

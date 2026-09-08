@@ -35,8 +35,11 @@
 const fs = require("fs"), path = require("path");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const SIBLING = path.resolve(ROOT, "..", "Rhyme-Instrument");
 const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
+/* The sibling is the OTHER repository. The first version resolved "../Rhyme-Instrument" unconditionally,
+   so run from Rhyme it read Rhyme's own built index.html and reported it as BTC — measuring one tool
+   twice under two names, and passing. Every Rhyme-side LAW AUDIT OK before this line was that. */
+const SIBLING = path.resolve(ROOT, "..", IS_RHYME ? "Btc-terminal" : "Rhyme-Instrument");
 
 /* Each tool names the files that carry its OWN declarations — never the spliced spine, which is the law
    speaking rather than the tool answering. The fences are stripped before measurement for that reason. */
@@ -68,23 +71,28 @@ const LAWS = [
     claim: "three substrate weights and three ink weights, no more",
     measure: null, note: "token families are guarded by token-audit.js and the golden set" },
 
-  { id: "L2", name: "cut geometry",
-    claim: "corner radius <= 4px on any slab, tile, control or binding",
+  { id: "L2", name: "geometry: the vessel and the meniscus",
+    claim: "plan-view radius is the vessel's (recorded); the edge is the fluid's meniscus, lc = 7.15px",
     measure(tool) {
+      /* THE VESSEL — recorded, never judged. Both tools have a real one and they differ; that is two
+         vessels, not a violation. Listed so the record is on the law. */
       const radii = [];
-      const re = /border-radius:\s*([^;}\n]+)/g;
-      let m;
-      while ((m = re.exec(tool.own))) {
-        for (const px of m[1].match(/(\d+(?:\.\d+)?)px/g) || []) radii.push(parseFloat(px));
-      }
-      const over = radii.filter(r => r > 4);
-      const pills = (tool.own.match(/border-radius:\s*999px/g) || []).length;
-      if (!radii.length) return { state: "UNADOPTED", detail: "no border-radius in the tool's own CSS" };
-      if (!over.length) return { state: "CONFORMS", detail: `${radii.length} declarations, max ${Math.max(...radii)}px` };
-      const uniq = [...new Set(over)].sort((a, b) => a - b);
-      return { state: "DIVERGES",
-        detail: `${over.length} of ${radii.length} declarations exceed 4px: ${uniq.join(", ")}px` +
-                (pills ? ` (including ${pills} full pills)` : "") };
+      const re = /border-radius:\s*([^;}\n]+)/g; let m;
+      while ((m = re.exec(tool.own))) for (const px of m[1].match(/(\d+(?:\.\d+)?)px/g) || []) radii.push(parseFloat(px));
+      const pills = radii.filter(r => r >= 999).length, real = radii.filter(r => r < 999);
+      const vessel = real.length ? `vessel ${real.length} radii ${Math.min(...real)}-${Math.max(...real)}px` +
+        (pills ? ` + ${pills} pills` : "") : "no radii";
+      /* THE MENISCUS — derived from the substance, measured against the spine's bevel. Spine-level: both
+         tools inherit --occvm-bevel, so both read the same result. */
+      const RH = require(path.join(__dirname, "..", "rheology.js"));
+      const lc = RH.radiusPx(RH.SUBSTANCE);
+      const spine = fs.readFileSync(path.join(__dirname, "..", "spine.css"), "utf8");
+      const bevel = parseFloat((spine.match(/--lit-x:\s*calc\(var\(--lx, 0\) \* ([0-9.]+)px\)/) || [])[1]);
+      if (isNaN(bevel)) return { state: "DIVERGES", detail: `${vessel}; spine bevel width unreadable` };
+      const ok = Math.abs(bevel - lc) < 0.05;
+      return { state: ok ? "CONFORMS" : "DIVERGES",
+        detail: `${vessel}; meniscus: spine bevel ${bevel}px against lc ${lc.toFixed(2)}px` +
+                (ok ? "" : " — the crystal's chisel; widening it is the adoption candidate") };
     } },
 
   { id: "L3", name: "one light",
@@ -141,7 +149,17 @@ const LAWS = [
       }
       const owned = /@font-face/.test(tool.raw);
       const unowned = named.filter(f => !new RegExp(`@font-face[\\s\\S]{0,400}${f}`).test(tool.raw));
-      if (!named.length) return { state: "CONFORMS", detail: "names no unowned face" };
+      /* 2.7: the spine's own stack is spliced (and stripped here), so a conforming tool names no face at
+         all in its own CSS. But "names nothing" is also what a tool that set no serif would read, so the
+         check goes one step further into the RAW file: the stack the tool renders must lead with a face
+         that has a matching @font-face on the page. */
+      if (!named.length) {
+        const lead = (tool.raw.match(/--serif:\s*"([^"]+)"/) || [])[1];
+        const owned = lead && new RegExp(`@font-face[\\s\\S]{0,200}font-family:\\s*"${lead}"`).test(tool.raw);
+        return owned
+          ? { state: "CONFORMS", detail: `stack leads with an embedded face ("${lead}")` }
+          : { state: "DIVERGES", detail: lead ? `stack leads with "${lead}", which has no @font-face` : "no --serif resolves on the page" };
+      }
       return { state: "DIVERGES",
         detail: `depends on ${unowned.length} unembedded face(s): ${unowned.join(", ")}` +
                 (owned ? " (tool does embed at least one face)" : " (tool embeds none)") };
@@ -242,6 +260,39 @@ console.log(`${results.length} laws: ${results.filter(r => r.overall === "IN FOR
             `${diverged.length} diverged, ${results.filter(r => r.overall === "UNADOPTED").length} unadopted, ` +
             `${unmeasured.length} unmeasured, ${results.filter(r => r.overall === "PARTIAL").length} partial`);
 
+function blockFor(r) {
+  return [`> **STATE: ${r.overall}** — measured by \`occvm/tools/law-audit.js\`, not asserted.`,
+    ...r.per.map(p => `> - ${p.tool}: **${p.state}** — ${p.detail}`),
+    ">", "> *This block is generated. If it disagrees with the tools, the tools are what is true.*"].join("\n");
+}
+if (process.argv.includes("--stamp")) {
+  /* The STATE blocks are GENERATED, and generated means regenerated: a block stamped once and left is a
+     hand-typed table with extra steps. This rewrites each law's block and the section-7 table from the
+     measurement just taken. Run it after any change to a tool, then commit the document with the code. */
+  const sp = path.join(ROOT, "occvm", "SPINE.md");
+  let spine = fs.readFileSync(sp, "utf8");
+  for (const r of results) {
+    const h = spine.indexOf(`### OCCVM-${r.id} —`); if (h < 0) continue;
+    const nl = spine.indexOf("\n", h) + 1;
+    const rest = spine.slice(nl).replace(/^\n+/, "");
+    const m = rest.match(/^(> [^\n]*\n|>\n)+/);
+    const after = m ? rest.slice(m[0].length) : rest;
+    spine = spine.slice(0, nl) + "\n" + blockFor(r) + "\n\n" + after.replace(/^\n+/, "");
+  }
+  const t0 = spine.indexOf("| law | | state | BTC Terminal | Rhyme Instrument |");
+  if (t0 >= 0) {
+    const tEnd = spine.indexOf("\n\n", spine.indexOf("**", spine.indexOf("\n\n", t0) + 2));
+    const rows = results.map(a => { const per = {}; for (const x of a.per) per[x.tool.split(" ")[0]] = x.state;
+      return `| **${a.id}** | ${a.name} | ${a.overall} | ${per.BTC || "?"} | ${per.Rhyme || "?"} |`; });
+    const cnt = {}; for (const a of results) cnt[a.overall] = (cnt[a.overall] || 0) + 1;
+    spine = spine.slice(0, t0) + "| law | | state | BTC Terminal | Rhyme Instrument |\n|---|---|---|---|---|\n" +
+      rows.join("\n") + `\n\n**${cnt["IN FORCE"] || 0} in force · ${cnt.DIVERGED || 0} diverged · ` +
+      `${cnt.UNMEASURED || 0} unmeasured · ${cnt.UNADOPTED || 0} unadopted**` + spine.slice(tEnd);
+  }
+  fs.writeFileSync(sp, spine);
+  console.log("\nSTAMPED: every law's state block and the section-7 table regenerated from this run.");
+}
+
 if (process.argv.includes("--check")) {
   /* The document must RECORD the divergences the measurement finds. A law measured as diverged and
      written up as in force is the failure this tool exists to prevent — the hand-typed "violates: —"
@@ -265,6 +316,13 @@ if (process.argv.includes("--check")) {
     return lines.join("\n");
   }
   const missing = diverged.filter(r => !/DIVERG/.test(stateBlock(r.id)));
+  /* and the other direction: a law recorded as diverged that now conforms is a document lying about the
+     tools, just a kinder lie. L4 and L6 were fixed and their blocks still read DIVERGES until --stamp. */
+  const stale = results.filter(r => r.overall === "IN FORCE" && /DIVERG/.test(stateBlock(r.id)));
+  if (stale.length) {
+    console.error(`\nLAW AUDIT FAIL: ${stale.map(m => m.id).join(", ")} recorded as DIVERGED but measure IN FORCE — run --stamp.`);
+    process.exit(1);
+  }
   if (missing.length) {
     console.error(`\nLAW AUDIT FAIL: ${missing.map(m => m.id).join(", ")} measured as DIVERGED and not ` +
                   `recorded as such in SPINE.md.`);

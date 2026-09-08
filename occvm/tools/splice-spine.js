@@ -40,6 +40,10 @@ const REF = path.join("occvm", "reference", "index.html");
 
 const PARTS = IS_RHYME ? [
   { name: "spine.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
+  /* 2.7 — the owned faces. serif.css ships to both tools; reading.css only where running text is set in a
+     serif, which is Rhyme's whole body and nothing in BTC — the same rule that keeps mono.css BTC-only. */
+  { name: "serif.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
+  { name: "reading.css",  target: path.join("tome-src", "20_style.css"), anchor: null },
   { name: "sundial.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
   /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
   { name: "material.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
@@ -53,6 +57,7 @@ const PARTS = IS_RHYME ? [
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
   { name: "mono.css",     target: "index.html", anchor: "<style>" },
+  { name: "serif.css",    target: "index.html", anchor: "<style>" },
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
   /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
   { name: "material.js",  target: "index.html", anchor: "<script>" },
@@ -64,6 +69,7 @@ const PARTS = IS_RHYME ? [
   { name: "fracture.js",  target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
   { name: "mono.css",     target: REF, anchor: "<style>" },
+  { name: "serif.css",    target: REF, anchor: "<style>" },
   { name: "sundial.js",   target: REF, anchor: "<script>" },
   { name: "material.js",  target: REF, anchor: "<script>" },
   { name: "rheology.js",  target: REF, anchor: "<script>" },
