@@ -1384,6 +1384,34 @@ the lock, because `SEAS` raises variance every morning by construction and any r
 tipping point owes §11.3's time-matched controls — §11.5's rule that recording is not reporting, applied.
 The roadmap's whole disposition — adopted, adapted, dropped, with reasons — is SPINE.md §9.
 
+**2.10 — a provenance defect, and the meniscus adopted.** Reworking the roadmap's dropped concepts turned
+up something bigger than the reworks: **the substance's flow constants had been misattributed for five
+releases.** `k = 4.6` and `n = 0.19` were credited to Koocheki et al. (2009)'s control formulation. That
+paper's Herschel-Bulkley consistency ranges 6.56–20.10 Pa·sⁿ, so **4.6 is below its entire published range
+and is in it nowhere**; 0.19 is the floor of the *power-law* index across hydrocolloid-supplemented samples,
+carried as the control's and paired with a Herschel-Bulkley fit that reports 0.250. The control row at 25 °C
+is τ₀ 4.41 Pa, k′ 16.18, n′ 0.250, and k and n are now that row. Every number in this system had been checked
+against what renders; **none had been checked against its source** — a new failure mode beside the three
+render-versus-declaration errors already on the record, and the guards now assert the constants against the
+paper's published ranges. Re-measured: x 0.81 → 0.75 (still glass phase), 1/n 5.26 → 4.00 (the duration
+formula stays unusable, #1 stays closed), the cessation regime at v₀ = 1 0.217 → 0.765 (still
+yield-dominated, so the curve keeps its shape and hard stop), the crossover **3,070 → 2.92**, trap depths
+2.43/3.73 → 2.25/3.45. Nothing that does not read the flow curve moved. Also corrected: the "~10–40 Pa band"
+cited for τ₀ had no citation (the measured static yield stresses 21.8–37.1 Pa do support the value), and
+n = 1−x is Sollich's own result, not the "judgment" the file claimed — an understatement, fixed for the same
+reason an overclaim would be.
+
+**L2's meniscus is adopted**, on the reference surface where the law said to prototype it, closing the last
+divergence (**8 in force, 0 diverged**). `--occvm-bevel` was a 1 px chisel and is now a band one capillary
+length wide (7.148 px, derived) at the substance's own gloss — **68.5 GU** against ASTM D523's polished-black-
+glass reference, versus 86–91 for obsidian, so a wet surface is *dimmer* than a polished one, not softer.
+That is the roadmap's §5.3 "broad, soft highlight" with the one thing that made it undeliverable removed: it
+asked for a highlight deforming *at rest*, which is idle motion. Take the motion away and the physics still
+gives breadth, statically, because a wet edge is soft from **curvature**, not roughness. **Neither tool
+moves:** `--lit-x` stays the 1 px unit each tool multiplies by its own depth, and rescaling it would have
+scaled every tool-authored bevel sevenfold. Four of the six dropped concepts are re-dropped with sourced
+reasons and one (a second substance for Rhyme) is closed on measurement; SPINE.md §9 carries each.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

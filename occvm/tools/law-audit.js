@@ -92,12 +92,18 @@ const LAWS = [
       const RH = require(path.join(__dirname, "..", "rheology.js"));
       const lc = RH.radiusPx(RH.SUBSTANCE);
       const spine = fs.readFileSync(path.join(__dirname, "..", "spine.css"), "utf8");
-      const bevel = parseFloat((spine.match(/--lit-x:\s*calc\(var\(--lx, 0\) \* ([0-9.]+)px\)/) || [])[1]);
-      if (isNaN(bevel)) return { state: "DIVERGES", detail: `${vessel}; spine bevel width unreadable` };
-      const ok = Math.abs(bevel - lc) < 0.05;
+      /* 2.10 — THIS MEASURED THE WRONG TOKEN. It read --lit-x, which is the 1 px UNIT vector each tool's
+         own surfaces multiply by their own depth, and compared that unit to λc. So it would have gone
+         green only if somebody rescaled the unit — which would have scaled every tool-authored bevel
+         sevenfold. The law is about the composed bevel, so that is what is read now. */
+      const men = parseFloat((spine.match(/--occvm-meniscus:\s*([0-9.]+)px/) || [])[1]);
+      const wears = /--occvm-bevel:[\s\S]{0,600}?var\(--occvm-meniscus\)/.test(spine);
+      if (isNaN(men)) return { state: "DIVERGES", detail: `${vessel}; the bevel carries no meniscus — still the crystal's chisel` };
+      if (!wears) return { state: "DIVERGES", detail: `${vessel}; --occvm-meniscus is declared but the bevel does not read it` };
+      const ok = Math.abs(men - lc) < 0.05;
       return { state: ok ? "CONFORMS" : "DIVERGES",
-        detail: `${vessel}; meniscus: spine bevel ${bevel}px against lc ${lc.toFixed(2)}px` +
-                (ok ? "" : " — the crystal's chisel; widening it is the adoption candidate") };
+        detail: `${vessel}; meniscus: bevel band ${men}px against lc ${lc.toFixed(2)}px` +
+                (ok ? " (reference surface wears it; neither tool has adopted it)" : " — drifted from the substance") };
     } },
 
   { id: "L3", name: "one light",
@@ -238,17 +244,30 @@ const results = LAWS.map(law => {
     return Object.assign({ tool: t.name }, law.measure(src));
   });
   const states = per.map(p => p.state);
+  return { id: law.id, name: law.name, claim: law.claim, overall: rollup(states), per };
+});
+
+/* The rollup is a named function so it can be tested on synthetic inputs. Until 2.10 it was inline, and
+   the test for "a divergence outranks an absent tool" could only be written by finding a real divergence
+   in the repository — so it started failing the moment the last one was closed. A rule should be testable
+   without breaking the code it governs. */
+function rollup(states) {
   /* IN FORCE requires at least one tool MEASURED as conforming. A law whose tools are all unadopted or
      all unmeasured is not in force — it is undecided, and calling it in force is how "declared and
      unadopted since 1.0" came to read as a working law. */
-  const overall = states.includes("DIVERGES") ? "DIVERGED"
+  return states.includes("DIVERGES") ? "DIVERGED"
     : states.includes("ABSENT") ? "PARTIAL"
     : states.includes("CONFORMS") ? "IN FORCE"
     : states.every(s => s === "UNADOPTED") ? "UNADOPTED"
     : "UNMEASURED";
-  return { id: law.id, name: law.name, claim: law.claim, overall, per };
-});
+}
 
+/* 2.10 — the reporting half runs only when this file is INVOKED. It is required as a module now, so that
+   rollup() can be tested on synthetic states rather than on the repository happening to carry a real
+   divergence; without this guard that require would print a full audit into the harness output. */
+module.exports = { rollup };
+if (require.main === module) main();
+function main() {
 if (process.argv.includes("--json")) {
   console.log(JSON.stringify(results, null, 2));
   process.exit(0);
@@ -338,4 +357,5 @@ if (process.argv.includes("--check")) {
     process.exit(1);
   }
   console.log("\nLAW AUDIT OK: every measured divergence is recorded in the law.");
+}
 }

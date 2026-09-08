@@ -26,6 +26,7 @@ order would be exactly the drift the ledger law exists to prevent.
 | **2.5** | landed | **The rheological pivot, step A.** `occvm/rheology.js` — ketchup as a Herschel-Bulkley fluid with SGR beneath it — spliced *beside* `material.js` as a strangler, and the sundial's face offsets re-derived from the fluid's optics (one index, three angles: 14.148× against the crystal's 9.353×, legibility exponent 0.9928). The substance reaches 2 of 70 rendered tokens; measured, not fudged. Two roadmap errors corrected on the way: the optics port and the unusable duration formula. |
 | **2.6** | landed | **L2 from capillarity.** λc = √(γ/ρg) = 1.891 mm = 7.15 px, and τ₀ corrected 0.03 → 21.15 Pa by a consistency criterion (the range floor holds a 2.7 µm blob). The derived radius was measured against L2's *declared* 4px rather than the rendered radii — the third time a declaration was read as a render — and `--occvm-r` was later deleted as D12. |
 | **2.7** | landed | **The laws re-authored around a measurement.** `occvm/tools/law-audit.js` measures every law per tool; each carries a generated STATE block; the conformance table is generated. L4, L6 fixed; L7's real defect was the serif, now owned (Fraunces, Faustina); L2 re-authored as vessel and meniscus and honestly DIVERGED at the spine's 1px bevel. |
+| **2.10** | landed | **A provenance defect, and the meniscus adopted.** `k` and `n` were credited to Koocheki 2009's control row and are in that paper nowhere — k = 4.6 sits below its whole published range. Corrected to the control row (16.18 / 0.250) with every downstream figure re-measured; the shape of L11's curve and the closure of #1 both survive, and the one claim that moved is recorded. L2's meniscus is adopted on the reference surface: the bevel becomes a band one λc wide at the substance's own 68.5 GU, which is the roadmap's §5.3 highlight with its idle motion removed. Four of the six dropped concepts are re-dropped with sourced reasons and one is closed. **8 in force, 0 diverged.** |
 | **2.8** | landed | **The crystal leaves.** Veins re-derived as diffusion-limited *cluster* aggregation — a gel suspended in the fluid, dimension measured (1.46 dilute, 1.61 at the shipped density) against the literature rather than quoted; `--vein-habit` retired by measurement. `fracture.js` → `yield.js`: hold, neck, pinch-off, retraction on the derived cessation curve with a hard stop. Cessation and trap depth derived, the roadmap's attribution of the former corrected, its open items #1, #4, #5 closed. `material.js` deleted; P1 and P4 retired with the tensor and the cell; the splicer learned to retire a part. |
 | **1.3** | landed | the numeric face: an owned mono, embedded and subset, two weights. Closed D3. |
 | **1.4** | landed (narrow) | mineral as preference: one shared implementation, `occvm/minerals.js`, spliced into both tools like `sundial.js`/`veins.js`. Ruby was added to complete the 3-mineral set (Rhyme had never carried a negative mineral). Closed D6. |
@@ -132,9 +133,9 @@ today: `OCCVM-D10`.
 
 ### OCCVM-L2 — cut geometry
 
-> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **DIVERGES** — vessel 16 radii 2-22px + 9 pills; meniscus: spine bevel 1px against lc 7.15px — the crystal's chisel; widening it is the adoption candidate
-> - Rhyme Instrument: **DIVERGES** — vessel 34 radii 1-9px; meniscus: spine bevel 1px against lc 7.15px — the crystal's chisel; widening it is the adoption candidate
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
+> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -154,17 +155,38 @@ the record of its vessel; neither is a violation of the other.
 **The edge is the fluid's, and it is derived.** Where a fluid meets a wall it forms a meniscus of width
 `λc = √(γ/ρg)` — the capillary length, **7.15 px** for the substance in force (`occvm/rheology.js`,
 `radiusPx()`), and not fitted: it is what the substance's density and surface tension produce. On a
-surface that is the fillet along every edge, and in these tools the edge is the **bevel** —
-`--occvm-bevel`, whose inset offset is `--lit-x/--lit-y = ±1px`. **That 1px is the crystal's chisel.** A
-fluid's edge is not a hairline; it is a 7px meniscus, soft, and that is the single largest visible
-difference between a cut mineral and a held fluid — larger than the substrate ramp (one gradient stop,
-measured at 2.5) and larger than any border-radius (an unworn class, measured at 2.6).
+surface that is the fillet along every edge, and in these tools the edge is the **bevel**. A fluid's edge
+is not a hairline; it is a 7 px meniscus, soft, and that is the single largest visible difference between
+a cut mineral and a held fluid — larger than the substrate ramp (one gradient stop, measured at 2.5) and
+larger than any border-radius (an unworn class, measured at 2.6).
 
-**The meniscus is derived and not yet adopted, and the state block says so.** The spine's bevel still
-paints the 1px chisel, so this law is DIVERGED at the spine, in both tools, until the bevel width becomes
-λc. That is a visible change to every beveled surface and it is the adoption candidate — to be prototyped
-on the reference surface, not applied blind. No `--occvm-r`/`--occvm-lc` token is declared until then: a
-token derived and consumed by nothing is `OCCVM-D12`, and 2.6 shipped exactly that for one release.
+**Adopted at 2.10, on the reference surface, which is where this law said to prototype it.**
+`--occvm-bevel` was `inset ±1px 0` — the crystal's chisel, a hard line. It is now a band one meniscus
+wide: `--occvm-meniscus` (λc = 7.148 px) as both the offset and the blur, so the highlight is a graded lip
+instead of a hairline. **Two derived quantities, and the second is the half nobody had:**
+
+- **Width** is λc, above.
+- **Amplitude** is `--occvm-gloss` = **0.685**. ASTM D523 and NIST SP250-70 fix the 60° gloss standard as
+  polished black glass, nD 1.567, *defined* as 100 GU; the substance's own Fresnel against that reference
+  is **68.5 GU** at 60° (52.6 at 20°, 96.0 at 85°) — "semi-gloss" by ASTM's own angle rule — against
+  86–91 GU for polished obsidian. **A wet surface is dimmer than a polished one, not softer.** That is the
+  sourced correction to the roadmap's §5.3, which asked for a highlight that "subtly deforms over time,
+  present even at rest" — idle motion, which its own §6 forbids and which below τ₀ cannot happen. Take the
+  motion away and the physics still delivers a broad soft highlight, statically: a liquid at rest is the
+  smoothest specular surface in the literature, so a wet edge is soft because it is **curved**, not because
+  it is rough. Across a meniscus the normal sweeps through the reflecting direction, so a point source
+  returns a band rather than a line. No motion is required and none is used.
+
+The gloss ratio scales the **highlight only**. The dark side of a meniscus is a shaded face, not a
+specular return, so `--cut-a` is untouched; applying it to both would have looked tidier and been wrong.
+
+**Neither tool moves, deliberately.** `--lit-x/--lit-y` remain the 1 px unit vector that each tool's own
+surfaces multiply by their own depth — BTC does it at two sites — and rescaling that unit would have
+scaled every tool-authored bevel sevenfold, uncontrolled. The meniscus lives in the composed value, whose
+only consumers are the reference surface's slabs. Adoption by a tool is a separate decision under §6b,
+unmade. *2.6's `--occvm-r` was derived, on an unworn class, read by nothing — `OCCVM-D12`, and deleted.
+These two tokens are read by the bevel on the line below them, which is the whole difference; both are
+pinned to `rheology.js` so neither can drift from its derivation.*
 
 Bevels are struck from the light vector (`OCCVM-L3`), never from a fixed offset — unchanged.
 
@@ -505,7 +527,7 @@ At the substance's τ₀ the curve is the quadratic `1 − (1−u)²` with a har
 last step of the sampled curve is under a tenth of the first.
 
 **What is authored, named.** The roadmap wanted the duration derived from `γ̇ = ((τ−τ₀)/k)^(1/n)`. With
-n = 0.19 that exponent is 5.26 and a 100× range in stress spans 1.9×10¹⁸ in rate; no monotone map from that
+n = 0.250 that exponent is 4.00 and a 100× range in stress spans 10⁸ in rate; no monotone map from that
 onto a few hundred milliseconds exists that is not doing all the work itself (2.5, pinned). So the two
 millisecond counts — 140 ms of necking, 260 ms of retraction — are authored, as fracture's 220 ms was, and
 the **shape** is derived. The hold is zero for a click-driven action: the click is the stress, above τ₀ by
@@ -565,9 +587,9 @@ mineral.
 
 | property | value | source | governs |
 |---|---|---|---|
-| yield stress τ₀ | **21.15 Pa** | consistency criterion, inside the published 10–40 Pa band (below) | hold (L11), stopping time, puddle height |
-| consistency k | 4.6 Pa·sⁿ | Koocheki et al. 2009, control formulation | flow, cessation regime |
-| flow index n | 0.19 | same | shear thinning; noise temperature x = 1 − n = **0.81** |
+| yield stress τ₀ | **21.15 Pa** | consistency criterion (below); sits at the foot of the measured static yield stresses 21.8–37.1 Pa | hold (L11), stopping time, puddle height |
+| consistency k′ | **16.18 Pa·sⁿ** | Koocheki et al. 2009, Table 3, control, 25 °C — **corrected at 2.10** | flow, cessation regime |
+| flow index n′ | **0.250** | same row | shear thinning; noise temperature x = 1 − n = **0.75** |
 | refractive index | 1.381 | ICUMSA at 30 °Brix, 20 °C — Brix is *defined* refractometrically | the three faces' reflectance |
 | density | 1.14 g/cm³ | composition tables | capillary length, standing stress |
 | surface tension γ | 0.040 N/m | **estimate**, the least-sourced number here, flagged | capillary length (L2) |
@@ -596,15 +618,23 @@ tall as surface tension makes it round. Inside the published band, not chosen fr
   the spine's 1px bevel as the divergence.
 - **The noise temperature (2.5, open item #5 closed).** x = 1 is SGR's glass transition and a yield stress
   exists only below it, so x < 1 is a constraint the measured τ₀ imposes; near the transition n and x are
-  complementary, x = 1 − n = 0.81. The constraint is physics; the functional form is judgment and is flagged.
+  complementary, **x = 1 − n = 0.75** (0.81 until 2.10 corrected n). *2.10 also corrected this sentence in
+  the rarer direction: it called the functional form "judgment", and it is not — it is Sollich's own result,
+  since in the glass phase σ = σ_y + O(γ̇^(1−x)). The judgment that remains, and it is real, is the
+  IDENTIFICATION of an asymptotic SGR exponent with a coefficient fitted over a finite range of shear rates
+  on a rheometer. An understated derivation is corrected for the same reason an overclaimed one is.*
 - **Cessation (2.8, the roadmap's §6, checked rather than cited).** A Newtonian fluid never stops; a
   yield-stress fluid stops in finite, provable time (Huilgol, Mena & Piau 2002). The reduced model
   `dv/dt = −(τ₀ + k·vⁿ)` and its bracket `v₀/(τ₀ + k·v₀ⁿ) ≤ t_stop ≤ v₀/τ₀` are both reproduced, and the
   integration matches the roadmap's three printed stopping times to the figures it gave. **Its attribution
   is inverted.** At the roadmap's τ₀ the rate term dominates until v ≈ 3×10⁻¹²; the lower bound is tight
-  because n = 0.19 makes vⁿ nearly flat, so the *rate* term stays at its maximum, and the "linear terminal
-  phase" occupies the last 10⁻¹² of the decay. At the substance's τ₀ the yield term dominates from t = 0 for
-  any v₀ under ~3,000. Two regimes, one ratio deciding: `k·v₀ⁿ/τ₀`. Both have a closed-form position —
+  because its n = 0.19 makes vⁿ nearly flat, so the *rate* term stays at its maximum, and the "linear
+  terminal phase" occupies the last 10⁻¹² of the decay. At the substance's τ₀ the yield term dominates from
+  t = 0 up to **v₀ = 2.92** — a claim that read "~3,000" until 2.10, and the one documented figure that
+  correction moved by three orders. `yield.js` runs at v₀ = 1, so it is still inside the yield-dominated
+  regime, with a thousandth of the headroom the document had been claiming; the curve there is *near* the
+  quadratic (0.016 from it, 0.040 from the power law) rather than equal to it, and both suites now say
+  "near" rather than "is". Two regimes, one ratio deciding: `k·v₀ⁿ/τ₀`. Both have a closed-form position —
   yield-dominated `1 − (1−u)²`, rate-dominated `1 − (1−u)^2.235` — so the shape is a power ease-out with a
   **hard stop**, which no `cubic-bezier` keyword has and CSS `linear()` encodes exactly. **What is authored,
   named:** v₀ (the roadmap's #12 — nothing maps a click onto it, and with v₀ free the regime is chosen by
@@ -612,12 +642,43 @@ tall as surface tension makes it round. Inside the published band, not chosen fr
   curve and the stop; a person owns how long it lasts. L11 consumes it.
 - **Trap depth (2.8, open item #4 closed, unwired).** The roadmap says no formula converts a poll interval to
   an energy. SGR's escape law is one: residence time τ = τ_a·exp(E/x), so E = x·ln(τ/τ_a). With the fastest
-  tier as the attempt time, BTC's three cadences sit at **0, 2.43, 3.73** in units of x·kT. Derived and
+  tier as the attempt time, BTC's three cadences sit at **0, 2.25, 3.45** in units of x·kT (2.43 and 3.73
+  before 2.10 corrected x). Derived and
   consumed by nothing, recorded for the reason P1's durations were: wiring it before a surface expresses it
   is a token nobody reads. The roadmap's #7, the scale mismatch of ensemble statistics on six named elements,
   stands.
 - **The vein's dimension (2.8, L10).** Recorded as an output the generator is held to, never fed in: 1.44
   on a planar lattice, 1.75 in three dimensions.
+
+**2.10 — THE TRIPLE WAS MISATTRIBUTED, AND THE PAPER HAD NEVER BEEN OPENED.** From 2.5 to 2.9 this law
+and `rheology.js` both carried k = 4.6 Pa·sⁿ and n = 0.19 as "the control formulation of Koocheki et al.
+(2009), fixed at the published range floor". Checked against the paper: its Herschel-Bulkley consistency
+k′ ranges **6.56–20.10 Pa·sⁿ** across every formulation and temperature it reports, so **4.6 is below the
+entire published range and appears in that paper nowhere**; its flow indices are n 0.189–0.228 (power law)
+and n′ 0.216–0.263 (Herschel-Bulkley), so 0.19 is the floor of the *power-law* index across
+hydrocolloid-supplemented samples, carried as the control's and paired with a Herschel-Bulkley fit that
+reports 0.250. The control row at 25 °C is τ₀ 4.41 Pa, k′ 16.18, n′ 0.250. **k and n are now that row.**
+
+*What the correction moved, measured:* x 0.81 → 0.75 (still below 1, so the glass phase and the yield
+stress hold); 1/n 5.26 → 4.00 (a 100× stress range still spans 10⁸ in rate, so the roadmap's duration
+formula stays unusable and #1 stays closed); the cessation regime at v₀ = 1 0.217 → 0.765 (still
+yield-dominated, so L11's curve keeps its shape and its hard stop); the crossover 3,070 → 2.92; trap depths
+2.43/3.73 → 2.25/3.45. **Nothing that does not read k or n moves** — λc, the optical spread, the legibility
+exponent and the vein dimension are unchanged, because none is a function of the flow curve, and that
+containment is why this is a correction rather than a re-derivation.
+
+*Two smaller repairs ride with it.* The "~10–40 Pa published band" this table used to cite for τ₀ **had no
+citation in either file, and none was found.** What exists are static yield stresses on commercial ketchup
+— 21.88 / 29.02 / 37.10 Pa (Ebatco) and 21.8 Pa (NETZSCH) — and τ₀ = 21.15 sits at the foot of them. Note
+what they are: *static* yield stresses from ramps and creep, not the *dynamic* Herschel-Bulkley intercept
+(4.41 Pa) that k and n come from. This file pairs the two, which is recorded rather than resolved, because
+a static yield stress is the right quantity for a substance at rest and the wrong one to sit in a
+flow-curve triple.
+
+*The lesson is the one this document keeps relearning, arriving somewhere new.* Every value here has been
+checked against what renders. None of these three was ever checked against its source. **A provenance
+claim is a claim**, and it is now guarded like one: both suites assert the constants against the paper's
+published ranges, and that the retired pair cannot come back.
 
 **What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
 fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
@@ -778,6 +839,11 @@ Measured identical in both tools at all three golden instants. These are what `o
 --verdigris #3f9a86  --verdigris-lo #23574c                 seam, age
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
+
+**Added at 2.10 (OCCVM-L2):** `--occvm-meniscus` and `--occvm-gloss`, both derived and both read by
+`--occvm-bevel` on the line below them — see L2. Neither is authored: the first is λc from `rheology.js`,
+the second the substance's 60° gloss against the ASTM D523 reference, and `test/occvm.js` fails if either
+drifts from its derivation.
 
 **Added at 1.1 (OCCVM-L10):** `--vein-density`. The growth-anisotropy token added beside it was **retired at
 2.8** (L10, §6b): a suspension has no direction to be anisotropic along, and the one axis colloid science
@@ -941,7 +1007,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Faces (L7)** | `--serif --reading` | **Owned since 2.7.** `--serif` leads with "OCCVM Serif" (Fraunces, `occvm/serif.css`, both tools); `--reading` is "OCCVM Reading" (Faustina, `occvm/reading.css`, Rhyme only — the one tool that sets running text in a serif). The fallback stacks stay behind the owned face. Neither tool restates either token; the spine governs both. | Nothing; delete any local `--serif` restatement. |
 | **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
-| **Cut & cast** | `--occvm-bevel --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
+| **Cut & cast** | `--occvm-bevel --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
@@ -1011,7 +1077,7 @@ law are generated from that run.
 | law | | state | BTC Terminal | Rhyme Instrument |
 |---|---|---|---|---|
 | **L1** | substrate and inscription | UNMEASURED | UNMEASURED | UNMEASURED |
-| **L2** | geometry: the vessel and the meniscus | DIVERGED | DIVERGES | DIVERGES |
+| **L2** | geometry: the vessel and the meniscus | IN FORCE | CONFORMS | CONFORMS |
 | **L3** | one light | IN FORCE | CONFORMS | CONFORMS |
 | **L4** | cast shadow | IN FORCE | CONFORMS | CONFORMS |
 | **L5** | gilt is reserved | UNMEASURED | UNMEASURED | UNMEASURED |
@@ -1023,7 +1089,7 @@ law are generated from that run.
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
 
-**7 in force · 1 diverged · 4 unmeasured · 0 unadopted**
+**8 in force · 0 diverged · 4 unmeasured · 0 unadopted**
 
 ### What the four states mean, and why four rather than two
 
@@ -1268,17 +1334,17 @@ earned, and the reason. The ratio was priced in advance at roughly a third dropp
 | Cessation motion (§6) | **adopted, corrected** (2.8, 2.9) | reproduces to four figures; its attribution of the regime is inverted (L12) |
 | Koan as copy (§4.1) | **adopted** (2.9) | BTC's idle canvas; free, as the roadmap said |
 | Critical slowing down on `S.edge.windows` (§4.1) | **adapted** (2.9) | recorded as a column beside `rv60` under §11.5's recording-is-not-reporting; never a lock animation — SEAS raises variance every morning by construction |
-| Threshold-as-zone / critical opalescence (§4.1, §5.5) | **dropped** | τ₀ is not a critical point; SGR's is x = 1, and x is fixed at 0.81 |
+| Threshold-as-zone / critical opalescence (§4.1, §5.5) | **dropped, sourced** (2.10) | yielding is a *subcritical* bifurcation — the viscosity jumps discontinuously and hysteretically (Coussot 2002), the opposite of a critical point's continuous divergence. The real zone is delay + hysteresis + aging, and every quantitative form on record is Carbopol, clays or carbon-black gels — **none from ketchup** |
 | Zeno / anti-Zeno (§4.1) | **not scheduled** | the roadmap's own disposition |
 | `bomb.js`, one-way commit, Fisher-KPP front (§4.2, §5.7) | **deferred** | on the roadmap's own #11: Rhyme has no commit action to hang it on (its model is a shelf of drafts edited in place) |
-| Fisher-KPP speed from ketchup's k/n (§5.7) | **dropped** | r and D are the myrosinase chemistry's, not the rheology's |
-| Substrate from scattering (§5.1) | **dropped** | the gap it names closed at 2.5 (optics ported, 0.9928); it would replace one authored number with two unsourced ones |
-| Wet, deforming highlight at rest (§5.3) | **dropped** | idle motion the document itself forbids in §6, and below τ₀ nothing moves |
-| Always-on caging jitter (§5.6) | **dropped** | the same; the reduced-motion rule is the only motion law the spine has |
+| Fisher-KPP speed from ketchup's k/n (§5.7) | **dropped, and the reason is stronger than the original** (2.10) | Fisher-KPP requires `f′(0) = r > 0` — the propagating quantity must promote its own production. Every sourced description of the mustard-oil bomb is first-order substrate depletion at fixed enzyme, and AITC does not catalyse sinigrin hydrolysis. **There is no r in the chemistry at all**, not merely none in the rheology. After disruption the contact advances as √(Dt) and never at constant speed; the only true front is the mechanical damage front |
+| Substrate from scattering (§5.1) | **dropped, sourced** (2.10) | the gap it names closed at 2.5. Kubelka-Munk coefficients for ketchup **do not exist in the literature**; the one measured row is Jensen et al. (SIGGRAPH 2001) — σ′s 0.18/0.07/0.03 mm⁻¹, σa 0.061/0.97/1.45 mm⁻¹, Rd 0.16/0.01/0.00 — and it says bulk ketchup is a dark **red** (L\* 31–36) against the substrate's L\* 3.8, so a derivation needs an authored hue-strip *and* an authored ~8× darkening: two judgments replacing one. In green and blue it is absorption-dominated (σa/σ′s 14 and 48), outside the diffusion regime its own source flags. Recorded here so nobody re-sources it |
+| Wet, deforming highlight at rest (§5.3) | **ADOPTED** (2.10), once the motion was removed | the deformation was idle motion, which §6 forbids and which below τ₀ cannot happen. Everything else survives statically: breadth is **curvature**, a band one λc wide, and amplitude is the substance's own **68.5 GU** against the ASTM reference — dimmer than polished, not softer. Both derived; see L2 |
+| Always-on caging jitter (§5.6) | **dropped, sourced** (2.10) | SGR says an undisturbed caged element shows **nothing**: the readout is `E − kl²/2` and at zero applied load the stored strain is zero, so there is no thermal rattle to draw. What *is* observable at rest is a cost, not an amplitude — the static yield stress rises with rest time — and no ketchup measurement of it exists (the delay laws on record are Carbopol's and colloidal gels'). Unwired, like trap depth |
 | Fraunces SOFT 35 / WONK 1 (§7) | **adopted** (2.7) | `opsz` kept variable against the pinned 40: BTC renders it at 12px |
 | Wordmark caps by `text-transform` (§7) | **recorded as false** | both wordmarks are lowercase by authored markup — `btc terminal`, `rhyme instrument` — with no transform; an identity constant sitting on the font, unchanged |
 | Mono stack as the open L7 defect (§7, #6) | **recorded as false** | owned since 1.3; the serif was the defect (2.7) |
-| Second substance for Rhyme (§4) | **open** | §2 says one substance does both jobs and §4 makes Rhyme mustard; it matters only for `bomb.js`, and is deferred with it |
+| Second substance for Rhyme (§4) | **closed: one substance** (2.10) | measured rather than argued. Mustard's sourced density (1.052) moves λc only **7.15 → 7.44 px** and its estimated index moves the spread 14.15 → 14.7–16.6×, so nothing L2 or L12 renders would visibly differ; and its own Herschel-Bulkley triple is paywalled everywhere reachable, so adopting it would trade a sourced substance for an unsourced one. What it would genuinely add is thixotropic stress-history memory — which is `bomb.js`'s hook and nothing else, and defers with it |
 
 **The foil, as a rule.** The roadmap's one governing test is adopted as written and applies to every proposal
 that follows: *does it make BTC more patient, or Rhyme more reactive — or does it make them resemble each
@@ -1290,5 +1356,22 @@ stops (`LOCK_RELAX_MS` authored, the curve the substance's). The koan sits in th
 carries `ac1` and `acn` — the lag-1 autocorrelation of the same sixty one-minute returns `rv60` is built
 from, and their count — exported as `csd_ac1`, `csd_n`, rendered nowhere. Nothing in Rhyme moved, by the
 foil's own rule.
+
+**2.10** did two things and the smaller one is the more important. The meniscus finally landed — L2's last
+divergence, closed on the reference surface where the law itself said to prototype it, and the first edge in
+this system whose softness is a *measured* consequence of the substance rather than a taste. The larger thing
+is that the substance's own flow constants had been misattributed for five releases. `k` and `n` were
+credited to a paper that contains neither, and k sat below that paper's entire published range. Every number
+in this system had been checked against what renders; **not one of them had been checked against its
+source.** That is a new failure mode for a document that had already recorded three variants of the old one,
+and the guard that closes it — assert the constants against the paper's published ranges, and that the
+retired pair cannot return — is the first in either suite to treat a citation as a claim.
+
+*Two things about the correction are worth keeping.* It was contained: nothing that does not read the flow
+curve moved, so the meniscus, the optics and the vein dimension are all exactly where 2.8 left them, and the
+release is publishable as a correction rather than a re-derivation. And it broke three assertions that had
+been passing — a regime claim, a curve identity, and a gate test that could only prove itself while the code
+was broken. Each was rewritten to say the smaller true thing rather than the larger convenient one, which is
+the only reason the correction improved the suites instead of just moving them.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.

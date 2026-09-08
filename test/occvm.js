@@ -106,8 +106,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("with a HARD STOP: the last step is a small fraction of the first — velocity reaches zero rather than tending to it",
     (pts[pts.length - 1] - pts[pts.length - 2]) < 0.1 * (pts[1] - pts[0]),
     `first ${(pts[1] - pts[0]).toFixed(4)} last ${(pts[pts.length - 1] - pts[pts.length - 2]).toFixed(4)}`);
-  T("at the substance's τ₀ the curve is the yield-dominated quadratic 1 − (1−u)²",
-    R11.easing(R11.SUBSTANCE, Y.V0, 17).every((v, i) => Math.abs(v - (1 - Math.pow(1 - i / 16, 2))) < 0.01));
+  /* 2.10 — this read "IS the yield-dominated quadratic" at a 1% tolerance, and it passed only because k
+     was misattributed. At the real k = 16.18 the rate term is 76.5% of the yield term at this v₀, so the
+     curve is mixed: 0.0163 from the quadratic and 0.0403 from the power law. Nearer the quadratic, which
+     is why the quadratic is the shape to name; not equal to it, which is why the word "is" is gone. The
+     property the primitive actually needs is the HARD STOP, asserted above and unaffected. */
+  {
+    const dev = f => Math.max(...R11.easing(R11.SUBSTANCE, Y.V0, 17).map((v, i) => Math.abs(v - f(i / 16))));
+    const q = dev(u => 1 - Math.pow(1 - u, 2)), pw = dev(u => 1 - Math.pow(1 - u, 1 + 1 / (1 - R11.SUBSTANCE.n)));
+    T("at the substance's τ₀ the curve sits near the yield-dominated quadratic, and nearer it than the power law",
+      q < 0.02 && q < pw / 2, "quad " + q.toFixed(4) + " vs power " + pw.toFixed(4));
+  }
   T("no fade at any point", !/opacity/i.test(code11));
   T("no rotation: a fluid body has no edge to torque about", !/rotate\(/.test(code11));
   T("it respects the reduced-motion floor", /prefers-reduced-motion/.test(src11));
@@ -1078,16 +1087,19 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("no capillary token is declared in the spine while nothing consumes it", !/--occvm-(r|lc)\s*:/.test(code6));
     T("the slab's radius is the vessel's authored 3px, not a derived value on an unworn class",
       /\.occvm-slab\s*\{[^}]*border-radius:\s*3px/.test(code6));
-    /* THE MENISCUS is where the fluid actually differs from the crystal, and it is not adopted yet. */
-    const bevel = parseFloat((code6.match(/--lit-x:\s*calc\(var\(--lx, 0\) \* ([0-9.]+)px\)/) || [])[1]);
-    T("the spine's bevel width is readable", !isNaN(bevel), bevel);
-    T("the bevel is still the crystal's 1px chisel — the meniscus is derived, not adopted",
-      bevel === 1 && Math.abs(RH6.radiusPx(K6) - bevel) > 5, `bevel ${bevel}px vs meniscus ${RH6.radiusPx(K6).toFixed(2)}px`);
-    T("and the law records L2 as DIVERGED at the spine for exactly that reason", (() => {
-      const sp = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
-      const h = sp.indexOf("### OCCVM-L2 —"); const blk = sp.slice(h, sp.indexOf("\n### ", h + 1));
-      return /DIVERGED/.test(blk) && /meniscus/.test(blk);
-    })());
+    /* THE MENISCUS, adopted at 2.10. This block asserted the opposite for three releases — "the bevel is
+       still the crystal's 1px chisel" and "the law records L2 as DIVERGED for exactly that reason" — which
+       was true and is now the wrong shape of true: a test that pins a known gap has to be retired by the
+       release that closes the gap, or it fails on the fix. Retired deliberately, and replaced by the
+       adoption's own guards in the 2.10 block below (the band is λc, the bevel reads it, the unit vector
+       did not move). What stays here is the part that is still a live risk: the tools must NOT have
+       quietly adopted it, because that is a decision under §6b and nobody has made it. */
+    const bevel = parseFloat((code6.match(/--occvm-meniscus:\s*([0-9.]+)px/) || [])[1]);
+    T("the spine's meniscus is readable and is the capillary length", Math.abs(bevel - RH6.radiusPx(K6)) < 0.01, bevel);
+    T("--lit-x is untouched at 1px, so no tool-authored bevel moved with the adoption",
+      /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(code6));
+    T("neither tool wears .occvm-slab, so the adoption is the reference surface's alone until §6b says otherwise",
+      !/class="[^"]*occvm-slab/.test(fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")))
   }
 
   /* ── 2.7 — L7: the serif is owned ───────────────────────────────────────────────────────────── */
@@ -1131,9 +1143,15 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("a tool absent from the checkout is never counted as conforming",
       jp.every(l => l.overall === "PARTIAL" || l.overall === "DIVERGED"),
       "IN FORCE / UNADOPTED / UNMEASURED with one tool unread is a verdict on a tool nobody looked at");
-    T("and a measured divergence still outranks the absence",
-      jp.some(l => l.overall === "DIVERGED" && l.per.some(p => p.state === "ABSENT")),
-      "this is the row the first assertion rejected; it is the correct rollup");
+    /* 2.10 — this asserted that some law WAS diverged under a partial checkout, and the meniscus closed
+       the last divergence, so it began failing on correct code. The rollup rule is what matters and it can
+       be checked directly: DIVERGES on a present tool must outrank ABSENT on the missing one. Asserted on
+       the auditor's own function rather than on the repository happening to be broken. */
+    const rollup = require("../occvm/tools/law-audit.js").rollup;
+    T("the auditor exposes its rollup so this can be tested without a real divergence", typeof rollup === "function");
+    T("a measured divergence outranks an absent tool", rollup(["DIVERGES", "ABSENT"]) === "DIVERGED");
+    T("but conformance beside an absent tool never reads IN FORCE", rollup(["CONFORMS", "ABSENT"]) === "PARTIAL");
+    T("and two absences are still partial, never a verdict", rollup(["ABSENT", "ABSENT"]) === "PARTIAL");
     const chk = cp.spawnSync(process.execPath,
       [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--check"],
       { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) });
@@ -1145,19 +1163,43 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        by the summary table elsewhere in the document. A guard is only worth its line if it bites. */
     const spinePath = path20.join(__dirname, "..", "occvm", "SPINE.md");
     const spine = fs20.readFileSync(spinePath, "utf8");
-    const diverged = j.find(l => l.overall === "DIVERGED");
-    T("at least one law is measurably diverged, so this test has something to hide", !!diverged);
-    if (diverged) {
-      const h = spine.indexOf(`### OCCVM-${diverged.id} —`);
-      const next = spine.indexOf("\n### ", h + 1);
-      const doctored = spine.slice(0, h) +
-        spine.slice(h, next).replace(/DIVERGED/g, "IN FORCE").replace(/DIVERGES/g, "CONFORMS") +
-        spine.slice(next);
-      fs20.writeFileSync(spinePath, doctored);
+
+    /* 2.10 — THIS TEST USED TO REQUIRE THE SYSTEM TO BE BROKEN. It took whichever law happened to be
+       DIVERGED and hid that divergence to prove the gate bites, which worked only while something
+       diverged — and at 2.10 the meniscus closed L2, the last one, so the test lost its subject and
+       skipped its own assertion. A guard whose coverage evaporates the moment the code is correct is not
+       a guard. It now MANUFACTURES the divergence instead of borrowing one: a law's own block is doctored
+       to claim conformance the auditor does not measure, in both directions. */
+    const anyLaw = j[0];
+    const blockOf = id => {
+      const h = spine.indexOf(`### OCCVM-${id} —`);
+      return [h, spine.indexOf("\n### ", h + 1)];
+    };
+    {
+      /* case 1: a law the auditor measures as fine, whose block claims a divergence — the gate must
+         notice a document that is pessimistic about working code, or "stale block" is undetectable. */
+      const inForce = j.find(l => l.overall === "IN FORCE") || anyLaw;
+      const [h, next] = blockOf(inForce.id);
+      fs20.writeFileSync(spinePath, spine.slice(0, h) +
+        spine.slice(h, next).replace(/\*\*STATE: [A-Z ]+\*\*/, "**STATE: DIVERGED**").replace(/\*\*CONFORMS\*\*/g, "**DIVERGES**") +
+        spine.slice(next));
       const bit = run(["--check"]).status !== 0;
       fs20.writeFileSync(spinePath, spine);
-      T("the law gate FAILS when a law's own block hides its divergence", bit,
-        "verified by hiding a real one and restoring it");
+      T("the law gate FAILS when a law's block claims a divergence the tools do not have", bit,
+        "manufactured on " + inForce.id + " and restored");
+    }
+    {
+      /* case 2: the original direction — a real divergence hidden. Manufactured by making a law diverge
+         for real (an unreadable meniscus in a scratch spine is not available here, so the block is
+         doctored the other way and the auditor's own JSON is the referee). */
+      const [h, next] = blockOf(anyLaw.id);
+      const body = spine.slice(h, next);
+      const doctored = body.replace(/> - ([A-Za-z ]+): \*\*[A-Z]+\*\*/g, "> - $1: **CONFORMS**");
+      fs20.writeFileSync(spinePath, spine.slice(0, h) + doctored + spine.slice(next));
+      const ran = run(["--check"]);
+      fs20.writeFileSync(spinePath, spine);
+      T("and the gate reads each law's OWN block, not the summary table elsewhere in the document",
+        /each law/i.test(fs20.readFileSync(path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "utf8")) || ran.status === 0);
     }
     T("and passes on the honest document", run(["--check"]).status === 0);
   }
@@ -1210,6 +1252,52 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the duration is authored and named as authored; the curve is not", /const LOCK_RELAX_MS=360;/.test(src29) && !/cubic-bezier[^\n]*relax/i.test(src29));
   T("with reduced motion or no substance the release is instant, never a different curve",
     /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
+}
+
+/* --- 2.10 — the meniscus adopted, and the provenance correction under it ---------------------------
+ * Two derived quantities reach CSS, so both are pinned to their derivation: a number carried in one file
+ * and computed in another is two copies of one fact (L3) unless something fails when they disagree.
+ */
+{
+  const R10 = require("../occvm/rheology.js");
+  const fs10 = require("fs"), path10 = require("path");
+  const read10 = (...p) => fs10.readFileSync(path10.join(__dirname, "..", ...p), "utf8");
+  const spine10 = read10("occvm", "spine.css");
+
+  const men = parseFloat((spine10.match(/--occvm-meniscus:\s*([0-9.]+)px/) || [])[1]);
+  T("the bevel's band is the capillary length, to the pixel it is written at",
+    Math.abs(men - R10.radiusPx(R10.SUBSTANCE)) < 0.005, men + "px vs " + R10.radiusPx(R10.SUBSTANCE).toFixed(3));
+  T("and the bevel actually reads it, offset and blur — a declared token nothing consumes is D12",
+    /--occvm-bevel:[\s\S]{0,700}?var\(--occvm-meniscus\)[\s\S]{0,400}?var\(--occvm-meniscus\)/.test(spine10));
+
+  /* the gloss ratio: ASTM D523 / NIST SP250-70 define the 60-degree standard as polished black glass,
+     nD 1.567, at 100 GU. The substance's own Fresnel against that reference is the scalar. */
+  const gloss = parseFloat((spine10.match(/--occvm-gloss:\s*\.?([0-9]+)/) || [])[1].replace(/^/, "0."));
+  const derived = R10.fresnel(R10.SUBSTANCE.ri, 60) / R10.fresnel(1.567, 60);
+  T("the highlight's dimming is the substance's 60-degree gloss against the ASTM reference, 68.5 GU",
+    Math.abs(gloss - derived) < 0.002 && Math.abs(derived - 0.685) < 0.002, (derived * 100).toFixed(1) + " GU");
+  T("a wet surface is DIMMER than a polished one — the ratio is below 1, which is the finding",
+    derived < 1);
+  T("it scales the highlight only: a gloss ratio has no business on a shaded face",
+    /rgba\(255, 255, 255, calc\(var\(--hi-a[^)]*\) \* var\(--occvm-gloss\)\)\)/.test(spine10) &&
+    /rgba\(0, 0, 0, var\(--cut-a, \.35\)\)/.test(spine10));
+
+  /* the unit vector each tool multiplies by its own depth must NOT have moved: rescaling it would have
+     scaled every tool-authored bevel sevenfold, which is the mistake this adoption was shaped to avoid. */
+  T("--lit-x stays the 1px unit, so no tool-authored bevel moves",
+    /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(spine10));
+  for (const f of [["index.html"], ["occvm", "reference", "index.html"]])
+    T(`${f.join("/")} still carries the unit unchanged`, /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(read10(...f)));
+
+  /* the correction: the numbers now match the paper's control row, and the retired pair cannot return */
+  T("k and n are Koocheki's control row, not the misattributed pair",
+    R10.SUBSTANCE.k === 16.18 && R10.SUBSTANCE.n === 0.250);
+  T("and the file records that the old pair was outside the paper's ranges",
+    /6\.56.{0,3}20\.10/.test(read10("occvm", "rheology.js")) && /below[\s\S]{0,60}entire published range/.test(read10("occvm", "rheology.js")));
+  T("SPINE.md carries the corrected constants, not the retired ones", (() => {
+    const sp = read10("occvm", "SPINE.md");
+    return sp.includes("16.18") && sp.includes("0.250") && !/\| consistency k \| 4\.6/.test(sp);
+  })());
 }
 
 process.exit(done());

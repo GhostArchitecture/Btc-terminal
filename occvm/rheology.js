@@ -46,8 +46,8 @@
  * — the standard method measures refractive index and reads soluble solids off it. So n is not a property
  * somebody had to go looking for to make this model work; it is the property the industry already
  * measures ketchup by. Commercial ketchup runs ~28–33 °Brix; n = 1.381 is the ICUMSA value at 30 °Brix,
- * 20 °C. The Herschel-Bulkley triple is the control formulation of Koocheki et al. (2009), fixed at the
- * published range floor.
+ * 20 °C. The Herschel-Bulkley triple is the control formulation of Koocheki et al. (2009), read off that
+ * paper's Table 3 — see the block on it below, and the 2.10 correction that put it there.
  */
 var OCCVM_RHEOLOGY = (function () {
   "use strict";
@@ -63,7 +63,45 @@ var OCCVM_RHEOLOGY = (function () {
   var KETCHUP = {
     name: "ketchup",
     model: "Herschel-Bulkley",
-    /* τ = τ₀ + k·γ̇ⁿ — Koocheki et al. 2009, control formulation.
+    /* τ = τ₀ + k·γ̇ⁿ — Koocheki et al. 2009, control formulation, Table 3, 25 °C.
+     *
+     * 2.10 — k AND n WERE MISATTRIBUTED, AND THE PAPER WAS NEVER OPENED. From 2.5 to 2.9 this block
+     * carried k = 4.6 and n = 0.19 as "the control formulation of Koocheki et al. (2009), fixed at the
+     * published range floor". Checked against the paper: its Herschel-Bulkley consistency k′ ranges
+     * **6.56–20.10 Pa·sⁿ** across every formulation and temperature it reports, so **4.6 is below the
+     * entire published range and appears in that paper nowhere.** Its flow indices are n 0.189–0.228
+     * (power law) and n′ 0.216–0.263 (Herschel-Bulkley); 0.19 is the floor of the POWER-LAW index across
+     * hydrocolloid-supplemented samples, and it was being carried as the control's, paired with a
+     * Herschel-Bulkley fit that reports 0.250. The control ketchup at 25 °C reads:
+     *
+     *     Herschel-Bulkley   τ₀ 4.41 Pa    k′ 16.18 Pa·sⁿ    n′ 0.250
+     *     power law                        k  19.34 Pa·sⁿ    n  0.228
+     *
+     * The Herschel-Bulkley row is the one this model is named for, and it is what k and n now are. The
+     * roadmap's τ₀ = 0.03 Pa is not in the paper either (its minimum is 2.18); the falsification below
+     * stands on the physics regardless of where the figure came from.
+     *
+     * WHAT THE CORRECTION MOVED, measured rather than assumed (test/rheology.js pins each):
+     *
+     *     x = 1 − n            0.81 → 0.75      still < 1, so the glass phase and the yield stress hold
+     *     1/n                  5.26 → 4.00      a 100× stress range still spans 10⁸ in shear rate, so
+     *                                           the roadmap's duration formula stays unusable (#1 closed)
+     *     regime at v₀ = 1     0.217 → 0.765    still < 1, so cessation stays yield-dominated and
+     *                                           yield.js's curve stays the quadratic with a hard stop
+     *     crossover v₀         3070 → 2.92      THE ONE CLAIM THAT CHANGED, and it is not cosmetic: the
+     *                                           file used to say the regime was yield-dominated "for any
+     *                                           v₀ under ~3,000". At the real constants the margin is
+     *                                           2.92, and yield.js runs at v₀ = 1. Still inside it, with
+     *                                           a thousandth of the headroom it was documented to have.
+     *     trap depth 60s/300s  2.43/3.73 → 2.25/3.45
+     *
+     * Nothing that does not read k or n moves: λc = 7.15 px, the optical spread 14.148×, renderedContrast
+     * 0.9928 and the vein dimension are all unchanged, because none of them is a function of the flow
+     * curve. That containment is why the correction is publishable rather than a re-derivation.
+     *
+     * The lesson is the one this system keeps relearning and had not yet applied to a CITATION: every
+     * number here was checked against what renders, and none of these three was checked against its
+     * source. A provenance claim is a claim.
      *
      * τ₀ IS NOT THE RANGE FLOOR, AND THE FLOOR IS FALSIFIED BY THE SUBSTANCE'S OWN BEHAVIOUR.
      * The handoff fixes τ₀ at 0.03 Pa, "the published range floor", which reads as the conservative
@@ -77,12 +115,22 @@ var OCCVM_RHEOLOGY = (function () {
      *
      * Re-entered by a consistency criterion rather than by preference or by position in the range: τ₀ is
      * the stress at which the yield-stress height equals the capillary length — the blob is exactly as
-     * TALL as surface tension makes it ROUND. τ₀ = ρ·g·λc = 21.15 Pa, which sits inside the published
-     * ~10–40 Pa band without having been chosen from it. Judgment, named as judgment: the criterion is a
-     * choice, the arithmetic under it is not. */
+     * TALL as surface tension makes it ROUND. τ₀ = ρ·g·λc = 21.15 Pa. Judgment, named as judgment: the
+     * criterion is a choice, the arithmetic under it is not.
+     *
+     * 2.10 — THE BAND THIS USED TO CITE HAD NO CITATION. It read "sits inside the published ~10–40 Pa
+     * band without having been chosen from it", and no source for that band exists in either file or was
+     * found on searching. What does exist, and what the value is now stated against: stress-ramp and
+     * Casson yield stresses on commercial ketchup of 21.88 / 29.02 / 37.10 Pa (Ebatco lab note) and
+     * 21.8 Pa (NETZSCH, secondary), and a creep plateau collapsing between ≈28 and ≈32 Pa (TA RH-058,
+     * read off a figure — an estimate). 21.15 Pa sits at the foot of those. Note what they are: STATIC
+     * yield stresses from ramps and creep, not the DYNAMIC Herschel-Bulkley intercept (4.41 Pa) that
+     * k and n come from — the two are different quantities and this file pairs them, which is recorded
+     * here rather than resolved, because a static yield stress is the right one for a substance at rest
+     * and the wrong one to sit in a flow-curve triple. */
     tau0: 21.15,       /* Pa      — yield stress: below this the substance does not flow at all */
-    k: 4.6,            /* Pa·sⁿ   — consistency index */
-    n: 0.19,           /* —       — flow index; n < 1 is shear-thinning */
+    k: 16.18,          /* Pa·sⁿ   — consistency index k′, Koocheki Table 3, control, 25 °C (was 4.6, 2.10) */
+    n: 0.250,          /* —       — flow index n′, same row; n < 1 is shear-thinning (was 0.19, 2.10) */
     brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */
     ri: 1.381,         /* —       — refractive index at 30 °Bx, 20 °C (ICUMSA); see header */
     density: 1.14,     /* g/cm³ */
@@ -248,9 +296,16 @@ var OCCVM_RHEOLOGY = (function () {
    * constraint the substance imposes, and any value at or above 1 would contradict τ₀ > 0.
    *
    * Near the transition the Herschel-Bulkley exponent and the noise temperature are complementary,
-   * n = 1 − x, giving x = 0.81 for n = 0.19. **The constraint is physics; the exact functional form is
-   * the judgment, and it is flagged as one** — the same discipline the crystal model applied to
-   * `contrast`. What is not judgment: x sits below 1, close to it, which is where a substance that
+   * n = 1 − x, giving **x = 0.75 for n = 0.250** (it read 0.81 for the misattributed n = 0.19 until 2.10).
+   *
+   * 2.10 — THIS FILE UNDERSTATED ITS OWN DERIVATION, which is the rarer direction and is corrected for
+   * the same reason an overclaim would be. It called n = 1 − x "the exact functional form, the judgment".
+   * It is not: it is Sollich's own result — in the SGR glass phase the flow curve goes
+   * σ = σ_y + O(γ̇^(1−x)), so identifying the exponent of a Herschel-Bulkley fit with 1 − x is reading
+   * the theory, not choosing a form. **The judgment that remains, and it is a real one, is the
+   * IDENTIFICATION**: equating an asymptotic SGR exponent with a coefficient fitted over a finite range
+   * of shear rates on a real rheometer. That is what is flagged, and it is flagged here rather than
+   * where it was. What is not judgment either way: x sits below 1, which is where a substance that
    * yields but only just is supposed to sit.
    */
   function noiseTemperature(m) { return 1 - m.n; }

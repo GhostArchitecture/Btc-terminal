@@ -11,12 +11,26 @@ const R = require("../occvm/rheology.js");
 const K = R.KETCHUP;
 
 /* ── the substance is published, not chosen ─────────────────────────────────────────────────────── */
-T("k and n are the Koocheki control formulation", K.k === 4.6 && K.n === 0.19);
+/* 2.10 — read off Koocheki Table 3's CONTROL row at 25 °C, and pinned to it. Until 2.10 this asserted
+   k = 4.6 and n = 0.19 "the control formulation", and neither is in that paper: its Herschel-Bulkley k′
+   ranges 6.56–20.10 across every formulation, so 4.6 is below the whole range, and 0.19 is the floor of
+   the POWER-LAW index across hydrocolloid samples. An assertion can pin a number to a citation and still
+   be wrong about the citation — this one was, for five releases. */
+T("k and n are the Koocheki control row, Herschel-Bulkley, 25 °C", K.k === 16.18 && K.n === 0.250);
+T("and both sit inside that paper's published ranges", K.k >= 6.56 && K.k <= 20.10 && K.n >= 0.216 && K.n <= 0.263);
+T("the retired misattribution cannot come back", K.k !== 4.6 && K.n !== 0.19);
 /* tau0 is NOT the published range floor, and the floor is falsified by the substance's own behaviour:
    a layer stands only while tau0 >= rho*g*h, so 0.03 Pa holds 2.7 micrometres and this ketchup would
    sheet off a plate. Re-entered at the stress where puddle height equals capillary length. */
 T("tau0 is not the range floor that could not hold a blob", K.tau0 !== 0.03 && K.tau0 > 10, K.tau0);
-T("and it sits inside the published ~10-40 Pa band", K.tau0 > 10 && K.tau0 < 40);
+/* 2.10 — the "~10–40 Pa published band" this used to assert had no citation in either file and none was
+   found. What is on the record are STATIC yield stresses: 21.88 / 29.02 / 37.10 Pa (Ebatco) and 21.8 Pa
+   (NETZSCH). τ₀ sits at the foot of those, and the quantity mismatch — a static yield stress paired with
+   a dynamic flow-curve triple — is recorded in the file rather than resolved. */
+T("tau0 sits at the foot of the measured static yield stresses, not in an uncited band",
+  K.tau0 >= 21 && K.tau0 <= 21.9);
+T("and it is well above the paper's DYNAMIC Herschel-Bulkley intercept of 4.41 Pa — a different quantity",
+  K.tau0 > 4.41 * 4);
 T("the flow index is shear-thinning, which is what makes it a yield-stress fluid at all", K.n < 1);
 T("the refractive index is the refractometric Brix value, not a convenience",
   K.brix === 30 && Math.abs(K.ri - 1.381) < 1e-9);
@@ -84,20 +98,22 @@ T("the refractive index is the refractometric Brix value, not a convenience",
 
   /* THE FINDING THAT BLOCKS THE ROADMAP'S §3 AS WRITTEN, pinned so it is not rediscovered mid-build.
      The handoff proposes computing an animation duration from gammaDot = ((tau-tau0)/k)^(1/n). With
-     n = 0.19 that exponent is 5.26, so a 100x range in applied stress spans ~1.9e18 in rate. No
+     n = 0.250 that exponent is 4.00, so a 100x range in applied stress spans 1e8 in rate. No
      monotone map from that to a 200-400ms duration exists that is not doing all the work itself. */
   const lo = R.shearRate(K, K.tau0 * 1.001), hi = R.shearRate(K, K.tau0 * 100);
   T("gammaDot spans >1e15 across a 100x stress range — raw rate cannot be a duration",
     hi / lo > 1e15, (hi / lo).toExponential(1));
-  T("1/n is the culprit and it is 5.26, a property of the published n, not a modelling choice",
-    Math.abs(1 / K.n - 5.263) < 0.01);
+  T("1/n is the culprit and it is 4.00, a property of the published n, not a modelling choice",
+    Math.abs(1 / K.n - 4) < 0.01);
+  T("and the correction did not rescue the formula: 100x in stress is still 1e8 in rate",
+    Math.pow(100, 1 / K.n) > 1e7, Math.pow(100, 1 / K.n).toExponential(1));
 }
 
 /* ── SGR: open item #5, closed by derivation ────────────────────────────────────────────────────── */
 {
   const x = R.noiseTemperature(K);
   T("the noise temperature derives from n rather than needing a second authored constant",
-    Math.abs(x - 0.81) < 1e-9, x.toFixed(3));
+    Math.abs(x - 0.75) < 1e-9, x.toFixed(3));
   T("x < 1: a yield stress exists ONLY in the glass phase, so the sign is physics, not preference",
     R.inGlassPhase(K));
   T("and it sits just below the transition, where a substance that yields but only just belongs",
@@ -113,7 +129,7 @@ T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal"
 /* ── cessation: finite stopping time, the roadmap's derivation checked rather than cited ────────── */
 {
   /* the roadmap's table, at ITS τ₀ (0.03 Pa): v₀ 0.01 / 0.1 / 1 → 0.0063 / 0.041 / 0.266 */
-  const rm = { tau0: 0.03, k: 4.6, n: 0.19 };
+  const rm = { tau0: 0.03, k: 4.6, n: 0.19 };   /* the ROADMAP's triple, kept verbatim: this block checks its table */
   const tab = [[0.01, 0.0063], [0.1, 0.041], [1, 0.266]];
   T("the integration reproduces the roadmap's three stopping times to the figures it printed",
     tab.every(([v0, t]) => Math.abs(R.stoppingTime(rm, v0) / t - 1) < 0.01),
@@ -123,16 +139,41 @@ T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal"
   T("stopping is FINITE: the integrator terminates, which a Newtonian decay never would", isFinite(R.stoppingTime(K, 1)));
 
   /* THE ATTRIBUTION THE ROADMAP INVERTED. At its τ₀ the rate term dominates until v ~ 3e-12; at the
-     substance's, the yield term dominates from the first instant for any v₀ under ~3,000. */
+     substance's, the yield term dominates from the first instant for any v₀ under ~2.92 — which read
+     ~3,000 until 2.10 corrected k and n, and is the one documented claim that correction moved. */
   T("at the roadmap's τ₀ the regime is rate-dominated (k·v₀ⁿ ≫ τ₀), so the bound is tight for the OPPOSITE reason it gave",
     R.regime(rm, 1) > 100);
-  T("at the substance's τ₀ the regime is yield-dominated for any plausible v₀", R.regime(K, 1) < 1 && R.regime(K, 100) < 1);
-  T("the crossover v₀ is about 3,000 in the model's units", Math.abs(Math.pow(K.tau0 / K.k, 1 / K.n) / 3070 - 1) < 0.02);
+  /* 2.10 — THIS ASSERTION USED TO READ "for any plausible v₀" AND THE CORRECTION BROKE IT, which is the
+     whole value of the correction. At the misattributed k = 4.6 the regime stayed yield-dominated to
+     v₀ ≈ 3,000 and the phrase was harmless. At the real k = 16.18 it crosses at 2.92: yield-dominated
+     where the primitive actually runs, rate-dominated an order of magnitude above. Stated as the bracket
+     it is, not as a blanket. */
+  T("at the substance's τ₀ the regime is yield-dominated where the primitive runs, and only there",
+    R.regime(K, 1) < 1 && R.regime(K, 100) > 1,
+    "v0=1 " + R.regime(K, 1).toFixed(3) + ", v0=100 " + R.regime(K, 100).toFixed(3));
+  T("the crossover v₀ is 2.92 in the model's units", Math.abs(Math.pow(K.tau0 / K.k, 1 / K.n) / 2.92 - 1) < 0.02);
+  T("yield.js still runs inside it, and the margin is now the thing to watch",
+    require("../occvm/yield.js").V0 < Math.pow(K.tau0 / K.k, 1 / K.n),
+    "v0 " + require("../occvm/yield.js").V0 + " against a crossover of " + Math.pow(K.tau0 / K.k, 1 / K.n).toFixed(2));
 
   /* both regimes have a closed-form position, and the sampled curve matches each */
   const e1 = R.easing(K, 1, 17), e2 = R.easing(rm, 1, 17);
-  T("yield-dominated: position is 1 − (1−u)²", e1.every((v, i) => Math.abs(v - (1 - Math.pow(1 - i / 16, 2))) < 0.01));
-  T("rate-dominated: position is 1 − (1−u)^(1 + 1/(1−n)) = 2.235", e2.every((v, i) => Math.abs(v - (1 - Math.pow(1 - i / 16, 1 + 1 / (1 - K.n)))) < 0.01));
+  /* The two closed forms are LIMITS, and 2.10's correction moved the substance off the yield-dominated
+     one far enough to matter. At v₀ = 1 the rate term is 76.5% of the yield term, so the curve is mixed:
+     0.0163 from the quadratic, 0.0403 from the power law — nearer the quadratic, which is what makes the
+     quadratic the right thing to name, and not equal to it, which is what makes "is the quadratic" the
+     wrong thing to say. Driven into the limit (v₀ = 0.001, regime 0.024) it converges to 0.0042. */
+  const deep = R.easing(K, 0.001, 17);
+  const dev = (arr, f) => Math.max(...arr.map((v, i) => Math.abs(v - f(i / 16))));
+  const quad = u => 1 - Math.pow(1 - u, 2);
+  T("in the yield-dominated LIMIT the position converges on the quadratic", dev(deep, quad) < 0.005, dev(deep, quad).toFixed(4));
+  T("at the v₀ the primitive uses the curve is mixed, and nearer the quadratic than the power law",
+    dev(e1, quad) < 0.02 && dev(e1, quad) < dev(e1, u => 1 - Math.pow(1 - u, 1 + 1 / (1 - K.n))) / 2,
+    "quad " + dev(e1, quad).toFixed(4) + " vs power " + dev(e1, u => 1 - Math.pow(1 - u, 1 + 1 / (1 - K.n))).toFixed(4));
+  /* the rate-dominated form is checked on the ROADMAP's own triple, which is the one that is in that
+     regime — reading K.n here mixed one fluid's exponent into the other fluid's curve. */
+  T("rate-dominated: position is 1 − (1−u)^(1 + 1/(1−n)), the roadmap's own 2.235",
+    dev(e2, u => 1 - Math.pow(1 - u, 1 + 1 / (1 - rm.n))) < 0.005 && Math.abs(1 + 1 / (1 - rm.n) - 2.235) < 0.001);
   T("the curve is monotone, starts at 0 and ends at exactly 1", e1[0] === 0 && e1[16] === 1 && e1.every((v, i) => i === 0 || v >= e1[i - 1]));
   T("cssEasing hands CSS a linear() it can consume", /^linear\(0, [\d., ]+1\)$/.test(R.cssEasing(K, 1)));
   T("the roadmap's 'linear terminal phase' is a velocity, and its position is the quadratic — not a third phase",
@@ -143,7 +184,8 @@ T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal"
 {
   const E = [3000, 60000, 300000].map(t => R.trapDepth(K, t, 3000));
   T("the fastest tier is the attempt time and sits at depth zero", E[0] === 0);
-  T("depth is x·ln(t/t₀): 2.43 at a minute, 3.73 at five", Math.abs(E[1] - 2.43) < 0.01 && Math.abs(E[2] - 3.73) < 0.01, E.map(v => v.toFixed(2)).join(" "));
+  T("depth is x·ln(t/t₀): 2.25 at a minute, 3.45 at five (2.43 / 3.73 before 2.10 corrected x)",
+    Math.abs(E[1] - 2.25) < 0.01 && Math.abs(E[2] - 3.45) < 0.01, E.map(v => v.toFixed(2)).join(" "));
   T("it is logarithmic in the cadence, so a 100× slower poll is not 100× deeper", E[2] / E[1] < 2);
   T("derived and consumed by nothing: no trap token ships", !require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "spine.css"), "utf8").includes("--trap"));
 }
