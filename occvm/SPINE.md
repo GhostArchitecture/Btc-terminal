@@ -1367,6 +1367,14 @@ source.** That is a new failure mode for a document that had already recorded th
 and the guard that closes it — assert the constants against the paper's published ranges, and that the
 retired pair cannot return — is the first in either suite to treat a citation as a claim.
 
+*And the law gate had the partial-checkout blind spot a third time.* Its "a law recorded as diverged that
+now conforms" half fired only when the rollup read IN FORCE, which no law does when a sibling is missing —
+so on CI, which is always a partial checkout, a block claiming a divergence no tool had would have passed
+unnoticed. It now fires whenever no tool measures a divergence, whatever the rollup. Found because the
+bite test manufactures its own divergence rather than borrowing a real one, which is exactly the property
+it was given in this release; the old form could not have found it, because it needed a real divergence to
+exist and there are none left.
+
 *Two things about the correction are worth keeping.* It was contained: nothing that does not read the flow
 curve moved, so the meniscus, the optics and the vein dimension are all exactly where 2.8 left them, and the
 release is publishable as a correction rather than a re-derivation. And it broke three assertions that had

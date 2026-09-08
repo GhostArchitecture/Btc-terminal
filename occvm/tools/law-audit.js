@@ -346,9 +346,14 @@ if (process.argv.includes("--check")) {
   const missing = diverged.filter(r => !/DIVERG/.test(stateBlock(r.id)));
   /* and the other direction: a law recorded as diverged that now conforms is a document lying about the
      tools, just a kinder lie. L4 and L6 were fixed and their blocks still read DIVERGES until --stamp. */
-  const stale = results.filter(r => r.overall === "IN FORCE" && /DIVERG/.test(stateBlock(r.id)));
+  /* 2.10 — this read `overall === "IN FORCE"`, and that let the lie through on a PARTIAL checkout, which
+     is what CI is. A law whose block claims a divergence is flagged whenever NO tool measures one, whatever
+     the rollup: IN FORCE, PARTIAL, UNADOPTED or UNMEASURED are all "no divergence to record". Found by a
+     harness that manufactured a divergence to prove the gate bites and watched it pass with the sibling
+     absent — the same partial-checkout blind spot this file has now been fixed for three times. */
+  const stale = results.filter(r => r.overall !== "DIVERGED" && /DIVERG/.test(stateBlock(r.id)));
   if (stale.length) {
-    console.error(`\nLAW AUDIT FAIL: ${stale.map(m => m.id).join(", ")} recorded as DIVERGED but measure IN FORCE — run --stamp.`);
+    console.error(`\nLAW AUDIT FAIL: ${stale.map(m => `${m.id} (measures ${m.overall})`).join(", ")} recorded as DIVERGED with no tool measuring a divergence — run --stamp.`);
     process.exit(1);
   }
   if (missing.length) {
