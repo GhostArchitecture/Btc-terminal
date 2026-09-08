@@ -1197,6 +1197,42 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     })());
   }
 
+  /* ── the laws are measured, not asserted ────────────────────────────────────────────────────── */
+  {
+    const cp = require("child_process");
+    const run = a => cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), ...a], { encoding: "utf8" });
+
+    const j = JSON.parse(run(["--json"]).stdout);
+    T("every law is measured or explicitly labelled unmeasurable", j.length === 12);
+    T("no law reports IN FORCE without a tool measured as conforming",
+      j.every(l => l.overall !== "IN FORCE" || l.per.some(p => p.state === "CONFORMS")),
+      "unadopted + unmeasured rolling up to IN FORCE is how a declared law reads as a working one");
+    T("a tool absent from the checkout is never counted as conforming",
+      j.every(l => l.per.every(p => p.state !== "ABSENT" || l.overall === "PARTIAL")));
+
+    /* the gate must FAIL on a hidden divergence. This is asserted by actually hiding one, because the
+       first version of the check passed while a law's own block claimed conformance — it was satisfied
+       by the summary table elsewhere in the document. A guard is only worth its line if it bites. */
+    const spinePath = path20.join(__dirname, "..", "occvm", "SPINE.md");
+    const spine = fs20.readFileSync(spinePath, "utf8");
+    const diverged = j.find(l => l.overall === "DIVERGED");
+    T("at least one law is measurably diverged, so this test has something to hide", !!diverged);
+    if (diverged) {
+      const h = spine.indexOf(`### OCCVM-${diverged.id} —`);
+      const next = spine.indexOf("\n### ", h + 1);
+      const doctored = spine.slice(0, h) +
+        spine.slice(h, next).replace(/DIVERGED/g, "IN FORCE").replace(/DIVERGES/g, "CONFORMS") +
+        spine.slice(next);
+      fs20.writeFileSync(spinePath, doctored);
+      const bit = run(["--check"]).status !== 0;
+      fs20.writeFileSync(spinePath, spine);
+      T("the law gate FAILS when a law's own block hides its divergence", bit,
+        "verified by hiding a real one and restoring it");
+    }
+    T("and passes on the honest document", run(["--check"]).status === 0);
+  }
+
   /* SPINE.md is the law: the material's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");

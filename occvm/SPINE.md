@@ -95,10 +95,25 @@ wrong table.
 
 ## 1. The twelve laws
 
+**Every law below carries a generated STATE block: what the tools measurably do about it, per tool, from
+`occvm/tools/law-audit.js`.** Read the state before the rule. A law with the rule and no state is what this
+document was until now, and it let five divergences stand for six releases behind a hand-typed `—`.
+
+**A diverged law is still the law.** Divergence is a fact about the tools, not a repeal, and the fix is
+either to bring the tool under the rule or to change the rule deliberately and say so. What is not
+available any more is not noticing.
+
 Each law names the release that completes it. A law is stated at 1.0 whether or not both tools satisfy it
 yet; the gap is a defect, and the defect names the release that closes it.
 
 ### OCCVM-L1 — substrate and inscription
+
+> **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNMEASURED** — token families are guarded by token-audit.js and the golden set
+> - Rhyme Instrument: **UNMEASURED** — token families are guarded by token-audit.js and the golden set
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 The ground is obsidian; the mark on it is bone. Three substrate weights and three ink weights, no more.
 
@@ -114,12 +129,26 @@ today: `OCCVM-D10`.
 
 ### OCCVM-L2 — cut geometry
 
+> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **DIVERGES** — 23 of 25 declarations exceed 4px: 10, 12, 16, 18, 20, 22, 999px (including 9 full pills)
+> - Rhyme Instrument: **DIVERGES** — 2 of 34 declarations exceed 4px: 5, 9px
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 A surface is cut, not rounded. Corner radius **≤ 4px** on any slab, tile, control or binding. Bevels are
 struck from the light vector (`OCCVM-L3`), never from a fixed offset.
 
 An element too small to read as a cut slab at 4px takes an exception in §5 rather than a larger radius.
 
 ### OCCVM-L3 — one light
+
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — no local solar implementation
+> - Rhyme Instrument: **CONFORMS** — no local solar implementation
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 There is exactly one light on any **surface**, and it is the real sun.
 
@@ -201,6 +230,13 @@ golden set a delta it cannot attribute.
 
 ### OCCVM-L4 — cast shadow
 
+> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — 15 casts, all light-derived or inset
+> - Rhyme Instrument: **DIVERGES** — 1 of 23 casts use a fixed offset
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 Every cast shadow derives from `--lx --ly --rake --shade-a`. **No fixed `box-shadow` offset exists outside
 the primitives.** The primitive is `.occvm-cast` (§3).
 
@@ -216,12 +252,26 @@ Completed at **1.2**. BTC carries 15 fixed offsets today: `OCCVM-D2`.
 
 ### OCCVM-L5 — gilt is reserved
 
+> **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNMEASURED** — whether a surface DECIDES is a judgment; no script can make it
+> - Rhyme Instrument: **UNMEASURED** — whether a surface DECIDES is a judgment; no script can make it
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 The gilt ramp `--gilt-c #7a5510 → --gilt-b #d9a52c → --gilt-a #ffe9a3` marks **what decides** and nothing
 else. Malachite and ruby carry outcome; verdigris carries seams and age; bronze carries binding.
 
 A surface that is merely important is not gilt. A number that settles something is.
 
 ### OCCVM-L6 — the mineral set is frozen, with fixed meanings
+
+> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **DIVERGES** — 2 mineral accent hex restated outside minerals.js (3 outcome-colour declarations are the section 5 exception, not counted)
+> - Rhyme Instrument: **CONFORMS** — no local mineral hex
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 The mineral is the reader's choice of accent, and the set is closed:
 
@@ -263,6 +313,13 @@ halves: the mineral drives the vein layer, and switching it never inline-sets an
 
 ### OCCVM-L7 — figure discipline
 
+> **STATE: DIVERGED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **DIVERGES** — depends on 2 unembedded face(s): Iowan Old Style, Palatino (tool does embed at least one face)
+> - Rhyme Instrument: **DIVERGES** — depends on 2 unembedded face(s): Iowan Old Style, Palatino (tool embeds none)
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 Numerals in a column are tabular. Numerals in running text are lining. A tool depends on **no font the
 visitor's operating system supplies** for any numeral that carries meaning.
 
@@ -296,6 +353,13 @@ Completed at **1.3** for BTC. `OCCVM-D3` closed.
 
 ### OCCVM-L8 — the interaction floor
 
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — 3 explicit 44px floor(s)
+> - Rhyme Instrument: **CONFORMS** — 3 explicit 44px floor(s)
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 Every action is a real control: correct element semantics, reachable by keyboard, state announced
 (`aria-pressed` on a toggle), a target of at least 44×44px, and one focus ring shared across the system.
 Every motion respects `prefers-reduced-motion`.
@@ -313,6 +377,13 @@ unchanged, and the shared focus ring.
 Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`, no `tabIndex`: `OCCVM-D7`.
 
 ### OCCVM-L10 — vein habit
+
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — 1 drawn call, reached only when growth throws — a degradation, not the habit
+> - Rhyme Instrument: **CONFORMS** — no drawn fallback
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 Veins are **grown, not drawn**. The generator is diffusion-limited aggregation: a walker enters the
 matrix, moves at random, and sticks the instant it touches the aggregate. Branching is dendritic because a
@@ -386,6 +457,13 @@ found by decoding the URI into an `<img>` and counting inked pixels.
 
 ### OCCVM-L11 — fracture
 
+> **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNADOPTED** — no cleave call site
+> - Rhyme Instrument: **UNMEASURED** — 1 call site(s); whether each is irreversible needs an eye
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+
 **A destructive action does not share a physical vocabulary with a reversible one.** Everything else in
 these tools fades, slides or settles. Those are elastic behaviours, and elastic behaviour implies the
 thing could come back. Aragonite does not deform past its limit — it **cleaves**, along fixed planes, at
@@ -428,6 +506,13 @@ carries its **resolved** style, so it is indifferent to how the element was sele
 visible by looking at the frame.
 
 ### OCCVM-L12 — the material
+
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **CONFORMS** — 3 :root fallback(s), overwritten by the sundial
+> - Rhyme Instrument: **CONFORMS** — 3 :root fallback(s), overwritten by the sundial
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 **A hex is not authored. A material is defined, and the surface values are derived from it.** Until 2.0
 `--sub-hi`, `--sub` and `--sub-lo` were three separate decisions that happened to look related, and the
@@ -659,6 +744,13 @@ not a typo. It is 7.97/4.96, and the whole point of L12 is that a value has a re
 golden-ratio constant appearing in the spine, and fails on a spacing token shipping while P4 is unexpressed.
 
 ### OCCVM-L9 — night
+
+> **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNMEASURED** — written by the spliced sundial; pinned behaviourally by test/occvm.js
+> - Rhyme Instrument: **UNMEASURED** — written by the spliced sundial; pinned behaviourally by test/occvm.js
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
 
 Night is a **continuous quantity**, not a state flag: `--night` ramps from 0 at −2° elevation to 1 at −10°.
 A binary step cannot express the civil / nautical / astronomical dusk stages, so the ramp is the 1.0 law
@@ -934,22 +1026,69 @@ which is why this table's right-hand column so often reads "nothing".
 
 ---
 
-## 7. Conformance table
+## 7. Conformance — measured, not asserted
 
-| tool | version | build stamp | violates |
-|---|---|---|---|
-| **BTC Terminal** | 1.0, 1.1, 1.1a, 1.1b, 1.2, 1.2a, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907190822` | — |
-| **Rhyme Instrument** | 1.0, 1.1, 1.1a, 1.1b, 1.2, 1.2a, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 | `build-20260907190822` | — (renders no mono; D3 does not apply) |
-| **Reference surface** | every part, spliced (1.0–1.9) | `build-20260907175747` | — (holds no values of its own) |
+**This table was hand-typed and false for six releases.** It read `violates: —` for both tools from 1.0
+until now, was never re-measured, and stated conformance to laws the tools plainly break: BTC paints corner
+radii up to 999px against L2's declared ≤4px, and both tools name serif faces they do not embed against L7's
+"no font the tool does not own". Nothing caught either, because nothing was looking — every other claim in
+this system is guarded (`token-audit.js`, `splice-spine.js --check`, `occvm/golden/`, `test/prereg.js`
+reading CLAUDE.md from disk) and **the laws were the last thing left saying "this is true" with no
+instrument behind it.**
 
-**At 1.0 the splice was a no-op by construction, and the golden set proved it: zero deltas in either tool.**
+`occvm/tools/law-audit.js` measures each law against both tools and CI runs it with `--check`, which fails
+when a law measured as DIVERGED is not recorded as such here. The table below and the state block on each
+law are generated from that run.
 
-That is the point, not a weak result. The spine is inlined *above* each tool's own CSS, so every value it
-declares is either identical to the tool's or shadowed by it — the parallel-spine pattern of migration §1,
-where a tool that has not been touched still renders because the names it references are still defined.
-Adoption is deleting the shadowing declarations, per surface, at the release whose law covers that surface
-(migration §3, steps 4–6). Any delta at the splice itself is a splice bug, not a design change, and halts
-the release (§3.5).
+| law | | state | BTC Terminal | Rhyme Instrument |
+|---|---|---|---|---|
+| **L1** | substrate and inscription | UNMEASURED | UNMEASURED | UNMEASURED |
+| **L2** | cut geometry | DIVERGED | DIVERGES | DIVERGES |
+| **L3** | one light | IN FORCE | CONFORMS | CONFORMS |
+| **L4** | cast shadow | DIVERGED | CONFORMS | DIVERGES |
+| **L5** | gilt is reserved | UNMEASURED | UNMEASURED | UNMEASURED |
+| **L6** | the mineral set is frozen | DIVERGED | DIVERGES | CONFORMS |
+| **L7** | figure discipline | DIVERGED | DIVERGES | DIVERGES |
+| **L8** | the interaction floor | IN FORCE | CONFORMS | CONFORMS |
+| **L9** | night | UNMEASURED | UNMEASURED | UNMEASURED |
+| **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
+| **L11** | fracture | UNMEASURED | UNADOPTED | UNMEASURED |
+| **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
+
+**4 in force · 4 diverged · 4 unmeasured · 0 unadopted**
+
+### What the four states mean, and why four rather than two
+
+Collapsing these is how "declared and unadopted since 1.0" came to read as a working law.
+
+- **IN FORCE** — measured, and at least one tool conforms with none diverging.
+- **DIVERGED** — measured, and a tool does not conform. The numbers are on the law itself. A diverged law
+  is still the law; divergence is a fact about the tools, not a repeal.
+- **UNADOPTED** — the law is real and nothing wears the surface it governs yet.
+- **UNMEASURED** — conformance is a judgment a script cannot make. Whether the gilt marks what *decides*
+  (L5) needs an eye. This is not an excuse and not a pass; it is the honest label, and it is better than a
+  `—` that reads as a clean bill.
+
+A tool absent from the checkout is reported ABSENT and never counted as conforming. That bug has been fixed
+twice in this repository already — the golden recorder and the token audit's gate — and it is the same bug
+both times: a sweep that finds nothing concluding nothing is wrong.
+
+### The divergences, and what each one is waiting on
+
+- **L2, both tools.** BTC runs 10–22px with nine full pills; Rhyme runs 2–4px with two strays. **The two
+  tools have different geometry and the shared law describes one of them.** Whether BTC's radii are a
+  violation to bring back under L2 or a divergence to write into the law is a design decision. It is open,
+  and it blocks any derived radius — including the capillary length 2.6 puts in `--occvm-r` — because
+  adopting one silently picks an answer.
+- **L4, Rhyme.** One cast of twenty-three uses a fixed offset instead of the light vector. Small, local,
+  and the same defect class 1.2 swept out of both tools; it survived the sweep.
+- **L6, BTC.** The `--amethyst` pair is restated in the tool's own `:root` where `minerals.js` owns it —
+  the duplicate 1.4 was meant to close. BTC's `--malachite`/`--ruby` are **not** counted: §5 grants those as
+  outcome colours, a different meaning on the same hexes.
+- **L7, both tools.** Both name `Iowan Old Style` and `Palatino` with no `@font-face`. BTC embeds its mono
+  and not its serif; Rhyme embeds neither. So most viewers already read the section heads in a fallback,
+  which is the same class of defect as a token resolving to nothing — and it is the *serif*, not the mono
+  stack the roadmap named.
 
 ---
 
