@@ -1171,4 +1171,45 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   }
 }
 
+/* --- 2.9 — the patience system, in the shape its own discipline permits ------------------------------
+ * Three things from the roadmap's 4.1. The lock release is the one event it named that exists here, and it
+ * relaxes on the derived curve (test/sweep.js). The koan is copy. And critical slowing down is RECORDED,
+ * never rendered — a column beside rv60 under CLAUDE.md 11.5, because SEAS raises variance every morning by
+ * construction and a light on the lock would be a signal nobody earned in the ledger (CLAUDE.md 7.6).
+ */
+{
+  const h29 = load();
+  const R29 = h29.R;
+  const now29 = Date.UTC(2026, 8, 6, 14, 7, 30); h29.setNow(now29);
+  const fs29 = require("fs"), path29 = require("path");
+  const src29 = fs29.readFileSync(path29.join(__dirname, "..", "index.html"), "utf8");
+
+  const r = R29(`(function(){ S.bars=new Map(); S.barKeys=[]; const k0=Math.floor(${now29}/60000)-80; let p=100000, seed=7;
+    const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+    for(let i=0;i<80;i++){ p*=1+(rnd()-0.5)*0.002; S.bars.set(k0+i,p); S.barKeys.push(k0+i); }
+    const st=computeStats(); return {ac1:st.ac1, acn:st.acn, rv60:st.rv60}; })()`);
+  T("computeStats carries the lag-1 autocorrelation of the same sixty returns rv60 is built from",
+    typeof r.ac1 === "number" && isFinite(r.ac1) && Math.abs(r.ac1) < 1 && r.acn === 60 && r.rv60 > 0, r);
+  T("the snapshot records it beside the vol triple", /sn\.ac1=\+st\.ac1\.toFixed\(4\); sn\.acn=st\.acn;/.test(src29));
+  const csv = R29(`(function(){ S.edge.windows={}; S.roundLog=[]; S.swing={v:1,w:{}}; S.journal=[]; exportCSV(); return window._lastBlob.text; })()`);
+  T("and the export carries it as csd_ac1 / csd_n", /"csd_ac1","csd_n"/.test(csv));
+  const reads = (stripComments(src29).match(/\.ac1\b/g) || []).length;
+  T("it is rendered nowhere: the only reads of ac1 are the recorder's own line", reads === 4, reads + " read(s)");
+  T("no render function mentions it", !/function render[A-Za-z]*\([^)]*\)\{[^]*?\bac1\b/.test(stripComments(src29).split("function exportCSV")[0].replace(/function computeStats[^]*?\n}\n/, "").replace(/function edgeSnapOne[^]*?\n}\n/, "")));
+
+  /* the koan: literal copy where the tool is silent */
+  R29("S.tape=[]; S.lastPx=null; S.idxPx=null; renderSweep()");
+  const painted = JSON.stringify(h29.canvasCalls());
+  T("the koan is painted in the idle canvas, under 'awaiting validated tape'",
+    painted.includes("awaiting validated tape") && painted.includes("Watched coins never mint. Watched markets never resolve. Watched resolutions never recover findings."));
+
+  /* the lock's relaxation curve is the substance's, read from the spliced rheology, not typed here */
+  const RH = require("../occvm/rheology.js");
+  const c = RH.easing(RH.SUBSTANCE, 1, 33);
+  T("relaxEase samples the substance's cessation curve", Math.abs(R29("relaxEase(0.5)") - c[16]) < 1e-9 && R29("relaxEase(1)") === 1 && R29("relaxEase(0)") === 0);
+  T("the duration is authored and named as authored; the curve is not", /const LOCK_RELAX_MS=360;/.test(src29) && !/cubic-bezier[^\n]*relax/i.test(src29));
+  T("with reduced motion or no substance the release is instant, never a different curve",
+    /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
+}
+
 process.exit(done());

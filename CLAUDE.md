@@ -1373,6 +1373,17 @@ away, and a dropped part would have shipped stale under its fence forever. This 
 line: `veinLayer()` stops passing a habit. **Roadmap items closed: #1 (meaningless), #4, #5. 349
 occvm assertions, 48 rheology.**
 
+**2.9 — the patience system, as far as the foil allows.** Three things from the roadmap's §4.1, each in the
+shape its own discipline permits. **The lock release relaxes** to the free sweep on the substance's cessation
+curve and stops at an exact instant (`LOCK_RELAX_MS` 360, authored and named; the curve derived) — the
+roadmap's "event response", wired to the one event it named that exists here. **The koan** is copy in the
+idle canvas, under "awaiting validated tape". **Critical slowing down is recorded, not rendered:** each edge
+snapshot carries `ac1`, the lag-1 autocorrelation of the same sixty one-minute returns `rv60` is built from,
+with the count `acn`, exported as `csd_ac1`/`csd_n`. It is a column beside the variance half, not a light on
+the lock, because `SEAS` raises variance every morning by construction and any reading of the pair as a
+tipping point owes §11.3's time-matched controls — §11.5's rule that recording is not reporting, applied.
+The roadmap's whole disposition — adopted, adapted, dropped, with reasons — is SPINE.md §9.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

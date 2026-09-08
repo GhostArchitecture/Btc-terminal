@@ -2351,7 +2351,14 @@ function computeStats(){
   const a=1-Math.pow(2,-1/10); let muFast=r[0];
   for(let i=1;i<r.length;i++) muFast=a*r[i]+(1-a)*muFast;
   const r60=r.slice(-60); const rv60=r60.length>=30?Math.sqrt(r60.reduce((x,y)=>x+y*y,0)/r60.length):null;
-  return {sig,muFast,rv60,nBars:closes.length};
+  /* 2.9 — critical slowing down, RECORDED and never rendered (SPINE.md 9; CLAUDE.md 11.5, recording is not
+     reporting). Rising variance and rising lag-1 autocorrelation are the published early-warning pair (Scheffer
+     et al. 2009); rv60 already carries the variance half over this same trailing hour, and this is the other
+     half. SEAS raises variance deterministically every morning, so any reading of this pair as a tipping-point
+     signal owes 11.3's time-matched controls — which is exactly why it is a column and not a light. */
+  let ac1=null; if(r60.length>=30){ const m=r60.reduce((x,y)=>x+y,0)/r60.length; let num=0,den=0;
+    for(let i=0;i<r60.length;i++){ const d=r60[i]-m; den+=d*d; if(i>0) num+=d*(r60[i-1]-m); } ac1=den>0?num/den:null; }
+  return {sig,muFast,rv60,ac1,acn:r60.length,nBars:closes.length};
 }
 /* calibrated volatility: realized rv60 base (spine-validated), intraday seasonal factor, horizon term structure */
 const FIT_VERSION="fit-2026-09-05-a";
@@ -2785,6 +2792,7 @@ function edgeSnapOne(m,now,ob){
     pa:f4(P.anl),pd:f4(P.drf),pe:f4(P.emp),pf:f4(P.flo),pr:f4(P.res),fit:P.fit};
   schemaPut(sn,edgeSnapFields(P,{q:((yb+ya)/2)/100,spread:(ya-yb)/100},m.strike,ob));   /* H protocol: vol triple + depth, omitted when not derivable */
   schemaPut(sn,flowFields(S.sig));   /* H4: order-flow imbalance at the read. Separate call so "not wired" and "no signals" stay distinguishable. */
+  { const st=computeStats(); if(st&&st.ac1!==null&&st.ac1!==undefined){ sn.ac1=+st.ac1.toFixed(4); sn.acn=st.acn; } }   /* 2.9: the lag-1 half of the critical-slowing-down pair; rv60 (sm) is the variance half. Recorded, never rendered. */
   w.snaps.push(sn);
   if(w.snaps.length>70) w.snaps.shift();
   return true;
@@ -2977,7 +2985,7 @@ function exportCSV(){
       nz(j.bound),j.gate||"",j.code||""]; };
   const rows=[["ticker","strike","open","close","result","result_source","tape_settle_avg","exp_value","snap_t","tau_min","p_model_yes","mkt_yes_mid","yes_ask","no_ask","p_residual","p_analytic","p_drift","p_empirical","p_flow","fit",
     "sig_model_bpm","sig_implied_bpm","x_std","si_over_sm","si_cond","si_ident","si_prior_rel","si_prior_sided","si_tick_rel","si_tick_sided","si_bound","si_gate","si_code","depth_yes","depth_no","spread_c","mis_anl_c","mis_over_spread","mis_head_c",
-    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","ofi_60s","ofi_vol","ofi_n","ofi_300s","ofi_omit","ofi_burst","regime_idx","is_ref_snap","excluded"]];
+    "hour_utc","seas_hour","seas_factor","ev","ev_mins","ev_tier","sig_realized_bpm","sig_realized_n","vrp_bpm","vrp_ref_t","vrp_omit","ofi_60s","ofi_vol","ofi_n","ofi_300s","ofi_omit","ofi_burst","regime_idx","is_ref_snap","excluded","csd_ac1","csd_n"]];
   for(const w of Object.values(S.edge.windows)){ const ref=refSnap(w);
     for(const s of w.snaps){ const E=et(s.t), H=hz(s.t);
       const spreadC=edgeSpreadC(s.qm,s.ya), misAnl=(s.pa!==null&&s.pa!==undefined)?+((s.pa*100-s.qm).toFixed(2)):"";
@@ -2987,7 +2995,7 @@ function exportCSV(){
         (misAnl!==""&&spreadC)?+(Math.abs(misAnl)/spreadC).toFixed(3):"",(s.pm!==undefined&&s.pm!==null)?+((s.pm*100-s.qm).toFixed(2)):"",
         H[0],H[1],sf(s.t,w.close),g(E,"ev"),g(E,"evMins"),g(E,"evTier"),g(w,"sr"),g(w,"srN"),g(w,"vrp"),w.vrpT?new Date(w.vrpT).toISOString():"",g(w,"vrpX"),
         g(s,"of"),g(s,"ofv"),g(s,"ofn"),g(s,"of5"),g(s,"ofX"),(s.of!==undefined&&s.of5!==undefined)?nz(flowBurst(s.of,s.of5)):"",rg(s.t),
-        (ref&&ref.t===s.t)?1:0,s.phantom||""]); } }
+        (ref&&ref.t===s.t)?1:0,s.phantom||"",g(s,"ac1"),g(s,"acn")]); } }
   const rr=[["window_start","window_end","armed_at","strike","call","p_call_at_arm","quote_at_arm","edge_at_arm","p_over_final","vote_up","vote_dn","outcome","hit","kalshi_result"]];
   for(const r of S.roundLog) rr.push([new Date(r.tStart).toISOString(),new Date(r.tEnd).toISOString(),new Date(r.tArm).toISOString(),r.strike,r.call,
     r.pCallAtArm===undefined?"":r.pCallAtArm,r.quoteAtArm===undefined||r.quoteAtArm===null?"":r.quoteAtArm,r.edgeAtArm===undefined||r.edgeAtArm===null?"":r.edgeAtArm,
@@ -4155,6 +4163,7 @@ function kalshiGates(t0,t1){
   for(const c of Object.keys(byClose)){ const arr=byClose[c]; let best=null; for(const m of arr){ if(best===null||Math.abs(m.strike-m.expVal)<Math.abs(best.strike-best.expVal)) best=m; } if(best) push(best,"hour"); }
   return out;
 }
+const KOAN="Watched coins never mint. Watched markets never resolve. Watched resolutions never recover findings.";
 function renderSweep(){
   const F=frame(); const now=Date.now();
   const BACK=30*60000, FWD=15*60000;              /* the future holds only the next gate, not dead space */
@@ -4164,6 +4173,10 @@ function renderSweep(){
   let t0=now-BACK, t1=now+FWD;
   if(S.lock&&S.lock.mode==="swing"&&cur){ t0=cur.open-30000; t1=cur.close+30000; }
   else if(S.lock&&S.lock.mode==="rect"){ t0=S.lock.t0; t1=S.lock.t1; }
+  /* 2.9 — a released lock relaxes to the free sweep on the cessation curve (relaxS is how much of the lock's
+     domain is still held), and at u = 1 the relaxation ends exactly: S.lockRelax is cleared, nothing lingers */
+  let relaxS=0;
+  if(S.lockRelax&&!S.lock){ const u=(now-S.lockRelax.at)/LOCK_RELAX_MS; if(u>=1) S.lockRelax=null; else { relaxS=1-relaxEase(u); t0+= (S.lockRelax.t0-t0)*relaxS; t1+=(S.lockRelax.t1-t1)*relaxS; } }
   const SPAN=BACK;
   const Xt=t=>F.padL+(t-t0)/(t1-t0)*F.iw, X=q=>Xt(q.t);
   const R=(S.round&&(S.round.state!=="settled"||now-S.round.settledAt<=20000))?S.round:null;
@@ -4173,7 +4186,10 @@ function renderSweep(){
   for(let i=Math.max(0,tp.length-8000);i<tp.length;i++){ const q=tp[i]; if(q.t<t0-2000||q.t>t1+2000) continue; pts.push(q); if(q.p<mn)mn=q.p; if(q.p>mx)mx=q.p; }
   const gates=kalshiGates(t0,t1);
   const lastP=S.lastPx!==null?S.lastPx:(pts.length?pts[pts.length-1].p:(sk?sk.strike:null));
-  if(lastP===null){ cx.fillStyle=PAL.boneDim; cx.font="11px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2); headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
+  if(lastP===null){ cx.fillStyle=PAL.boneDim; cx.font="11px "+FONT(); cx.fillText("awaiting validated tape\u2026",F.padL+8,F.H/2);
+    /* 2.9 — the koan, as literal copy where the tool is silent (roadmap 4.1, the patience system): copy, not engineering */
+    cx.font="10px "+FONT(); cx.fillText(KOAN,F.padL+8,F.H/2+16);
+    headerRow(F,"IDLE \u00b7 no tape","SWEEP \u00b130m"); return; }
   /* the strike anchors the scale: it is the thing being decided, so it holds the centre of the frame.
      the half-span is whatever contains the recent tape around it, so peaks and troughs are never clipped. */
   const RECENT=12*60000; let rmn=Infinity,rmx=-Infinity;
@@ -4204,6 +4220,7 @@ function renderSweep(){
         half=half+(duel-half)*prog; } }
     D=easeDomain(ys,centre,half,spanLo-lastP*2e-5,spanHi+lastP*2e-5);
   }
+  if(relaxS>0&&S.lockRelax) D={lo:D.lo+(S.lockRelax.lo-D.lo)*relaxS,hi:D.hi+(S.lockRelax.hi-D.hi)*relaxS};
   S.lastMap={t0,t1,lo:D.lo,hi:D.hi,padL:F.padL,iw:F.iw,padT:F.padT,ih:F.ih};
   const Y=p=>F.padT+(1-(p-D.lo)/(D.hi-D.lo))*F.ih;
   cx.font="11px "+FONT();
@@ -7732,7 +7749,25 @@ $("csvBtn").addEventListener("click",exportCSV);
 $("secExpand").addEventListener("click",()=>setAllSections(false));
 function lockSwing(){ if(!S.k.cur) return; S.lock={mode:"swing",ticker:S.k.cur.ticker}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 swing window \u00b7 resume or esc releases"; }
 function lockRect(t0,t1,lo,hi){ S.lock={mode:"rect",t0,t1,lo,hi}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 region \u00b7 resume or esc releases"; }
-function lockRelease(){ S.lock=null; S.drag=null; document.body.classList.remove("locked"); $("locknote").textContent="sweep \u00b7 drag on the field to lock a region \u00b7 esc releases"; }
+/* 2.9 — the lock release is the event response the roadmap's section 6 asked for: a region released relaxes
+   back to the full sweep on the substance's cessation curve and STOPS, at an exact instant rather than an
+   asymptote. The curve is derived (OCCVM_RHEOLOGY.easing, the yield-dominated quadratic at this substance's
+   tau0); the duration is authored and named as authored, exactly as yield.js's are. The roadmap's other two
+   triggers — a hard drag, a "genuine perturbation" — have no consumer here and are not wired. With rheology
+   unspliced or reduced motion on, the release is instant, as it was before 2.9: a degradation to the old
+   behaviour, never a different curve. */
+const LOCK_RELAX_MS=360;
+let LOCK_RELAX_CURVE=null;
+function reducedMotion(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
+function relaxEase(u){
+  if(!LOCK_RELAX_CURVE) LOCK_RELAX_CURVE=OCCVM_RHEOLOGY.easing(OCCVM_RHEOLOGY.SUBSTANCE,1,33);
+  const c=LOCK_RELAX_CURVE; if(u<=0) return 0; if(u>=1) return 1;
+  const x=u*(c.length-1), i=Math.floor(x), f=x-i; return c[i]+(c[i+1]-c[i])*f;
+}
+function lockRelease(){
+  if(S.lock&&S.lastMap&&typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion())
+    S.lockRelax={at:Date.now(),t0:S.lastMap.t0,t1:S.lastMap.t1,lo:S.lastMap.lo,hi:S.lastMap.hi};
+  S.lock=null; S.drag=null; document.body.classList.remove("locked"); $("locknote").textContent="sweep \u00b7 drag on the field to lock a region \u00b7 esc releases"; }
 $("lockSwing").addEventListener("click",lockSwing);
 $("lockResume").addEventListener("click",lockRelease);
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") lockRelease(); });
@@ -7832,7 +7867,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260908200828";
+const BUILD_STAMP="build-20260908201506";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7849,5 +7884,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260908200828 -->
+<!-- build-20260908201506 -->
 </html>

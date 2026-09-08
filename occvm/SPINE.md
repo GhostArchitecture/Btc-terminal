@@ -1247,4 +1247,48 @@ already shipped. **What 2.8 did not do:** it did not widen the meniscus bevel (L
 spine's 1px), and it did not touch BTC's lock, the koan, or anything from the roadmap's foil pair; those are
 2.9, with the disposition of the whole roadmap written into §9.
 
+---
+
+## 9. The 2.0 master roadmap — disposition (2.9)
+
+The roadmap's second revision (§0–§10 of `OCCVM 2.0 — Master Roadmap`) is the directive for these tools. It
+was written without the branch in view, so its §2–§3 restated nine things the branch had already measured
+otherwise (L12 records them). What follows is every concept it proposes, with the one of three verdicts each
+earned, and the reason. The ratio was priced in advance at roughly a third dropped; it came out at that.
+
+| roadmap item | verdict | why, in one line |
+|---|---|---|
+| Ketchup as Herschel-Bulkley, SGR beneath (§2) | **adopted** (2.5) | τ₀ corrected 0.03 → 21.15 Pa; the rest as published |
+| Electromagnetic layer retired (§2) | **adopted** | a 0.43 nm Debye length is not a UI dimension |
+| Three-tier cadence → trap depth (§2, #4) | **adapted** (2.8) | "no formula exists" was wrong: E = x·ln(t/t₀); derived, unwired |
+| `S.lock` → caging (§2, §5.6) | **adapted** (2.9) | expressed at the *release*, on the cessation curve; never as always-on jitter |
+| `veins.js` re-derived to DLCA (§3, §5.4) | **adopted** (2.8) | the mechanism a colloid has; "diffuse, suspended" fell out of it unasked |
+| `fracture.js` → `yield.js` (§3) | **adopted** (2.8) | hold, neck, pinch-off; duration authored, shape derived |
+| Yield duration from γ̇ (§3, #1) | **dropped** | 1/n = 5.26 spans 10¹⁸ in rate over 100× in stress; #1 is meaningless, closed |
+| Cessation motion (§6) | **adopted, corrected** (2.8, 2.9) | reproduces to four figures; its attribution of the regime is inverted (L12) |
+| Koan as copy (§4.1) | **adopted** (2.9) | BTC's idle canvas; free, as the roadmap said |
+| Critical slowing down on `S.edge.windows` (§4.1) | **adapted** (2.9) | recorded as a column beside `rv60` under §11.5's recording-is-not-reporting; never a lock animation — SEAS raises variance every morning by construction |
+| Threshold-as-zone / critical opalescence (§4.1, §5.5) | **dropped** | τ₀ is not a critical point; SGR's is x = 1, and x is fixed at 0.81 |
+| Zeno / anti-Zeno (§4.1) | **not scheduled** | the roadmap's own disposition |
+| `bomb.js`, one-way commit, Fisher-KPP front (§4.2, §5.7) | **deferred** | on the roadmap's own #11: Rhyme has no commit action to hang it on (its model is a shelf of drafts edited in place) |
+| Fisher-KPP speed from ketchup's k/n (§5.7) | **dropped** | r and D are the myrosinase chemistry's, not the rheology's |
+| Substrate from scattering (§5.1) | **dropped** | the gap it names closed at 2.5 (optics ported, 0.9928); it would replace one authored number with two unsourced ones |
+| Wet, deforming highlight at rest (§5.3) | **dropped** | idle motion the document itself forbids in §6, and below τ₀ nothing moves |
+| Always-on caging jitter (§5.6) | **dropped** | the same; the reduced-motion rule is the only motion law the spine has |
+| Fraunces SOFT 35 / WONK 1 (§7) | **adopted** (2.7) | `opsz` kept variable against the pinned 40: BTC renders it at 12px |
+| Wordmark caps by `text-transform` (§7) | **recorded as false** | both wordmarks are lowercase by authored markup — `btc terminal`, `rhyme instrument` — with no transform; an identity constant sitting on the font, unchanged |
+| Mono stack as the open L7 defect (§7, #6) | **recorded as false** | owned since 1.3; the serif was the defect (2.7) |
+| Second substance for Rhyme (§4) | **open** | §2 says one substance does both jobs and §4 makes Rhyme mustard; it matters only for `bomb.js`, and is deferred with it |
+
+**The foil, as a rule.** The roadmap's one governing test is adopted as written and applies to every proposal
+that follows: *does it make BTC more patient, or Rhyme more reactive — or does it make them resemble each
+other?* A feature that would work equally well in either tool is the failure mode. Nothing from the patience
+system goes into Rhyme; nothing from the reaction system goes into BTC.
+
+**What 2.9 wired, and where it stopped.** BTC's lock release relaxes to the free sweep on the derived curve and
+stops (`LOCK_RELAX_MS` authored, the curve the substance's). The koan sits in the idle canvas. Each snapshot
+carries `ac1` and `acn` — the lag-1 autocorrelation of the same sixty one-minute returns `rv60` is built
+from, and their count — exported as `csd_ac1`, `csd_n`, rendered nowhere. Nothing in Rhyme moved, by the
+foil's own rule.
+
 A spine no tool has adopted is a proposal. This one is inlined in both.
