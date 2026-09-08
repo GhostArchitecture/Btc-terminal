@@ -160,7 +160,7 @@ const { T, done } = runner("h-protocol");
     const head=s=>{ const i=text.indexOf("# "+s); const line=text.slice(i).split("\\n")[1]||""; return line.split(",").length; };
     return {windows:head("windows"),swing:head("swing_reads"),journal:head("simulation_journal"),
       hasVrp:/vrp_bpm/.test(text),hasEv:/"ev_mins"/.test(text),hasDepth:/depth_yes/.test(text),hasIdent:/si_ident/.test(text)}; })()`);
-  T("the windows dataset carries its 59 columns", r.windows === 59, r.windows);
+  T("the windows dataset carries its 61 columns (59 + csd_ac1, csd_n at 2.9)", r.windows === 61, r.windows);
   T("swing reads and journal rows carry the enriched columns", r.swing === 45 && r.journal === 51, { swing: r.swing, journal: r.journal });
   T("the premium, event, depth and identifiability columns are all exported", r.hasVrp && r.hasEv && r.hasDepth && r.hasIdent, r);
 }

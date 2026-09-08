@@ -34,6 +34,12 @@ jobs:
       - name: OCCVM token audit (1.9)
         run: node occvm/tools/token-audit.js --check
 
+      # The laws were the last claim in this system with no instrument behind it. The conformance table
+      # read "violates: —" for six releases while five laws diverged. This fails when a law measured as
+      # DIVERGED is not recorded as such in SPINE.md.
+      - name: OCCVM law conformance
+        run: node occvm/tools/law-audit.js --check
+
       - name: H-protocol unit suites
         run: npm run test:units
 

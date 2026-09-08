@@ -1,0 +1,30 @@
+/* OCCVM 2.7 — the reading face (OCCVM-L7). Ships only where running text is set in it: Rhyme.
+ *
+ * Authored in occvm/SPINE.md; spliced by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy.
+ * Regenerate with: python3 occvm/tools/subset-serif.py
+ *
+ * Rhyme's `html, body` is set in `--serif`. That is one token doing two jobs — section heads AND the whole
+ * reading surface — which is why giving `--serif` a display face would have put a soft, wonky cut on every
+ * line a writer reads. The handoff names Faustina for the reading surface and calls it "untouched"; it
+ * was untouched because it had never been shipped. Neither tool carried it.
+ *
+ * Faustina, SIL Open Font License 1.1 — see occvm/fonts/OFL-Faustina.txt. Weight variable 300–800, its
+ * whole range. Subset to 336 codepoints — Basic Latin, Latin-1, Latin Extended-A, General Punctuation —
+ * because this face sets text a WRITER types, and a reading face that cannot show an accented name is a
+ * defect the writer meets before anyone else does.
+ */
+
+@font-face {
+  font-family: "OCCVM Reading";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: block;
+  src: url(data:font/woff2;base64,__READING__) format("woff2");
+}
+
+:root {
+  /* An owned stack: the fallbacks stay so a failed @font-face still renders a serif, but the first entry
+     ships with the tool. Georgia rather than Palatino as the first fallback, because a reading face wants
+     the wider fit. */
+  --reading: "OCCVM Reading", Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+}

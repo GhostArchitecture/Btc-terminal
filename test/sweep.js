@@ -2,6 +2,7 @@
    Run: node test/sweep.js */
 "use strict";
 const { load, runner } = require("./lib/load");
+const RH_SWEEP = require("../occvm/rheology.js");   /* the curve under the lock relaxation (2.9, corrected 2.10) */
 
 const H = load();
 const { R, setNow, canvasCalls } = H;
@@ -71,8 +72,27 @@ for (const c of cells) {
   T("SWING lock frames the live window (±30 s)", sw.t0 === tStart - 30000 && sw.t1 === tEnd + 30000, { t0: sw.t0 - tStart, t1: sw.t1 - tEnd });
   R(`lockRect(${now - 5 * 60000},${now},99950,100150)`); R("renderSweep()"); const rc = R("S.lastMap");
   T("region lock fixes time and price domain exactly", rc.t0 === now - 5 * 60000 && rc.t1 === now && rc.lo === 99950 && rc.hi === 100150, rc);
-  R("lockRelease(); renderSweep()"); const rl = R("S.lastMap");
-  T("release returns to the sweep", rl.t0 === now - 30 * 60000 && R("S.lock") === null, { t0: rl.t0 - now });
+  /* 2.9 — a released lock does not snap: it relaxes to the sweep on the substance's cessation curve and STOPS.
+     The curve is the derived one (relaxEase reads OCCVM_RHEOLOGY); the 360 ms is authored and named as such. */
+  R("lockRelease(); renderSweep()"); const at0 = R("S.lastMap");
+  T("at the instant of release the domain is still the lock's, and the lock itself is gone", at0.t0 === now - 5 * 60000 && R("S.lock") === null && R("S.lockRelax") !== null);
+  setNow(now + 180); R("renderSweep()"); const mid = R("S.lastMap");
+  const held = (mid.t0 - (now - 30 * 60000)) / ((now - 5 * 60000) - (now - 30 * 60000));   /* fraction of the lock still held */
+  T("half-way through, the domain sits between lock and sweep on the derived curve, not on a bezier",
+    held > 0 && held < 1 && Math.abs(held - (1 - R("relaxEase(0.5)"))) < 0.01, { held: held.toFixed(4), curve: 1 - R("relaxEase(0.5)") });
+  /* 2.10 — this pinned relaxEase(0.5) to the quadratic's 0.75 at 1%, and the corrected k moved the curve
+     off that limit: at this v₀ the rate term is 76.5% of the yield term, so the midpoint sits at 0.7365.
+     Pinned to the substance's own sampled curve instead of to a limit it only approaches — which is what
+     it should have been pinned to all along, since the point is that the easing IS the derivation. */
+  T("the curve is the substance's own, sampled — not a limit it approaches",
+    Math.abs(R("relaxEase(0.5)") - RH_SWEEP.easing(RH_SWEEP.SUBSTANCE, 1, 33)[16]) < 1e-9, R("relaxEase(0.5)"));
+  T("and it still sits nearer the yield-dominated quadratic than the rate-dominated power law",
+    Math.abs(R("relaxEase(0.5)") - 0.75) < Math.abs(R("relaxEase(0.5)") - (1 - Math.pow(0.5, 1 + 1 / (1 - RH_SWEEP.SUBSTANCE.n)))),
+    R("relaxEase(0.5)").toFixed(4) + " vs quad 0.75");
+  setNow(now + 360); R("renderSweep()"); const rl = R("S.lastMap");
+  T("release returns to the sweep EXACTLY at the stop — not asymptotically — and nothing lingers",
+    rl.t0 === now + 360 - 30 * 60000 && R("S.lockRelax") === null, { t0: rl.t0 - now - 360 });
+  setNow(now);
 }
 
 /* settled windows collapse to a Y/N pip at the gate */

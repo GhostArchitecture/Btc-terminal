@@ -6,6 +6,7 @@
  *   2. the generator's input is the source; the spliced copy is an artifact
  *   3. regeneration is idempotent — unchanged input yields a byte-identical block
  *   4. the ritual runs before the diff, not after
+ *   5. (2.8) a retired part's block is removed, and --check fails while one lingers
  *
  * Both repositories already had an author-time generation step (Rhyme's build.js, BTC's
  * units/tools/resplice.js), so this extends an existing practice rather than starting a habit.
@@ -40,30 +41,45 @@ const REF = path.join("occvm", "reference", "index.html");
 
 const PARTS = IS_RHYME ? [
   { name: "spine.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
+  /* 2.7 — the owned faces. serif.css ships to both tools; reading.css only where running text is set in a
+     serif, which is Rhyme's whole body and nothing in BTC — the same rule that keeps mono.css BTC-only. */
+  { name: "serif.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
+  { name: "reading.css",  target: path.join("tome-src", "20_style.css"), anchor: null },
   { name: "sundial.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
-  /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
-  { name: "material.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
+  /* 2.5–2.8 — the rheological substance. Spliced beside material.js from 2.5 until nothing read the
+     crystal; at 2.8 veins moved to DLCA, fracture became yield, and material.js was RETIRED (below). */
+  { name: "rheology.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "veins.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "minerals.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
-  { name: "fracture.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
+  { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
   { name: "mono.css",     target: "index.html", anchor: "<style>" },
+  { name: "serif.css",    target: "index.html", anchor: "<style>" },
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
-  /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
-  { name: "material.js",  target: "index.html", anchor: "<script>" },
+  /* 2.5–2.8 — the rheological substance; see the Rhyme list above for the strangler's history */
+  { name: "rheology.js",  target: "index.html", anchor: "<script>" },
   { name: "veins.js",     target: "index.html", anchor: "<script>" },
   { name: "minerals.js",  target: "index.html", anchor: "<script>" },
-  { name: "fracture.js",  target: "index.html", anchor: "<script>" },
+  { name: "yield.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
   { name: "mono.css",     target: REF, anchor: "<style>" },
+  { name: "serif.css",    target: REF, anchor: "<style>" },
   { name: "sundial.js",   target: REF, anchor: "<script>" },
-  { name: "material.js",  target: REF, anchor: "<script>" },
+  { name: "rheology.js",  target: REF, anchor: "<script>" },
   { name: "veins.js",     target: REF, anchor: "<script>" },
   { name: "minerals.js",  target: REF, anchor: "<script>" },
-  { name: "fracture.js",  target: REF, anchor: "<script>" },
+  { name: "yield.js",     target: REF, anchor: "<script>" },
 ];
+
+/* A RETIRED part is one the spine no longer carries. Its fenced block is REMOVED from every target it was
+   ever spliced into, and --check fails while any such block survives — otherwise a retired part keeps
+   shipping, byte for byte, under a fence nobody regenerates. Added at 2.8, when material.js and
+   fracture.js left with the crystal; until then the splicer could only add and update, never take away,
+   and a part dropped from PARTS would simply have gone stale in place. */
+const RETIRED = ["material.js", "fracture.js"];
+const RETIRED_TARGETS = IS_RHYME ? [path.join("tome-src", "10_engine.js")] : ["index.html", REF];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);
 const fence = name => ({
@@ -110,11 +126,40 @@ function splice(part, check) {
   return { part: part.name, state: "inserted", delta: out.length - text.length };
 }
 
+function retire(name, target, check) {
+  const abs = path.join(ROOT, target);
+  if (!fs.existsSync(abs)) return { part: name, skipped: `${target} not in this repository` };
+  const text = fs.readFileSync(abs, "utf8");
+  const f = fence(name);
+  const i = text.indexOf(f.open);
+  if (i < 0) return { part: name, state: "retired" };
+  const j = text.indexOf(f.close, i);
+  if (j < 0) throw new Error(`${target}: retired ${name} has an opening fence with no close — refusing to guess`);
+  if (check) return { part: name, state: "LINGERING", detail: `retired part still spliced into ${target}` };
+  /* take the block and the blank line the insertion put after it */
+  let end = j + f.close.length;
+  if (text[end] === "\n") end++;
+  if (text[end] === "\n") end++;
+  const out = text.slice(0, i) + text.slice(end);
+  fs.writeFileSync(abs, out);
+  return { part: name, state: "removed", delta: out.length - text.length };
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const check = argv.includes("--check");
   const only = argv.filter(a => !a.startsWith("--"));
   let bad = 0, any = 0;
+  for (const name of RETIRED) {
+    if (only.length && !only.includes(name)) continue;
+    for (const target of RETIRED_TARGETS) {
+      const r = retire(name, target, check);
+      any++;
+      if (r.skipped) continue;
+      if (r.state !== "retired") console.log(`  ${name} -> ${target}: ${r.state}${r.delta !== undefined ? ` (${r.delta} bytes)` : ""}${r.detail ? " — " + r.detail : ""}`);
+      if (r.state === "LINGERING") bad++;
+    }
+  }
   for (const p of PARTS) {
     if (only.length && !only.includes(p.name)) continue;
     const r = splice(p, check);
@@ -132,4 +177,4 @@ function main() {
   process.exit(bad ? 1 : 0);
 }
 if (require.main === module) main();
-module.exports = { block, fence, sha, PARTS };
+module.exports = { block, fence, sha, PARTS, RETIRED };

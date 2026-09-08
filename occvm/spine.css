@@ -30,9 +30,12 @@
   --verdigris: #3f9a86;
   --verdigris-lo: #23574c;
 
-  /* OCCVM-L7 — the serif carries section heads in both tools. The mono face is OS-supplied in both and
-     is registered, not governed, until 1.3 closes D3. */
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  /* OCCVM-L7 — the serif carries section heads in both tools, and since 2.7 it is OWNED: "OCCVM Serif"
+     is Fraunces, embedded by occvm/serif.css and spliced beside this. The fallbacks stay so a failed
+     @font-face still renders a serif — but they are fallbacks now, not the face. Until 2.7 this stack was
+     nothing but fallbacks, and the law audit measured that as L7 diverged in both tools: Iowan Old Style
+     ships only on Apple systems, so most viewers were reading the heads in Palatino or Georgia. */
+  --serif: "OCCVM Serif", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
 
   /* OCCVM-L4 (1.2) — cast depth. A surface picks a depth; it never authors an offset.
    *
@@ -72,16 +75,53 @@
    * to re-author the bevel by hand — which is how channel literals get back into a tool that had removed
    * them, and it is exactly the composition gap the 1.8 reference surface was built to find (it hit it on
    * its own first section). A surface now writes: box-shadow: var(--occvm-bevel), var(--occvm-cast-2). */
+  /* OCCVM-L2 (2.10) — THE MENISCUS, and it is the roadmap's "broad, soft highlight" (§5.3) with the one
+   * thing that made it undeliverable removed. The roadmap asked for a highlight that "subtly deforms over
+   * time, present even at rest": idle motion, which its own §6 forbids and which below τ₀ cannot happen
+   * anyway. Take the motion away and the sourced physics still gives a broad soft highlight — statically.
+   *
+   * A liquid at rest is the smoothest specular surface in the literature, so a wet edge is not soft
+   * because it is rough. It is soft because it is CURVED: surface tension rounds every free edge over one
+   * capillary length, and across that curve the normal sweeps through the reflecting direction, so a
+   * point source returns a BAND of width ~λc rather than a line. That band is the whole of "wet", it needs
+   * no motion, and λc is already derived (rheology.js): 7.148 px.
+   *
+   * TWO DERIVED QUANTITIES, and nothing else changes:
+   *   --occvm-meniscus  λc = √(γ/ρg) = 1.891 mm = 7.148 px at 96 dpi. Offset AND blur, so the highlight
+   *                     is a band one meniscus wide instead of the crystal's 1 px chisel.
+   *   --occvm-gloss     0.685. ASTM D523 / NIST SP250-70 fix the 60° gloss standard as polished black
+   *                     glass, nD 1.567, DEFINED as 100 GU; the substance's own Fresnel at 60° against
+   *                     that reference is 68.5 GU (52.6 at 20°, 96.0 at 85°) — "semi-gloss" by ASTM's own
+   *                     angle rule, against 86–91 GU for polished obsidian. **A wet surface is DIMMER
+   *                     than a polished one, not softer**, and that is the second half of the finish.
+   *
+   * It scales the HIGHLIGHT only. The dark side of a meniscus is a shaded face, not a specular return, so
+   * a gloss ratio has no business on it; --cut-a is untouched. Stated because applying it to both would
+   * have looked tidier and been wrong.
+   *
+   * NEITHER TOOL MOVES. --lit-x/--lit-y stay the 1 px unit vector that each tool's own surfaces multiply
+   * by their own depth (index.html does it twice); rescaling that unit would have scaled every
+   * tool-authored bevel sevenfold, uncontrolled. The meniscus lives in the composed VALUE, whose only
+   * consumers are the reference surface's slabs — which is where L2 says to prototype it and where it can
+   * be looked at. Adoption by a tool is a separate decision under §6b, unmade.
+   *
+   * Both numbers are carried here and derived there, so both are pinned: test/occvm.js fails if either
+   * drifts from rheology.js, which is the same treatment every derived constant that reaches CSS gets. */
+  --occvm-meniscus: 7.148px;
+  --occvm-gloss: .685;
   --occvm-bevel:
-    inset var(--lit-x) var(--lit-y) 0 rgba(255, 255, 255, var(--hi-a, .12)),
-    inset var(--cut-x) var(--cut-y) 0 rgba(0, 0, 0, var(--cut-a, .35));
+    inset calc(var(--lx, 0) * var(--occvm-meniscus)) calc(var(--ly, 1) * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(255, 255, 255, calc(var(--hi-a, .12) * var(--occvm-gloss))),
+    inset calc(var(--lx, 0) * -1 * var(--occvm-meniscus)) calc(var(--ly, 1) * -1 * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(0, 0, 0, var(--cut-a, .35));
 
-  /* OCCVM-L10 (1.1) — vein habit. density is the walker budget as a fraction of the lattice; habit is
-     the anisotropy of the growth, 0 for the equant dendrite of a manganese oxide and 1 for an elongated
-     acicular form. Both are read by the shared generator, so a tool tunes its own surface without
-     acquiring a second generator. */
+  /* OCCVM-L10 (1.1, re-derived 2.8) — vein habit. density is the VOLUME FRACTION of the suspension: the
+     particle count as a fraction of the lattice, the same number it has been since 1.1 under the
+     walker-budget reading. Below ~.15 the flocs stay separate; at .3 the suspension is past its gel point
+     and the network spans the surface. --vein-habit was RETIRED at 2.8: a fluid has no crystallographic
+     direction to be anisotropic along, and the one axis colloid science offers (sticking probability,
+     diffusion- versus reaction-limited) was measured and does not express on this lattice. */
   --vein-density: .3;
-  --vein-habit: .55;
 }
 
 /* ---- primitives (SPINE.md 3) ----------------------------------------------------------------------
@@ -96,7 +136,20 @@
 .occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
 .occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
 
-/* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
+/* OCCVM-L2 (2.7) — a surface is a CONTAINED fluid: the plan-view radius is the vessel's, the edge is the
+ * fluid's.
+ *
+ * The radius below is the vessel's — authored, 3px, the value this primitive has carried since 1.0. 2.6
+ * briefly derived it from the substance's capillary length (7.15px) and measured that against L2's
+ * declared ceiling instead of against what either tool paints; both tools' vessels are their own and the
+ * law now records them rather than judging them.
+ *
+ * The fluid's contribution is the MENISCUS, lc = sqrt(gamma/rho*g) = 7.148px, and its surface is the
+ * bevel above. ADOPTED AT 2.10, on the reference surface, where --occvm-bevel's only consumers are: the
+ * crystal's 1px chisel became a band one meniscus wide, dimmed to the substance's own 68.5 GU. Both tools
+ * keep their own authored bevels and do not move. 2.6's --occvm-r reached nothing and was D12; these two
+ * tokens are read by the bevel on the line below them, which is the difference. */
+
 .occvm-slab {
   border-radius: 3px;
   background: var(--sub, #1b1a22);

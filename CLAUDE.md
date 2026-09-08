@@ -31,7 +31,7 @@ GhostArchitecture/Btc-terminal   (main)
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
-│   ├─ {spine.css,sundial.js,veins.js,minerals.js}   the shared parts, spliced into both tools
+│   ├─ {spine.css,serif.css,sundial.js,rheology.js,veins.js,minerals.js,yield.js}   the shared parts, spliced into both tools
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
 │   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
 │   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
@@ -1324,6 +1324,93 @@ barely moves, so the range is the honest figure: **+1.75 L\*** highlight at high
 **+0.05** at night; shadow **+0.68 / +4.47 / +1.59**. The large move is at low sun and its cause is named:
 the shadow face gains directionality it never had, the authored `0.42` having been flat at every
 elevation. `test/occvm.js` 313 → 322.
+
+**2.7 — the laws re-authored around a measurement, and three of the five divergences closed.** The
+conformance table had read `violates: —` for six releases; `occvm/tools/law-audit.js` measured five laws
+diverged. This release: **L4** — Rhyme's one fixed-offset cast now struck from the light vector. **L6** —
+this tool restated `--amethyst`/`--amethyst-lo` in `:root` for a `--mineral` fallback chain that nothing
+in CSS ever read; four dead declarations deleted (the token audit missed it because it accepts a `var()`
+reference as consumption even when the consuming token is itself unconsumed — a chain to nowhere). **L7**
+— the defect was the *serif*, not the mono the roadmap named: `--serif` was every face somebody else's,
+Apple-only at the front. Now owned, 1.3's treatment applied twice: `occvm/serif.css` embeds Fraunces
+(OFL, SOFT 35 / WONK 1 per the handoff, `opsz` and `wght` kept variable — this tool renders it at 12px
+where the handoff's pinned 40 is wrong) into both tools; `occvm/reading.css` embeds Faustina for Rhyme's
+running text, which had been sharing `--serif` with the heads. This tool drops its own `--serif`
+restatement; the spine governs it. **L2** is re-authored, not fixed: the plan-view radius is the
+*vessel's* — authored per tool, recorded (this tool 10–22px and pills; Rhyme 2–4px), not judged — and the
+edge is the *fluid's*, a 7.15px meniscus derived from the substance. The spine's bevel is still the
+crystal's 1px chisel, so L2 reads DIVERGED at the spine, honestly, and widening the bevel is the adoption
+candidate — the first change that would make either tool *look* fluid. 2.6's `--occvm-r` is deleted:
+derived, on an unworn class, consumed by nothing (D12). The auditor gained `--stamp` (state blocks are
+regenerated, not typed once) and a two-way `--check`; it also had a bug of its own — `SIBLING` hardcoded,
+so from Rhyme it measured Rhyme twice under two names and passed. **7 in force, 1 diverged, 4 unmeasured.**
+
+*And CI was red for three pushes while every local gate read green.* Run 38 was the golden job catching
+`--occvm-r` landing unrecorded (superseded by its deletion); 39 and 40 were one harness assertion that
+demanded `PARTIAL` whenever a tool was `ABSENT` — written against a full checkout, where no tool ever is,
+and wrong on the runner, where L2's own divergence correctly rolls up `DIVERGED` over the absent sibling.
+The auditor now takes `OCCVM_SIBLING` so the harness simulates the partial checkout itself instead of
+waiting for the runner to; the CI shape is asserted locally on every run. Recorded because "gates green"
+was reported from the clone, and the standing rule is CI via the API.
+
+**2.8 — the crystal leaves.** The roadmap's §3 disposition, executed with the corrections the branch
+had already recorded. **Veins** are diffusion-limited *cluster* aggregation now — every particle mobile,
+clusters sticking to clusters — which is how a colloid gels and what ketchup is; the layer stops being
+dendrites from nuclei in clear matrix and becomes a network suspended in the material, blurred where it
+was crisp. The fractal dimension is measured as an output (1.46 dilute against the 2-D literature's 1.44,
+1.61 at the shipped density as a gel must), never fed in; the roadmap's 1.75 is the 3-D value and is
+recorded as unreachable on a planar lattice. **`--vein-habit` is retired by measurement**: the one
+meaning a fluid could give it, sticking probability, moved the dimension inside the estimator's error.
+**`fracture.js` → `yield.js`**: hold, neck, pinch-off, and a retraction on the cessation curve derived in
+`rheology.js` with a hard stop, which is the property that now distinguishes the irreversible vocabulary
+from every elastic easing. The roadmap's cessation derivation reproduces to four figures and its
+attribution is inverted: at its τ₀ the rate term dominates, at ours the yield term does, and the shape is
+a power ease-out whose exponent is fixed by a free v₀ — so the curve is derived and the duration is
+authored, and both are named as such. Trap depth derived from SGR's escape law (roadmap #4, "no formula
+exists"; E = x·ln(t/t₀) is one), unwired. `material.js` deleted, P1 and P4 retired with the tensor and the
+cell, and the splicer learned to **retire** a part — until now it could add and update but never take
+away, and a dropped part would have shipped stale under its fence forever. This tool's own change is one
+line: `veinLayer()` stops passing a habit. **Roadmap items closed: #1 (meaningless), #4, #5. 349
+occvm assertions, 48 rheology.**
+
+**2.9 — the patience system, as far as the foil allows.** Three things from the roadmap's §4.1, each in the
+shape its own discipline permits. **The lock release relaxes** to the free sweep on the substance's cessation
+curve and stops at an exact instant (`LOCK_RELAX_MS` 360, authored and named; the curve derived) — the
+roadmap's "event response", wired to the one event it named that exists here. **The koan** is copy in the
+idle canvas, under "awaiting validated tape". **Critical slowing down is recorded, not rendered:** each edge
+snapshot carries `ac1`, the lag-1 autocorrelation of the same sixty one-minute returns `rv60` is built from,
+with the count `acn`, exported as `csd_ac1`/`csd_n`. It is a column beside the variance half, not a light on
+the lock, because `SEAS` raises variance every morning by construction and any reading of the pair as a
+tipping point owes §11.3's time-matched controls — §11.5's rule that recording is not reporting, applied.
+The roadmap's whole disposition — adopted, adapted, dropped, with reasons — is SPINE.md §9.
+
+**2.10 — a provenance defect, and the meniscus adopted.** Reworking the roadmap's dropped concepts turned
+up something bigger than the reworks: **the substance's flow constants had been misattributed for five
+releases.** `k = 4.6` and `n = 0.19` were credited to Koocheki et al. (2009)'s control formulation. That
+paper's Herschel-Bulkley consistency ranges 6.56–20.10 Pa·sⁿ, so **4.6 is below its entire published range
+and is in it nowhere**; 0.19 is the floor of the *power-law* index across hydrocolloid-supplemented samples,
+carried as the control's and paired with a Herschel-Bulkley fit that reports 0.250. The control row at 25 °C
+is τ₀ 4.41 Pa, k′ 16.18, n′ 0.250, and k and n are now that row. Every number in this system had been checked
+against what renders; **none had been checked against its source** — a new failure mode beside the three
+render-versus-declaration errors already on the record, and the guards now assert the constants against the
+paper's published ranges. Re-measured: x 0.81 → 0.75 (still glass phase), 1/n 5.26 → 4.00 (the duration
+formula stays unusable, #1 stays closed), the cessation regime at v₀ = 1 0.217 → 0.765 (still
+yield-dominated, so the curve keeps its shape and hard stop), the crossover **3,070 → 2.92**, trap depths
+2.43/3.73 → 2.25/3.45. Nothing that does not read the flow curve moved. Also corrected: the "~10–40 Pa band"
+cited for τ₀ had no citation (the measured static yield stresses 21.8–37.1 Pa do support the value), and
+n = 1−x is Sollich's own result, not the "judgment" the file claimed — an understatement, fixed for the same
+reason an overclaim would be.
+
+**L2's meniscus is adopted**, on the reference surface where the law said to prototype it, closing the last
+divergence (**8 in force, 0 diverged**). `--occvm-bevel` was a 1 px chisel and is now a band one capillary
+length wide (7.148 px, derived) at the substance's own gloss — **68.5 GU** against ASTM D523's polished-black-
+glass reference, versus 86–91 for obsidian, so a wet surface is *dimmer* than a polished one, not softer.
+That is the roadmap's §5.3 "broad, soft highlight" with the one thing that made it undeliverable removed: it
+asked for a highlight deforming *at rest*, which is idle motion. Take the motion away and the physics still
+gives breadth, statically, because a wet edge is soft from **curvature**, not roughness. **Neither tool
+moves:** `--lit-x` stays the 1 px unit each tool multiplies by its own depth, and rescaling it would have
+scaled every tool-authored bevel sevenfold. Four of the six dropped concepts are re-dropped with sourced
+reasons and one (a second substance for Rhyme) is closed on measurement; SPINE.md §9 carries each.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

@@ -10,6 +10,11 @@
  */
 "use strict";
 const { load, runner } = require("./lib/load");
+
+/* Strip block and line comments. Every guard in this file that inspects a source file must use this: the
+   spine's files document what they removed, so a regex looking for a retired name finds it in the
+   changelog and fails on a correct file. Learned three times before it was factored. */
+const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const { T, done } = runner("occvm: determinism seam");
 
 const vein = h => { h.R("veinLayer()"); return h.ctx.document.documentElement.style["--vein"]; };
@@ -70,43 +75,58 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--bone-lo derives with --bone", /^#[0-9a-f]{6}$/.test(n["--bone-lo"]) && n["--bone-lo"] !== "#b7ad9c", n["--bone-lo"]);
 }
 
-/* --- OCCVM-L11, 1.1b: fracture, and the misfit that was tested and not shipped ------------------ */
+/* --- OCCVM-L11, 2.8: yield — hold, neck, pinch-off, and a stop that is exact ------------------- */
 {
-  const VEINS11 = require("../occvm/veins.js");
-  const FRAC = require("../occvm/fracture.js");
+  const Y = require("../occvm/yield.js");
+  const R11 = require("../occvm/rheology.js");
   const fs11 = require("fs"), path11 = require("path");
   const ROOT11 = path11.resolve(__dirname, "..");
+  const src11 = fs11.readFileSync(path11.join(ROOT11, "occvm", "yield.js"), "utf8");
+  const code11 = stripComments(src11);
 
-  /* the angle is the mineral's, derived from the cell, not written down */
-  const expected = 2 * Math.atan(VEINS11.CELL.b / VEINS11.CELL.a) * 180 / Math.PI;
-  T("the twin angle is computed from the unit cell", Math.abs(VEINS11.TWIN_ANGLE - expected) < 1e-9,
-    VEINS11.TWIN_ANGLE.toFixed(3));
-  T("it is aragonite's 116.209°, not an eyeballed crack", Math.abs(VEINS11.TWIN_ANGLE - 116.209) < 0.01);
-  T("the misfit follows from it", Math.abs(VEINS11.MISFIT - (120 - VEINS11.TWIN_ANGLE) / 60) < 1e-12);
-  T("fracture takes its angle FROM the generator, never its own copy",
-    FRAC.twinAngle() === VEINS11.TWIN_ANGLE &&
-    !/2\s*\*\s*Math\.atan/.test(fs11.readFileSync(path11.join(ROOT11, "occvm", "fracture.js"), "utf8")));
+  /* the crystal's primitive is gone, and its vocabulary with it */
+  T("fracture.js is retired from the repository", !fs11.existsSync(path11.join(ROOT11, "occvm", "fracture.js")));
+  T("no cleave survives in the primitive's code", !/cleave/.test(code11));
+  T("the primitive has no angle: a fluid has no plane", !/atan|twinAngle|TWIN_ANGLE/.test(code11));
 
-  /* the split is a real line at that angle, and the two halves are complementary */
-  const [h1, h2] = FRAC.halves(FRAC.twinAngle() - 90, 0);
-  const edge = /polygon\(([^,]+),([^,]+),/;
-  T("both halves share the same split edge", h1.match(edge)[1] === h2.match(edge)[1] && h1.match(edge)[2] === h2.match(edge)[2]);
-  T("the halves take opposite sides of it", h1.includes("-60%") && h2.includes("160%"));
+  /* the neck: two complementary bodies that taper to one point, animatable because the vertex count holds */
+  const [w0, w1] = Y.halves(50, 0), [n0, n1] = Y.halves(50, 1);
+  T("the whole element is two rectangles meeting at the neck",
+    w0.includes("50% 0%") && w1.includes("50% 0%") && w0.includes("50% 100%") && w1.includes("50% 100%"));
+  T("necked, both bodies draw to the mid-height point", n0.includes("50% 50%,50% 50%,50% 50%") && n1.includes("50% 50%,50% 50%,50% 50%"));
+  const count = poly => poly.split(",").length;
+  T("the neck keeps the vertex count, so CSS interpolates the polygon rather than snapping",
+    count(w0) === count(n0) && count(w1) === count(n1));
 
-  /* the vocabulary rules L11 states */
-  const src11 = fs11.readFileSync(path11.join(ROOT11, "occvm", "fracture.js"), "utf8");
-  T("fracture is faster than any elastic curve", FRAC.MS <= 250, FRAC.MS + "ms");
-  T("fracture never fades — no opacity anywhere in the primitive", !/opacity/i.test(src11));
-  T("the halves torque rather than sliding parallel", /rotate\(/.test(src11));
-  T("it respects the reduced-motion floor (L8)", /prefers-reduced-motion/.test(src11));
-  T("the clone carries its RESOLVED style, or an #id-styled element fractures blank",
-    /getComputedStyle\(el\)/.test(src11) && /setProperty\(prop/.test(src11));
-
-  /* 1.1b's negative result must stay recorded, or it will be re-attempted */
-  const doc11 = fs11.readFileSync(path11.join(ROOT11, "occvm", "SPINE.md"), "utf8");
-  T("the misfit's negative result is on the record", /no measurable growth consequence|does not express/i.test(doc11));
-  T("no seam term was shipped into the generator",
-    !/seam/.test(fs11.readFileSync(path11.join(ROOT11, "occvm", "veins.js"), "utf8").split("return rnd()")[0].slice(-400)));
+  /* the retraction runs on the substance's cessation curve, not on an authored bezier */
+  T("the easing is the substance's, read at call time", /cssEasing\(/.test(code11) && !/cubic-bezier/.test(code11));
+  const curve = Y.easing();
+  const pts = curve.match(/[\d.]+/g).map(Number);
+  T("and it is a linear() curve ending at exactly 1", /^linear\(0, .*, 1\)$/.test(curve), curve);
+  T("with a HARD STOP: the last step is a small fraction of the first — velocity reaches zero rather than tending to it",
+    (pts[pts.length - 1] - pts[pts.length - 2]) < 0.1 * (pts[1] - pts[0]),
+    `first ${(pts[1] - pts[0]).toFixed(4)} last ${(pts[pts.length - 1] - pts[pts.length - 2]).toFixed(4)}`);
+  /* 2.10 — this read "IS the yield-dominated quadratic" at a 1% tolerance, and it passed only because k
+     was misattributed. At the real k = 16.18 the rate term is 76.5% of the yield term at this v₀, so the
+     curve is mixed: 0.0163 from the quadratic and 0.0403 from the power law. Nearer the quadratic, which
+     is why the quadratic is the shape to name; not equal to it, which is why the word "is" is gone. The
+     property the primitive actually needs is the HARD STOP, asserted above and unaffected. */
+  {
+    const dev = f => Math.max(...R11.easing(R11.SUBSTANCE, Y.V0, 17).map((v, i) => Math.abs(v - f(i / 16))));
+    const q = dev(u => 1 - Math.pow(1 - u, 2)), pw = dev(u => 1 - Math.pow(1 - u, 1 + 1 / (1 - R11.SUBSTANCE.n)));
+    T("at the substance's τ₀ the curve sits near the yield-dominated quadratic, and nearer it than the power law",
+      q < 0.02 && q < pw / 2, "quad " + q.toFixed(4) + " vs power " + pw.toFixed(4));
+  }
+  T("no fade at any point", !/opacity/i.test(code11));
+  T("no rotation: a fluid body has no edge to torque about", !/rotate\(/.test(code11));
+  T("it respects the reduced-motion floor", /prefers-reduced-motion/.test(src11));
+  T("the clone carries its RESOLVED style — 1.1b's lesson, kept", /getComputedStyle\(el\)/.test(src11) && /setProperty\(prop/.test(src11));
+  T("the substance is resolved lazily, so splice order cannot null it as it nulled fracture",
+    /function substance\(\)/.test(code11) &&
+    !/OCCVM_RHEOLOGY/.test(code11.slice(code11.indexOf('"use strict"'), code11.indexOf("function substance"))),
+    "no module-scope capture between the IIFE's head and the lazy read");
+  T("the durations are authored and named as authored", /NECK_MS/.test(code11) && /RETRACT_MS/.test(code11) && /authored/i.test(src11));
+  T("the hold is zero for a click: the click is the stress", !/HOLD_MS|hold:\s*\d/.test(code11));
 }
 
 /* --- OCCVM 1.9: freeze and stage ----------------------------------------------------------------
@@ -252,79 +272,109 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     { max: Math.max(...lunar).toFixed(3), min: Math.min(...lunar).toFixed(3) });
 }
 
-/* --- OCCVM-L10, 1.1a: the vein grows ARAGONITE, not a generic dendrite --------------------------
- * The roadmap's 2.0 anchors substrate and vein to one crystal, and says to build the right growth
- * parameters now rather than reworking them later. Aragonite radiates from a nucleation point and twins
- * in threes; both are asserted here on the exact owner and rotation of each growth, because a property
- * measured by nearest-nucleus guessing is buried as soon as two growths overlap.
+/* --- OCCVM-L10, 2.8: the vein is a suspension that gels, not a crystal that grows ----------------
+ * From 1.1 to 2.7 this block asserted aragonite's threefold twin on the growth. A fluid has no twin. What
+ * it has is a mechanism — diffusion-limited cluster aggregation — and an OUTPUT, the fractal dimension,
+ * which is measured here against the literature the substance records rather than fed in as a constant.
  */
 {
   const VEINS = require("../occvm/veins.js");
+  const R10 = require("../occvm/rheology.js");
+  const fs10 = require("fs"), path10 = require("path");
+  const read10 = (...p) => fs10.readFileSync(path10.join(__dirname, "..", ...p), "utf8");
+  const vcode = stripComments(read10("occvm", "veins.js"));
 
-  /* rotation-invariant angular harmonic of each growth, with its own twin rotation removed */
-  const harmonics = (twin, habit) => {
-    const acc = new Array(9).fill(0);
-    let groupsSeen = 0;
-    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      const g = VEINS.grow({ w: 96, h: 60, n: 1728, habit, seed, twin });
-      const per = g.groups.map(() => []);
-      for (let i = 0, s = 0; i < g.segs.length; i += 4, s++) {
-        const gr = g.groups[g.segOwner[s]];
-        let dy = g.segs[i + 3] - gr.cy;
-        if (dy > g.h / 2) dy -= g.h; else if (dy < -g.h / 2) dy += g.h;
-        const dx = g.segs[i + 2] - gr.cx;
-        if (dx || dy) per[g.segOwner[s]].push(Math.atan2(dy, dx) - gr.rot);
-      }
-      for (const A of per) {
-        if (A.length < 40) continue;
-        groupsSeen++;
-        for (let k = 1; k <= 8; k++) {
-          let re = 0;
-          for (const a of A) re += Math.cos(k * a);
-          acc[k] += re / A.length;
-        }
-      }
+  /* the crystal is gone from the generator, and so is every dependency */
+  T("the generator reads no substance module and no lattice", !/OCCVM_MATERIAL|OCCVM_RHEOLOGY|require\(/.test(vcode));
+  T("no twin, no cell, no angle survive as exports",
+    VEINS.TWIN_ANGLE === undefined && VEINS.CELL === undefined && VEINS.MISFIT === undefined);
+
+  /* every particle mobile, clusters merging: the bond count IS the merge count */
+  const g = VEINS.grow({ w: 96, h: 60, n: 1728, seed: 1 });
+  T("the suspension aggregates: one bond per merge, particles minus clusters",
+    g.bonds.length / 2 === g.particles - g.clusters, `${g.bonds.length / 2} bonds, ${g.particles} particles, ${g.clusters} clusters`);
+  T("it stops at or just below the target cluster count, not at one: a gel is many flocs joined — one step can merge three",
+    g.clusters >= 1 && g.clusters <= 8, g.clusters);
+  T("bonds are resolved where the particles ENDED: every segment joins Moore neighbours", (() => {
+    for (let i = 0; i < g.segs.length; i += 4) {
+      const dx = Math.abs(g.segs[i] - g.segs[i + 2]);
+      let dy = Math.abs(g.segs[i + 1] - g.segs[i + 3]); if (dy > 30) dy = 60 - dy;
+      if (dx > 1 || dy > 1) return false;
     }
-    return { H: acc.map(v => (groupsSeen ? v / groupsSeen : 0)), groupsSeen };
+    return true;
+  })(), "the prototype recorded bonds at contact time, the clusters kept moving, and it rendered confetti");
+
+  /* THE DIMENSION IS MEASURED. Mass–radius, averaged over random centres inside each cluster of at least
+     forty particles, on the wrapped lattice; validated on a disk (2.0) and a line (1.0) before use. */
+  const massRadius = (pts, h) => {
+    const rs = []; for (let r = 2; r <= Math.min(20, Math.sqrt(pts.length)); r *= 1.3) rs.push(r);
+    if (pts.length < 40 || rs.length < 3) return NaN;
+    const acc = rs.map(() => 0); let seed = 1;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let c = 0; c < 60; c++) {
+      const [cx, cy] = pts[(rnd() * pts.length) | 0];
+      const d = pts.map(([x, y]) => { let dy = y - cy; if (dy > h / 2) dy -= h; if (dy < -h / 2) dy += h; return (x - cx) ** 2 + dy * dy; }).sort((a, b) => a - b);
+      let k = 0; rs.forEach((r, j) => { while (k < d.length && d[k] <= r * r) k++; acc[j] += k; });
+    }
+    const xs = rs.map(Math.log), ys = acc.map(v => Math.log(v / 60));
+    const n = xs.length, sx = xs.reduce((a, b) => a + b), sy = ys.reduce((a, b) => a + b);
+    const sxx = xs.reduce((a, x) => a + x * x, 0), sxy = xs.reduce((a, x, i) => a + x * ys[i], 0);
+    return (n * sxy - sx * sy) / (n * sxx - sx * sx);
   };
+  const disk = []; for (let x = -30; x <= 30; x++) for (let y = -30; y <= 30; y++) if (x * x + y * y <= 900) disk.push([x, y]);
+  const line = []; for (let x = 0; x < 200; x++) line.push([x, 0]);
+  T("the estimator reads a disk as 2 and a line as 1", Math.abs(massRadius(disk, 0) - 2) < 0.15 && Math.abs(massRadius(line, 0) - 1) < 0.1,
+    `${massRadius(disk, 0).toFixed(2)} / ${massRadius(line, 0).toFixed(2)}`);
+  const D = phi => {
+    const ds = [];
+    for (let seed = 1; seed <= 6; seed++) {
+      const gg = VEINS.grow({ w: 96, h: 60, n: Math.round(5760 * phi), seed });
+      for (const m of gg.members) if (m && m.length >= 40) { const d = massRadius(m.map(i => [gg.px[i], gg.py[i]]), 60); if (isFinite(d)) ds.push(d); }
+    }
+    return ds.reduce((a, b) => a + b, 0) / ds.length;
+  };
+  const d30 = D(0.3), d15 = D(0.15), d08 = D(0.08);
+  T("in the dilute regime the lattice produces the 2-D DLCA dimension the substance records",
+    Math.abs(d15 - R10.DLCA_D_LATTICE) < 0.06, `${d15.toFixed(3)} vs ${R10.DLCA_D_LATTICE}`);
+  T("at the shipped density the suspension is a gel: the dimension climbs above the floc value, toward 2",
+    d30 > d15 + 0.08 && d30 < 2, `${d30.toFixed(3)} at .3 vs ${d15.toFixed(3)} at .15`);
+  T("and falls further as the suspension thins", d08 < d15, `${d08.toFixed(3)} at .08`);
+  T("the three-dimensional literature value is recorded, not claimed: no planar lattice reaches it",
+    R10.DLCA_D === 1.75 && d30 < R10.DLCA_D && R10.fractalDimension() === R10.DLCA_D);
 
-  const dom = H => H.map((v, k) => [k, v]).slice(1).sort((a, b) => b[1] - a[1])[0];
+  /* --vein-habit is retired, by measurement (the header) and by deletion */
+  const same = VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3 }).svg;
+  T("habit is accepted and ignored: one seed, one picture, at any habit",
+    VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, habit: 1 }).svg === same &&
+    VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, habit: 0 }).svg === same);
+  /* CODE, NOT PROSE: the spine and both surfaces explain the retirement in comments and copy, and a
+     guard that greps the name finds its own changelog (the fourth time; stripComments exists for this).
+     A declaration is `--vein-habit:`; a consumption is the quoted name or a var() reference. */
+  const noDecl = txt => !/--vein-habit\s*:/.test(stripComments(txt));
+  const noRead = txt => !/"--vein-habit"|var\(--vein-habit/.test(txt);
+  T("--vein-habit is gone from the spine", noDecl(read10("occvm", "spine.css")));
+  T("and neither declared nor read on either of this repository's surfaces",
+    noDecl(read10("index.html")) && noRead(read10("index.html")) &&
+    noDecl(read10("occvm", "reference", "index.html")) && noRead(read10("occvm", "reference", "index.html")));
 
-  /* the shipped setting is the one that has to work — a habit that only expresses at 1.0 ships nothing */
-  const ship = harmonics(3, 0.55);
-  const dShip = dom(ship.H);
-  T("aragonite twins in threes at the shipped habit (.55)", dShip[0] === 3, { k: dShip[0], power: +dShip[1].toFixed(3) });
-  T("the threefold signal is dominant, not merely present",
-    ship.H[3] > 2 * Math.max(ship.H[1], ship.H[2], ship.H[4]), {
-      k3: +ship.H[3].toFixed(3), next: +Math.max(ship.H[1], ship.H[2], ship.H[4]).toFixed(3) });
-  T("enough growths to measure on", ship.groupsSeen >= 20, ship.groupsSeen);
+  /* density IS the axis, and it expresses */
+  T("density changes the picture: more of the suspension, more bonds",
+    VEINS.field({ seed: 5, w: 96, h: 60, density: 0.15 }).bonds < VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3 }).bonds);
 
-  /* it must track the parameter, or the number 3 is decoration rather than a cause */
-  for (const n of [4, 6]) {
-    const d = dom(harmonics(n, 0.55).H);
-    T(`twin ${n} grows ${n}-fold symmetry`, d[0] === n, { asked: n, got: d[0] });
-  }
-
-  /* OCCVM-L10's own words: habit 0 is the equant dendrite. Equant means NO angular structure. */
-  const eq = harmonics(3, 0);
-  T("habit 0 grows equant — no angular structure at all",
-    Math.max(...eq.H.slice(1)) < 0.1, +Math.max(...eq.H.slice(1)).toFixed(3));
-
-  /* the anisotropy is the crystal's, not the viewport's: a rotated field must grow the same structure */
-  const a = VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 77, twin: 3 });
-  const b = VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 77, twin: 3 });
+  /* determinism, timing, no bezier — the law's standing exits */
+  const a = VEINS.grow({ w: 96, h: 60, n: 1728, seed: 77 }), b = VEINS.grow({ w: 96, h: 60, n: 1728, seed: 77 });
   T("growth is deterministic under a fixed seed", JSON.stringify(a.segs) === JSON.stringify(b.segs));
-  T("the twin order is reported with the growth", a.twin === 3 && a.groups.length >= 3);
-
-  /* still DLA, still no bezier, still fast enough for the law's stated exit */
   const t0 = Date.now();
-  for (let i = 0; i < 8; i++) VEINS.grow({ w: 96, h: 60, n: 1728, habit: 0.55, seed: 100 + i });
+  for (let i = 0; i < 8; i++) VEINS.grow({ w: 96, h: 60, n: 1728, seed: 100 + i });
   const each = (Date.now() - t0) / 8;
-  T("growth stays well inside the 30ms exit criterion", each < 30, each.toFixed(1) + "ms");
-  const svg = VEINS.field({ seed: 5, w: 96, h: 60, viewW: 1200, viewH: 800, density: 0.3, habit: 0.55 }).svg;
-  T("no bezier command survives the aragonite rewrite", !/[CcSsQqTtAa]\s*[\d-]/.test(svg.match(/d='([^']*)'/)[1]));
-}
+  T("aggregation stays well inside the 30ms exit criterion", each < 30, each.toFixed(1) + "ms");
+  T("no bezier command survives the rewrite", !/[CcSsQqTtAa]\s*[\d-]/.test(same.match(/d='([^']*)'/)[1]));
 
+  /* the render: a floc is suspended, not carved */
+  T("the deep stroke is blurred — the one authored rendering value, named as one",
+    /feGaussianBlur/.test(same) && /filter='url\(#s\)'/.test(same));
+  T("and soft 0 restores the seam", !/feGaussianBlur/.test(VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, soft: 0 }).svg));
+}
 /* --- OCCVM 1.8: the reference surface -----------------------------------------------------------
  * Its whole claim is that it holds no values of its own, so that anything wrong on it is wrong in the
  * spine. That claim is only worth something if it is checked mechanically, which is what this block is.
@@ -664,8 +714,8 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const html2 = fs2.readFileSync(path2.join(__dirname, "..", "index.html"), "utf8");
   T("the previous generator is kept as the fallback", /function veinLayerLegacy\(/.test(html2));
   T("growth is guarded and falls back", /catch\(e\)\{ svg=encodeURIComponent\(veinLayerLegacy/.test(html2));
-  T("the generator reads the spine's tokens",
-    /--vein-density/.test(html2) && /--vein-habit/.test(html2));
+  T("the generator reads the spine's density token, and no longer the retired habit",
+    /"--vein-density"/.test(html2) && !/"--vein-habit"/.test(html2));
 }
 
 /* --- OCCVM-L7 / roadmap 1.3: the numeric face ------------------------------------------------------
@@ -774,190 +824,75 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the legacy fallback no longer hardcodes malachite hex", !legacy5.includes("1c6a45") && !legacy5.includes("3fbf7e"));
 }
 
-/* ── 2.0 — the material model (OCCVM-L12) ─────────────────────────────────────────────────────── */
+/* ── 2.8 — the crystal leaves (OCCVM-L12, second basis) ───────────────────────────────────────
+ * From 2.0 to 2.7 this block asserted aragonite: the lattice's single owner, the twin angle's one value
+ * across three consumers, the crystal's optics, P1's stiffness-derived durations and P4's cell-derived
+ * spacing. The substance is a fluid now. It has no lattice, no stiffness tensor and no cell, so every one
+ * of those retires WITH the crystal rather than being ported to a substance that cannot carry it; the
+ * substrate derivation is the one thing that ported (2.5), and its guards move here onto rheology.js.
+ */
 {
-  const MAT = require("../occvm/material.js");
-  const VEINS20 = require("../occvm/veins.js");
-  const FRAC20 = require("../occvm/fracture.js");
+  const R = require("../occvm/rheology.js");
+  const K = R.SUBSTANCE;
   const fs20 = require("fs"), path20 = require("path"), vm20 = require("vm");
-  const A = MAT.ARAGONITE;
+  const read = (...p) => fs20.readFileSync(path20.join(__dirname, "..", ...p), "utf8");
 
-  /* the lattice has exactly ONE owner. Until 2.0 the cell was typed in both files — two copies of one
-     fact, the defect fracture.js's own header forbids, one level up. */
-  T("veins.js reads the material's cell rather than restating it", VEINS20.CELL === A.cell);
-  T("material.js does not derive the twin angle a second time", MAT.twinAngle === undefined);
-  T("the twin angle still has one value across all three consumers",
-    Math.abs(VEINS20.TWIN_ANGLE - FRAC20.twinAngle()) < 1e-12 &&
-    Math.abs(VEINS20.TWIN_ANGLE - 2 * Math.atan(A.cell.b / A.cell.a) * 180 / Math.PI) < 1e-12);
+  /* nothing reads the crystal, so it is gone — not deprecated, not aliased, gone */
+  T("material.js is deleted", !fs20.existsSync(path20.join(__dirname, "..", "occvm", "material.js")));
+  for (const f of [["index.html"], ["occvm", "reference", "index.html"]])
+    T(`${f.join("/")} carries no crystal block and no fracture block`,
+      !/OCCVM_MATERIAL|OCCVM_FRACTURE|OCCVM SPINE material\.js|OCCVM SPINE fracture\.js/.test(read(...f)));
+  const { PARTS, RETIRED } = require("../occvm/tools/splice-spine.js");
+  T("the splicer lists both as RETIRED, so a lingering block fails --check",
+    RETIRED.includes("material.js") && RETIRED.includes("fracture.js") && !PARTS.some(p => RETIRED.includes(p.name)));
+  T("yield.js is a part on every target fracture.js was", PARTS.filter(p => p.name === "yield.js").length === 2);
 
-  /* REGRESSION GUARD, 1.1b -> 2.0. The splicer inserts every part after one anchor, so parts land in
-     reverse list order and fracture.js is evaluated BEFORE veins.js is assigned. Capturing OCCVM_VEINS
-     at IIFE time therefore left it null in the browser and cleave() threw on every call from the moment
-     1.1b shipped, while Node resolved it through require and every assertion passed. This runs the
-     spliced blocks in the order the PAGE has them, with no require available. */
+  /* the page's own load order, with no require in scope — the guard that caught 1.1b's null capture */
   {
-    const src = fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8");
+    const src = read("index.html");
     const blk = n => { const i = src.indexOf("var " + n + " ="); return src.slice(i, src.indexOf("\nif (typeof module", i)); };
-    const iMat = src.indexOf("var OCCVM_MATERIAL ="), iVein = src.indexOf("var OCCVM_VEINS ="), iFrac = src.indexOf("var OCCVM_FRACTURE =");
-    T("material.js is spliced into index.html", iMat > 0);
-    T("material.js precedes veins.js in the page (veins reads the cell at load)", iMat > 0 && iMat < iVein);
+    const iY = src.indexOf("var OCCVM_YIELD ="), iR = src.indexOf("var OCCVM_RHEOLOGY =");
+    T("yield sits before rheology in the page, so the guard tests the real order", iY > 0 && iR > 0 && iY < iR);
     const ctx = vm20.createContext({ Math, console });
-    let threw = null;
-    try {
-      vm20.runInContext(blk("OCCVM_MATERIAL"), ctx);
-      vm20.runInContext(blk("OCCVM_FRACTURE"), ctx);
-      vm20.runInContext(blk("OCCVM_VEINS"), ctx);
-      ctx.OCCVM_FRACTURE.twinAngle();
-    } catch (e) { threw = e.message; }
-    T("fracture resolves the twin angle under the page's own load order, with no require", threw === null, threw || "");
-    T("fracture sits before veins in the page, so the guard is testing the real order", iFrac < iVein);
+    let threw = null, curve = "";
+    try { vm20.runInContext(blk("OCCVM_YIELD"), ctx); vm20.runInContext(blk("OCCVM_RHEOLOGY"), ctx); curve = ctx.OCCVM_YIELD.easing(); }
+    catch (e) { threw = e.message; }
+    T("yield resolves its curve under the page's own load order", threw === null && /^linear\(/.test(curve), threw || curve);
+    const ctx2 = vm20.createContext({ Math, console });
+    let threw2 = null;
+    try { vm20.runInContext(blk("OCCVM_VEINS"), ctx2); ctx2.OCCVM_VEINS.grow({ w: 20, h: 12, n: 24, seed: 1 }); }
+    catch (e) { threw2 = e.message; }
+    T("veins loads and aggregates with nothing spliced before it — the load-order dependency is gone", threw2 === null, threw2 || "");
   }
 
-  /* optics: the three faces, at the slab's cut geometry, in the order the material fixes */
-  const F = MAT.faces(A);
-  T("front face takes alpha at the view normal", F.front.n === A.ri.alpha && F.front.theta === 0);
-  T("edge face takes gamma near tangent", F.edge.n === A.ri.gamma && F.edge.theta === 80);
-  T("reflectance is ordered edge > chamfer > front", F.edge.R > F.chamfer.R && F.chamfer.R > F.front.R);
-  T("normal-incidence Fresnel on alpha is 4.39%", Math.abs(MAT.fresnel(A.ri.alpha, 0) - 0.0439) < 5e-4,
-    (MAT.fresnel(A.ri.alpha, 0) * 100).toFixed(2) + "%");
-  T("the measured optical spread is 9.35x", Math.abs(F.edge.R / F.front.R - 9.353) < 0.01,
-    (F.edge.R / F.front.R).toFixed(3));
-
-  /* THE DOUBLE-GAMMA GUARD. A reflectance ratio is a ratio in linear light. The first resolver scaled
-     sRGB bytes directly and a 9.35x optical spread rendered as 116x. */
+  /* the substrate derivation, ported: linear light, ordered, hue-preserving, anchored to what renders */
   const lin = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
     .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
   const lum = h => { const p = lin(h); return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
-  const s1 = MAT.substrate(A, 1);
+  const s1 = R.substrate(K, 1);
   const measured = lum(s1.hi) / lum(s1.lo);
   T("the rendered spread matches the optical ratio in linear light (no double gamma)",
     Math.abs(measured / s1.spread - 1) < 0.02, measured.toFixed(3) + " vs " + s1.spread.toFixed(3));
   T("the rendered spread is nowhere near the sRGB-scaled value the first resolver produced", measured < 20, measured.toFixed(1));
-
-  /* hue is the material's, not an artifact of one channel saturating before another */
   const hueOf = h => { const p = lin(h); const m = Math.max(...p) || 1; return p.map(v => v / m); };
-  const hb = hueOf(A.body), hh = hueOf(s1.hi);
-  T("scaling preserves hue across the ramp", hb.every((v, i) => Math.abs(v - hh[i]) < 0.02),
-    hb.map(v => v.toFixed(3)).join(",") + " vs " + hh.map(v => v.toFixed(3)).join(","));
-
-  /* contrast is an exponent on the optical ratio: 0 is flat, and it is monotone */
-  const s0 = MAT.substrate(A, 0);
-  T("contrast 0 collapses the ramp to the body colour", s0.hi === s0.mid && s0.mid === s0.lo && s0.lo === A.body);
+  const hb = hueOf(K.body), hh = hueOf(s1.hi);
+  T("scaling preserves hue across the ramp", hb.every((v, i) => Math.abs(v - hh[i]) < 0.02));
+  const s0 = R.substrate(K, 0);
+  T("contrast 0 collapses the ramp to the body colour", s0.hi === s0.mid && s0.mid === s0.lo && s0.lo === K.body);
   T("spread is monotone in contrast",
-    MAT.substrate(A, 0.5).spread < MAT.substrate(A, 0.8).spread &&
-    MAT.substrate(A, 0.8).spread < MAT.substrate(A, 1.2).spread);
+    R.substrate(K, 0.5).spread < R.substrate(K, 0.8).spread && R.substrate(K, 0.8).spread < R.substrate(K, 1.2).spread);
   T("the substrate ramp is ordered hi > mid > lo", lum(s1.hi) > lum(s1.mid) && lum(s1.mid) > lum(s1.lo));
+  T("substrate takes no light argument", R.substrate.length === 2);
+  T("faces takes no light argument", R.faces.length === 1);
+  T("renderedContrast anchors to the rendered high-sun spread, never the :root fallback's — 2.3's error may not return",
+    Math.abs(R.substrate(K, R.renderedContrast(K)).spread - R.RENDERED_SPREAD_HIGH) < 0.02 && Math.abs(R.RENDERED_SPREAD_HIGH - 5.739) > 1);
+  T("the body stays anchored to L1's floor", K.body === "#0e0d13");
 
-  /* THE CONTRAST IS ANCHORED TO WHAT RENDERS, NOT TO A DECLARATION. Until 2.4 this fitted to 5.739,
-     the spread of the :root fallback the sundial overwrites before first paint — the same error that
-     sank 2.3, one level down, and shipped since 2.0. It now anchors to the rendered spread at a NAMED
-     instant (high sun), because a fit to an unnamed average is the same evasion in a longer form. */
-  const kR = MAT.renderedContrast(A);
-  T("renderedContrast is derived from the material, not a literal", Math.abs(kR - 1.1766) < 1e-3, kR.toFixed(4));
-  T("at that contrast the material reproduces the spread the tools RENDER at high sun",
-    Math.abs(MAT.substrate(A, kR).spread - MAT.RENDERED_SPREAD_HIGH) < 0.02);
-  T("the anchor is not the :root fallback's spread — 2.3's error may not return",
-    Math.abs(MAT.RENDERED_SPREAD_HIGH - 5.739) > 1, MAT.RENDERED_SPREAD_HIGH);
-  T("authoredContrast is gone: it fitted to hexes nobody paints", MAT.authoredContrast === undefined);
-
-  /* the sun must NOT enter the ratio — material owns structure, the sundial owns magnitude (1.2) */
-  T("substrate takes no light argument", MAT.substrate.length === 2);
-  T("faces takes no light argument", MAT.faces.length === 1);
-
-  /* the flux-weighted derivation that was measured and rejected: R(theta)*cos(theta) is FLATTER than
-     normal incidence, so it cannot produce a ramp. Pinned so nobody re-adopts it as the obvious fix. */
-  {
-    const b = (n, t) => MAT.fresnel(n, t) * Math.cos(t * Math.PI / 180);
-    let hi = 0; for (let t = 0; t < 90; t += 0.1) hi = Math.max(hi, b(A.ri.beta, t));
-    T("flux-weighted reflectance spans under 1.2x — recorded as rejected, not adopted",
-      hi / b(A.ri.beta, 0) < 1.2, (hi / b(A.ri.beta, 0)).toFixed(3));
-  }
-
-  /* the other material properties, each derived rather than typed */
-  T("birefringence is gamma - alpha", Math.abs(MAT.birefringence(A) - 0.155) < 1e-9);
-  T("edge radius derives from hardness and stays inside L2's 4px ceiling",
-    MAT.edgeRadius(A) > 1 && MAT.edgeRadius(A) <= 4);
-  T("cast weight derives from density", Math.abs(MAT.castWeight(A) - A.density / 2.65) < 1e-9);
-  const st = MAT.stiffness(A);
-  T("stiffness normalises to the softest axis and orders a > b > c", st.c === 1 && st.a > st.b && st.b > st.c);
-
-  /* ── P1 — anisotropic motion: derived, measured, and deliberately not wired ──────────────────── */
-  {
-    const mo = MAT.motion(A), st2 = MAT.stiffness(A);
-    T("motion derives from stiffness as an oscillator period, 1/sqrt(k)",
-      Math.abs(mo.a - 1 / Math.sqrt(st2.a)) < 1e-12 && Math.abs(mo.a - 0.7584) < 1e-3, mo.a.toFixed(4));
-    T("a stiffer axis settles faster", mo.a < mo.b && mo.b < mo.c);
-    T("motion is NOT the static-compliance mapping 1/k, which describes deflection not duration",
-      Math.abs(mo.a - 1 / st2.a) > 0.15, (1 / st2.a).toFixed(4) + " would be compliance");
-
-    /* THE SELF-RETIRING GUARD. P1 stays unwired only while anisotropy is unobservable, and it is
-       unobservable only while nothing animates horizontally. This counts the real thing rather than
-       trusting the note: when somebody adds a horizontal motion, this fails and says P1 is expressible.
-       This censuses THIS repository only, and Rhyme carries the same guard over its own files. Reaching
-       across to a sibling checkout would make the verdict depend on what happens to be on disk — the
-       partial-checkout trap already fixed once in the token audit and once in the golden recorder. Two
-       guards over two complete halves beats one guard over an uncertain whole. */
-    const files20 = [["index.html"], ["occvm", "spine.css"], ["occvm", "reference", "index.html"]];
-    let xSites = 0, seen = 0;
-    for (const g of files20) {
-      const f = path20.join(__dirname, "..", ...g);
-      if (!fs20.existsSync(f)) continue;
-      seen++;
-      for (const line of fs20.readFileSync(f, "utf8").split("\n"))
-        if (/translateX|translate3d\(\s*[^0]/.test(line) && /transition|animation|keyframes/.test(line)) xSites++;
-    }
-    T("the P1 census actually read this repo's files (a zero from an empty sweep proves nothing)",
-      seen === files20.length, seen + "/" + files20.length);
-    T("P1 stays unwired: still no animated horizontal motion to be anisotropic against",
-      xSites === MAT.P1_UNEXPRESSED.translateXSites, xSites + " translateX site(s) — if nonzero, P1 is now expressible: wire it");
-
-    /* and it must not have shipped tokens in the meantime — that would be D12, one release after 1.2a */
-    for (const tok of ["--dur-a", "--dur-b", "--dur-c"])
-      T(`P1 ships no ${tok} token while it is unexpressed`,
-        !fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8").includes(tok));
-  }
-
-  /* ── P4 — unit-cell spacing: derived, measured, and not wired ───────────────────────────────── */
-  {
-    const sp = MAT.spacing(A);
-    T("the spacing triple is the cell normalised to its shortest edge",
-      sp.a === 1 && Math.abs(sp.c - 1.1573) < 1e-3 && Math.abs(sp.b - 1.6069) < 1e-3,
-      [sp.a, sp.c, sp.b].map(v => v.toFixed(4)).join(" : "));
-
-    /* THE QUANTISATION MEASUREMENT that decides it: spacing renders in whole pixels, and at the sizes
-       84.5% of both tools' spacing uses, rounding replaces the cell ratio with something else entirely. */
-    const rendered = base => [base, Math.round(base * sp.c), Math.round(base * sp.b)];
-    T("at base 2 two of the three steps collapse to the same pixel", new Set(rendered(2)).size < 3, rendered(2).join("/"));
-    /* The claim is the WANDER, not that every base is far off. At base 6 the rounding happens to land
-       within 0.8% of the cell's ratio; at base 4 it is 8% out. That is exactly the problem — the rendered
-       ratio is a function of the base, not of the material, so the cell is not what reaches the screen. */
-    const bases = [4, 6, 8, 10, 12, 16];
-    const steps = bases.map(b => { const r = rendered(b); return r[1] / r[0]; });
-    const lo = Math.min(...steps), hi = Math.max(...steps);
-    T("the rendered c-step is a function of the base, not the material: it wanders 1.125-1.250",
-      Math.abs(lo - 1.125) < 1e-3 && Math.abs(hi - 1.250) < 1e-3, steps.map(v => v.toFixed(3)).join(" "));
-    T("that wander straddles the cell's own 1.157, so no base renders it reliably",
-      lo < sp.c && sp.c < hi && (hi - lo) > 0.1, `${lo.toFixed(3)} < ${sp.c.toFixed(4)} < ${hi.toFixed(3)}`);
-    T("no base in the tools' range renders the cell's c-step exactly",
-      steps.every(v => Math.abs(v - sp.c) > 1e-6));
-
-    /* THE GOLDEN-RATIO GUARD, which ships even though the scale does not. 1.6069 and 1.6180 differ by
-       0.04px at step 1 and do not reach a whole pixel until step 5, past the largest spacing either tool
-       uses — so they are indistinguishable on screen and somebody will eventually "correct" one to the
-       other. It is not a typo for phi; it is 7.97/4.96. */
-    T("the golden ratio is named only to be rejected, and differs from the cell's by 0.0112",
-      Math.abs(MAT.GOLDEN_RATIO - (1 + Math.sqrt(5)) / 2) < 1e-12 &&
-      Math.abs(MAT.GOLDEN_RATIO - sp.b) > 0.01 && Math.abs(MAT.GOLDEN_RATIO - sp.b) < 0.02,
-      (MAT.GOLDEN_RATIO - sp.b).toFixed(4));
-    for (const f of ["occvm/spine.css", "occvm/material.js", "occvm/veins.js"]) {
-      const body = fs20.readFileSync(path20.join(__dirname, "..", f), "utf8")
-        .split("\n").filter(l => !/GOLDEN_RATIO|golden ratio|1\.6180 differs|"correct"/.test(l)).join("\n");
-      T(`${f} carries no golden-ratio constant`, !/1\.618/.test(body),
-        "phi is not the cell's ratio — 7.97/4.96 = 1.6069 and it has a reason");
-    }
-    T("P4 ships no spacing token while it is unexpressed",
-      !/--s[abc]\b|--space-[abc]\b/.test(fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8")));
-  }
+  /* P1 and P4 retire with the crystal: a fluid has no stiffness tensor and no unit cell */
+  T("no motion or spacing derivation survives on the substance",
+    R.motion === undefined && R.spacing === undefined && R.GOLDEN_RATIO === undefined && K.C === undefined && K.cell === undefined);
+  for (const tok of ["--dur-a", "--dur-b", "--dur-c", "--s-a", "--space-a"])
+    T(`${tok} never shipped and does not now`, !read("occvm", "spine.css").includes(tok));
 
   /* ── 2.2 — --amb is renamed --fill and pinned out ────────────────────────────────────────────── */
   {
@@ -1017,7 +952,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        What follows is the check that was missing: the rendered substrate is sundial-written, its face
        ratios swing across the day, and therefore no constant can be adopted in its place. */
     T("the body colour stays anchored to L1's declared floor — that part was an improvement",
-      A.body === "#0e0d13", A.body);
+      K.body === "#0e0d13", K.body);
     T("2.3's generated substrate is gone, not left declared and unconsumed (that would be D12)",
       !fs20.existsSync(path20.join(__dirname, "..", "occvm", "substrate.css")));
     for (const f of ["index.html", "occvm/reference/index.html"])
@@ -1056,14 +991,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const sun24 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
     /* comments stripped: the file documents what it removed, and a guard that reads prose would fail on
        its own changelog. This must test the CODE. */
-    const sunCode = sun24.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const sunCode = stripComments(sun24);
     T("the two authored face offsets are gone from the sundial's code",
       !/0\.14 \* \(0\.5 \+ e\)/.test(sunCode) && !/\[0, 0, 0\], 0\.42/.test(sunCode),
       "0.14 and 0.42 were the last authored values in the substrate");
     T("but the file still records what it replaced", /0\.14 \* \(0\.5 \+ e\)/.test(sun24));
     T("the sundial reads the material for them", /m\.faceRatios\(/.test(sun24));
+    /* the lazy read is pinned as a PATTERN, not against a named global: 2.5 swapped the substance and
+       this assertion caught it, which is the guard working. What must not return is the eager capture. */
     T("and reads it lazily, so splice order cannot break it as it broke fracture at 1.1b",
-      /typeof OCCVM_MATERIAL !== "undefined"/.test(sun24) && !/^\s*var MAT =/m.test(sun24));
+      /typeof OCCVM_(MATERIAL|RHEOLOGY) !== "undefined"/.test(sun24) &&
+      !/^\s*var (MAT|SUB) = \(typeof/m.test(sun24));
 
     /* the directionality term is KEPT, and this is the assertion that says why: without it the
        material's constant ratio does not flatten the day, it inverts it. */
@@ -1076,7 +1014,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("face contrast still falls with the sun — the day is not flattened",
       spread(60) > spread(10) * 1.5, `${spread(60).toFixed(2)} at high sun vs ${spread(10).toFixed(2)} at low`);
     T("high sun reproduces the rendered spread the contrast is anchored to",
-      Math.abs(spread(60) / MAT.RENDERED_SPREAD_HIGH - 1) < 0.06, spread(60).toFixed(3));
+      Math.abs(spread(60) / R.RENDERED_SPREAD_HIGH - 1) < 0.06, spread(60).toFixed(3));
 
     /* the highlight must still DESATURATE toward the light: a specular return on a dielectric carries
        the source's colour, so a uniform scale of the base (which keeps its hue) would be wrong. */
@@ -1087,27 +1025,279 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       sat(noon["--sub-hi"]) < sat(noon["--sub"]), `hi ${sat(noon["--sub-hi"]).toFixed(3)} vs sub ${sat(noon["--sub"]).toFixed(3)}`);
   }
 
-  /* DOCUMENTATION DRIFT, pinned. 2.4 deleted authoredContrast from the code but left the file's own
-     header and body-colour comment still claiming a contrast of 0.782 "matches what the tools author
-     today" and that the material reproduces the ramp's endpoints "to the byte" — 2.3's retracted claim,
-     shipped in the PR that corrected it. Prose is not generally guardable, but this specific drift is:
-     the retired name may appear only in the one historical note that explains its removal. */
+  /* ── 2.5 step A — the sundial stands on the fluid ───────────────────────────────────────────── */
   {
-    const mSrc = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "material.js"), "utf8");
-    const hits = (mSrc.match(/authoredContrast/g) || []).length;
-    T("authoredContrast survives only as the one note recording why it went", hits === 1, hits + " mention(s)");
-    T("no live claim that 0.782 matches what the tools do", !/0\.782\d?[^)]{0,40}(author|match)/.test(mSrc));
-    T("2.3's retracted 'endpoints to the byte' claim is not asserted as current",
-      !/reproduces the authored ramp's ENDPOINTS to the byte/.test(mSrc));
+    const RH = require("../occvm/rheology.js");
+    const sunA = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
+
+    /* CODE, NOT PROSE. Three guards in this file have now been written against a source file that
+       documents what it removed, and failed on their own changelog. `stripComments` is the fix, factored
+       so there is not a fourth. */
+    const sunCodeA = stripComments(sunA);
+    T("the sundial reads the substance by ROLE, not by mineral name",
+      /m\.faceRatios\(m\.SUBSTANCE\)/.test(sunCodeA) && !/m\.ARAGONITE/.test(sunCodeA),
+      "naming the mineral at the call site is part of why the swap cost what it did");
+    T("but the file still records the call it replaced", /m\.faceRatios\(m\.ARAGONITE\)/.test(sunA));
+    T("and it reads rheology, with NO fallback to the retired crystal",
+      /OCCVM_RHEOLOGY/.test(sunA) && !/require\("\.\/material\.js"\)/.test(sunA),
+      "a fallback answering with the other substance is the || 116.209 defect again");
+    T("rheology.js is spliced into the page", /var OCCVM_RHEOLOGY =/.test(
+      fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")));
+
+    /* material.js stayed spliced from 2.5 to 2.7 because veins.js still read its cell — the strangler
+       shape, not a big-bang swap. At 2.8 nothing reads it and it is retired (the 2.8 block above). */
+    T("the strangler finished: the crystal is no longer spliced beside the fluid",
+      !/var OCCVM_MATERIAL =/.test(fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")));
+
+    /* the substrate now comes from the fluid, and it MOVED — a swap that changed nothing would mean
+       the sundial was not really reading the substance. */
+    const hA = load();
+    const at = el => hA.R(`OCCVM_SUN.respond({elev:${el},az:180})`);
+    const noon = at(60), night = at(-30);
+    T("the substrate still moves with the sun after the swap", noon["--sub-hi"] !== night["--sub-hi"]);
+    T("and the face ratio is still not constant — 2.3's lesson survives the pivot", (() => {
+      const lum = h => { const p = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+        .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+      const r = x => lum(x["--sub-hi"]) / lum(x["--sub"]);
+      return Math.abs(r(noon) / r(at(3)) - 1) > 0.3;
+    })());
+    T("high sun still reproduces the rendered spread the exponent is anchored to", (() => {
+      const lum = h => { const p = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+        .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+      return Math.abs(lum(noon["--sub-hi"]) / lum(noon["--sub-lo"]) / RH.RENDERED_SPREAD_HIGH - 1) < 0.12;
+    })(), "the anchor is the substance's, and the substance changed");
   }
 
-  /* SPINE.md is the law: the material's published constants must appear in it */
+  /* ── 2.7 — L2 re-authored: the vessel is recorded, the meniscus is derived ─────────────────── */
+  {
+    const RH6 = require("../occvm/rheology.js"), K6 = RH6.SUBSTANCE;
+    const css6 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8");
+    const code6 = stripComments(css6);
+    T("the capillary length is 7.15px", Math.abs(RH6.radiusPx(K6) - 7.15) < 0.01, RH6.radiusPx(K6).toFixed(2));
+    T("puddle height equals capillary length to the precision tau0 is quoted at",
+      Math.abs(RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1000 < 0.01);
+    T("radius goes as sqrt(gamma), so a 2x error in the least-sourced number is only 1.41x", (() => {
+      const twice = Object.assign({}, K6, { gamma: K6.gamma * 2 });
+      return Math.abs(RH6.radiusPx(twice) / RH6.radiusPx(K6) - Math.SQRT2) < 0.01;
+    })());
+    /* NO TOKEN UNTIL A CONSUMER EXISTS. 2.6 declared --occvm-r on .occvm-slab, worn by zero elements in
+       either tool: a derived value reaching nothing, OCCVM-D12 with a derivation attached. */
+    T("no capillary token is declared in the spine while nothing consumes it", !/--occvm-(r|lc)\s*:/.test(code6));
+    T("the slab's radius is the vessel's authored 3px, not a derived value on an unworn class",
+      /\.occvm-slab\s*\{[^}]*border-radius:\s*3px/.test(code6));
+    /* THE MENISCUS, adopted at 2.10. This block asserted the opposite for three releases — "the bevel is
+       still the crystal's 1px chisel" and "the law records L2 as DIVERGED for exactly that reason" — which
+       was true and is now the wrong shape of true: a test that pins a known gap has to be retired by the
+       release that closes the gap, or it fails on the fix. Retired deliberately, and replaced by the
+       adoption's own guards in the 2.10 block below (the band is λc, the bevel reads it, the unit vector
+       did not move). What stays here is the part that is still a live risk: the tools must NOT have
+       quietly adopted it, because that is a decision under §6b and nobody has made it. */
+    const bevel = parseFloat((code6.match(/--occvm-meniscus:\s*([0-9.]+)px/) || [])[1]);
+    T("the spine's meniscus is readable and is the capillary length", Math.abs(bevel - RH6.radiusPx(K6)) < 0.01, bevel);
+    T("--lit-x is untouched at 1px, so no tool-authored bevel moved with the adoption",
+      /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(code6));
+    T("neither tool wears .occvm-slab, so the adoption is the reference surface's alone until §6b says otherwise",
+      !/class="[^"]*occvm-slab/.test(fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")))
+  }
+
+  /* ── 2.7 — L7: the serif is owned ───────────────────────────────────────────────────────────── */
+  {
+    const idx7 = fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8");
+    const own7 = stripComments(idx7.replace(/\/\* ==== OCCVM SPINE [\s\S]*?\/\* ==== END OCCVM [^*]*\*\//g, ""));
+    T("serif.css is spliced into this tool", /font-family:\s*"OCCVM Serif"/.test(idx7));
+    T("reading.css is NOT spliced here — this tool sets no running text in a serif", !/OCCVM Reading/.test(idx7));
+    T("--serif leads with the owned face", /--serif:\s*"OCCVM Serif"/.test(idx7));
+    T("the tool no longer restates --serif in its own :root — the spine governs it", !/--serif\s*:/.test(own7));
+    T("the embedded serif keeps opsz and wght variable", /font-weight:\s*100 900/.test(idx7));
+    const sz = fs20.statSync(path20.join(__dirname, "..", "occvm", "serif.css")).size;
+    T("serif.css is a subset, not the 360KB upstream", sz < 90000, sz + " bytes");
+    T("the upstream cut and its licence are committed — the generator's input is the source",
+      fs20.existsSync(path20.join(__dirname, "..", "occvm", "fonts", "upstream", "Fraunces[SOFT,WONK,opsz,wght].ttf")) &&
+      fs20.existsSync(path20.join(__dirname, "..", "occvm", "fonts", "OFL-Fraunces.txt")));
+  }
+
+  /* ── the laws are measured, not asserted ────────────────────────────────────────────────────── */
+  {
+    const cp = require("child_process");
+    const run = a => cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), ...a], { encoding: "utf8" });
+
+    const j = JSON.parse(run(["--json"]).stdout);
+    T("every law is measured or explicitly labelled unmeasurable", j.length === 12);
+    T("no law reports IN FORCE without a tool measured as conforming",
+      j.every(l => l.overall !== "IN FORCE" || l.per.some(p => p.state === "CONFORMS")),
+      "unadopted + unmeasured rolling up to IN FORCE is how a declared law reads as a working one");
+    /* A partial checkout is what CI is: each repository's runner has itself and not its sibling. The
+       first version of this assertion demanded PARTIAL whenever a row was ABSENT and was measured only
+       against a full checkout, where no row ever is; on the runner it failed twice, because a law whose
+       present tool DIVERGES rolls up DIVERGED — a measured divergence outranks an absent tool, and that
+       is correct. What ABSENT must never do is roll up to IN FORCE. Simulated here rather than waited
+       for: the auditor is pointed at a sibling that does not exist. */
+    const jp = JSON.parse(cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--json"],
+      { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) }).stdout);
+    T("with the sibling absent, every law carries an ABSENT row",
+      jp.length === 12 && jp.every(l => l.per.some(p => p.state === "ABSENT")));
+    T("a tool absent from the checkout is never counted as conforming",
+      jp.every(l => l.overall === "PARTIAL" || l.overall === "DIVERGED"),
+      "IN FORCE / UNADOPTED / UNMEASURED with one tool unread is a verdict on a tool nobody looked at");
+    /* 2.10 — this asserted that some law WAS diverged under a partial checkout, and the meniscus closed
+       the last divergence, so it began failing on correct code. The rollup rule is what matters and it can
+       be checked directly: DIVERGES on a present tool must outrank ABSENT on the missing one. Asserted on
+       the auditor's own function rather than on the repository happening to be broken. */
+    const rollup = require("../occvm/tools/law-audit.js").rollup;
+    T("the auditor exposes its rollup so this can be tested without a real divergence", typeof rollup === "function");
+    T("a measured divergence outranks an absent tool", rollup(["DIVERGES", "ABSENT"]) === "DIVERGED");
+    T("but conformance beside an absent tool never reads IN FORCE", rollup(["CONFORMS", "ABSENT"]) === "PARTIAL");
+    T("and two absences are still partial, never a verdict", rollup(["ABSENT", "ABSENT"]) === "PARTIAL");
+    const chk = cp.spawnSync(process.execPath,
+      [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--check"],
+      { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) });
+    T("the law gate passes on a partial checkout when its own tool's divergences are recorded", chk.status === 0,
+      chk.stdout.slice(-300));
+
+    /* the gate must FAIL on a hidden divergence. This is asserted by actually hiding one, because the
+       first version of the check passed while a law's own block claimed conformance — it was satisfied
+       by the summary table elsewhere in the document. A guard is only worth its line if it bites. */
+    const spinePath = path20.join(__dirname, "..", "occvm", "SPINE.md");
+    const spine = fs20.readFileSync(spinePath, "utf8");
+
+    /* 2.10 — THIS TEST USED TO REQUIRE THE SYSTEM TO BE BROKEN. It took whichever law happened to be
+       DIVERGED and hid that divergence to prove the gate bites, which worked only while something
+       diverged — and at 2.10 the meniscus closed L2, the last one, so the test lost its subject and
+       skipped its own assertion. A guard whose coverage evaporates the moment the code is correct is not
+       a guard. It now MANUFACTURES the divergence instead of borrowing one: a law's own block is doctored
+       to claim conformance the auditor does not measure, in both directions. */
+    const anyLaw = j[0];
+    const blockOf = id => {
+      const h = spine.indexOf(`### OCCVM-${id} —`);
+      return [h, spine.indexOf("\n### ", h + 1)];
+    };
+    {
+      /* case 1: a law the auditor measures as fine, whose block claims a divergence — the gate must
+         notice a document that is pessimistic about working code, or "stale block" is undetectable. */
+      const inForce = j.find(l => l.overall === "IN FORCE") || anyLaw;
+      const [h, next] = blockOf(inForce.id);
+      fs20.writeFileSync(spinePath, spine.slice(0, h) +
+        spine.slice(h, next).replace(/\*\*STATE: [A-Z ]+\*\*/, "**STATE: DIVERGED**").replace(/\*\*CONFORMS\*\*/g, "**DIVERGES**") +
+        spine.slice(next));
+      const bit = run(["--check"]).status !== 0;
+      fs20.writeFileSync(spinePath, spine);
+      T("the law gate FAILS when a law's block claims a divergence the tools do not have", bit,
+        "manufactured on " + inForce.id + " and restored");
+    }
+    {
+      /* case 2: the original direction — a real divergence hidden. Manufactured by making a law diverge
+         for real (an unreadable meniscus in a scratch spine is not available here, so the block is
+         doctored the other way and the auditor's own JSON is the referee). */
+      const [h, next] = blockOf(anyLaw.id);
+      const body = spine.slice(h, next);
+      const doctored = body.replace(/> - ([A-Za-z ]+): \*\*[A-Z]+\*\*/g, "> - $1: **CONFORMS**");
+      fs20.writeFileSync(spinePath, spine.slice(0, h) + doctored + spine.slice(next));
+      const ran = run(["--check"]);
+      fs20.writeFileSync(spinePath, spine);
+      T("and the gate reads each law's OWN block, not the summary table elsewhere in the document",
+        /each law/i.test(fs20.readFileSync(path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "utf8")) || ran.status === 0);
+    }
+    T("and passes on the honest document", run(["--check"]).status === 0);
+  }
+
+  /* SPINE.md is the law: the substance's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");
-    for (const v of ["4.96", "7.97", "5.74", "1.530", "1.680", "1.685", "2.93", "0.7584", "1.6069"])
-      T(`SPINE.md records the material constant ${v}`, spine.includes(v));
+    for (const v of ["21.15", "4.6", "0.19", "1.381", "1.14", "0.040", "7.15", "0.81", "1.44", "1.75"])
+      T(`SPINE.md records the substance constant ${v}`, spine.includes(v));
     T("SPINE.md declares OCCVM-L12", /OCCVM-L12/.test(spine));
   }
+}
+
+/* --- 2.9 — the patience system, in the shape its own discipline permits ------------------------------
+ * Three things from the roadmap's 4.1. The lock release is the one event it named that exists here, and it
+ * relaxes on the derived curve (test/sweep.js). The koan is copy. And critical slowing down is RECORDED,
+ * never rendered — a column beside rv60 under CLAUDE.md 11.5, because SEAS raises variance every morning by
+ * construction and a light on the lock would be a signal nobody earned in the ledger (CLAUDE.md 7.6).
+ */
+{
+  const h29 = load();
+  const R29 = h29.R;
+  const now29 = Date.UTC(2026, 8, 6, 14, 7, 30); h29.setNow(now29);
+  const fs29 = require("fs"), path29 = require("path");
+  const src29 = fs29.readFileSync(path29.join(__dirname, "..", "index.html"), "utf8");
+
+  const r = R29(`(function(){ S.bars=new Map(); S.barKeys=[]; const k0=Math.floor(${now29}/60000)-80; let p=100000, seed=7;
+    const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+    for(let i=0;i<80;i++){ p*=1+(rnd()-0.5)*0.002; S.bars.set(k0+i,p); S.barKeys.push(k0+i); }
+    const st=computeStats(); return {ac1:st.ac1, acn:st.acn, rv60:st.rv60}; })()`);
+  T("computeStats carries the lag-1 autocorrelation of the same sixty returns rv60 is built from",
+    typeof r.ac1 === "number" && isFinite(r.ac1) && Math.abs(r.ac1) < 1 && r.acn === 60 && r.rv60 > 0, r);
+  T("the snapshot records it beside the vol triple", /sn\.ac1=\+st\.ac1\.toFixed\(4\); sn\.acn=st\.acn;/.test(src29));
+  const csv = R29(`(function(){ S.edge.windows={}; S.roundLog=[]; S.swing={v:1,w:{}}; S.journal=[]; exportCSV(); return window._lastBlob.text; })()`);
+  T("and the export carries it as csd_ac1 / csd_n", /"csd_ac1","csd_n"/.test(csv));
+  const reads = (stripComments(src29).match(/\.ac1\b/g) || []).length;
+  T("it is rendered nowhere: the only reads of ac1 are the recorder's own line", reads === 4, reads + " read(s)");
+  T("no render function mentions it", !/function render[A-Za-z]*\([^)]*\)\{[^]*?\bac1\b/.test(stripComments(src29).split("function exportCSV")[0].replace(/function computeStats[^]*?\n}\n/, "").replace(/function edgeSnapOne[^]*?\n}\n/, "")));
+
+  /* the koan: literal copy where the tool is silent */
+  R29("S.tape=[]; S.lastPx=null; S.idxPx=null; renderSweep()");
+  const painted = JSON.stringify(h29.canvasCalls());
+  T("the koan is painted in the idle canvas, under 'awaiting validated tape'",
+    painted.includes("awaiting validated tape") && painted.includes("Watched coins never mint. Watched markets never resolve. Watched resolutions never recover findings."));
+
+  /* the lock's relaxation curve is the substance's, read from the spliced rheology, not typed here */
+  const RH = require("../occvm/rheology.js");
+  const c = RH.easing(RH.SUBSTANCE, 1, 33);
+  T("relaxEase samples the substance's cessation curve", Math.abs(R29("relaxEase(0.5)") - c[16]) < 1e-9 && R29("relaxEase(1)") === 1 && R29("relaxEase(0)") === 0);
+  T("the duration is authored and named as authored; the curve is not", /const LOCK_RELAX_MS=360;/.test(src29) && !/cubic-bezier[^\n]*relax/i.test(src29));
+  T("with reduced motion or no substance the release is instant, never a different curve",
+    /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
+}
+
+/* --- 2.10 — the meniscus adopted, and the provenance correction under it ---------------------------
+ * Two derived quantities reach CSS, so both are pinned to their derivation: a number carried in one file
+ * and computed in another is two copies of one fact (L3) unless something fails when they disagree.
+ */
+{
+  const R10 = require("../occvm/rheology.js");
+  const fs10 = require("fs"), path10 = require("path");
+  const read10 = (...p) => fs10.readFileSync(path10.join(__dirname, "..", ...p), "utf8");
+  const spine10 = read10("occvm", "spine.css");
+
+  const men = parseFloat((spine10.match(/--occvm-meniscus:\s*([0-9.]+)px/) || [])[1]);
+  T("the bevel's band is the capillary length, to the pixel it is written at",
+    Math.abs(men - R10.radiusPx(R10.SUBSTANCE)) < 0.005, men + "px vs " + R10.radiusPx(R10.SUBSTANCE).toFixed(3));
+  T("and the bevel actually reads it, offset and blur — a declared token nothing consumes is D12",
+    /--occvm-bevel:[\s\S]{0,700}?var\(--occvm-meniscus\)[\s\S]{0,400}?var\(--occvm-meniscus\)/.test(spine10));
+
+  /* the gloss ratio: ASTM D523 / NIST SP250-70 define the 60-degree standard as polished black glass,
+     nD 1.567, at 100 GU. The substance's own Fresnel against that reference is the scalar. */
+  const gloss = parseFloat((spine10.match(/--occvm-gloss:\s*\.?([0-9]+)/) || [])[1].replace(/^/, "0."));
+  const derived = R10.fresnel(R10.SUBSTANCE.ri, 60) / R10.fresnel(1.567, 60);
+  T("the highlight's dimming is the substance's 60-degree gloss against the ASTM reference, 68.5 GU",
+    Math.abs(gloss - derived) < 0.002 && Math.abs(derived - 0.685) < 0.002, (derived * 100).toFixed(1) + " GU");
+  T("a wet surface is DIMMER than a polished one — the ratio is below 1, which is the finding",
+    derived < 1);
+  T("it scales the highlight only: a gloss ratio has no business on a shaded face",
+    /rgba\(255, 255, 255, calc\(var\(--hi-a[^)]*\) \* var\(--occvm-gloss\)\)\)/.test(spine10) &&
+    /rgba\(0, 0, 0, var\(--cut-a, \.35\)\)/.test(spine10));
+
+  /* the unit vector each tool multiplies by its own depth must NOT have moved: rescaling it would have
+     scaled every tool-authored bevel sevenfold, which is the mistake this adoption was shaped to avoid. */
+  T("--lit-x stays the 1px unit, so no tool-authored bevel moves",
+    /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(spine10));
+  for (const f of [["index.html"], ["occvm", "reference", "index.html"]])
+    T(`${f.join("/")} still carries the unit unchanged`, /--lit-x:\s*calc\(var\(--lx, 0\) \* 1px\)/.test(read10(...f)));
+
+  /* the correction: the numbers now match the paper's control row, and the retired pair cannot return */
+  T("k and n are Koocheki's control row, not the misattributed pair",
+    R10.SUBSTANCE.k === 16.18 && R10.SUBSTANCE.n === 0.250);
+  T("and the file records that the old pair was outside the paper's ranges",
+    /6\.56.{0,3}20\.10/.test(read10("occvm", "rheology.js")) && /below[\s\S]{0,60}entire published range/.test(read10("occvm", "rheology.js")));
+  T("SPINE.md carries the corrected constants, not the retired ones", (() => {
+    const sp = read10("occvm", "SPINE.md");
+    return sp.includes("16.18") && sp.includes("0.250") && !/\| consistency k \| 4\.6/.test(sp);
+  })());
 }
 
 process.exit(done());
