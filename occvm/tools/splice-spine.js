@@ -43,6 +43,9 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: path.join("tome-src", "10_engine.js"), anchor: null },
   /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
   { name: "material.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
+  /* 2.5 — the rheological substance. Spliced beside material.js, not in place of it: veins.js still
+     reads the crystal's cell until step C, so both live until nothing reads the older one. */
+  { name: "rheology.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "veins.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "minerals.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "fracture.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
@@ -53,6 +56,9 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
   /* material.js precedes veins.js: the material owns the lattice and veins throws without it (2.0) */
   { name: "material.js",  target: "index.html", anchor: "<script>" },
+  /* 2.5 — the rheological substance. Spliced beside material.js, not in place of it: veins.js still
+     reads the crystal's cell until step C, so both live until nothing reads the older one. */
+  { name: "rheology.js",  target: "index.html", anchor: "<script>" },
   { name: "veins.js",     target: "index.html", anchor: "<script>" },
   { name: "minerals.js",  target: "index.html", anchor: "<script>" },
   { name: "fracture.js",  target: "index.html", anchor: "<script>" },
@@ -60,6 +66,7 @@ const PARTS = IS_RHYME ? [
   { name: "mono.css",     target: REF, anchor: "<style>" },
   { name: "sundial.js",   target: REF, anchor: "<script>" },
   { name: "material.js",  target: REF, anchor: "<script>" },
+  { name: "rheology.js",  target: REF, anchor: "<script>" },
   { name: "veins.js",     target: REF, anchor: "<script>" },
   { name: "minerals.js",  target: REF, anchor: "<script>" },
   { name: "fracture.js",  target: REF, anchor: "<script>" },

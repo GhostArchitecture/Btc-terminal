@@ -133,18 +133,24 @@ var OCCVM_SUN = (function () {
     });
     return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
   }
-  /* the material, read lazily: the splicer inserts parts in reverse list order, and capturing a sibling
-     part at IIFE time is what had fracture.js throwing in the browser from 1.1b to 2.0. */
-  function material() {
-    return (typeof OCCVM_MATERIAL !== "undefined" && OCCVM_MATERIAL) ? OCCVM_MATERIAL
-         : (typeof require !== "undefined" ? require("./material.js") : null);
+  /* THE SUBSTANCE, read lazily and by ROLE (2.5). Lazily because the splicer inserts parts in reverse
+     list order, and capturing a sibling at IIFE time is what had fracture.js throwing in the browser from
+     1.1b to 2.0. By role because this file has no business knowing which substance it is standing on: it
+     asks for `SUBSTANCE` and for `faceRatios`, and the substance module answers. Before 2.5 it named the
+     mineral — `m.faceRatios(m.ARAGONITE)` — and that is a real part of why swapping the substance was
+     more expensive than it should have been.
+     NO FALLBACK to the retired material.js. A fallback that quietly answers with the other substance is
+     the `|| 116.209` defect again: it would render a crystal substrate while every assertion passed. */
+  function substance() {
+    return (typeof OCCVM_RHEOLOGY !== "undefined" && OCCVM_RHEOLOGY) ? OCCVM_RHEOLOGY
+         : (typeof require !== "undefined" ? require("./rheology.js") : null);
   }
   var MAT_HI = "hi", MAT_LO = "lo";
   function faceMix(base, toward, which, e) {
-    var m = material();
-    if (!m) throw new Error("occvm sundial: material.js is not spliced beside this — no face ratios");
-    var want = m.faceRatios(m.ARAGONITE)[which];
-    /* directionality: the material's ratio is the full-light value; diffuse light flattens toward 1 */
+    var m = substance();
+    if (!m) throw new Error("occvm sundial: rheology.js is not spliced beside this — no face ratios");
+    var want = m.faceRatios(m.SUBSTANCE)[which];
+    /* directionality: the substance's ratio is the full-light value; diffuse light flattens toward 1 */
     var dir = (0.5 + e) / 1.5;
     want = 1 + (want - 1) * dir;
     var L0 = relLum(base), lo = 0, hi = 1;

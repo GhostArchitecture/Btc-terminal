@@ -32,11 +32,11 @@
  * to the viewer, and Fresnel reflectance varies with angle at any fixed index. Aragonite happened to
  * supply three indices as well; that was a bonus, not the mechanism. Measured at L2's cut geometry:
  *
- *      n = 1.381        front 0°  R = 2.55%     chamfer 45°  R = 3.39%     edge 80°  R = 36.20%
- *      spread 14.200×   against aragonite's 9.353× and the 13.881× the tools actually render
+ *      n = 1.381        front 0°  R = 2.56%     chamfer 45°  R = 3.41%     edge 80°  R = 36.23%
+ *      spread 14.148×   against aragonite's 9.353× and the 13.881× the tools actually render
  *
  * **The fluid fits the rendered substrate BETTER than the crystal did.** Aragonite needed a legibility
- * exponent of 1.177 to reach what the tools paint; ketchup reaches it at 0.991 — within 1% of unity,
+ * exponent of 1.177 to reach what the tools paint; ketchup reaches it at 0.9928 — within 1% of unity,
  * meaning the substance's own optics reproduce the shipped substrate with almost no judgment applied.
  * That is a stronger position than the model it replaces, and it was not the reason for the pivot.
  *
@@ -76,6 +76,12 @@ var OCCVM_RHEOLOGY = (function () {
        is a fit, and a free parameter has to be fixed from something. */
     body: "#0e0d13"
   };
+
+  /* The substance under its ROLE rather than its identity. The sundial reads this, not `KETCHUP`, so the
+     light pipeline names what a thing does in the system instead of what it is made of — and a second
+     substance swap costs one splice-list line rather than an edit to every consumer. The pivot from
+     aragonite cost more than it should have precisely because the consumers named the mineral. */
+  var SUBSTANCE = KETCHUP;
 
   /* ---- optics: ported from the crystal model, mechanism unchanged --------------------------------
    * Unpolarised Fresnel reflectance. A fluid is isotropic, so one index serves all three faces — and the
@@ -204,7 +210,7 @@ var OCCVM_RHEOLOGY = (function () {
   function fractalDimension() { return DLCA_D; }
 
   return {
-    KETCHUP: KETCHUP, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
+    KETCHUP: KETCHUP, SUBSTANCE: SUBSTANCE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
     fresnel: fresnel, faces: faces, substrate: substrate,
     renderedContrast: renderedContrast, faceRatios: faceRatios,
     shearRate: shearRate, stress: stress,

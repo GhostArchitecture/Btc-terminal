@@ -10,6 +10,11 @@
  */
 "use strict";
 const { load, runner } = require("./lib/load");
+
+/* Strip block and line comments. Every guard in this file that inspects a source file must use this: the
+   spine's files document what they removed, so a regex looking for a retired name finds it in the
+   changelog and fails on a correct file. Learned three times before it was factored. */
+const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const { T, done } = runner("occvm: determinism seam");
 
 const vein = h => { h.R("veinLayer()"); return h.ctx.document.documentElement.style["--vein"]; };
@@ -1056,14 +1061,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const sun24 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
     /* comments stripped: the file documents what it removed, and a guard that reads prose would fail on
        its own changelog. This must test the CODE. */
-    const sunCode = sun24.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const sunCode = stripComments(sun24);
     T("the two authored face offsets are gone from the sundial's code",
       !/0\.14 \* \(0\.5 \+ e\)/.test(sunCode) && !/\[0, 0, 0\], 0\.42/.test(sunCode),
       "0.14 and 0.42 were the last authored values in the substrate");
     T("but the file still records what it replaced", /0\.14 \* \(0\.5 \+ e\)/.test(sun24));
     T("the sundial reads the material for them", /m\.faceRatios\(/.test(sun24));
+    /* the lazy read is pinned as a PATTERN, not against a named global: 2.5 swapped the substance and
+       this assertion caught it, which is the guard working. What must not return is the eager capture. */
     T("and reads it lazily, so splice order cannot break it as it broke fracture at 1.1b",
-      /typeof OCCVM_MATERIAL !== "undefined"/.test(sun24) && !/^\s*var MAT =/m.test(sun24));
+      /typeof OCCVM_(MATERIAL|RHEOLOGY) !== "undefined"/.test(sun24) &&
+      !/^\s*var (MAT|SUB) = \(typeof/m.test(sun24));
 
     /* the directionality term is KEPT, and this is the assertion that says why: without it the
        material's constant ratio does not flatten the day, it inverts it. */
@@ -1099,6 +1107,51 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("no live claim that 0.782 matches what the tools do", !/0\.782\d?[^)]{0,40}(author|match)/.test(mSrc));
     T("2.3's retracted 'endpoints to the byte' claim is not asserted as current",
       !/reproduces the authored ramp's ENDPOINTS to the byte/.test(mSrc));
+  }
+
+  /* ── 2.5 step A — the sundial stands on the fluid ───────────────────────────────────────────── */
+  {
+    const RH = require("../occvm/rheology.js");
+    const sunA = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
+
+    /* CODE, NOT PROSE. Three guards in this file have now been written against a source file that
+       documents what it removed, and failed on their own changelog. `stripComments` is the fix, factored
+       so there is not a fourth. */
+    const sunCodeA = stripComments(sunA);
+    T("the sundial reads the substance by ROLE, not by mineral name",
+      /m\.faceRatios\(m\.SUBSTANCE\)/.test(sunCodeA) && !/m\.ARAGONITE/.test(sunCodeA),
+      "naming the mineral at the call site is part of why the swap cost what it did");
+    T("but the file still records the call it replaced", /m\.faceRatios\(m\.ARAGONITE\)/.test(sunA));
+    T("and it reads rheology, with NO fallback to the retired crystal",
+      /OCCVM_RHEOLOGY/.test(sunA) && !/require\("\.\/material\.js"\)/.test(sunA),
+      "a fallback answering with the other substance is the || 116.209 defect again");
+    T("rheology.js is spliced into the page", /var OCCVM_RHEOLOGY =/.test(
+      fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")));
+
+    /* material.js STAYS spliced: veins.js still reads its cell until step C. Both live until nothing
+       reads the older one — the strangler shape, not a big-bang swap. */
+    T("material.js is still spliced, because veins.js still reads its cell",
+      /var OCCVM_MATERIAL =/.test(fs20.readFileSync(path20.join(__dirname, "..", "index.html"), "utf8")));
+
+    /* the substrate now comes from the fluid, and it MOVED — a swap that changed nothing would mean
+       the sundial was not really reading the substance. */
+    const hA = load();
+    const at = el => hA.R(`OCCVM_SUN.respond({elev:${el},az:180})`);
+    const noon = at(60), night = at(-30);
+    T("the substrate still moves with the sun after the swap", noon["--sub-hi"] !== night["--sub-hi"]);
+    T("and the face ratio is still not constant — 2.3's lesson survives the pivot", (() => {
+      const lum = h => { const p = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+        .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+      const r = x => lum(x["--sub-hi"]) / lum(x["--sub"]);
+      return Math.abs(r(noon) / r(at(3)) - 1) > 0.3;
+    })());
+    T("high sun still reproduces the rendered spread the exponent is anchored to", (() => {
+      const lum = h => { const p = [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16) / 255)
+        .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+        return 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]; };
+      return Math.abs(lum(noon["--sub-hi"]) / lum(noon["--sub-lo"]) / RH.RENDERED_SPREAD_HIGH - 1) < 0.12;
+    })(), "the anchor is the substance's, and the substance changed");
   }
 
   /* SPINE.md is the law: the material's published constants must appear in it */
