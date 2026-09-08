@@ -1154,6 +1154,49 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     })(), "the anchor is the substance's, and the substance changed");
   }
 
+  /* ── 2.6 — L2's radius is the substance's capillary length ──────────────────────────────────── */
+  {
+    const RH6 = require("../occvm/rheology.js"), K6 = RH6.SUBSTANCE;
+    const css6 = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "spine.css"), "utf8");
+    const declared = parseFloat((css6.match(/--occvm-r:\s*([0-9.]+)px/) || [])[1]);
+
+    T("spine.css declares the radius as a token", !isNaN(declared), declared);
+    T("and it IS the capillary length, not a number that resembles it",
+      Math.abs(declared - RH6.radiusPx(K6)) < 0.01,
+      `${declared} declared vs ${RH6.radiusPx(K6).toFixed(2)} derived`);
+    T("the slab reads the token rather than a literal", /border-radius:\s*var\(--occvm-r\)/.test(css6));
+    /* stripComments, for the fourth time and the first time without being told twice: this file's own
+       helper was factored one commit ago and this guard was still written against raw source, which
+       found "radius <= 4px" in the comment recording what the token replaced. */
+    T("L2's 4px crystal ceiling is gone from the stylesheet's code",
+      !/radius:\s*[0-4]px/.test(stripComments(css6)));
+    T("but the stylesheet still records the ceiling it replaced", /radius <= 4px/.test(css6));
+
+    /* the direction is the finding: a fluid is ROUNDER than a cut mineral, so this must exceed the
+       ceiling it replaces. A derivation that landed back under 4px would mean the geometry had been
+       fitted to the old law rather than taken from the substance. */
+    T("the fluid's radius EXCEEDS the crystal's 4px ceiling — edges relax, they do not sharpen",
+      declared > 4, declared + "px");
+
+    /* the two length scales agree by construction, which is what fixed tau0 */
+    /* τ₀ is stored rounded to 2dp — a human-readable value inside the published band — so the two
+       lengths agree to that precision and not exactly. Asserting the real tolerance rather than
+       loosening one until it passes: 0.01 mm is what 21.15 Pa resolves to. */
+    T("puddle height equals capillary length to the precision tau0 is quoted at",
+      Math.abs(RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1000 < 0.01,
+      ((RH6.puddleHeight(K6) - RH6.capillaryLength(K6)) * 1e6).toFixed(2) + " micrometres apart");
+    T("and tau0 is no longer the range floor that could not hold a blob",
+      K6.tau0 > 10 && RH6.standingStress(K6, 1) < K6.tau0,
+      `tau0 ${K6.tau0} Pa; a 1mm blob needs ${RH6.standingStress(K6, 1).toFixed(1)}`);
+    T("the range floor is pinned out: 0.03 Pa holds 2.7 micrometres", K6.tau0 !== 0.03);
+
+    /* surface tension is the weakest input and its sensitivity is stated, not hidden */
+    T("radius goes as sqrt(gamma), so a 2x error in the least-sourced number is only 1.41x", (() => {
+      const twice = Object.assign({}, K6, { gamma: K6.gamma * 2 });
+      return Math.abs(RH6.radiusPx(twice) / declared - Math.SQRT2) < 0.01;
+    })());
+  }
+
   /* SPINE.md is the law: the material's published constants must appear in it */
   {
     const spine = fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8");

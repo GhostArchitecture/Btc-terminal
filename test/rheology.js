@@ -11,8 +11,12 @@ const R = require("../occvm/rheology.js");
 const K = R.KETCHUP;
 
 /* ── the substance is published, not chosen ─────────────────────────────────────────────────────── */
-T("Herschel-Bulkley triple is the Koocheki control formulation at the range floor",
-  K.tau0 === 0.03 && K.k === 4.6 && K.n === 0.19);
+T("k and n are the Koocheki control formulation", K.k === 4.6 && K.n === 0.19);
+/* tau0 is NOT the published range floor, and the floor is falsified by the substance's own behaviour:
+   a layer stands only while tau0 >= rho*g*h, so 0.03 Pa holds 2.7 micrometres and this ketchup would
+   sheet off a plate. Re-entered at the stress where puddle height equals capillary length. */
+T("tau0 is not the range floor that could not hold a blob", K.tau0 !== 0.03 && K.tau0 > 10, K.tau0);
+T("and it sits inside the published ~10-40 Pa band", K.tau0 > 10 && K.tau0 < 40);
 T("the flow index is shear-thinning, which is what makes it a yield-stress fluid at all", K.n < 1);
 T("the refractive index is the refractometric Brix value, not a convenience",
   K.brix === 30 && Math.abs(K.ri - 1.381) < 1e-9);
@@ -71,16 +75,16 @@ T("the refractive index is the refractometric Brix value, not a convenience",
 /* ── flow, and the property yield.js is built on ────────────────────────────────────────────────── */
 {
   T("below the yield stress there is NO flow — not slow flow, none",
-    R.shearRate(K, 0.02) === 0 && R.shearRate(K, K.tau0) === 0);
-  T("above it, flow", R.shearRate(K, 5) > 0);
+    R.shearRate(K, K.tau0 * 0.5) === 0 && R.shearRate(K, K.tau0) === 0);
+  T("above it, flow", R.shearRate(K, K.tau0 + 5) > 0);
   T("stress and shear rate invert each other",
-    Math.abs(R.stress(K, R.shearRate(K, 5)) - 5) < 1e-6);
+    Math.abs(R.stress(K, R.shearRate(K, K.tau0 + 5)) - (K.tau0 + 5)) < 1e-6);
 
   /* THE FINDING THAT BLOCKS THE ROADMAP'S §3 AS WRITTEN, pinned so it is not rediscovered mid-build.
      The handoff proposes computing an animation duration from gammaDot = ((tau-tau0)/k)^(1/n). With
      n = 0.19 that exponent is 5.26, so a 100x range in applied stress spans ~1.9e18 in rate. No
      monotone map from that to a 200-400ms duration exists that is not doing all the work itself. */
-  const lo = R.shearRate(K, 0.031), hi = R.shearRate(K, 3);
+  const lo = R.shearRate(K, K.tau0 * 1.001), hi = R.shearRate(K, K.tau0 * 100);
   T("gammaDot spans >1e15 across a 100x stress range — raw rate cannot be a duration",
     hi / lo > 1e15, (hi / lo).toExponential(1));
   T("1/n is the culprit and it is 5.26, a property of the published n, not a modelling choice",

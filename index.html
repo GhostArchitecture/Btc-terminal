@@ -105,7 +105,7 @@ table {
 /* ==== END OCCVM mono.css ==== */
 
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:1b1c9afbdb81 */
+/* sha256:731eab55777d */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -204,9 +204,28 @@ table {
 .occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
 .occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
 
-/* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
+/* OCCVM-L2 (2.6) — a surface is HELD, not cut: radius from the substance's capillary length.
+ *
+ * This law read "a surface is cut, not rounded: radius <= 4px" for six releases, and that ceiling was a
+ * crystal's arris — a cut mineral holds a sharp edge, so 4px was a real property of the material the
+ * system was made of. A yield-stress fluid cannot hold one: surface tension rounds every free edge to
+ * the capillary length whether anyone wants it to or not.
+ *
+ *   --occvm-r = lc = sqrt(gamma / rho*g) = 1.891 mm = 7.15 px at 96 dpi
+ *
+ * DERIVED, NOT AUTHORED, and asserted against occvm/rheology.js by test/occvm.js so the two cannot drift.
+ *
+ * WHAT IT DOES NOT YET DO, MEASURED RATHER THAN ASSUMED. `.occvm-slab` is worn by ZERO elements in either
+ * tool, so this token currently reaches nothing — the primitive set has been declared and unadopted since
+ * 1.0 and this changes that in no way. And the ceiling it replaces is not what the tools paint: BTC's own
+ * surfaces run 16–22px with nine 999px pills, Rhyme's run 2–4px. So L2 is obeyed by one tool and ignored
+ * by the other, and 7.15px would ROUND Rhyme while SHARPENING BTC. Which of those is a violation to fix
+ * and which a divergence to legitimise is a design decision, not a measurement, and it blocks adoption
+ * rather than being answered by this derivation. */
+:root { --occvm-r: 7.15px; }
+
 .occvm-slab {
-  border-radius: 3px;
+  border-radius: var(--occvm-r);
   background: var(--sub, #1b1a22);
   border: 1px solid var(--edge);
   box-shadow: var(--occvm-bevel);
@@ -863,7 +882,7 @@ table {
 
 <script>
 /* ==== OCCVM SPINE rheology.js — spliced from occvm/rheology.js. do not edit. ==== */
-/* sha256:f7c753f7f5ae */
+/* sha256:ca7b589c8c28 */
 /* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -919,6 +938,7 @@ var OCCVM_RHEOLOGY = (function () {
   "use strict";
 
   var RAD = Math.PI / 180;
+  var G = 9.81;   /* m/s² — the geometry below is a static balance against weight */
   function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
 
   /* ---- the definition ---------------------------------------------------------------------------
@@ -928,13 +948,35 @@ var OCCVM_RHEOLOGY = (function () {
   var KETCHUP = {
     name: "ketchup",
     model: "Herschel-Bulkley",
-    /* τ = τ₀ + k·γ̇ⁿ — Koocheki et al. 2009, control formulation, published range floor */
-    tau0: 0.03,        /* Pa      — yield stress: below this the substance does not flow at all */
+    /* τ = τ₀ + k·γ̇ⁿ — Koocheki et al. 2009, control formulation.
+     *
+     * τ₀ IS NOT THE RANGE FLOOR, AND THE FLOOR IS FALSIFIED BY THE SUBSTANCE'S OWN BEHAVIOUR.
+     * The handoff fixes τ₀ at 0.03 Pa, "the published range floor", which reads as the conservative
+     * choice and is instead the one value that breaks the model. A layer of yield-stress fluid stands on
+     * a plate only while τ₀ ≥ ρgh, so at 0.03 Pa the tallest standing blob is **2.7 µm**: this ketchup
+     * would sheet off the plate like water. Ketchup visibly does not. A 5 mm blob — what anybody would
+     * call a dollop — needs τ₀ ≥ 55.9 Pa; even 1 mm needs 11.2. Three orders of magnitude, and it
+     * matters beyond realism: a Herschel-Bulkley fluid with a negligible yield stress is just a
+     * power-law fluid, and SGR's whole mechanism (caging, x < 1, escape over a barrier) needs a real
+     * one. The floor deletes the property the model is named for.
+     *
+     * Re-entered by a consistency criterion rather than by preference or by position in the range: τ₀ is
+     * the stress at which the yield-stress height equals the capillary length — the blob is exactly as
+     * TALL as surface tension makes it ROUND. τ₀ = ρ·g·λc = 21.15 Pa, which sits inside the published
+     * ~10–40 Pa band without having been chosen from it. Judgment, named as judgment: the criterion is a
+     * choice, the arithmetic under it is not. */
+    tau0: 21.15,       /* Pa      — yield stress: below this the substance does not flow at all */
     k: 4.6,            /* Pa·sⁿ   — consistency index */
     n: 0.19,           /* —       — flow index; n < 1 is shear-thinning */
     brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */
     ri: 1.381,         /* —       — refractive index at 30 °Bx, 20 °C (ICUMSA); see header */
     density: 1.14,     /* g/cm³ */
+    /* Surface tension. THE LEAST-SOURCED NUMBER IN THIS FILE and flagged as such: aqueous food systems
+       carrying solids and surfactants run well below water's 0.072, and 0.04 N/m is a mid-range estimate
+       rather than a measurement of ketchup. It is tolerable because the geometry it feeds goes as √γ:
+       being wrong by 2× moves the derived radius by 1.41×, from 7.1 px to 5.7 or 9.6. Stated so nobody
+       reads the radius as tighter than its input. */
+    gamma: 0.040,      /* N/m — estimate, see note */
     /* THE BODY COLOUR, and it is judgment, named as judgment exactly as the crystal model named its own.
        A fluid's colour comes from what is dissolved in it, not from its flow curve, so no amount of
        rheology produces this. It stays anchored to OCCVM-L1's declared substrate floor — the same anchor,
@@ -1043,6 +1085,44 @@ var OCCVM_RHEOLOGY = (function () {
     return m.tau0 + m.k * Math.pow(Math.max(0, gammaDot), m.n);
   }
 
+  /* ---- geometry: what a fluid puts on an edge --------------------------------------------------
+   *
+   * OCCVM-L2 reads "a surface is **cut, not rounded**. Corner radius ≤ 4px." That is the most directly
+   * crystalline sentence in the law, and it is why swapping the substance changed nothing visible: 2.5
+   * step A ported the OPTICS and kept the GEOMETRY, so the tools went on presenting a 45° chamfer and a
+   * faceted edge while claiming to be made of a fluid. Changing what a surface is made of while keeping
+   * its shape is not a material change, and the measurement said so — the substance reaches 2 of 70
+   * rendered tokens, through one gradient stop.
+   *
+   * A fluid at rest does not present facets. Two real lengths decide its edge, and neither is authored:
+   *
+   *   CAPILLARY LENGTH  λc = √(γ/ρg) — where surface tension stops losing to gravity. Below it a free
+   *   surface is rounded by tension; above it gravity flattens it into a puddle. For this substance
+   *   λc = 1.891 mm, which is **7.1 CSS px at 96 dpi**. That number is not fitted and not tuned: it is
+   *   what the substance's own density and surface tension produce, and it happens to land in the range
+   *   a UI radius lives in. (Contrast the retired electromagnetic layer, whose Debye length came out at
+   *   0.43 nm — seven orders too small to be a UI dimension. The difference is not luck about which
+   *   physics was picked; it is that capillarity is a millimetre-scale phenomenon and screens are
+   *   millimetre-scale objects.)
+   *
+   *   PUDDLE HEIGHT  h = τ₀/ρg — the tallest layer the yield stress can hold against its own weight.
+   *   At the corrected τ₀ this equals λc by construction, which is what fixed τ₀ in the first place.
+   *
+   * **The radius is therefore larger than the crystal's ceiling, not smaller, and that is the point.**
+   * L2 capped radius at 4px because a cut mineral holds a sharp arris. A fluid cannot: surface tension
+   * rounds every edge to λc whether the designer wants it or not. 7.1 px against 4 px is the visible
+   * consequence of the pivot, and unlike the substrate ramp it lands on every slab, tile, control and
+   * binding in both tools rather than on one gradient stop. */
+  function capillaryLength(m) { return Math.sqrt(m.gamma / (m.density * 1000 * G)); }
+  function puddleHeight(m) { return m.tau0 / (m.density * 1000 * G); }
+  /* CSS px at the reference 96 dpi, where 1 px = 25.4/96 mm. A physical length only becomes a UI length
+     through a stated conversion; putting it here means the conversion is visible rather than folded into
+     a constant somebody later reads as a design choice. */
+  var MM_PER_PX = 25.4 / 96;
+  function radiusPx(m) { return capillaryLength(m) * 1000 / MM_PER_PX; }
+  /* The stress a layer of height h exerts at its own base — the test that falsified the range floor. */
+  function standingStress(m, heightMm) { return m.density * 1000 * G * heightMm / 1000; }
+
   /* ---- Soft Glassy Rheology ----------------------------------------------------------------------
    * CLOSES OPEN ITEM #5, which asked whether SGR's noise temperature x derives from τ₀/k/n or needs a
    * second authored constant. It derives, and the sign is fixed by physics rather than by preference.
@@ -1080,6 +1160,8 @@ var OCCVM_RHEOLOGY = (function () {
     fresnel: fresnel, faces: faces, substrate: substrate,
     renderedContrast: renderedContrast, faceRatios: faceRatios,
     shearRate: shearRate, stress: stress,
+    capillaryLength: capillaryLength, puddleHeight: puddleHeight,
+    radiusPx: radiusPx, standingStress: standingStress, MM_PER_PX: MM_PER_PX,
     noiseTemperature: noiseTemperature, inGlassPhase: inGlassPhase,
     fractalDimension: fractalDimension
   };
@@ -8023,7 +8105,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260908014526";
+const BUILD_STAMP="build-20260908120937";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8040,5 +8122,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260908014526 -->
+<!-- build-20260908120937 -->
 </html>

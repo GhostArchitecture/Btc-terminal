@@ -96,9 +96,28 @@
 .occvm-cast-1 { box-shadow: var(--occvm-cast-1); }
 .occvm-cast-3 { box-shadow: var(--occvm-cast-3); }
 
-/* OCCVM-L2 — a surface is cut, not rounded: radius <= 4px, bevel struck from the light. */
+/* OCCVM-L2 (2.6) — a surface is HELD, not cut: radius from the substance's capillary length.
+ *
+ * This law read "a surface is cut, not rounded: radius <= 4px" for six releases, and that ceiling was a
+ * crystal's arris — a cut mineral holds a sharp edge, so 4px was a real property of the material the
+ * system was made of. A yield-stress fluid cannot hold one: surface tension rounds every free edge to
+ * the capillary length whether anyone wants it to or not.
+ *
+ *   --occvm-r = lc = sqrt(gamma / rho*g) = 1.891 mm = 7.15 px at 96 dpi
+ *
+ * DERIVED, NOT AUTHORED, and asserted against occvm/rheology.js by test/occvm.js so the two cannot drift.
+ *
+ * WHAT IT DOES NOT YET DO, MEASURED RATHER THAN ASSUMED. `.occvm-slab` is worn by ZERO elements in either
+ * tool, so this token currently reaches nothing — the primitive set has been declared and unadopted since
+ * 1.0 and this changes that in no way. And the ceiling it replaces is not what the tools paint: BTC's own
+ * surfaces run 16–22px with nine 999px pills, Rhyme's run 2–4px. So L2 is obeyed by one tool and ignored
+ * by the other, and 7.15px would ROUND Rhyme while SHARPENING BTC. Which of those is a violation to fix
+ * and which a divergence to legitimise is a design decision, not a measurement, and it blocks adoption
+ * rather than being answered by this derivation. */
+:root { --occvm-r: 7.15px; }
+
 .occvm-slab {
-  border-radius: 3px;
+  border-radius: var(--occvm-r);
   background: var(--sub, #1b1a22);
   border: 1px solid var(--edge);
   box-shadow: var(--occvm-bevel);
