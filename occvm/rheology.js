@@ -1,0 +1,215 @@
+/* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
+ *
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy — the next splice reverts it silently.
+ *
+ * Replaces occvm/material.js. The crystal basis (aragonite, orthorhombic) was not wrong and did not fail
+ * a measurement; it is retired on the owner's aesthetic judgment, which is a legitimate call and is
+ * recorded as one rather than dressed as a defect. What follows is what survives that decision, what
+ * does not, and — the part the roadmap got wrong — what ports across intact.
+ *
+ * ─── the substance ───────────────────────────────────────────────────────────────────────────────
+ *
+ * Tomato ketchup, as a Herschel-Bulkley fluid: τ = τ₀ + k·γ̇ⁿ. Chosen over Carbopol, the cleaner
+ * synthetic yield-stress fluid, because Carbopol is explicitly non-thixotropic while both tools' shipped
+ * copy already describes a memory effect ("dilate instantly, contract slowly"). One substance that does
+ * both jobs beats two that each do one.
+ *
+ * Beneath it, Soft Glassy Rheology (Sollich 1997/1998): mesoscopic elements caged in energy wells,
+ * escaping by YIELDING over an activation barrier. Not a second substance — the same one, one level down,
+ * and the reason `yield` is the right word for a destructive action rather than a metaphor for one.
+ *
+ * ─── WHAT THE ROADMAP SAID WOULD DIE, AND DOES NOT ───────────────────────────────────────────────
+ *
+ * The handoff records "elastic tensor and biaxial optics have no fluid equivalent — deleted, not ported."
+ * The elastic tensor does die: a fluid has no stiffness, so P1's anisotropic motion goes with it, and
+ * P1 shipped nothing anyway (2.1). **The optics do not die, and deleting them would have taken the
+ * substrate's colour with them** — since 2.4 the sundial derives `--sub-hi` and `--sub-lo` by calling
+ * `faceRatios()` every tick, so a substance with no refractive index does not simplify the tool, it
+ * stops it painting.
+ *
+ * The port works because 2.4's mechanism was never biaxiality. It is that ONE slab presents THREE ANGLES
+ * to the viewer, and Fresnel reflectance varies with angle at any fixed index. Aragonite happened to
+ * supply three indices as well; that was a bonus, not the mechanism. Measured at L2's cut geometry:
+ *
+ *      n = 1.381        front 0°  R = 2.55%     chamfer 45°  R = 3.39%     edge 80°  R = 36.20%
+ *      spread 14.200×   against aragonite's 9.353× and the 13.881× the tools actually render
+ *
+ * **The fluid fits the rendered substrate BETTER than the crystal did.** Aragonite needed a legibility
+ * exponent of 1.177 to reach what the tools paint; ketchup reaches it at 0.991 — within 1% of unity,
+ * meaning the substance's own optics reproduce the shipped substrate with almost no judgment applied.
+ * That is a stronger position than the model it replaces, and it was not the reason for the pivot.
+ *
+ * ─── why n is the best-sourced number here, and not a convenience ────────────────────────────────
+ *
+ * Tomato concentrate is graded in degrees Brix, and Brix in tomato products is DEFINED refractometrically
+ * — the standard method measures refractive index and reads soluble solids off it. So n is not a property
+ * somebody had to go looking for to make this model work; it is the property the industry already
+ * measures ketchup by. Commercial ketchup runs ~28–33 °Brix; n = 1.381 is the ICUMSA value at 30 °Brix,
+ * 20 °C. The Herschel-Bulkley triple is the control formulation of Koocheki et al. (2009), fixed at the
+ * published range floor.
+ */
+var OCCVM_RHEOLOGY = (function () {
+  "use strict";
+
+  var RAD = Math.PI / 180;
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+
+  /* ---- the definition ---------------------------------------------------------------------------
+   * Every value published and none chosen to fit: the flow triple from steady-shear rheometry, the
+   * index from the refractometric Brix scale the product is graded on, density from composition tables.
+   */
+  var KETCHUP = {
+    name: "ketchup",
+    model: "Herschel-Bulkley",
+    /* τ = τ₀ + k·γ̇ⁿ — Koocheki et al. 2009, control formulation, published range floor */
+    tau0: 0.03,        /* Pa      — yield stress: below this the substance does not flow at all */
+    k: 4.6,            /* Pa·sⁿ   — consistency index */
+    n: 0.19,           /* —       — flow index; n < 1 is shear-thinning */
+    brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */
+    ri: 1.381,         /* —       — refractive index at 30 °Bx, 20 °C (ICUMSA); see header */
+    density: 1.14,     /* g/cm³ */
+    /* THE BODY COLOUR, and it is judgment, named as judgment exactly as the crystal model named its own.
+       A fluid's colour comes from what is dissolved in it, not from its flow curve, so no amount of
+       rheology produces this. It stays anchored to OCCVM-L1's declared substrate floor — the same anchor,
+       for the same reason, and with the same objection standing: fixing a free parameter FROM the tools
+       is a fit, and a free parameter has to be fixed from something. */
+    body: "#0e0d13"
+  };
+
+  /* ---- optics: ported from the crystal model, mechanism unchanged --------------------------------
+   * Unpolarised Fresnel reflectance. A fluid is isotropic, so one index serves all three faces — and the
+   * faces still separate, because the angle is what varies. This is the whole of the port.
+   */
+  function fresnel(n, thetaDeg) {
+    var th = clamp(thetaDeg, 0, 89.9) * RAD;
+    var s = Math.sin(th), c = Math.cos(th);
+    var k = Math.sqrt(Math.max(0, 1 - (s / n) * (s / n)));
+    var rs = Math.pow((c - n * k) / (c + n * k), 2);
+    var rp = Math.pow((k - n * c) / (k + n * c), 2);
+    return (rs + rp) / 2;
+  }
+
+  /* The angles are OCCVM-L2's cut geometry, unchanged from 2.4: the flat front, the chamfer L2 permits,
+     and the edge seen near tangent. The crystal model paired each with a principal index and flagged that
+     pairing as a convention; a fluid has one index, so THE CONVENTION IS GONE. One fewer authored
+     decision, which is a small real gain from the pivot and worth naming as one. */
+  var CUT = { front: 0, chamfer: 45, edge: 80 };
+
+  function faces(m) {
+    var n = m.ri;
+    return {
+      front:   { theta: CUT.front,   R: fresnel(n, CUT.front) },
+      chamfer: { theta: CUT.chamfer, R: fresnel(n, CUT.chamfer) },
+      edge:    { theta: CUT.edge,    R: fresnel(n, CUT.edge) }
+    };
+  }
+
+  /* ---- resolve ----------------------------------------------------------------------------------
+   * A reflectance ratio is a ratio in LINEAR light. Kept verbatim from the crystal model, including the
+   * reason: the first version of that resolver scaled sRGB bytes and rendered a 9.35× spread as 116×,
+   * the transfer function applied twice, while shifting hue as one channel saturated before another.
+   */
+  function srgbToLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function linearToSrgb(v) { return v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055; }
+  function parse(h) { return [1, 3, 5].map(function (i) { return srgbToLinear(parseInt(h.substr(i, 2), 16) / 255); }); }
+  function hex(c) {
+    return "#" + c.map(function (v) {
+      return clamp(Math.round(linearToSrgb(clamp(v, 0, 1)) * 255), 0, 255).toString(16).padStart(2, "0");
+    }).join("");
+  }
+
+  /* The spread the tools actually paint at high sun — a NAMED rendered instant, never the `:root`
+     fallback. That distinction is the one 2.3 got wrong and 2.4 corrected, and it carries across the
+     pivot unchanged because it is a fact about the tools, not about the substance. */
+  var RENDERED_SPREAD_HIGH = 13.881;
+
+  function substrate(m, contrast) {
+    var k = contrast === undefined ? renderedContrast(m) : contrast;
+    var f = faces(m);
+    var base = f.front.R;
+    var body = parse(m.body);
+    function face(R) {
+      var gain = Math.pow(R / base, k);
+      return hex(body.map(function (v) { return v * gain; }));
+    }
+    return {
+      hi: face(f.edge.R), mid: face(f.chamfer.R), lo: face(f.front.R),
+      R: { front: f.front.R, chamfer: f.chamfer.R, edge: f.edge.R },
+      spread: Math.pow(f.edge.R / base, k),
+      ratios: [Math.pow(f.edge.R / base, k), Math.pow(f.chamfer.R / base, k), 1]
+    };
+  }
+
+  /* The legibility exponent, derived rather than typed. It reads 0.991 for ketchup against 1.177 for
+     aragonite: the fluid's own optics land within 1% of what the tools paint, so almost no judgment is
+     applied. A value this close to unity is worth stating plainly — it means the substance is carrying
+     the substrate essentially unaided, which the crystal was not. */
+  function renderedContrast(m) {
+    var f = faces(m);
+    return Math.log(RENDERED_SPREAD_HIGH) / Math.log(f.edge.R / f.front.R);
+  }
+
+  /* The two face offsets the sundial applies, relative to the base colour it owns. Same signature as the
+     crystal model's, so the sundial needs no change beyond which global it reads. */
+  function faceRatios(m, contrast) {
+    var r = substrate(m, contrast).ratios;
+    return { hi: r[0] / r[1], lo: 1 / r[1] };
+  }
+
+  /* ---- flow -------------------------------------------------------------------------------------
+   * The Herschel-Bulkley inverse: given an applied stress, the shear rate that results. Below the yield
+   * stress there is no flow at all — not slow flow, NONE — which is the property `yield.js` is built on
+   * and the reason a destructive action can have an inert phase that is physically real rather than a
+   * designed pause.
+   */
+  function shearRate(m, tau) {
+    if (tau <= m.tau0) return 0;
+    return Math.pow((tau - m.tau0) / m.k, 1 / m.n);
+  }
+  function stress(m, gammaDot) {
+    return m.tau0 + m.k * Math.pow(Math.max(0, gammaDot), m.n);
+  }
+
+  /* ---- Soft Glassy Rheology ----------------------------------------------------------------------
+   * CLOSES OPEN ITEM #5, which asked whether SGR's noise temperature x derives from τ₀/k/n or needs a
+   * second authored constant. It derives, and the sign is fixed by physics rather than by preference.
+   *
+   * In Sollich's SGR, x is the effective noise temperature and x = 1 is the glass transition. A yield
+   * stress exists ONLY in the glass phase, x < 1; above it the material is a power-law fluid with no
+   * yield stress at all. Ketchup has a measured yield stress, so x < 1 is not a choice — it is a
+   * constraint the substance imposes, and any value at or above 1 would contradict τ₀ > 0.
+   *
+   * Near the transition the Herschel-Bulkley exponent and the noise temperature are complementary,
+   * n = 1 − x, giving x = 0.81 for n = 0.19. **The constraint is physics; the exact functional form is
+   * the judgment, and it is flagged as one** — the same discipline the crystal model applied to
+   * `contrast`. What is not judgment: x sits below 1, close to it, which is where a substance that
+   * yields but only just is supposed to sit.
+   */
+  function noiseTemperature(m) { return 1 - m.n; }
+  function inGlassPhase(m) { return noiseTemperature(m) < 1; }
+
+  /* ---- vein habit --------------------------------------------------------------------------------
+   * occvm/veins.js grows by diffusion-limited aggregation, which is generic and survives the pivot
+   * untouched as a MECHANISM — DLCA is real colloid science, not a crystal borrowing. What does not
+   * survive is the {110} twin angle, which was a fact about a lattice and has no fluid counterpart.
+   * The replacement constant is the DLCA fractal dimension (Lin et al. 1989), and it governs how the
+   * aggregate fills space rather than what angle it branches at.
+   *
+   * NOTE FOR WHOEVER WIRES THIS: the twin angle also fed occvm/fracture.js, which cleaved along it.
+   * Retiring the angle therefore retires fracture's geometry, not only veins' — that is why `yield.js`
+   * replaces fracture wholesale rather than taking a new constant.
+   */
+  var DLCA_D = 1.75;
+  function fractalDimension() { return DLCA_D; }
+
+  return {
+    KETCHUP: KETCHUP, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
+    fresnel: fresnel, faces: faces, substrate: substrate,
+    renderedContrast: renderedContrast, faceRatios: faceRatios,
+    shearRate: shearRate, stress: stress,
+    noiseTemperature: noiseTemperature, inGlassPhase: inGlassPhase,
+    fractalDimension: fractalDimension
+  };
+})();
+if (typeof module !== "undefined") module.exports = OCCVM_RHEOLOGY;
