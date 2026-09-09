@@ -101,9 +101,21 @@ const LAWS = [
       if (isNaN(men)) return { state: "DIVERGES", detail: `${vessel}; the bevel carries no meniscus — still the crystal's chisel` };
       if (!wears) return { state: "DIVERGES", detail: `${vessel}; --occvm-meniscus is declared but the bevel does not read it` };
       const ok = Math.abs(men - lc) < 0.05;
+      /* WHO WEARS IT IS MEASURED, NEVER TYPED. This line ended in the literal string "(reference
+         surface wears it; neither tool has adopted it)" from 2.10 until now — true when it was
+         written, false from 2.11, and it went on printing through 2.12 — the two releases that put the
+         meniscus and its recess onto both tools' own surfaces. An auditor that
+         exists because the conformance table read "violates: —" for six releases was carrying the
+         same defect one level down. Counted from the tool's own CSS now, so it cannot outlive its
+         fact. */
+      const bevel = (tool.own.match(/var\(--occvm-bevel\)/g) || []).length;
+      const well = (tool.own.match(/var\(--occvm-well\)/g) || []).length;
+      const worn = bevel + well
+        ? `worn at ${bevel + well} site(s): ${bevel} raised, ${well} recessed`
+        : "worn by no surface in this tool";
       return { state: ok ? "CONFORMS" : "DIVERGES",
-        detail: `${vessel}; meniscus: bevel band ${men}px against lc ${lc.toFixed(2)}px` +
-                (ok ? " (reference surface wears it; neither tool has adopted it)" : " — drifted from the substance") };
+        detail: `${vessel}; meniscus: bevel band ${men}px against lc ${lc.toFixed(2)}px — ` +
+                (ok ? worn : "drifted from the substance") };
     } },
 
   { id: "L3", name: "one light",

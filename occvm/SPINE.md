@@ -134,8 +134,8 @@ today: `OCCVM-D10`.
 ### OCCVM-L2 — cut geometry
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
-> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
+> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px — worn at 8 site(s): 6 raised, 2 recessed
+> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px — worn at 12 site(s): 5 raised, 7 recessed
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 

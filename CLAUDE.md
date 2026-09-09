@@ -4,11 +4,12 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907213640` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260909114959` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
-plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
-stores and exports. One file, 6,331 lines,
-~428 KB, 286 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
+2.12 (§12). One file, **8,093 lines, 630 KB, 294 top-level functions**, zero dependencies, zero build
+step. *These four figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
+counted, not quoted, at 2.14.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -234,8 +235,9 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **715 assertions across 7 harnesses** — the figure here read 231 across 5 long after both had grown,
-which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
+currently **738 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 388, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
@@ -1490,6 +1492,22 @@ directions** — a newly-unworn primitive fails, and adopting one of the seven a
 moves with the code instead of absorbing it. `.occvm-num` and `.occvm-rule` reached no element *anywhere*,
 including the reference surface whose whole claim is one live specimen per law; both have one now, and
 that property is asserted permanently. `test/occvm.js` 385 → 388.
+
+**2.14 — the auditor was carrying the defect it exists to catch.** `law-audit.js`'s L2 line ended in
+a **typed string**: "(reference surface wears it; neither tool has adopted it)". True when it was written
+at 2.10, false from 2.11, and it went on printing through 2.12 — the two releases that put the meniscus
+and its recess onto both tools' own surfaces — and into `SPINE.md`'s generated L2 block, which is the one
+place the law records what the tools do. That is §7's `violates: —` table one level down, inside the
+instrument built to make that impossible. Replaced by a count taken from each tool's own CSS: **BTC 8
+sites (6 raised, 2 recessed), Rhyme 12 (5, 7)**. The measured half — band 7.148px against λc 7.15px — was
+right the whole time; only the sentence about who wears it was false, which is exactly how a stale claim
+survives a gate. `SPINE.md` regenerated with `--stamp`, byte-identical in both repositories.
+
+*Two more of the same class, found by counting rather than by reading:* this file's header claimed 6,331
+lines / ~428 KB / 286 functions against a measured **8,093 / 630 KB / 294**, and a deploy stamp three
+releases old; §6 claimed 715 assertions against a measured **738**. Both corrected, both with the
+superseded figure left visible beside the new one. `<Cast>`'s own header comment in Rhyme claims 28 call
+sites against 36 — recorded here, not fixed, because it is the sibling's file and nothing measures it yet.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
