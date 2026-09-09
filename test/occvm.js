@@ -1124,8 +1124,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const run = a => cp.spawnSync(process.execPath,
       [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), ...a], { encoding: "utf8" });
 
+    /* THE COUNT IS READ, NEVER TYPED. Both of these assertions carried a literal 12, so adding L13 at
+       2.15 failed them on correct code — a guard that has to be edited every time the thing it guards
+       grows is a stale claim with a test around it, which is the class 2.14 corrected in the auditor and
+       in the handoff's own header. What the law actually promises is that EVERY law it declares is
+       measured, so the expected count comes from SPINE.md's own headings. */
+    const LAW_IDS = [...fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8")
+      .matchAll(/^### OCCVM-(L\d+) —/gm)].map(m => m[1]);
     const j = JSON.parse(run(["--json"]).stdout);
-    T("every law is measured or explicitly labelled unmeasurable", j.length === 12);
+    T("every law SPINE.md declares is measured or explicitly labelled unmeasurable",
+      j.length === LAW_IDS.length && LAW_IDS.every(id => j.some(l => l.id === id)),
+      `${j.length} audited / ${LAW_IDS.length} declared`);
     T("no law reports IN FORCE without a tool measured as conforming",
       j.every(l => l.overall !== "IN FORCE" || l.per.some(p => p.state === "CONFORMS")),
       "unadopted + unmeasured rolling up to IN FORCE is how a declared law reads as a working one");
@@ -1139,7 +1148,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--json"],
       { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) }).stdout);
     T("with the sibling absent, every law carries an ABSENT row",
-      jp.length === 12 && jp.every(l => l.per.some(p => p.state === "ABSENT")));
+      jp.length === LAW_IDS.length && jp.every(l => l.per.some(p => p.state === "ABSENT")));
     T("a tool absent from the checkout is never counted as conforming",
       jp.every(l => l.overall === "PARTIAL" || l.overall === "DIVERGED"),
       "IN FORCE / UNADOPTED / UNMEASURED with one tool unread is a verdict on a tool nobody looked at");
@@ -1147,6 +1156,22 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        the last divergence, so it began failing on correct code. The rollup rule is what matters and it can
        be checked directly: DIVERGES on a present tool must outrank ABSENT on the missing one. Asserted on
        the auditor's own function rather than on the repository happening to be broken. */
+    /* ── OCCVM-L13, 2.15: ambient motion, and the per-tool split is MEASURED ──────────────────
+       L13 grants a decorative floor to Rhyme's draft face and withholds it from BTC, where every moving
+       mark on the sweep carries win/lose. A scope that lives only in the law's prose is the "violates: --"
+       failure waiting to recur, so the measure is driven here on synthetic tools rather than waiting for
+       a floor to exist. These four cases ARE the law's table. */
+    const L13 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L13");
+    const m13 = (name, own) => L13.measure({ name, own }).state;
+    T("L13: neither tool has a floor yet, and absence reads UNADOPTED",
+      m13("BTC Terminal", "") === "UNADOPTED" && m13("Rhyme Instrument", "") === "UNADOPTED");
+    T("L13: a floor in BTC's own source diverges — the withholding is enforced, not asked for",
+      m13("BTC Terminal", "if(!RM) ambientFloor(cx);") === "DIVERGES");
+    T("L13: Rhyme is granted the floor, and only reduced-motion guarded",
+      m13("Rhyme Instrument", "if (!reducedMotion()) ambientFloor(host);") === "CONFORMS");
+    T("L13: an unguarded floor diverges even where the floor is granted — L8 is not repealed",
+      m13("Rhyme Instrument", "useEffect(() => { ambientFloor(host); }, []);") === "DIVERGES");
+
     const rollup = require("../occvm/tools/law-audit.js").rollup;
     T("the auditor exposes its rollup so this can be tested without a real divergence", typeof rollup === "function");
     T("a measured divergence outranks an absent tool", rollup(["DIVERGES", "ABSENT"]) === "DIVERGED");

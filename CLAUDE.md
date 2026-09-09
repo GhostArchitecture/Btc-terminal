@@ -235,8 +235,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **738 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 388, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **742 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 392, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1508,6 +1508,38 @@ lines / ~428 KB / 286 functions against a measured **8,093 / 630 KB / 294**, and
 releases old; §6 claimed 715 assertions against a measured **738**. Both corrected, both with the
 superseded figure left visible beside the new one. `<Cast>`'s own header comment in Rhyme claims 28 call
 sites against 36 — recorded here, not fixed, because it is the sibling's file and nothing measures it yet.
+
+**2.15 — L13, ambient motion: a permission written where the prohibition never was.** The rule that has
+been killing motion proposals — §5.3's deforming highlight at 2.10, §5.6's caging jitter at the same
+release — was never in this law. It lives in the **master roadmap's §6**, which SPINE.md only ever
+*quoted* while recording a disposition. A rule that governs by being cited from another document is one
+nobody can read, bound or argue with, so `OCCVM-L13` states it here as a grant with its own edges, and §6
+stops being law by citation.
+
+**A decorative layer may move on its own; the material may not.** A slow continuous floor may run
+unconditionally — no gate, no triggering state — sourced from the system's own generators and palette. The
+cost is named rather than absorbed: a yield-stress fluid below τ₀ does not spontaneously convect or drift,
+so the floor **contradicts the substance's defining behaviour** and is recorded as the owner's aesthetic
+judgment, the standard §9 already applies to the crystal's replacement. What stays closed is the material
+deforming *at rest* — decoration **on** the substance is permitted, the substance lying about what it is
+is not. **L8 is untouched and L13 reaffirms it:** a floor under `prefers-reduced-motion` degrades to a
+static frame, never to a subtler floor.
+
+**The scope is per tool and deliberately asymmetric — and it is measured, not merely written.** Rhyme is
+granted the floor on the draft face: a reading surface is a document and nothing on it encodes an outcome.
+**This tool is withheld**, from the canvas and every surface §5 governs, because every moving mark on the
+sweep means something and a drifting decorative mass drawn from `PAL` beside marks that carry win/lose is
+§7.6's noise-as-opportunity trade. A scope living only in prose is how §7's table came to read
+`violates: —`, so `law-audit.js` measures it: a floor call site in this tool's own source reads DIVERGES,
+in Rhyme's it must be reduced-motion guarded at the call, and `test/occvm.js` drives all four cases on
+synthetic tools rather than waiting for a floor to exist. **UNADOPTED in both today** — the law is written
+before the first floor so the first one is built against a boundary rather than negotiating one after.
+
+*And the law-count guards were themselves a typed number.* Two assertions read `j.length === 12`, so
+declaring a thirteenth law failed them **on correct code** — the 2.14 class again, a stale claim with a
+test wrapped around it. Both now read the count from SPINE.md's own `### OCCVM-L` headings and assert
+what the law actually promises: every law it declares is audited. `test/occvm.js` 388 → 392; §6's total
+738 → 742.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

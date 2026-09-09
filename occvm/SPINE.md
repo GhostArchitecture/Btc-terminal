@@ -872,6 +872,72 @@ and that is the honest form of it.
 
 *BTC's `--night` was a binary step at −2° before 1.2: closed `OCCVM-D2`.*
 
+### OCCVM-L13 — ambient motion
+
+> **STATE: UNADOPTED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNADOPTED** — no ambient floor in this tool
+> - Rhyme Instrument: **UNADOPTED** — no ambient floor in this tool
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+**A decorative layer may move on its own. The material may not.** That sentence is the whole law and the
+two halves are not the same claim.
+
+**What this grants, and why it is a grant rather than a repeal.** Nothing in this document ever forbade
+ambient motion. The prohibition that has been cited to kill features — §5.3's deforming highlight at 2.10,
+§5.6's always-on caging jitter at the same release — lives in the **master roadmap's §6**, a source
+document this law quotes when recording a disposition (see §9). A rule that governs by being quoted from
+somewhere else is a rule nobody can read, argue with, or bound. So it is written here, as a permission with
+its own edges, and §6 stops being law by citation.
+
+A slow, continuous decorative floor may run **unconditionally** — no gate, no triggering state, motion at
+rest — provided every clause below holds. It is sourced from the system's own generators, constants and
+palette rather than from invented animation.
+
+**The cost, named so it is decided rather than absorbed.** The substance does not do this. A yield-stress
+fluid below τ₀ holds: it does not spontaneously convect, coalesce or drift, and that is the defining
+property L11's whole vocabulary rests on. An ambient floor therefore **contradicts the substance's own
+behaviour** — it is decoration on the material, not a deeper expression of it. Recorded as the owner's
+aesthetic judgment, a legitimate call recorded as one rather than dressed as a derivation, the same
+standard §9 applies to the crystal's replacement.
+
+**The line that stays closed.** A floor is a **layer sitting on** the material. The material's own surface
+does not deform, breathe, settle or shimmer at rest — that is the substance lying about what it is, and
+§5.3 stays dropped for exactly the reason it was dropped: below τ₀ it cannot happen. Decoration on the
+substance is permitted; the substance pretending to a behaviour it does not have is not.
+
+**L8 is untouched and this law reaffirms it.** Every motion respects `prefers-reduced-motion`. A floor
+under that setting degrades to a **static frame** — never to a slower floor, a subtler floor, or a
+different curve. `lockRelease` already models the pattern: no snapshot, no animation, the end state
+immediately.
+
+**Scope is per tool, and it is deliberately not symmetric.**
+
+| tool | ambient floor | why |
+|---|---|---|
+| **Rhyme Instrument** | **granted**, on the draft face | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. |
+| **BTC Terminal** | **withheld**, from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal. §7.6 of the handoff forbids exactly that trade. |
+
+The withholding is a **decision, not an omission**, and it is reversible the way a law is reversible — by
+editing this table with a reason — never by a commit that quietly adds a floor and lets the audit catch up.
+The auditor measures the split: a floor appearing in BTC's own source reads DIVERGED, whatever it looks
+like.
+
+**Two further bounds, both narrow.** A floor never draws on a surface carrying an outcome colour or a
+measured value. And **modulation is not what makes it legal**: a real value may scale a floor's intensity
+(Rhyme's `--heat`, read-only, is the obvious first one), but the floor is lawful at zero modulation, which
+is precisely why this is a grant and not a case of the gated-motion rule.
+
+**Gated motion is a different question and is not this law.** Motion conditional on a real, actively
+created state — a lock held, a tempo set — was never prohibited and needs nothing from here. One clause
+belongs beside it and is stated here because this is where motion is now written down: **the gate is the
+actual value, never its display fallback.** A variable that exists so a panel can render a default
+(`tempo || {bpm: 90, …}`) may not be the variable a motion's trigger reads, or the motion runs forever
+under a default nobody set.
+
+**Unadopted at 2.15.** Neither tool has a floor. This law exists before the first one, so that the first
+one is built against a written boundary rather than negotiating one afterwards.
+
 ---
 
 ## 2. Tokens
@@ -1211,8 +1277,9 @@ law are generated from that run.
 | **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
+| **L13** | ambient motion | UNADOPTED | UNADOPTED | UNADOPTED |
 
-**8 in force · 0 diverged · 4 unmeasured · 0 unadopted**
+**8 in force · 0 diverged · 4 unmeasured · 1 unadopted**
 
 ### What the four states mean, and why four rather than two
 
