@@ -135,7 +135,7 @@ today: `OCCVM-D10`.
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px — worn at 8 site(s): 6 raised, 2 recessed
-> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px — worn at 12 site(s): 5 raised, 7 recessed
+> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px — worn at 14 site(s): 7 raised, 7 recessed
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -280,7 +280,7 @@ golden set a delta it cannot attribute.
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — 15 casts, all light-derived or inset
-> - Rhyme Instrument: **CONFORMS** — 23 casts, all light-derived or inset
+> - Rhyme Instrument: **CONFORMS** — 25 casts, all light-derived or inset
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -502,7 +502,7 @@ right about a crystal, and all of it left with the crystal at 2.8.
 
 > **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **UNADOPTED** — no pinch call site
-> - Rhyme Instrument: **UNMEASURED** — 1 call site(s); whether each is irreversible needs an eye
+> - Rhyme Instrument: **UNMEASURED** — 2 call site(s); whether each is irreversible needs an eye
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -874,9 +874,9 @@ and that is the honest form of it.
 
 ### OCCVM-L13 — ambient motion
 
-> **STATE: UNADOPTED** — measured by `occvm/tools/law-audit.js`, not asserted.
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **UNADOPTED** — no ambient floor in this tool
-> - Rhyme Instrument: **UNADOPTED** — no ambient floor in this tool
+> - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -935,8 +935,17 @@ actual value, never its display fallback.** A variable that exists so a panel ca
 (`tempo || {bpm: 90, …}`) may not be the variable a motion's trigger reads, or the motion runs forever
 under a default nobody set.
 
-**Unadopted at 2.15.** Neither tool has a floor. This law exists before the first one, so that the first
-one is built against a written boundary rather than negotiating one afterwards.
+**Written at 2.15, first worn at 2.22.** The law existed before the first floor, so the first floor was
+built against a written boundary rather than negotiating one afterwards — which is what it was for, and
+it is the first law here that can say so. Rhyme's draft face carries one; BTC carries none, and the
+auditor measures the split rather than trusting this table.
+
+*The measure could not tell the tools apart until the day it was needed.* `readTool` handed each measure
+`{raw, own}` and no name, so L13 — the one law whose measure reads the name, because its grant is per
+tool — saw `undefined` and answered *withheld* for **both** tools on every run since 2.15. Four synthetic
+guards built their own `{name, own}` and passed. That is 2.7's hardcoded `SIBLING` one level along: a
+measure verified against its fixture instead of its call path. Found at 2.22 by a correct floor reading
+DIVERGED, fixed, and guarded through `readTool` itself so the fixture and the runner cannot drift again.
 
 ---
 
@@ -1289,9 +1298,9 @@ law are generated from that run.
 | **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
-| **L13** | ambient motion | UNADOPTED | UNADOPTED | UNADOPTED |
+| **L13** | ambient motion | IN FORCE | UNADOPTED | CONFORMS |
 
-**8 in force · 0 diverged · 4 unmeasured · 1 unadopted**
+**9 in force · 0 diverged · 4 unmeasured · 0 unadopted**
 
 ### What the four states mean, and why four rather than two
 
@@ -1584,6 +1593,30 @@ been passing — a regime claim, a curve identity, and a gate test that could on
 was broken. Each was rewritten to say the smaller true thing rather than the larger convenient one, which is
 the only reason the correction improved the suites instead of just moving them.
 
+**2.22 — P-3's one pass, and the two things it returned.** The bound was one citation check at the moment
+the floor was built, and that is exactly what it cost. **The scaling is confirmed:** in the viscous regime
+the coalescence bridge radius grows *linearly* in time — Eggers, Lister & Stone, *J. Fluid Mech.* **401**,
+293–310 (1999). The `√t` everybody reaches for is the **inertial** law, `r_b = D(γa/ρ)^{1/4} t^{1/2}`, and
+a yield-stress tomato matrix is nowhere near that regime. So the floor merges linearly, and that is not a
+preference.
+
+*The logarithmic correction was measured and dropped, with the reason.* ELS carry
+`r_m ~ (γt/πη)·ln[γt/(ηR)]`. It is an **early-time asymptotic**, valid for `t ≪ t_v = ηR/γ`; the form
+`−t·ln(t/t_v)` turns over at `t/t_v = 1/e` and past that predicts the bridge *shrinking*. A merge rendered
+to completion runs straight through that point, so carrying the log here would be using an asymptotic
+outside its regime — the class of error 2.8 caught in the 3-D fractal dimension on a planar lattice, and
+2.10 in `k` and `n`. Linear, without the correction, and the guard proves linearity by doubling rather
+than by matching source text.
+
+*And the absolute rate is not derivable, which is measured rather than asserted.* The linear rate's
+magnitude is `γ/η`, and `η` is the substance's apparent viscosity — which depends on the shear rate the
+merge itself sets. Across a plausible range: `γ̇ = 0.01` gives `η = 2,627 Pa·s` and `5.8×10⁻⁵ px/ms`;
+`γ̇ = 10` gives `η = 4.99` and `3.0×10⁻² px/ms`. **The same 24 px bridge takes 417 seconds at one end and
+0.8 s at the other**, and nothing fixes `γ̇` independently of the rate it would produce. That is P-4's
+`η(γ̇)` arriving as a consumer and showing precisely why it was parked: the arithmetic is right and the
+input is undetermined. Per P-3's own disposition the magnitude is authored and named as authored, the
+`LOCK_RELAX_MS` treatment. P-4 stays parked; a consumer that cannot use it is not a consumer.
+
 A spine no tool has adopted is a proposal. This one is inlined in both.
 
 ---
@@ -1603,7 +1636,7 @@ against it quietly.
 |---|---|---|---|---|
 | **P-1** | **γ, the substance's surface tension.** Carried at 0.040 N/m as an estimate, bracketed against fermented tomato juice at 40.5 / 42.6 mN/m and against water's 0.072, which is ruled out. | **λc alone** — one corner radius, ±2 px. Not τ₀ (anchored independently), not k/n, not cessation, not trap depth. | A published surface tension for a yield-stress tomato matrix. **None exists, and the reason is methodological**: ordinary tensiometry has no valid regime on a fluid that holds below τ₀. | **Closed as unclosable.** Reopens only if such a measurement is published. No further search. |
 | **P-2** | **The disturbance → v₀ map.** Closed for its first consumer at 2.16 with an authored `LOCK_V0_REF` and a clamp below the 2.9196 crossover. The *general* map — any UI gesture to a substance's initial velocity — is still authored. | Any future consumer of `yield.js` that wants a real v₀ rather than the reference. | Nothing in physics. There is no derivation from px/ms to a substance's velocity, and 2.16's entry says so. | **Closed as authored.** Each new consumer names its own anchor and its own clamp, and states both. Not a research question. |
-| **P-3** | **Droplet coalescence, if an ambient floor is ever built (L13, Rhyme).** Bridge growth is linear in the viscous regime, `r ∝ t`, not `√t`. | The floor's merge behaviour, and nothing else. Unbuilt. | One citation check against the standard result, **at the moment the floor is built and not before**. | **One pass, at build time.** If the scaling cannot be confirmed in that pass, the floor merges on an authored rate named as authored — the same disposition `LOCK_RELAX_MS` already has. |
+| **P-3** | ~~**Droplet coalescence, if an ambient floor is ever built (L13, Rhyme).**~~ **CLOSED at 2.22 — the pass ran and the scaling is confirmed.** Viscous regime, `r ∝ t`, linear (Eggers, Lister & Stone, *J. Fluid Mech.* **401**, 293–310, 1999). `√t` is the *inertial* law and is not this substance's. | The floor's merge behaviour. Built. | Done: one pass, at build time, as this row said. | **Spent, in full.** The bound was one pass and one pass is what it cost. Two findings came with it and are in §9. |
 | **P-4** | **Trap depth, and the shear-thinning form η(γ̇).** Both derived and both unwired: trap depth from SGR's escape law at 2.8, η(γ̇) surveyed and parked with no consumer in either tool. | Nothing. Neither reaches a surface. | A consumer. Not a measurement — the arithmetic is already right. | **Parked, zero cost.** Revisited only when something wants to read one. |
 
 **Two questions that look physical and are not, kept out of this table on purpose.** `OCCVM-D13` — the

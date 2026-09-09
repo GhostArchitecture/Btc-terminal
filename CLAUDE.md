@@ -237,8 +237,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **762 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 412, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **766 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 416, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1710,6 +1710,56 @@ it carries the **transmitted** travel rather than the finger's, so the yield str
 token itself. **Open risk, unresolved and stated:** this is a test bed. Nothing yet says the gesture
 generalises past bank rows, and a dead band that is right at 56 px of row is not automatically right on a
 draft line, a shelf row, or anything that scrolls horizontally.
+
+**2.22 — L13 is worn, and the law that was written first was measured wrong the whole time.** Roadmap
+item #7. Rhyme's draft face carries an ambient floor; **this tool carries none, by the law, and the
+auditor now actually measures that.** L13 goes **UNADOPTED → IN FORCE** and the register reads **9 in
+force, 0 diverged, 0 unadopted, 4 unmeasured**.
+
+**The finding is in the auditor, not the floor.** `readTool` handed every measure `{raw, own}` and no
+name. L13 is the one law whose measure reads the name — its grant is per tool — so `/Rhyme/.test(undefined)`
+was false on every run since 2.15 and the auditor answered *withheld* for **both** tools, which is why it
+printed UNADOPTED rather than a divergence and why nothing noticed. Its four synthetic guards each built
+their own `{name, own}` and passed. **That is 2.7's hardcoded `SIBLING` one level along: a measure
+verified against its fixture instead of its call path**, and it surfaced the only way it could — a
+correct, granted, guarded floor reading DIVERGED. `readTool` and `TOOLS` are exported now and the suite
+asserts the shape the *runner* produces, so the fixture and the call path cannot drift apart again. A
+second, smaller half: the measure counted `function ambientFloor(` as a call site. Split by branch, and
+the asymmetry is the law's — a generator sitting in **this tool's** source is the violation whether or
+not anything calls it (the only reading under which the withholding cannot be walked back one commit at
+a time), while in Rhyme the definition is not a call site and L8's guard is owed at each call.
+
+**P-3 ran its one pass and is closed.** SPINE.md §10 said one citation check at the moment the floor was
+built and not before; that is exactly what it cost. **Confirmed:** in the viscous regime the coalescence
+bridge radius grows **linearly** in time (Eggers, Lister & Stone, *J. Fluid Mech.* **401**, 293–310,
+1999). `√t` is the **inertial** law and this substance is nowhere near it. Two things came back with it,
+both in SPINE.md §9. The **logarithmic correction is measured and dropped**: it is an early-time
+asymptotic, `−t·ln(t/t_v)` turns over at `t/t_v = 1/e` and then predicts the bridge shrinking, and a merge
+rendered to completion runs past that — an asymptotic outside its regime, the 2.8 and 2.10 error class.
+And the **absolute rate is not derivable, measured rather than asserted**: the magnitude is `γ/η`, `η` is
+the apparent viscosity, and it depends on the shear rate the merge itself sets — `γ̇ = 0.01` gives
+`5.8×10⁻⁵ px/ms`, `γ̇ = 10` gives `3.0×10⁻² px/ms`, **417 seconds against 0.8 for the same 24 px bridge**.
+That is P-4's `η(γ̇)` arriving as a consumer and demonstrating why it was parked. The magnitude is
+authored, the linearity is not, and the guard proves linearity by **doubling** rather than by matching
+source text.
+
+*What the floor is, in one line each.* Its own canvas at `z-index: -1` inside `.bars`, so it is a layer
+under the material and never over a bar — `.bar` carries `--heat`, a measured value, which L13 bars a
+floor from. Colour from the mineral tokens only: no literal, and an unresolved palette paints **nothing**
+rather than an invented accent (L6). Ungated, unmodulated, lawful at zero modulation, which is what makes
+L13 a grant and not the gated-motion case. Reduced motion gets **one painted frame and no rAF at all** —
+a static frame, asserted by driving the shipped code, not by reading it.
+
+*And 2.21 shipped a mismatched cache name, caught here.* That commit's `index.html` reads
+`build-20260909214145` against an `sw.js` naming `tome-build-20260909212530`: the suite ran **before**
+`build.js --stamp`, and the copy that followed refreshed the page and not the worker. Every assertion had
+passed, against the previous state. A stamp check cannot catch that — it reads whatever is on disk when
+it runs. The new guard does not depend on ordering: the repo-root `index.html`, `sw.js` and
+`manifest.json` must be **byte-identical to `dist/`**, and a half-copied artifact is a difference between
+two files whenever anybody looks. Both guards were verified to bite. The branch tip is consistent; that
+one intermediate commit is not deployable and is left on the record rather than amended away.
+
+Rhyme: **102 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's total **762 → 766**.
 
 **Deployment is held to the end of the roadmap**, by instruction. Everything from 2.13 sits on the branch,
 green, undeployed; the live stamp stays `build-20260909114959` until that changes.

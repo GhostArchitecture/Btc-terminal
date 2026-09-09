@@ -1171,6 +1171,23 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       m13("Rhyme Instrument", "if (!reducedMotion()) ambientFloor(host);") === "CONFORMS");
     T("L13: an unguarded floor diverges even where the floor is granted — L8 is not repealed",
       m13("Rhyme Instrument", "useEffect(() => { ambientFloor(host); }, []);") === "DIVERGES");
+    T("L13: a declaration is not a call site — a granted, guarded floor does not diverge on its own definition",
+      m13("Rhyme Instrument",
+        "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);")
+        === "CONFORMS");
+    T("L13: but a declaration in BTC's own source is still the violation",
+      m13("BTC Terminal", "function ambientFloor(c){return 0;}") === "DIVERGES");
+
+    /* THE SHAPE THE RUNNER ACTUALLY PRODUCES. Every assertion above builds its own {name, own} object,
+       and until 2.22 readTool returned {raw, own} — so L13's per-tool grant read `undefined` for the
+       name and answered "withheld" for BOTH tools on every real run, while all four synthetic cases
+       passed. This is the guard that was missing: the fixture and the call path must agree. */
+    const LA = require("../occvm/tools/law-audit.js");
+    for (const t of LA.TOOLS) {
+      const src = LA.readTool(t);
+      if (!src) continue;
+      T(`law-audit: the runner hands ${t.name} its own name, which L13 measures by`, src.name === t.name);
+    }
 
     const rollup = require("../occvm/tools/law-audit.js").rollup;
     T("the auditor exposes its rollup so this can be tested without a real divergence", typeof rollup === "function");

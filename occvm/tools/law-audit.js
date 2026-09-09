@@ -66,7 +66,11 @@ function readTool(t) {
     parts.push(fs.readFileSync(p, "utf8"));
   }
   const raw = parts.join("\n");
-  return { raw, own: raw.replace(FENCE, "").replace(COMMENTS, "") };
+  /* The NAME travels with the source. It did not until 2.22, and L13 — the one law whose measure reads
+     it, because its grant is per tool — saw `undefined` on every run and answered "withheld" for both
+     tools. Its synthetic guards passed a {name, own} shape the runner never produced, which is 2.7's
+     hardcoded SIBLING one level along: a measure verified against a fixture instead of the call path. */
+  return { name: t.name, raw, own: raw.replace(FENCE, "").replace(COMMENTS, "") };
 }
 
 /* ---- the laws, each with what it claims and how that claim is measured ------------------------- */
@@ -281,13 +285,25 @@ const LAWS = [
          The marker is the entry point's NAME. A floor declares itself by being called `ambientFloor` —
          chosen rather than sniffed, because there is no honest way to detect "decorative perpetual motion"
          generically, and a measure that guesses is worse than one that requires a word. */
+      if (!tool.name) throw new Error("L13 is measured per tool and this source carries no name");
       const RHYME = /Rhyme/.test(tool.name);
-      const calls = [...tool.own.matchAll(/ambientFloor\s*\(/g)];
-      if (!calls.length)
+      /* Every appearance of the name, declaration included. The two branches then read it differently,
+         and the asymmetry is the law's own: BTC is withheld from HAVING a floor, so a generator sitting
+         in its source is the violation whether or not anything calls it yet — D12's discipline, and the
+         only reading under which the withholding cannot be walked back one commit at a time. Rhyme is
+         granted the floor and owes L8 a guard AT EACH CALL, so its own definition is not a call site and
+         must not be counted as an unguarded one. Found the first time a real floor was built, at 2.22:
+         a granted, correctly guarded floor read DIVERGED on the line that declares it. */
+      const sites = [...tool.own.matchAll(/ambientFloor\s*\(/g)];
+      const decl = /function\s+ambientFloor\s*\(/.test(tool.own);
+      const calls = sites.filter(m => !/function\s+$/.test(tool.own.slice(Math.max(0, m.index - 10), m.index)));
+      if (!sites.length)
         return { state: "UNADOPTED", detail: "no ambient floor in this tool" };
       if (!RHYME)
         return { state: "DIVERGES",
-                 detail: `${calls.length} ambient floor call site(s) — L13 withholds the floor from this tool` };
+                 detail: `${calls.length} call site(s)${decl ? " and a generator declared here" : ""} — L13 withholds the floor from this tool` };
+      if (!calls.length)
+        return { state: "UNADOPTED", detail: "a floor generator is declared but nothing calls it" };
       /* Granted is not unguarded: L8 still governs, so every call site must sit inside a reduced-motion
          guard. Checked at the call rather than file-wide, because both tools already carry the string
          somewhere and a file-wide match would pass a floor that ignores the setting entirely. */
@@ -334,7 +350,10 @@ function rollup(states) {
 /* 2.10 — the reporting half runs only when this file is INVOKED. It is required as a module now, so that
    rollup() can be tested on synthetic states rather than on the repository happening to carry a real
    divergence; without this guard that require would print a full audit into the harness output. */
-module.exports = { rollup, LAWS };   /* LAWS so a harness can drive one measure on a synthetic tool */
+/* readTool and TOOLS are exported so a harness can check the shape the RUNNER produces, not only the
+   synthetic one it builds itself. L13's guards drove {name, own} and passed while the runner handed the
+   measure {raw, own} and got `undefined` for the name — a measure verified against its fixture. */
+module.exports = { rollup, LAWS, TOOLS, readTool };
 if (require.main === module) main();
 function main() {
 if (process.argv.includes("--json")) {
