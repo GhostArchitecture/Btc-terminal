@@ -29,8 +29,9 @@ const fs = require("fs"), path = require("path"), http = require("http"), url = 
 const HERE = __dirname;
 const REPOS = {
   btc:   { root: path.resolve(HERE, "..", ".."), seedKey: "btc.seed",
-           /* --vein is written only by veinLayer(); it has no CSS default, so it cannot pass while dead */
-           ready: () => getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
+           /* --globules is written only by globuleLayer() (2.25; --vein by veinLayer() before that); it has
+              no CSS default, so it cannot pass while dead */
+           ready: () => getComputedStyle(document.documentElement).getPropertyValue("--globules").trim() !== "" },
   rhyme: { root: path.resolve(HERE, "..", "..", "..", "Rhyme-Instrument"), seedKey: "tome:seed",
            /* the binding only exists once React has mounted and rendered */
            ready: () => !!document.querySelector(".binding") },
@@ -40,7 +41,7 @@ const REPOS = {
   reference: { root: path.resolve(HERE, "..", "reference"), seedKey: "occvm.seed",
                /* the token table is the last thing the page paints, and it needs every part alive */
                ready: () => document.querySelectorAll("#tok tr").length > 0
-                            && getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
+                            && getComputedStyle(document.documentElement).getPropertyValue("--globules").trim() !== "" },
 };
 
 /* Pinned instants over Dayton. Elevations are from occvm/tools/solar-compare.js, not asserted here. */
