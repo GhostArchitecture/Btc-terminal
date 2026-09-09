@@ -1608,6 +1608,32 @@ exception, counted rather than hidden. Measured: **BTC 7 outcome colours** (was 
 second file, not a new violation, which is the answer rather than a deferral. `test/occvm.js` 403 → 412;
 §6's total 753 → 762.
 
+**2.18 — swing was a label on a straight grid (Rhyme), and Reading A rides a true one.** Not this
+tool's code, but the law and the guards are shared and the finding is the same class as 2.14's. Rhyme's
+`SUBDIVISION` gave `straight` and `swing` the same 4, `slotMs` was `beatMs/per` for both, and nothing
+carried an onset — so **`swing` produced a grid byte-identical to `straight`** while the comment three
+lines above claimed it "shifts where the offbeats sit in time". Swing now splits each pair 2:1 — the
+notated meaning, the value MPC swing percentage is measured against — applied at the pair, which at
+`per = 4` is sixteenth-note swing. Measured at 90 bpm: straight `0 / 166.7 / 333.3 / 500`, swing
+`0 / 222.2 / 333.3 / 555.6`. Slot count, bar length and `pace()` unmoved. Four new tests, two of which
+fail against the old engine — verified by simulating it.
+
+*And `slotMs` became `meanSlotMs`, which is the sharper half.* Under swing no slot has the mean's
+duration and the old name claimed every slot did. No product code read it; **its only two readers were
+assertions checking it tracked bpm** — true of a mean, and exactly what made the uniform-slot claim look
+verified. A guarded lie is worse than an unguarded one, because the guard is what stops anybody looking
+again.
+
+**Reading A** — the metronome pulse — is the first consumer of `L13`'s gated-motion clause, and obeys the
+sentence written for it: the gate is the actual value, never its display fallback. `TempoPanel`'s
+`tempo || {bpm: 90, …}` exists so the panel renders before a tempo is set; reading it would leave the
+pulse beating at 90 under a default nobody chose. `performance.now()`, never a frame count. Reduced motion
+stops it rather than slowing it.
+
+*The 2.13 boundary refused the change until the token was registered.* `--pulse` is new, the census caught
+its absence from §6b's migration table on the first run, and this tool's suite failed until it landed
+there as tool-local — a rule that only describes changes after the fact is not a rule.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

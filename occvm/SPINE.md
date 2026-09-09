@@ -1184,6 +1184,12 @@ every time it runs; it is not a list kept by hand, and CI runs it with `--check`
 **Census at 1.9: 81 distinct tokens.** 27 written by the sundial each minute, 22 declared by the spine's
 CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
 
+*Rhyme's `--pulse` joins the tool-local row at 2.18* — the metronome's beat phase, written by
+`useBeatPulse` and read by `.cast`. It lands here rather than in §2a or §2ab because §2a-0 says where a
+token goes and this is neither spine-declared nor sundial-written. The census caught its absence from this
+table on the first run after it was written, which is the boundary refusing a change rather than
+describing one afterwards.
+
 ### What 2.0 does to each class
 
 2.0's break is that **a hex stops being authored and starts being derived**: `--sub: #1b1a22` becomes
@@ -1201,7 +1207,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
-| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
+| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
 ### What the audit found once it stopped trusting the checkout
 
