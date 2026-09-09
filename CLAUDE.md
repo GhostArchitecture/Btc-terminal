@@ -1615,8 +1615,17 @@ carried an onset — so **`swing` produced a grid byte-identical to `straight`**
 lines above claimed it "shifts where the offbeats sit in time". Swing now splits each pair 2:1 — the
 notated meaning, the value MPC swing percentage is measured against — applied at the pair, which at
 `per = 4` is sixteenth-note swing. Measured at 90 bpm: straight `0 / 166.7 / 333.3 / 500`, swing
-`0 / 222.2 / 333.3 / 555.6`. Slot count, bar length and `pace()` unmoved. Four new tests, two of which
-fail against the old engine — verified by simulating it.
+`0 / 222.2 / 333.3 / 555.6`. Slot count and bar length unmoved. Four new tests, two of which fail
+against the old engine — verified by simulating it.
+
+*2.19 corrects the claim this entry made about `pace()`.* It read "swing changes **where**, never how many
+or how fast", and called that a virtue. **The writing does not swing — the beat does, and a line is written
+against it**, so half a swung bar's slots are short: at 90 bpm a pair runs **222 ms long / 111 ms short**,
+which is **4.5/sec against 9.0/sec** for anything landing on either side. `rate` is a bar mean and sees
+neither; it reads 6.0 under both feels. A mean hiding an uneven constraint is the `meanSlotMs` defect one
+level up, in the readout instead of the grid. `pace()` now carries `tightMs`, `tightRate` and `even`, and
+the panel states the short side's rate — **reported, not modelled**: the tool does not know which slot a
+syllable lands in, that is the writer's ear, so it states the room the beat gives and stops.
 
 *And `slotMs` became `meanSlotMs`, which is the sharper half.* Under swing no slot has the mean's
 duration and the old name claimed every slot did. No product code read it; **its only two readers were
