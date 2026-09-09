@@ -49,7 +49,9 @@ const PARTS = IS_RHYME ? [
   /* 2.5–2.8 — the rheological substance. Spliced beside material.js from 2.5 until nothing read the
      crystal; at 2.8 veins moved to DLCA, fracture became yield, and material.js was RETIRED (below). */
   { name: "rheology.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
-  { name: "veins.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
+  /* 2.25 — the globule field replaces the DLCA veins as the substrate layer in both tools; veins.js is
+     RETIRED (below) and stays in occvm/ unspliced, as the generator the L10 record cites. */
+  { name: "globules.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "minerals.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
@@ -60,7 +62,7 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: "index.html", anchor: "<script>" },
   /* 2.5–2.8 — the rheological substance; see the Rhyme list above for the strangler's history */
   { name: "rheology.js",  target: "index.html", anchor: "<script>" },
-  { name: "veins.js",     target: "index.html", anchor: "<script>" },
+  { name: "globules.js",  target: "index.html", anchor: "<script>" },
   { name: "minerals.js",  target: "index.html", anchor: "<script>" },
   { name: "yield.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
@@ -68,7 +70,7 @@ const PARTS = IS_RHYME ? [
   { name: "serif.css",    target: REF, anchor: "<style>" },
   { name: "sundial.js",   target: REF, anchor: "<script>" },
   { name: "rheology.js",  target: REF, anchor: "<script>" },
-  { name: "veins.js",     target: REF, anchor: "<script>" },
+  { name: "globules.js",  target: REF, anchor: "<script>" },
   { name: "minerals.js",  target: REF, anchor: "<script>" },
   { name: "yield.js",     target: REF, anchor: "<script>" },
 ];
@@ -78,7 +80,7 @@ const PARTS = IS_RHYME ? [
    shipping, byte for byte, under a fence nobody regenerates. Added at 2.8, when material.js and
    fracture.js left with the crystal; until then the splicer could only add and update, never take away,
    and a part dropped from PARTS would simply have gone stale in place. */
-const RETIRED = ["material.js", "fracture.js"];
+const RETIRED = ["material.js", "fracture.js", "veins.js"];
 const RETIRED_TARGETS = IS_RHYME ? [path.join("tome-src", "10_engine.js")] : ["index.html", REF];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);

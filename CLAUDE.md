@@ -35,7 +35,8 @@ GhostArchitecture/Btc-terminal   (main)
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
-│   ├─ {spine.css,serif.css,sundial.js,rheology.js,veins.js,minerals.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,minerals.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
 │   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
 │   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
@@ -240,8 +241,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **769 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 419, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **774 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 424, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1886,6 +1887,39 @@ build (`"ink on the plate"` → `"inkontheplate"`), fixed by binding the editor 
 *The pattern across all four.* Every one of these was a value or a picture the guards had verified against
 a fixture, a fallback, or a claim — never against an eye or a thumb. `test/occvm.js` **416 → 419**; §6's
 total **766 → 769**. Rhyme **108 tests**.
+
+**2.25 — this tool takes the globules, and the vein layer leaves both tools.** The owner's call, three
+words: *also takes the globules.* The field is now the substrate layer everywhere, from **one shared
+part**, `occvm/globules.js` — Rhyme paints it live on the draft face and still on every other slab; this
+tool, which L13 withholds motion from, writes the same field once as a data URI, `--globules`, where
+`--vein` was, on `body::before` and every `.tile::before`. `veinLayer()` and `veinLayerLegacy()` are gone;
+`globuleLayer()` has **no drawn fallback** — an unspliced generator writes `none` rather than an invented
+layer, which is L6's rule applied to a layer, and the guard reads the write.
+
+**The vein layer is retired from every target.** With no tool rendering a vein, `veins.js` is retired by
+the splicer's own mechanism (2.8) from `index.html`, the reference surface and Rhyme's engine, and stays
+in `occvm/` unspliced as the generator L10's record cites — its DLCA mechanism was real and its dimension
+was measured, and the Node tests that measure it still run against the file. `--vein-density` retires
+with it: a token reaching nothing is D12. `--vein-hi`/`--vein-lo` stay; the field is tinted from them,
+which is how the mineral switch reaches it (the 1.4 guard now reads ruby's tint out of the field).
+
+**L10 re-authored around what renders — and its measure with it.** The old measure counted calls to a
+drawn-bezier fallback and read CONFORMS for a tool whose grown veins rendered as a crystal, then CONFORMS
+again for a tool that had stopped rendering veins at all: it could not tell *grown* from *absent* and was
+never measuring the law. The new one measures the consumer — each tool must call `OCCVM_GLOBULES.field`
+or `.svg`, and none may call the vein generator or the fallback it once guarded. **Both CONFORM; 9 in
+force.** The reference surface's L10 specimen is three seeds of the field, and its own ground takes the
+first.
+
+**The weight is this tool's own, measured on this tool's own ground.** Through `body::before` at .55 and
+the tiles at .16, one frozen load, `--globules` toggled: **0.12 → 1.01, 0.24 → 1.80, 0.36 → 2.71, 0.50 →
+3.79 L\*** mean over the moved region (max 18.8 at 0.50). `GLOBULE_ALPHA = 0.36` — between the diffuse
+wash it replaces (1.08) and Rhyme's slab (3.21), because a page ground under live numbers earns less than
+a document face (§7.6). The same alpha weighs differently on the two surfaces, which is exactly why it is
+not a spine constant.
+
+*Golden set re-recorded:* BTC's `--vein` becomes `--globules`, Rhyme's and the reference's token lists
+move with the retirement. `test/occvm.js` **419 → 424**; §6's total **769 → 774**. Rhyme **108 tests**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

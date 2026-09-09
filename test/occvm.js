@@ -17,7 +17,8 @@ const { load, runner } = require("./lib/load");
 const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 const { T, done } = runner("occvm: determinism seam");
 
-const vein = h => { h.R("veinLayer()"); return h.ctx.document.documentElement.style["--vein"]; };
+/* 2.25: the layer is the globule field now; the seam it proves is the same — the seed is injected */
+const vein = h => { h.R("globuleLayer()"); return h.ctx.document.documentElement.style["--globules"]; };
 const SUN = 1757160000000;   /* 2026-09-06T12:00:00Z — sun up over Dayton */
 const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
@@ -27,8 +28,8 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const b = load({ storage: { "btc.seed": "12345" } });
   const c = load({ storage: { "btc.seed": "99999" } });
   const va = vein(a), vb = vein(b), vc = vein(c);
-  T("same injected seed yields byte-identical veins", va === vb && !!va);
-  T("a different seed yields different veins", va !== vc && !!vc);
+  T("same injected seed yields a byte-identical field", va === vb && !!va);
+  T("a different seed yields a different field", va !== vc && !!vc);
   T("the injected seed is the one the generator used", a.store["btc.seed"] === "12345");
 }
 
@@ -380,8 +381,18 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
      every "diffuse" variant measured identical edge energy), and this tool must be passing 0. */
   T("veins: fine 0 draws no crisp pass", (VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, fine: 0 }).svg.match(/<use /g) || []).length === 1);
   T("veins: the default still draws two passes, so the change is the caller's", (VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3 }).svg.match(/<use /g) || []).length === 2);
-  T("veinLayer() asks for no crisp pass and a mass soft enough to hide the lattice",
-    /OCCVM_VEINS\.field\(\{[\s\S]*?wide:10, fine:0, soft:7\}\)/.test(require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8")));
+  /* 2.25 — and then the layer itself left. veins.js is retired from every target (it stays in occvm/ as
+     the generator the L10 record cites, which is why the assertions above still run against the file);
+     this tool draws the globule field as a still frame, from the shared part, at its own measured weight. */
+  {
+    const src = require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+    const own = src.replace(/\/\* ==== OCCVM SPINE [\s\S]*?\/\* ==== END OCCVM [^*]*\*\//g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    T("globuleLayer() draws the shared field's still frame", /OCCVM_GLOBULES\.svg\(f,\{[\s\S]*?alpha:GLOBULE_ALPHA\}\)/.test(own));
+    T("and nothing in this tool calls the vein generator any more", !/OCCVM_VEINS\./.test(own));
+    T("veins.js ships in neither artifact", !/var OCCVM_VEINS =/.test(src) && !/var OCCVM_VEINS =/.test(require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "reference", "index.html"), "utf8")));
+    T("the field ships in both", /var OCCVM_GLOBULES =/.test(src));
+    T("no drawn fallback: an unspliced generator paints nothing, never an invented layer", !/veinLayerLegacy|globuleLayerLegacy/.test(own));
+  }
 }
 /* --- OCCVM 1.8: the reference surface -----------------------------------------------------------
  * Its whole claim is that it holds no values of its own, so that anything wrong on it is wrong in the
@@ -689,41 +700,45 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     !/transition-duration: 0 !important/.test(spine) && /\.01ms/.test(spine));
 }
 
-/* --- OCCVM-L10 / roadmap 1.1: veins are grown, not drawn -------------------------------------------- */
+/* --- OCCVM-L10: the substrate layer is the globule field (2.25; veins 1.1–2.24) --------------------- */
 {
   const h = load({ storage: { "btc.seed": "20260906" } });
-  h.R("veinLayer()");
-  const vein = decodeURIComponent(h.ctx.document.documentElement.style["--vein"] || "");
+  h.R("globuleLayer()");
+  const layer = decodeURIComponent(h.ctx.document.documentElement.style["--globules"] || "");
 
-  T("the vein layer is produced", vein.length > 500);
-  T("it is a data URI, not bare markup", /url\("data:image\/svg\+xml/.test(vein), vein.slice(0, 40));
+  T("the field is produced", layer.length > 500);
+  T("it is a data URI, not bare markup", /url\("data:image\/svg\+xml/.test(layer), layer.slice(0, 40));
 
-  /* The whole point of the release: no curve is fitted over the growth. A path built from a walk uses
-     moveto and lineto and nothing else; C, S, Q, T and A are the bezier arriving back through the
-     renderer. Checked on the path data alone, since the surrounding markup is full of letters. */
-  const dm = vein.match(/<path id='v' d='([^']+)'/);
-  T("the aggregate is traced as straight segments", !!dm && /^[ML0-9 .,-]+$/.test(dm[1]),
-    dm ? [...new Set(dm[1].replace(/[0-9 .,-]/g, ""))].join("") : "no path");
-  T("no bezier command survives anywhere in the layer", !/[CSQTA]\d|[CSQTA] ?-?\d/.test(dm ? dm[1] : ""));
+  /* 2.25 — what this block asserted from 1.1 to 2.24 was that the aggregate's path carried only M and L:
+     no bezier arriving back through the renderer. The field is not a path at all: circles under radial
+     gradients, hi at the core, lo at the rim. So the assertion inverts — no PATH survives, because a
+     traced skeleton is the thing that read as a crystal. */
+  const circles = (layer.match(/<circle /g) || []).length;
+  T("the field is drawn as droplets, not as a traced skeleton", circles >= 3 && !/<path /.test(layer), `${circles} circles`);
+  T("each droplet carries its own radial gradient", (layer.match(/<radialGradient /g) || []).length === circles);
+  T("the count follows the ground's area from the shared part's density",
+    circles === h.R("OCCVM_GLOBULES.count(1200, 800)"));
 
   /* seeded and pure — the golden set and the injected seed both depend on it */
   const again = load({ storage: { "btc.seed": "20260906" } });
-  again.R("veinLayer()");
-  T("the same seed grows the same aggregate",
-    again.ctx.document.documentElement.style["--vein"] === h.ctx.document.documentElement.style["--vein"]);
+  again.R("globuleLayer()");
+  T("the same seed lays the same field",
+    again.ctx.document.documentElement.style["--globules"] === h.ctx.document.documentElement.style["--globules"]);
 
   const other = load({ storage: { "btc.seed": "111" } });
-  other.R("veinLayer()");
-  T("a different seed grows a different aggregate",
-    other.ctx.document.documentElement.style["--vein"] !== h.ctx.document.documentElement.style["--vein"]);
+  other.R("globuleLayer()");
+  T("a different seed lays a different field",
+    other.ctx.document.documentElement.style["--globules"] !== h.ctx.document.documentElement.style["--globules"]);
 
-  /* the fallback OCCVM-L10 requires: growth failing must not leave the surface bare */
+  /* NO drawn fallback. From 1.1 to 2.24 this block required one — "growth failing must not leave the
+     surface bare" — and the fallback was a bezier generator that hard-coded a tint until 1.4. An unspliced
+     generator now paints nothing rather than an invented layer: L6's rule, applied to a layer. */
   const fs2 = require("fs"), path2 = require("path");
   const html2 = fs2.readFileSync(path2.join(__dirname, "..", "index.html"), "utf8");
-  T("the previous generator is kept as the fallback", /function veinLayerLegacy\(/.test(html2));
-  T("growth is guarded and falls back", /catch\(e\)\{ svg=encodeURIComponent\(veinLayerLegacy/.test(html2));
-  T("the generator reads the spine's density token, and no longer the retired habit",
-    /"--vein-density"/.test(html2) && !/"--vein-habit"/.test(html2));
+  T("no drawn fallback survives", !/function veinLayerLegacy\(|function globuleLayerLegacy\(/.test(html2));
+  T("a failed field writes none, never a substitute", /setProperty\("--globules", svg \? .+? : "none"\)/.test(html2));
+  T("the retired density token is declared nowhere outside a comment, and the habit token nowhere at all",
+    !/--vein-density:/.test(html2.replace(/\/\*[\s\S]*?\*\//g, "")) && !/"--vein-habit"/.test(html2));
 }
 
 /* --- OCCVM-L7 / roadmap 1.3: the numeric face ------------------------------------------------------
@@ -815,7 +830,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("setMineral persists the choice", h5.R("S.cfg.mineral") === "ruby");
   T("setMineral saves to btc.cfg", JSON.parse(h5.store["btc.cfg"]).mineral === "ruby");
   T("--mineral follows the switch to ruby", rs5.getPropertyValue("--mineral") === "#e0475f");
-  const veinRuby = h5.ctx.document.documentElement.style["--vein"];
+  const veinRuby = h5.ctx.document.documentElement.style["--globules"];
   T("the vein layer's colour changes with the mineral, same seed", veinAmethyst !== veinRuby);
 
   /* this harness's getComputedStyle is stubbed empty (test/lib/load.js) — it cannot see a plain :root{}
@@ -826,10 +841,12 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("switching mineral does not inline-set --up (outcome colour)", rs5.getPropertyValue("--up") === "");
   T("switching mineral does not inline-set --down (outcome colour)", rs5.getPropertyValue("--down") === "");
 
-  const legacy5 = h5.R("veinLayerLegacy(555, 'ruby')");
-  T("the legacy fallback carries ruby's own vein tint, not a fixed malachite",
-    legacy5.includes("8f2740") && legacy5.includes("f5a3b3"));
-  T("the legacy fallback no longer hardcodes malachite hex", !legacy5.includes("1c6a45") && !legacy5.includes("3fbf7e"));
+  /* 2.25: the legacy fallback is gone; the field itself carries the mineral's tint. This harness stubs
+     getComputedStyle empty, so the tint arrives through the mineral map's own values — the same values
+     applyMineral() writes to --vein-hi/--vein-lo in a browser. */
+  const ruby5 = decodeURIComponent(veinRuby || "");
+  T("the field carries ruby's own tint, not a fixed malachite", ruby5.includes("8f2740") && ruby5.includes("f5a3b3"));
+  T("and no malachite hex reaches it", !ruby5.includes("1c6a45") && !ruby5.includes("3fbf7e"));
 }
 
 /* ── 2.8 — the crystal leaves (OCCVM-L12, second basis) ───────────────────────────────────────
@@ -868,9 +885,9 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("yield resolves its curve under the page's own load order", threw === null && /^linear\(/.test(curve), threw || curve);
     const ctx2 = vm20.createContext({ Math, console });
     let threw2 = null;
-    try { vm20.runInContext(blk("OCCVM_VEINS"), ctx2); ctx2.OCCVM_VEINS.grow({ w: 20, h: 12, n: 24, seed: 1 }); }
+    try { vm20.runInContext(blk("OCCVM_GLOBULES"), ctx2); ctx2.OCCVM_GLOBULES.field({ seed: 1, w: 200, h: 120 }); }
     catch (e) { threw2 = e.message; }
-    T("veins loads and aggregates with nothing spliced before it — the load-order dependency is gone", threw2 === null, threw2 || "");
+    T("the field lays with nothing spliced before it — the load-order dependency is gone (2.25: veins retired, the field takes this guard)", threw2 === null, threw2 || "");
   }
 
   /* the substrate derivation, ported: linear light, ordered, hue-preserving, anchored to what renders */

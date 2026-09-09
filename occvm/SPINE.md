@@ -419,15 +419,30 @@ unchanged, and the shared focus ring.
 
 Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`, no `tabIndex`: `OCCVM-D7`.
 
-### OCCVM-L10 — vein habit
+### OCCVM-L10 — the substrate layer
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — 1 drawn call, reached only when growth throws — a degradation, not the habit
-> - Rhyme Instrument: **CONFORMS** — no drawn fallback
+> - BTC Terminal: **CONFORMS** — 2 consumer(s) of the shared field, no vein trace
+> - Rhyme Instrument: **CONFORMS** — 1 consumer(s) of the shared field, no vein trace
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-Veins are **grown, not drawn**. Since 2.8 the generator is diffusion-limited **cluster** aggregation
+**2.25 — re-authored around what renders.** The substrate decoration in both tools is the **globule
+field**: a seeded field of droplets from one shared generator, `occvm/globules.js`, painted live on
+Rhyme's draft face (L13's grant), and as a **still frame** on every other Rhyme slab and on BTC's ground —
+which L13 withholds motion from and which therefore takes the same field written once, as a data URI. The
+weight is each tool's own, measured on its own surface (Rhyme 0.24 on a slab, §9 2.24; BTC in §9 2.25),
+because a slab and a page ground are not the same surface. The auditor measures the consumer: a tool
+must call `OCCVM_GLOBULES.field` or `.svg`, and may not call the vein generator or the fallback it once
+guarded. `--vein-density` is retired with the layer it governed; `--vein-hi`/`--vein-lo` stay, because
+the field is tinted from them.
+
+*Everything below this line is the record of the layer this one replaced — the DLCA veins, 1.1–2.24 —
+kept because its mechanism was real and its dimension was measured, and struck through nowhere because
+a record is not a rule. The generator, `occvm/veins.js`, stays in `occvm/` unspliced and ships in neither
+tool.*
+
+Veins were **grown, not drawn**. From 2.8 the generator was diffusion-limited **cluster** aggregation
 (Meakin 1983; Kolb, Botet & Jullien 1983): every particle in the suspension diffuses, two that touch stick,
 the cluster they form diffuses in turn with a mobility that falls as `s^-½`, and the flocs join until the
 suspension has gelled into one network. That is how a colloidal suspension actually aggregates and it is what
@@ -1004,7 +1019,7 @@ it returns.
 the second the substance's 60° gloss against the ASTM D523 reference, and `test/occvm.js` fails if either
 drifts from its derivation.
 
-**Added at 1.1 (OCCVM-L10):** `--vein-density`. The growth-anisotropy token added beside it was **retired at
+**Added at 1.1 (OCCVM-L10), retired at 2.25:** the vein-density token. Retired with the vein layer it governed; the globule field's density is a number in `globules.js`, and a token reaching nothing is D12. The growth-anisotropy token added beside it was **retired at
 2.8** (L10, §6b): a suspension has no direction to be anisotropic along, and the one axis colloid science
 offers was measured on the lattice and does not express.
 
@@ -1219,6 +1234,10 @@ every time it runs; it is not a list kept by hand, and CI runs it with `--check`
 **Census at 1.9: 81 distinct tokens.** 27 written by the sundial each minute, 22 declared by the spine's
 CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
 
+*BTC's `--globules` joins the tool-local row at 2.25* — the still frame of the globule field, written by
+`globuleLayer()` once per mineral change and read by `body::before` and `.tile::before`, where `--vein`
+was. Tool-local for the same reason `--pulse` and `--slide` are.
+
 *Rhyme's `--slide` joins the tool-local row at 2.21* — the bank row's **transmitted** travel under a
 swipe, written by `useSwipeYield` and read by `.bankrow`. Tool-local for the same reason `--pulse` is:
 neither spine-declared nor sundial-written. It carries the flowed displacement rather than the finger's,
@@ -1246,9 +1265,9 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Cut & cast** | `--occvm-bevel --occvm-well --well-a --rim-a --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
-| **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
+| **Vein → Globules** | `--globules` (BTC, written by `globuleLayer()`); `--vein-density --vein --veins` all **retired at 2.25/2.24** | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
-| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse --slide` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
+| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo --globules`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse --slide` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
 ### What the audit found once it stopped trusting the checkout
 
@@ -1321,7 +1340,7 @@ law are generated from that run.
 | **L7** | figure discipline | IN FORCE | CONFORMS | CONFORMS |
 | **L8** | the interaction floor | IN FORCE | CONFORMS | CONFORMS |
 | **L9** | night | UNMEASURED | UNMEASURED | UNMEASURED |
-| **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
+| **L10** | the substrate layer | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
 | **L13** | ambient motion | IN FORCE | UNADOPTED | CONFORMS |
@@ -1658,6 +1677,23 @@ elsewhere — at **0.24**, chosen from a five-point sweep (0.78 / 1.43 / 2.20 / 
 above BTC's vein wash and below a beat strike. Rhyme's vein functions are deleted rather than left
 declared. What this release is, plainly: the roadmap's visual intent, delivered a second time, because the
 first delivery was measured against its own guards and never against an eye.
+
+**2.25 — BTC takes the globules, and the vein layer leaves both tools.** The owner's call, three words:
+*also takes the globules.* So the field is the substrate layer everywhere, from **one shared part**,
+`occvm/globules.js`: Rhyme paints it live on the draft face and still on every other slab; BTC — withheld
+from motion by L13 — writes the same field once as a data URI, `--globules`, where `--vein` was. With no
+tool rendering a vein, `veins.js` is **retired from every target** (the splicer's own retire mechanism,
+2.8) and stays in `occvm/` unspliced as the generator L10's record cites; `--vein-density` retires with
+it, a token reaching nothing. **L10 is re-authored around what renders**, and its measure with it: the
+old one counted calls to a drawn fallback and read CONFORMS for a tool rendering a crystal and CONFORMS
+again for a tool rendering nothing — it could not tell *grown* from *absent* and was never measuring the
+law. The new one measures the consumer. The reference surface's L10 specimen is three seeds of the field.
+
+*The weight is each tool's own, measured on its own ground.* On BTC's page, through `body::before` at
+.55 and the tiles at .16: **0.12 → 1.01, 0.24 → 1.80, 0.36 → 2.71, 0.50 → 3.79 L\*** mean over the
+moved region. **0.36** is chosen to sit between the vein wash it replaces (1.08) and Rhyme's slab (3.21) —
+a page ground under live numbers earns less than a document face. The same alpha weighs differently on
+the two surfaces, which is why it is not a spine constant.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.
 

@@ -232,24 +232,22 @@ const LAWS = [
     claim: "--night is a continuous quantity, not a state flag",
     measure: null, note: "written by the spliced sundial; pinned behaviourally by test/occvm.js" },
 
-  { id: "L10", name: "vein habit",
-    claim: "veins are grown by diffusion-limited aggregation, not drawn",
+  { id: "L10", name: "the substrate layer",
+    claim: "the substrate decoration is the globule field, from one shared generator; no tool draws a vein",
     measure(tool) {
-      /* Counting every mention over-reports: the first hit is the function DEFINITION, not a use. And a
-         call sitting in a catch is a fallback for when growth throws, not a parallel drawn implementation
-         — the tool renders something rather than nothing. That is a documented degradation, not a tool
-         that draws its veins. Distinguished, because reporting it as a plain divergence would put a
-         false entry in the law. */
-      /* The lookbehind already excludes the definition; subtracting for it as well — which the first
-         version did — double-counts the exclusion and turns a real call into zero, i.e. a false CONFORMS.
-         Exactly the reading this whole tool exists to stop, produced by the tool itself. */
-      const defined = /function\s+veinLayerLegacy/.test(tool.own);
-      const calls = (tool.own.match(/(?<!function\s)veinLayerLegacy\s*\(/g) || []).length;
-      const guarded = /catch\s*\([^)]*\)\s*\{[^}]*veinLayerLegacy/.test(tool.own);
-      if (calls <= 0) return { state: "CONFORMS", detail: defined ? "fallback defined, never called" : "no drawn fallback" };
-      return guarded
-        ? { state: "CONFORMS", detail: `${calls} drawn call, reached only when growth throws — a degradation, not the habit` }
-        : { state: "DIVERGES", detail: `${calls} unguarded call(s) to the drawn-bezier fallback` };
+      /* 2.25 re-authored this law around what renders. Until 2.24 it was "veins are grown by DLCA, not
+         drawn", measured by counting calls to a drawn-bezier fallback — and it read CONFORMS for a tool
+         whose grown veins rendered as a crystal, and CONFORMS again for a tool that had stopped rendering
+         veins at all. A measure that cannot tell "grown" from "absent" was never measuring the law.
+         Now: each tool must consume the shared field (OCCVM_GLOBULES.field, or its still svg), and no
+         tool may still call the vein generator or the fallback it once guarded. */
+      const field = (tool.own.match(/OCCVM_GLOBULES\.(field|svg)\s*\(/g) || []).length;
+      const veins = (tool.own.match(/OCCVM_VEINS\.field\s*\(/g) || []).length;
+      const legacy = (tool.own.match(/(?<!function\s)veinLayerLegacy\s*\(|(?<!function\s)veinSVGLegacy\s*\(/g) || []).length;
+      if (veins || legacy)
+        return { state: "DIVERGES", detail: `${veins} vein-generator call(s), ${legacy} drawn-fallback call(s) — the crystal is still being drawn` };
+      if (!field) return { state: "UNADOPTED", detail: "no consumer of the globule field" };
+      return { state: "CONFORMS", detail: `${field} consumer(s) of the shared field, no vein trace` };
     } },
 
   { id: "L11", name: "yield",
