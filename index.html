@@ -144,7 +144,7 @@ table {
 /* ==== END OCCVM mono.css ==== */
 
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:dcc62320e3c8 */
+/* sha256:a1a74258c14a */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -261,6 +261,20 @@ table {
       rgba(255, 255, 255, calc(var(--hi-a, .12) * var(--occvm-gloss))),
     inset calc(var(--lx, 0) * -1 * var(--occvm-meniscus)) calc(var(--ly, 1) * -1 * var(--occvm-meniscus)) var(--occvm-meniscus)
       rgba(0, 0, 0, var(--cut-a, .35));
+
+  /* OCCVM-L2 (2.12) — THE RECESS, the same length at the opposite curvature. A well is not a bevel with
+     the alphas swapped by taste: at a concave corner the meniscus curves the other way, so the same
+     capillary length applies with the sign flipped, and the near wall — the one facing the light — is the
+     one in shadow. That is why an engraved field reads dark where a raised one reads bright, and why
+     hand-writing it per surface produced five slightly different depths in one tool. One primitive, so a
+     recess is as derived as a rim. --well-a is the shadowed near wall, --rim-a the lit far one; a well is
+     read at a shallower amplitude than a bevel by default because a recess returns less light than it
+     occludes. */
+  --occvm-well:
+    inset calc(var(--lx, 0) * var(--occvm-meniscus)) calc(var(--ly, 1) * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(0, 0, 0, var(--well-a, .55)),
+    inset calc(var(--lx, 0) * -1 * var(--occvm-meniscus)) calc(var(--ly, 1) * -1 * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(255, 255, 255, calc(var(--rim-a, .07) * var(--occvm-gloss)));
 
   /* OCCVM-L10 (1.1, re-derived 2.8) — vein habit. density is the VOLUME FRACTION of the suspension: the
      particle count as a fraction of the lattice, the same number it has been since 1.1 under the
@@ -437,7 +451,7 @@ table {
     min-height:44px;display:inline-flex;align-items:center;justify-content:center;
     background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
     border:1px solid rgba(0,0,0,.55);
-    box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.45), inset var(--cut-x) var(--cut-y) 0 rgba(0,0,0,.5), var(--occvm-cast-1);
+    --hi-a:.45;--cut-a:.5;box-shadow:var(--occvm-bevel), var(--occvm-cast-1);
     text-shadow:0 1px 0 rgba(0,0,0,.45)}
   button:hover{filter:brightness(1.08)}
   button:active{transform:translateY(1px)}
@@ -458,13 +472,13 @@ table {
       radial-gradient(60% 50% at calc(50% + var(--lx)*40%) 0%, rgba(255,236,190,calc(.22*var(--elev)+.06)) 0%, transparent 70%),
       linear-gradient(180deg,#6a4f2b 0%,#4a3520 60%,#3a2917 100%);
     border-color:rgba(0,0,0,.6);
-    box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.28), inset calc(var(--cut-x)*3) calc(var(--cut-y)*3) 0 var(--verdigris-lo), var(--occvm-cast-3)}
+    --hi-a:.28;--cut-a:.3;box-shadow:var(--occvm-bevel), inset calc(var(--cut-x)*3) calc(var(--cut-y)*3) 0 var(--verdigris-lo), var(--occvm-cast-3)}
   header.tile::before{display:none}
   .mark{font-family:var(--serif);font-weight:400;letter-spacing:.01em;font-size:19px;color:#f3e6c6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .mark small{color:#cdb98e;font-weight:400;letter-spacing:.18em;font-size:9px;margin-left:10px;text-transform:uppercase;font-family:var(--sans)}
   .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .pill{font-size:9.5px;letter-spacing:.16em;padding:4px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.5);
-    background:rgba(0,0,0,.28);color:#e7dcc2;box-shadow:inset var(--cut-x) var(--cut-y) 2px rgba(0,0,0,.6), var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.15)}
+    background:rgba(0,0,0,.28);color:#e7dcc2;--well-a:.6;box-shadow:var(--occvm-well), var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.15)}
   .pill.live{color:var(--malachite)} .pill.warn{color:var(--gilt-a)} .pill.dead{color:var(--ruby)}
   #sunpill{font-family:var(--serif);text-transform:none;letter-spacing:.02em;font-size:12px}
 
@@ -475,7 +489,7 @@ table {
   @media (prefers-reduced-motion:no-preference){ #px.flash-up{color:var(--malachite);transition:none} #px.flash-down{color:var(--ruby);transition:none} }
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .chip{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:3px 10px;font-size:11.5px;
-    box-shadow:inset var(--cut-x) var(--cut-y) 2px rgba(0,0,0,.6), inset calc(var(--lx)*-0.5px) calc(var(--ly)*-0.5px) 0 rgba(255,255,255,.08)}
+    --well-a:.6;--rim-a:.08;box-shadow:var(--occvm-well)}
   .chip .lbl{margin-right:6px}
 
   section{margin-top:18px}
@@ -521,17 +535,17 @@ table {
   /* the anchor that used to wrap a button: one control, styled as one */
   .aslink{font:inherit;color:var(--bone);letter-spacing:.08em;font-size:11.5px;padding:6px 14px;border-radius:999px;min-height:44px;
     display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bronze-a) 0%,var(--bronze-b) 55%,var(--bronze-c) 100%);
-    border:1px solid rgba(0,0,0,.55);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.45), inset var(--cut-x) var(--cut-y) 0 rgba(0,0,0,.5), var(--occvm-cast-1);
+    border:1px solid rgba(0,0,0,.55);--hi-a:.45;--cut-a:.5;box-shadow:var(--occvm-bevel), var(--occvm-cast-1);
     text-shadow:0 1px 0 rgba(0,0,0,.45)}
-  .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.18)}
+  .tgl button.sel{background:linear-gradient(180deg,var(--verdigris),var(--verdigris-lo));color:var(--bone);--hi-a:.18;--cut-a:.25;box-shadow:var(--occvm-bevel)}
   #armBtn{color:#0b0a10;font-weight:700;text-shadow:none;
     background:radial-gradient(60% 60% at calc(50% - var(--lx)*30%) calc(35% + var(--ly)*20%), rgba(255,255,255,.55) 0%, transparent 55%),linear-gradient(180deg,var(--malachite) 0%,var(--malachite-lo) 100%);
-    border-color:rgba(0,0,0,.7);box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.35), inset calc(var(--cut-x)*2) calc(var(--cut-y)*2) 0 rgba(0,0,0,.35), var(--occvm-cast-2)}
+    border-color:rgba(0,0,0,.7);--hi-a:.35;--cut-a:.35;box-shadow:var(--occvm-bevel), var(--occvm-cast-2)}
   #armBtn:hover{filter:brightness(1.06)}
   #armBtn:disabled{opacity:.45}
   #armMsg{font-size:10.5px;color:var(--bone-dim)}
   #strikeChips{display:inline-flex;gap:6px;flex-wrap:wrap}
-  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(217,165,44,.14);border:1px solid rgba(217,165,44,.45);color:var(--gilt-a);text-shadow:none;box-shadow:inset var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.12)}
+  .schip{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(217,165,44,.14);border:1px solid rgba(217,165,44,.45);color:var(--gilt-a);text-shadow:none;--cut-a:.2;box-shadow:var(--occvm-bevel)}
   .schip:hover{background:rgba(224,71,95,.18);border-color:rgba(224,71,95,.5);color:var(--ruby)}
   #armStatus{font-size:11.5px;color:var(--bone-lo);letter-spacing:.03em}
   #tunebar{border-radius:16px;padding:10px 0 0;font-size:11px}
@@ -8058,7 +8072,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909020444";
+const BUILD_STAMP="build-20260909114959";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8075,5 +8089,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909020444 -->
+<!-- build-20260909114959 -->
 </html>

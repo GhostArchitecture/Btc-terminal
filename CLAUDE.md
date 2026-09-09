@@ -1432,6 +1432,46 @@ moves:** `--lit-x` stays the 1 px unit each tool multiplies by its own depth, an
 scaled every tool-authored bevel sevenfold. Four of the six dropped concepts are re-dropped with sourced
 reasons and one (a second substance for Rhyme) is closed on measurement; SPINE.md §9 carries each.
 
+**2.11 — the meniscus is worn.** 2.10 derived the edge and adopted it on the reference surface only;
+both tools kept the crystal's 1 px chisel, because `--occvm-bevel` had exactly one consumer,
+`.occvm-slab`, and **zero elements in either tool wore that class** — the law described an edge neither
+tool had, and had since 1.0. Six surfaces here now wear it (`button`, `.aslink`, `#armBtn`,
+`header.tile`, `.tgl button.sel`, `.schip`), each passing its own amplitude through `--hi-a`/`--cut-a`
+instead of re-authoring the geometry, and Rhyme's `.slab` with it. **This is the first change in the
+pivot that makes this tool look fluid.** `.pill` and `.shead` are excluded and pinned excluded: they
+carry OUTER highlights, and a drop shadow is not a cut face. The `button`/`.aslink` highlight goes warm
+bone to white, which is 2.4's own finding (a specular return carries the source's colour) and is a
+colour change riding a geometry one — named rather than folded in.
+
+*The golden set could not see any of it.* Run against the finished adoption it passed **561 values, zero
+deltas**, because it records custom properties off `:root` and everything that moved here moved on a
+consumer. A `WORN` tier recording each surface's **resolved** shadow was written to close that and is
+**withdrawn at 2.12**: on the runner it read the `:root` fallback at all three pinned instants while the
+token it multiplies recorded correctly, so it measured the machine rather than the page. Three red CI runs,
+two wrong diagnoses of mine, then reverted. The gap is `OCCVM-D13` on the register, open. The guard on
+re-authored bevels stays and is self-retiring: it fails the day a surface goes back to writing its own.
+
+**2.12 — the recess is a law too, and every surface that models depth now reads the sun.** 2.11 put
+the meniscus on the raised surfaces and left the sunken ones alone. That was half a system: a well was
+still hand-written, and Rhyme carried **five slightly different depths** for what is one idea.
+`--occvm-well` is the second primitive — *the same capillary length at the opposite curvature*, derived
+from `--occvm-meniscus` rather than authored beside it. At a concave corner the meniscus curves the other
+way, so the wall facing the light is the one in shadow; that is why an engraved field reads dark where a
+raised one reads bright. Here `.pill` and the chip row adopt it; in Rhyme eleven surfaces move — four
+raised (`.binding`, `.edge`, `.cast`, `.cast:active`) and seven recessed (`.cut`, `.cut:focus`, `.picker`,
+`.verdict`, `.shelflist`, `.share`, `.fit .track`).
+
+*Three classes, and only two are depth.* Rings (`0 0 0 1px` inset), the cabochon glow on `.stone`, and
+`.bar`'s directional heat wash are **not** depth and keep their fixed geometry — pinned, so the
+self-retiring guard cannot swallow them. That guard now fails the day any surface models depth in fixed
+pixels again.
+
+*A scale consequence, stated rather than tuned away.* λc is a fixed physical length, so it occupies a
+larger fraction of a small surface than a large one — Rhyme's list rows carry a 7.148 px band across a
+~56 px row, and read markedly softer than BTC's chunky pills do. **That is what real fluid does** (a drop
+on a teaspoon is nearly all meniscus), so it is kept rather than scaled per element, which would put an
+authored number back on top of a derived one. Golden **600 → 609**; `test/occvm.js` 380 → 385.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

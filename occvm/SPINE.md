@@ -701,6 +701,34 @@ decimal. What the search does settle is the opposite direction — **water's 0.0
 stand-in**, 78% high, and adopting it would carry τ₀ to 28.4 Pa and the meniscus to 9.59 px. The suite
 pins the bracket, the shipped radius, and that water's value cannot quietly become the input.
 
+**2.11 — THE MENISCUS IS WORN.** 2.10 derived the edge and adopted it on the reference surface; both
+tools kept the crystal's 1 px chisel, because `--occvm-bevel` was consumed by exactly one rule,
+`.occvm-slab`, and **zero elements in either tool wore that class**. The law described an edge neither
+tool had, and had since 1.0. It is worn now: **six BTC surfaces** — `button`, `.aslink`, `#armBtn`,
+`header.tile`, `.tgl button.sel`, `.schip` — and **Rhyme's `.slab`**, each passing its own amplitude
+through `--hi-a`/`--cut-a` rather than re-authoring the geometry. This is the first change in the pivot
+that makes either tool *look* fluid, and it is a change to what renders, not to what is declared.
+
+*Two surfaces are excluded, and the exclusions are the measurement.* `.pill` and `.shead` carry **outer**
+highlights, not bevels — a drop shadow is not a cut face, and the meniscus is an inset band, so replacing
+them would have been a substitution rather than an adoption. And **Rhyme's `.cut` is inverted on purpose**:
+it reads dark on the side the light hits, because an engraved groove's near wall shadows it. The meniscus
+there would turn a sunken input into a raised bead. Both exclusions are pinned so neither is later
+"corrected".
+
+*What it also cost, stated because it is not geometry.* BTC's `button` and `.aslink` highlights were warm
+bone (`rgba(255,236,190,·)`) and are now white, because the token's highlight is the source's colour —
+2.4's own finding that a specular return on a dielectric desaturates toward the light. The warm value was
+authored; the white one is derived. Anyone preferring the warm cast should change it in the token, once,
+rather than per surface.
+
+**AND THE GOLDEN SET COULD NOT SEE ANY OF IT.** Run against the finished adoption, `golden:verify` passed
+**561 values, zero deltas** — because it records custom properties off `:root`, and every value that moved
+here moved on a *consumer*. An instrument whose whole claim is that a delta on the reference surface can
+only be the spine's could not see the spine reaching a tool for the first time. *A `WORN` tier recording
+each surface's resolved shadow was written here to close it and is **withdrawn at 2.12** after three red
+CI runs: it read the machine rather than the page. The gap is `OCCVM-D13`, open, on the register in §6.*
+
 **What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
 fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
 three principal indices owned a face-to-index convention. A fluid has none of those, so each retires rather
@@ -861,6 +889,15 @@ Measured identical in both tools at all three golden instants. These are what `o
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
 
+**Added at 2.12 (OCCVM-L2):** `--occvm-well`. Its two amplitudes are surface inputs read through
+fallbacks (well-a, rim-a), exactly as the bevel reads hi-a and cut-a — a consumer supplies them, the
+spine does not declare them, and neither is a token this section governs. The recess is the same capillary length at the opposite curvature: at a concave corner the
+meniscus curves the other way, so the wall facing the light is the one in shadow. That is why an engraved
+field reads dark where a raised one reads bright — and why hand-writing it produced five slightly
+different depths in one tool before it was a primitive. Derived from `--occvm-meniscus`, not authored
+beside it; its default amplitude is shallower than the bevel's because a recess occludes more light than
+it returns.
+
 **Added at 2.10 (OCCVM-L2):** `--occvm-meniscus` and `--occvm-gloss`, both derived and both read by
 `--occvm-bevel` on the line below them — see L2. Neither is authored: the first is λc from `rheology.js`,
 the second the substance's 60° gloss against the ASTM D523 reference, and `test/occvm.js` fails if either
@@ -985,6 +1022,20 @@ STATUS: promotes to a law amendment in 2.1 if a second surface needs it
 ---
 
 ## 6. Defect register
+**`OCCVM-D13` — the golden set cannot see an adoption. Open.** It records custom properties off `:root`,
+so a change to a *consumer* — a `box-shadow` on `.tile`, on `button`, on `.slab` — is invisible to it.
+Measured, not supposed: run against 2.11's finished adoption, the largest visual change this system has
+made, `golden:verify` passed **561 values, zero deltas**.
+
+*The fix was attempted at 2.11, failed three times on CI, and was reverted at 2.12.* A `WORN` tier
+recorded each surface's **resolved** box-shadow beside the tokens. On the runner it read the `:root`
+fallback (`--lx .35 / --ly -.85`) at all three pinned instants, while the token it multiplies recorded
+correctly at each — so the recording differed by machine rather than by anything the page declares.
+Neither collapsing two `page.evaluate` calls into one nor forcing layout before the read moved it.
+A baseline that reads differently on the runner than on the clone measures the machine, not the page,
+and is worse than the gap it closes. Withdrawn; the gap stands recorded.
+
+
 
 `D1`–`D7` keep the numbering the roadmap was written against, so its release notes still resolve. `D8`+ were
 found by measurement after it was written.
@@ -1028,7 +1079,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Faces (L7)** | `--serif --reading` | **Owned since 2.7.** `--serif` leads with "OCCVM Serif" (Fraunces, `occvm/serif.css`, both tools); `--reading` is "OCCVM Reading" (Faustina, `occvm/reading.css`, Rhyme only — the one tool that sets running text in a serif). The fallback stacks stay behind the owned face. Neither tool restates either token; the spine governs both. | Nothing; delete any local `--serif` restatement. |
 | **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
-| **Cut & cast** | `--occvm-bevel --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
+| **Cut & cast** | `--occvm-bevel --occvm-well --well-a --rim-a --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |

@@ -1300,4 +1300,69 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   })());
 }
 
+
+/* ── 2.11: the meniscus is worn, not merely declared ──────────────────────────────────────────────
+   From 1.0 to 2.10 the spine's bevel primitive was consumed by exactly one rule, .occvm-slab, which zero
+   elements in either tool wore: the law described an edge neither tool had. These pin the adoption and,
+   more importantly, the two things it must NOT have swallowed. */
+{
+  const fsA = require("fs"), pathA = require("path");
+  const ROOTA = pathA.join(__dirname, "..");
+  const rd = (...f) => fsA.readFileSync(pathA.join(ROOTA, ...f), "utf8");
+  const btc = stripComments(rd("index.html"));
+
+  const btcWorn = (btc.match(/var\(--occvm-bevel\)/g) || []).length;
+  T("BTC's bevel surfaces read the spine's meniscus", btcWorn >= 7, btcWorn + " consumers");
+  const btcWells = (btc.match(/var\(--occvm-well\)/g) || []).length;
+  T("and its recessed surfaces read the well — the same length, the opposite curvature",
+    btcWells === 2, btcWells + " wells: .pill and the chip row, which are the only two recesses here");
+  T("the well is derived from the meniscus, not authored beside it",
+    /--occvm-well:[\s\S]{0,400}var\(--occvm-meniscus\)/.test(btc));
+
+  /* SELF-RETIRING: an inset bevel re-authored from the light vector is exactly what adoption replaced.
+     An OUTER shadow is not a bevel and was never in scope — .pill and .shead keep theirs, deliberately. */
+  const reauthored = (btc.match(/inset var\(--lit-x\)/g) || []).length;
+  T("no BTC surface re-authors an inset bevel from --lit-x any more", reauthored === 0, reauthored);
+  T("the two OUTER highlights are untouched — a drop is not a cut face",
+    /box-shadow:var\(--lit-x\) var\(--lit-y\)/.test(btc));
+
+  /* OCCVM-D13: THE GOLDEN SET STILL CANNOT SEE AN ADOPTION, and the attempt to close it is reverted.
+     A WORN tier recording each surface's RESOLVED box-shadow shipped at 2.11 and was withdrawn at 2.12
+     after three red CI runs on one value: the runner read the :root fallback (--lx .35 / --ly -.85) at
+     all three pinned instants while the token it multiplies recorded correctly, and neither collapsing
+     the two evaluates into one nor forcing layout before the read moved it. A baseline that reads
+     differently on the runner than on the clone measures the machine, not the page. The gap is a
+     recorded defect again rather than a broken instrument, and this pins that it stays recorded. */
+  const spineDoc = rd("occvm", "SPINE.md");
+  T("the golden set's blindness to adoption is on the defect register, not quietly fixed",
+    /OCCVM-D13/.test(spineDoc));
+  T("and the reverted tier is actually gone from the recorder",
+    !/WORN/.test(rd("occvm", "golden", "record.js")));
+
+  /* Rhyme, only when the sibling is in the checkout. CI runs one repository at a time and this file has
+     been fixed for that three times; it is not going to be a fourth. */
+  const sib = process.env.OCCVM_SIBLING || pathA.resolve(ROOTA, "..", "Rhyme-Instrument");
+  if (fsA.existsSync(pathA.join(sib, "tome-src", "20_style.css"))) {
+    const rhy = stripComments(fsA.readFileSync(pathA.join(sib, "tome-src", "20_style.css"), "utf8"));
+    T("Rhyme's slab reads the meniscus too", /var\(--occvm-bevel\)/.test(rhy));
+    /* THE ENGRAVED FIELD IS INVERTED ON PURPOSE: .cut is a groove, dark on the side the light hits,
+       because the near wall shadows it. The meniscus there would turn a sunken input into a raised bead. */
+    const cut = rhy.slice(rhy.indexOf(".cut {"), rhy.indexOf(".cut::placeholder"));
+    /* .cut is a WELL, not a bevel — it was hand-written inverted and is now the primitive it always was.
+       What must never happen is .cut adopting the BEVEL: that inverts a sunken field into a raised bead. */
+    T("Rhyme's .cut is a recess, and is never the raised bevel",
+      /occvm-well/.test(cut) && !/occvm-bevel/.test(cut));
+    const wells = (rhy.match(/var\(--occvm-well\)/g) || []).length;
+    T("Rhyme's recessed surfaces all read one derived well", wells >= 7, wells + " wells");
+    /* SELF-RETIRING: fixed-px depth is what 2.12 replaced. A ring, a glow and a directional wash are not
+       depth and keep their fixed geometry — they are named here so the guard cannot swallow them. */
+    const fixedDepth = (rhy.match(/inset 0 1px 2px rgba\(0,\s*0,\s*0/g) || []).length;
+    T("no Rhyme surface models depth in fixed pixels any more", fixedDepth === 0, fixedDepth);
+    T("rings and cabochon glows keep their fixed geometry — they are not depth",
+      /inset 0 0 0 1px/.test(rhy) && /inset 0 0 6px/.test(rhy));
+  } else {
+    T("Rhyme absent from this checkout — its adoption is asserted where it is present", true, "skipped");
+  }
+}
+
 process.exit(done());
