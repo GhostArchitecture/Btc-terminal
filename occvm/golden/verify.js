@@ -25,6 +25,9 @@ function flat(manifest) {
   out["@token_names"] = (manifest.token_names || []).join(",");
   for (const [c, body] of Object.entries(manifest.cases || {})) {
     for (const [k, v] of Object.entries(body.tokens || {})) out[`${c}/${k}`] = v;
+    /* 2.11: a consumer's resolved shadow is a value this set must hold, or an adoption
+       reads as zero deltas — which is exactly what it did the first time one landed. */
+    for (const [k, v] of Object.entries(body.worn || {})) out[`${c}/worn ${k}`] = v;
     out[`${c}/@page_errors`] = JSON.stringify(body.page_errors || []);
     out[`${c}/@vendored`] = JSON.stringify(body.vendored_requests || []);
   }

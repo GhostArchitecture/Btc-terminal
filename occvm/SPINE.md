@@ -701,6 +701,35 @@ decimal. What the search does settle is the opposite direction — **water's 0.0
 stand-in**, 78% high, and adopting it would carry τ₀ to 28.4 Pa and the meniscus to 9.59 px. The suite
 pins the bracket, the shipped radius, and that water's value cannot quietly become the input.
 
+**2.11 — THE MENISCUS IS WORN.** 2.10 derived the edge and adopted it on the reference surface; both
+tools kept the crystal's 1 px chisel, because `--occvm-bevel` was consumed by exactly one rule,
+`.occvm-slab`, and **zero elements in either tool wore that class**. The law described an edge neither
+tool had, and had since 1.0. It is worn now: **six BTC surfaces** — `button`, `.aslink`, `#armBtn`,
+`header.tile`, `.tgl button.sel`, `.schip` — and **Rhyme's `.slab`**, each passing its own amplitude
+through `--hi-a`/`--cut-a` rather than re-authoring the geometry. This is the first change in the pivot
+that makes either tool *look* fluid, and it is a change to what renders, not to what is declared.
+
+*Two surfaces are excluded, and the exclusions are the measurement.* `.pill` and `.shead` carry **outer**
+highlights, not bevels — a drop shadow is not a cut face, and the meniscus is an inset band, so replacing
+them would have been a substitution rather than an adoption. And **Rhyme's `.cut` is inverted on purpose**:
+it reads dark on the side the light hits, because an engraved groove's near wall shadows it. The meniscus
+there would turn a sunken input into a raised bead. Both exclusions are pinned so neither is later
+"corrected".
+
+*What it also cost, stated because it is not geometry.* BTC's `button` and `.aslink` highlights were warm
+bone (`rgba(255,236,190,·)`) and are now white, because the token's highlight is the source's colour —
+2.4's own finding that a specular return on a dielectric desaturates toward the light. The warm value was
+authored; the white one is derived. Anyone preferring the warm cast should change it in the token, once,
+rather than per surface.
+
+**AND THE GOLDEN SET COULD NOT SEE ANY OF IT.** Run against the finished adoption, `golden:verify` passed
+**561 values, zero deltas** — because it records custom properties off `:root`, and every value that moved
+here moved on a *consumer*. An instrument whose whole claim is that a delta on the reference surface can
+only be the spine's could not see the spine reaching a tool for the first time. The recorder now carries a
+`WORN` set — the resolved `box-shadow` and `border-radius` of the surfaces that wear the law, per tool,
+`ABSENT` where a selector has no element — and the set is **561 → 600 values**. The gap is closed in the
+same release that revealed it, which is the only reason it is a note here rather than a defect.
+
 **What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
 fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
 three principal indices owned a face-to-index convention. A fluid has none of those, so each retires rather

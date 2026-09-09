@@ -1300,4 +1300,51 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   })());
 }
 
+
+/* ── 2.11: the meniscus is worn, not merely declared ──────────────────────────────────────────────
+   From 1.0 to 2.10 the spine's bevel primitive was consumed by exactly one rule, .occvm-slab, which zero
+   elements in either tool wore: the law described an edge neither tool had. These pin the adoption and,
+   more importantly, the two things it must NOT have swallowed. */
+{
+  const fsA = require("fs"), pathA = require("path");
+  const ROOTA = pathA.join(__dirname, "..");
+  const rd = (...f) => fsA.readFileSync(pathA.join(ROOTA, ...f), "utf8");
+  const btc = stripComments(rd("index.html"));
+
+  const btcWorn = (btc.match(/var\(--occvm-bevel\)/g) || []).length;
+  T("BTC's bevel surfaces read the spine's meniscus", btcWorn >= 7, btcWorn + " consumers");
+
+  /* SELF-RETIRING: an inset bevel re-authored from the light vector is exactly what adoption replaced.
+     An OUTER shadow is not a bevel and was never in scope — .pill and .shead keep theirs, deliberately. */
+  const reauthored = (btc.match(/inset var\(--lit-x\)/g) || []).length;
+  T("no BTC surface re-authors an inset bevel from --lit-x any more", reauthored === 0, reauthored);
+  T("the two OUTER highlights are untouched — a drop is not a cut face",
+    /box-shadow:var\(--lit-x\) var\(--lit-y\)/.test(btc));
+
+  /* The instrument that certified this very change as zero deltas the first time it ran. */
+  const rec = rd("occvm", "golden", "record.js");
+  T("the golden set records what worn surfaces RESOLVE to, not only what :root declares",
+    /const WORN = \{/.test(rec) && /boxShadow/.test(rec));
+  const worn = JSON.parse(rd("occvm", "golden", "btc", "tokens.json")).cases.high.worn || {};
+  T("the recorded button carries the meniscus's own width",
+    /7\.148px/.test(worn["button"] || ""), (worn["button"] || "").slice(0, 56));
+  T("while .shead's outer highlight stays a 1px drop, so the record can tell them apart",
+    !/7\.148px/.test(worn[".shead"] || ""), worn[".shead"]);
+
+  /* Rhyme, only when the sibling is in the checkout. CI runs one repository at a time and this file has
+     been fixed for that three times; it is not going to be a fourth. */
+  const sib = process.env.OCCVM_SIBLING || pathA.resolve(ROOTA, "..", "Rhyme-Instrument");
+  if (fsA.existsSync(pathA.join(sib, "tome-src", "20_style.css"))) {
+    const rhy = stripComments(fsA.readFileSync(pathA.join(sib, "tome-src", "20_style.css"), "utf8"));
+    T("Rhyme's slab reads the meniscus too", /var\(--occvm-bevel\)/.test(rhy));
+    /* THE ENGRAVED FIELD IS INVERTED ON PURPOSE: .cut is a groove, dark on the side the light hits,
+       because the near wall shadows it. The meniscus there would turn a sunken input into a raised bead. */
+    const cut = rhy.slice(rhy.indexOf(".cut {"), rhy.indexOf(".cut::placeholder"));
+    T("Rhyme's .cut keeps its inverted groove and does not adopt",
+      /inset calc\(var\(--lx\) \* 1px\)[\s\S]{0,40}rgba\(0,\s*0,\s*0/.test(cut) && !/occvm-bevel/.test(cut));
+  } else {
+    T("Rhyme absent from this checkout — its adoption is asserted where it is present", true, "skipped");
+  }
+}
+
 process.exit(done());

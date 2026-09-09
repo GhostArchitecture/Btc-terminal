@@ -43,6 +43,19 @@ const REPOS = {
                             && getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
 };
 
+/* OCCVM 2.11 — TOKENS ALONE CANNOT SEE AN ADOPTION, and that was measured rather than reasoned: the
+   meniscus landed on six BTC surfaces and Rhyme's .slab, the largest visual change this system has made,
+   and `golden:verify` passed with 561 values and ZERO deltas. It reads custom properties off :root, so a
+   change to a CONSUMER — a box-shadow on .tile, on button, on .slab — is invisible to it by construction.
+   An instrument whose whole claim is "a delta here can only be the spine's" could not see the spine
+   reaching a surface for the first time. These are the surfaces that wear the law; their RESOLVED
+   box-shadow and border-radius are recorded beside the tokens. */
+const WORN = {
+  btc:       ["header.tile", "button", ".aslink", "#armBtn", ".tgl button.sel", ".schip", ".pill", ".shead"],
+  rhyme:     [".slab", ".cut", ".cast"],
+  reference: [".occvm-slab", ".occvm-cast"],
+};
+
 /* Pinned instants over Dayton. Elevations are from occvm/tools/solar-compare.js, not asserted here. */
 const CASES = [
   { name: "low",   iso: "2026-09-06T11:30:00Z", note: "elev +3.06 deg, az 84.3 (E) — rake at its longest" },
@@ -180,6 +193,18 @@ async function record(tool, outDir) {
         return o;
       }, TOKENS);
 
+      /* the same page, asked what its worn surfaces actually resolve to */
+      const worn = await page.evaluate(sels => {
+        const o = {};
+        for (const sel of sels) {
+          const el = document.querySelector(sel);
+          if (!el) { o[sel] = "ABSENT"; continue; }
+          const cs = getComputedStyle(el);
+          o[sel] = cs.boxShadow + " | r:" + cs.borderRadius;
+        }
+        return o;
+      }, WORN[tool] || []);
+
       fs.mkdirSync(path.join(outDir, tool), { recursive: true });
       await page.screenshot({ path: path.join(outDir, tool, c.name + ".png") });
 
@@ -189,6 +214,7 @@ async function record(tool, outDir) {
         blocked_requests: [...new Set(blocked)].sort(),
         page_errors: errors,
         tokens: values,
+        worn: worn,
       };
       await ctx.close();
       console.log(`  ${tool}/${c.name}: ${Object.keys(values).length} tokens` +

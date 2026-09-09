@@ -1432,6 +1432,23 @@ moves:** `--lit-x` stays the 1 px unit each tool multiplies by its own depth, an
 scaled every tool-authored bevel sevenfold. Four of the six dropped concepts are re-dropped with sourced
 reasons and one (a second substance for Rhyme) is closed on measurement; SPINE.md §9 carries each.
 
+**2.11 — the meniscus is worn.** 2.10 derived the edge and adopted it on the reference surface only;
+both tools kept the crystal's 1 px chisel, because `--occvm-bevel` had exactly one consumer,
+`.occvm-slab`, and **zero elements in either tool wore that class** — the law described an edge neither
+tool had, and had since 1.0. Six surfaces here now wear it (`button`, `.aslink`, `#armBtn`,
+`header.tile`, `.tgl button.sel`, `.schip`), each passing its own amplitude through `--hi-a`/`--cut-a`
+instead of re-authoring the geometry, and Rhyme's `.slab` with it. **This is the first change in the
+pivot that makes this tool look fluid.** `.pill` and `.shead` are excluded and pinned excluded: they
+carry OUTER highlights, and a drop shadow is not a cut face. The `button`/`.aslink` highlight goes warm
+bone to white, which is 2.4's own finding (a specular return carries the source's colour) and is a
+colour change riding a geometry one — named rather than folded in.
+
+*The golden set could not see any of it.* Run against the finished adoption it passed **561 values, zero
+deltas**, because it records custom properties off `:root` and everything that moved here moved on a
+consumer. The recorder now carries a `WORN` set — the resolved `box-shadow` and `border-radius` of the
+surfaces that wear the law — and the set is **561 → 600**. `test/occvm.js` 372 → 380, and the guard on
+re-authored bevels is self-retiring: it fails the day a surface goes back to writing its own.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
