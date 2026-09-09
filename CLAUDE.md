@@ -1445,9 +1445,11 @@ colour change riding a geometry one — named rather than folded in.
 
 *The golden set could not see any of it.* Run against the finished adoption it passed **561 values, zero
 deltas**, because it records custom properties off `:root` and everything that moved here moved on a
-consumer. The recorder now carries a `WORN` set — the resolved `box-shadow` and `border-radius` of the
-surfaces that wear the law — and the set is **561 → 600**. `test/occvm.js` 372 → 380, and the guard on
-re-authored bevels is self-retiring: it fails the day a surface goes back to writing its own.
+consumer. A `WORN` tier recording each surface's **resolved** shadow was written to close that and is
+**withdrawn at 2.12**: on the runner it read the `:root` fallback at all three pinned instants while the
+token it multiplies recorded correctly, so it measured the machine rather than the page. Three red CI runs,
+two wrong diagnoses of mine, then reverted. The gap is `OCCVM-D13` on the register, open. The guard on
+re-authored bevels stays and is self-retiring: it fails the day a surface goes back to writing its own.
 
 **2.12 — the recess is a law too, and every surface that models depth now reads the sun.** 2.11 put
 the meniscus on the raised surfaces and left the sunken ones alone. That was half a system: a well was

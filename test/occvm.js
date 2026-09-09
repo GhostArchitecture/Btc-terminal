@@ -1326,15 +1326,18 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the two OUTER highlights are untouched — a drop is not a cut face",
     /box-shadow:var\(--lit-x\) var\(--lit-y\)/.test(btc));
 
-  /* The instrument that certified this very change as zero deltas the first time it ran. */
-  const rec = rd("occvm", "golden", "record.js");
-  T("the golden set records what worn surfaces RESOLVE to, not only what :root declares",
-    /const WORN = \{/.test(rec) && /boxShadow/.test(rec));
-  const worn = JSON.parse(rd("occvm", "golden", "btc", "tokens.json")).cases.high.worn || {};
-  T("the recorded button carries the meniscus's own width",
-    /7\.148px/.test(worn["button"] || ""), (worn["button"] || "").slice(0, 56));
-  T("while .shead's outer highlight stays a 1px drop, so the record can tell them apart",
-    !/7\.148px/.test(worn[".shead"] || ""), worn[".shead"]);
+  /* OCCVM-D13: THE GOLDEN SET STILL CANNOT SEE AN ADOPTION, and the attempt to close it is reverted.
+     A WORN tier recording each surface's RESOLVED box-shadow shipped at 2.11 and was withdrawn at 2.12
+     after three red CI runs on one value: the runner read the :root fallback (--lx .35 / --ly -.85) at
+     all three pinned instants while the token it multiplies recorded correctly, and neither collapsing
+     the two evaluates into one nor forcing layout before the read moved it. A baseline that reads
+     differently on the runner than on the clone measures the machine, not the page. The gap is a
+     recorded defect again rather than a broken instrument, and this pins that it stays recorded. */
+  const spineDoc = rd("occvm", "SPINE.md");
+  T("the golden set's blindness to adoption is on the defect register, not quietly fixed",
+    /OCCVM-D13/.test(spineDoc));
+  T("and the reverted tier is actually gone from the recorder",
+    !/WORN/.test(rd("occvm", "golden", "record.js")));
 
   /* Rhyme, only when the sibling is in the checkout. CI runs one repository at a time and this file has
      been fixed for that three times; it is not going to be a fourth. */

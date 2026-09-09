@@ -725,10 +725,9 @@ rather than per surface.
 **AND THE GOLDEN SET COULD NOT SEE ANY OF IT.** Run against the finished adoption, `golden:verify` passed
 **561 values, zero deltas** — because it records custom properties off `:root`, and every value that moved
 here moved on a *consumer*. An instrument whose whole claim is that a delta on the reference surface can
-only be the spine's could not see the spine reaching a tool for the first time. The recorder now carries a
-`WORN` set — the resolved `box-shadow` and `border-radius` of the surfaces that wear the law, per tool,
-`ABSENT` where a selector has no element — and the set is **561 → 600 values**. The gap is closed in the
-same release that revealed it, which is the only reason it is a note here rather than a defect.
+only be the spine's could not see the spine reaching a tool for the first time. *A `WORN` tier recording
+each surface's resolved shadow was written here to close it and is **withdrawn at 2.12** after three red
+CI runs: it read the machine rather than the page. The gap is `OCCVM-D13`, open, on the register in §6.*
 
 **What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
 fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
@@ -1023,6 +1022,20 @@ STATUS: promotes to a law amendment in 2.1 if a second surface needs it
 ---
 
 ## 6. Defect register
+**`OCCVM-D13` — the golden set cannot see an adoption. Open.** It records custom properties off `:root`,
+so a change to a *consumer* — a `box-shadow` on `.tile`, on `button`, on `.slab` — is invisible to it.
+Measured, not supposed: run against 2.11's finished adoption, the largest visual change this system has
+made, `golden:verify` passed **561 values, zero deltas**.
+
+*The fix was attempted at 2.11, failed three times on CI, and was reverted at 2.12.* A `WORN` tier
+recorded each surface's **resolved** box-shadow beside the tokens. On the runner it read the `:root`
+fallback (`--lx .35 / --ly -.85`) at all three pinned instants, while the token it multiplies recorded
+correctly at each — so the recording differed by machine rather than by anything the page declares.
+Neither collapsing two `page.evaluate` calls into one nor forcing layout before the read moved it.
+A baseline that reads differently on the runner than on the clone measures the machine, not the page,
+and is worse than the gap it closes. Withdrawn; the gap stands recorded.
+
+
 
 `D1`–`D7` keep the numbering the roadmap was written against, so its release notes still resolve. `D8`+ were
 found by measurement after it was written.

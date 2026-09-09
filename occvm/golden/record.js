@@ -43,19 +43,6 @@ const REPOS = {
                             && getComputedStyle(document.documentElement).getPropertyValue("--vein").trim() !== "" },
 };
 
-/* OCCVM 2.11 — TOKENS ALONE CANNOT SEE AN ADOPTION, and that was measured rather than reasoned: the
-   meniscus landed on six BTC surfaces and Rhyme's .slab, the largest visual change this system has made,
-   and `golden:verify` passed with 561 values and ZERO deltas. It reads custom properties off :root, so a
-   change to a CONSUMER — a box-shadow on .tile, on button, on .slab — is invisible to it by construction.
-   An instrument whose whole claim is "a delta here can only be the spine's" could not see the spine
-   reaching a surface for the first time. These are the surfaces that wear the law; their RESOLVED
-   box-shadow and border-radius are recorded beside the tokens. */
-const WORN = {
-  btc:       ["header.tile", "button", ".aslink", "#armBtn", ".tgl button.sel", ".schip", ".pill", ".shead"],
-  rhyme:     [".slab", ".cut", ".cast"],
-  reference: [".occvm-slab", ".occvm-cast"],
-};
-
 /* Pinned instants over Dayton. Elevations are from occvm/tools/solar-compare.js, not asserted here. */
 const CASES = [
   { name: "low",   iso: "2026-09-06T11:30:00Z", note: "elev +3.06 deg, az 84.3 (E) — rake at its longest" },
@@ -186,33 +173,12 @@ async function record(tool, outDir) {
           (errors.length ? "\n  " + errors.join("\n  ") : "\n  (no page or console errors reported)"));
       });
 
-      /* ONE evaluate, both readings. They were two calls until CI caught it: the sundial rewrites the
-         light vector on an interval, so a tick landing between two evaluates resolves the tokens at one
-         instant and the worn surfaces at another — and a worn value is a RESOLVED box-shadow, which
-         multiplies that vector. The recording then differed by machine and by timing rather than by
-         anything the page declares, which is the one thing a baseline may never do. */
-      const captured = await page.evaluate(arg => {
+      const values = await page.evaluate(list => {
         const cs = getComputedStyle(document.documentElement);
-        const values = {};
-        for (const n of arg.tokens) { const v = cs.getPropertyValue(n).trim(); if (v !== "") values[n] = v; }
-        /* FORCE THE RECALC BEFORE READING A DEPENDENT VALUE. A custom property is readable the instant
-           it is written, but a box-shadow that MULTIPLIES it is not recomputed until layout runs — and in
-           a headless run with no paint, CI read the :root fallback (--lx .35 / --ly -.85) at all three
-           pinned instants while the token it depends on read correctly. Touching offsetHeight forces
-           layout, which forces the style recalc, so the resolved value is the one the tokens imply.
-           Two CI runs were spent on this: the first fix (one evaluate instead of two) was aimed at the
-           wrong mechanism and changed nothing, which is what a guess looks like when it is written down. */
-        void document.documentElement.offsetHeight;
-        const worn = {};
-        for (const sel of arg.worn) {
-          const el = document.querySelector(sel);
-          if (!el) { worn[sel] = "ABSENT"; continue; }
-          const w = getComputedStyle(el);
-          worn[sel] = w.boxShadow + " | r:" + w.borderRadius;
-        }
-        return { values, worn };
-      }, { tokens: TOKENS, worn: WORN[tool] || [] });
-      const values = captured.values, worn = captured.worn;
+        const o = {};
+        for (const n of list) { const v = cs.getPropertyValue(n).trim(); if (v !== "") o[n] = v; }
+        return o;
+      }, TOKENS);
 
       fs.mkdirSync(path.join(outDir, tool), { recursive: true });
       await page.screenshot({ path: path.join(outDir, tool, c.name + ".png") });
@@ -223,7 +189,6 @@ async function record(tool, outDir) {
         blocked_requests: [...new Set(blocked)].sort(),
         page_errors: errors,
         tokens: values,
-        worn: worn,
       };
       await ctx.close();
       console.log(`  ${tool}/${c.name}: ${Object.keys(values).length} tokens` +
