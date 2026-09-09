@@ -139,6 +139,7 @@ provisional grades are marked and overwritten by official results, nothing is si
 | `btc.journal` | simulation trades + arm bankrolls (`{v:3, t:[], bank:{}}`) |
 | `btc.round` | the live armed round, so a reload between ARM and the gate does not erase it (§10.3 R5) |
 | `btc.shock` | H1 rows: one per shock per horizon, impulse + signed reversion + round-trip cost |
+| `btc.regime` | the structural-break registry (§11.9): declared boundaries and flagged candidates, with `trail` |
 | `btc.repair` | the one-time K1 ledger repair record: rule, counts, and the viability counters it reset (§10.4b) |
 | `btc.cfg`, `btc.sections.v2` | settings, collapsed-section state |
 
@@ -233,7 +234,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **231 assertions across 5 harnesses**.
+currently **715 assertions across 7 harnesses** — the figure here read 231 across 5 long after both had grown,
+which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
@@ -1081,6 +1083,24 @@ tape in §2 rather than halting it.
   entry marked `superseded`, citing the one it corrects, in the same style as §11.8's superseded bounds — so
   the record of what was believed and when is never lost. Un-declaring silently would let a boundary be moved
   after seeing whether it helped the result, which is the one thing this whole document exists to prevent.
+
+**The registry is rendered, read-only, and declaration stays console-only.** From 11.9 until now the
+registry was written, validated and exported and never *shown* — the only way to read what had been
+declared was the console, which is a poor place to keep a record whose whole purpose is being consulted
+later. The DATA view now carries a regime ledger. It renders four states, and its boundary column is
+derived from `regimeRegistryFaults`/`regimeSupersededIds` in the same order `regimeBoundaries` applies
+them, so the table and the walk cannot disagree: **excluded** (a registry fault, with its reason —
+`regimeDeclare` promises this is never silent), **not a boundary** (a flagged row, which §11.9 says is
+never sufficient on its own), **superseded** (kept on the record, out of the walk), and **active** —
+which are exactly the entries `regimeBoundaries()` returns, asserted as a set identity in
+`test/hprotocol.js` and against the rendered DOM in `test/page-load.js`.
+
+*One in-code rule was read narrowly and the comment now says so.* `regimeDeclare`'s header read "No UI
+exists or should be added"; taken flatly that forbids this. Taken as what it argues — that declaring a
+break is a judgment call and must not be dressed as a control — it forbids a *form*, not a *display*.
+The ledger has no button, input or editable cell, and the assertion that it never acquires one ships
+with it. The comment was rewritten to say entry point rather than UI, because a flat prohibition sitting
+beside a shipped exception is how a rule stops being read at all.
 
 **This registers the concept and its effect before any scorer consumes it.** No scorer exists in the repository
 right now — the one built and reviewed on 2026-09-06/07 was reset (§10.1) rather than carried forward, so that

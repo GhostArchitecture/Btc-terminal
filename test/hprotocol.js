@@ -445,4 +445,49 @@ const { T, done } = runner("h-protocol");
   T("h1_reversal's header carries regime_idx", r.h1header === true, r.h1header);
 }
 
+/* ---- 11.9: the regime ledger's boundary column cannot drift from the boundary walk.
+   The registry has been written, validated and exported since 11.9 landed and was never shown. Now that it
+   is shown, the load-bearing property is that the rows the table calls "active" are EXACTLY the entries
+   regimeBoundaries() returns - a ledger that quietly promoted a flagged candidate, or hid a supersession,
+   would assert more than the registry knows. The rendered DOM is asserted under jsdom (test/page-load.js);
+   this is the state machine itself. */
+{
+  const r = R(`(function(){
+    const T0=Date.parse("2026-01-01T00:00:00Z");
+    const entries=[
+      {id:"d1",kind:"declared",t:T0,category:"exchange-failure",reason:"CF basket broke",declaredAt:T0},
+      {id:"d2",kind:"declared",t:T0+86400000,category:"price-collapse",reason:"over-called",declaredAt:T0},
+      {id:"d3",kind:"declared",t:T0+172800000,category:"price-collapse",reason:"corrects d2",declaredAt:T0,supersedes:"d2"},
+      {id:"f1",kind:"flagged",t:T0+3600000,declaredAt:T0,metric:{name:"rv_trailing_pctl",value:0.0123456,percentile:99.4}},
+      {id:"",kind:"declared",t:T0+400000,category:"other",reason:"no usable id",declaredAt:T0}
+    ];
+    const whyByIdx=Object.create(null), faults=regimeRegistryFaults(entries);
+    for(let i=0;i<faults.length;i++) if(faults[i].i>=0&&whyByIdx[faults[i].i]===undefined) whyByIdx[faults[i].i]=faults[i].why;
+    const sup=regimeSupersededIds(entries);
+    const st=entries.map(function(e,i){ return regimeRowState(e,whyByIdx[i],sup); });
+    const activeIds=entries.filter(function(e,i){ return st[i].cls==="boundary-active"; }).map(function(e){ return e.id; });
+    return { cls:st.map(function(x){ return x.cls; }),
+             excluded:st.filter(function(x){ return x.cls==="boundary-excluded"; }).map(function(x){ return x.text; }),
+             activeIds:activeIds.sort().join(","),
+             walk:regimeBoundaries(entries).map(function(b){ return b.id; }).sort().join(",") }; })()`);
+
+  /* d1 and d3 both stand: superseding d2 does not retire d3, it retires d2. */
+  T("the rows called active are exactly regimeBoundaries()", r.activeIds === r.walk && r.walk === "d1,d3",
+    r.activeIds + " vs walk " + r.walk);
+  T("a flagged candidate is never a boundary, whatever its percentile reads (11.9)",
+    r.cls[3] === "boundary-none", r.cls[3]);
+  T("a superseded declaration is kept on the record, marked, and out of the walk",
+    r.cls[1] === "boundary-superseded" && r.cls[2] === "boundary-active", r.cls[1] + "/" + r.cls[2]);
+  T("a registry fault carries its own reason, on an entry with no usable id to key it by",
+    r.excluded.length === 1 && /^excluded — .+/.test(r.excluded[0]), JSON.stringify(r.excluded));
+  T("no row is left without a state", r.cls.every(c => /^boundary-/.test(c)) && r.cls.length === 5, r.cls.join("|"));
+}
+
+/* ---- operator free text reaches innerHTML: it renders as characters, never as nodes. */
+{
+  const r = R(`[regimeEsc('<img src=x onerror=1>'),regimeEsc('a & "b"'),regimeEsc(undefined)].join("|")`);
+  T("operator text is escaped before it reaches innerHTML",
+    r === '&lt;img src=x onerror=1&gt;|a &amp; &quot;b&quot;|', r);
+}
+
 process.exitCode = done() ? 1 : 0;

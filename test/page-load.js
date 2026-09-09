@@ -60,6 +60,39 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
   const afterToggle = JSON.parse(w.localStorage.getItem("btc.sections.v2"));
   const otherKeysStillClosed = Object.keys(afterAll).filter(k => k !== "verdict").every(k => afterToggle[k] === 1);
   T("collapsing every section then expanding one keeps the rest collapsed in storage", afterToggle.verdict === 0 && otherKeysStillClosed, { afterAll, afterToggle });
+  /* 11.9: the regime ledger is rendered, read-only, and shows every state the registry distinguishes. */
+  {
+    const T0 = Date.parse("2026-01-01T00:00:00Z");
+    const entries = [
+      { id: "d1", kind: "declared", t: T0, category: "exchange-failure", reason: "CF basket broke <b>", declaredAt: T0 },
+      { id: "d2", kind: "declared", t: T0 + 86400000, category: "price-collapse", reason: "over-called", declaredAt: T0 },
+      { id: "d3", kind: "declared", t: T0 + 172800000, category: "price-collapse", reason: "corrects d2", declaredAt: T0, supersedes: "d2" },
+      { id: "f1", kind: "flagged", t: T0 + 3600000, declaredAt: T0, metric: { name: "rv_trailing_pctl", value: 0.0123456, percentile: 99.4 } }
+    ];
+    /* seeded through the registry's own storage path, because S is script-scoped and not on window */
+    w.localStorage.setItem("btc.regime", JSON.stringify({ v: 1, entries }));
+    w.regimeLoad();
+    w.renderRegimeLedger();
+    const sec = w.document.querySelector('section[data-key="regime"]');
+    const rows = [...w.document.querySelectorAll("#regime tbody tr")];
+    const cells = rows.map(tr => [...tr.querySelectorAll("td")].map(td => td.textContent));
+    const bcls = rows.map(tr => tr.querySelectorAll("td")[3].className);
+    T("the regime section exists and renders one row per entry", !!sec && rows.length === 4, rows.length);
+    T("rows are newest first", cells[0][0] === "2026-01-03 00:00", cells[0][0]);
+    T("the flagged row shows its statistic and is marked not a boundary",
+      /rv_trailing_pctl 0\.0123 · p99\.4/.test(cells[2][2]) && bcls[2] === "boundary-none", cells[2][2] + " / " + bcls[2]);
+    T("the rows reading active are exactly the walk's own boundaries",
+      bcls.filter(c => c === "boundary-active").length === w.regimeBoundaries(entries).length &&
+      w.regimeBoundaries(entries).length === 2, bcls.join("|"));
+    T("operator markup renders as characters, not as nodes",
+      rows[3].querySelectorAll("b").length === 0 && /CF basket broke <b>/.test(cells[3][2]), cells[3][2]);
+    T("the ledger carries no control that could declare a break (11.9, §7.6)",
+      sec.querySelectorAll("button,input,select,textarea,[contenteditable]").length === 0);
+    T("the note counts entries and boundaries separately",
+      w.document.getElementById("regimenote").textContent === "4 entries · 2 boundaries",
+      w.document.getElementById("regimenote").textContent);
+  }
+
   T("errors after ticks and frame: none", errors.length === 0 && rejections.length === 0, errors.concat(rejections));
   w.close();
   process.exitCode = done() ? 1 : 0;
