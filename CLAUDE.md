@@ -1799,8 +1799,40 @@ Rhyme: **103 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's
 **Read CI through the API before reporting a release green.** It is written in §10.1 and in the 2.7 entry
 and it was still not done here.
 
-**Deployment is held to the end of the roadmap**, by instruction. Everything from 2.13 sits on the branch,
-green, undeployed; the live stamp stays `build-20260909114959` until that changes.
+**2.23 — Reading B, the last roadmap item, and it is a decision rather than a derivation.** Rhyme's whole
+draft face carries the beat, not just the tempo control. Not this tool's code; the law and the clause it
+turns on are shared.
+
+**Gated motion, and L13's one clause about it is the whole design.** The gate is the *actual* value,
+never its display fallback. `TempoPanel` keeps `tempo || {bpm: 90, …}` so it can render before a tempo
+exists; if the pulse read that, a draft nobody had set a tempo on would beat at 90 forever. Measured in
+Chromium: with no tempo the face reads `--pulse` **0.000** and the wash resolves fully transparent; after
+one `+5` the control reads **95 bpm** and the pulse peaks at **0.993 on 21 of 120 samples** — the hook's
+18% strike window, decaying 0.86 → 0.
+
+**What it claims, stated because it is the whole question.** The tool knows one thing: a number typed
+into a panel. No audio, no clock aligned to any track, and §11 says the performance is never its. A pulse
+on the control claims *this is the number you set*; a pulse across the face makes a larger claim on the
+same evidence. **My recommendation was not to build it.** It is built at full scope **by the owner's
+decision**, recorded as one — the standard SPINE.md already applies to the floor contradicting the
+substance and to every authored duration here. It is not dressed as a derivation.
+
+**Amplitude measured, not eyeballed.** At peak the wash moves **22.4% of the face at a mean 1.00 L\*,
+max 4.47** — a 114 ms strike inside a 632 ms beat. It paints on the element's own background, so it sits
+under every in-flow child: no bar, no `--heat`, no measured value has it drawn over, and the guard checks
+that no `.bar` rule reads `--pulse`. Under reduced motion the phase stays 0 across 120 samples **and**
+the resolved `background-image` is `none` — a still face from the hook and the stylesheet independently.
+
+*One find on the way.* The obvious class name, `.face`, was **already declared in the stylesheet and worn
+by nothing**, so the new element would have silently inherited `.face + .edge`'s margin. Renamed to
+`.draftface`; the orphan is **recorded rather than adopted**, and the guard pins that nothing wears it —
+`OCCVM-D14`'s shape one level down, in tool-local CSS rather than in the primitive set.
+
+Rhyme: **106 tests** (was 103). **The roadmap is complete: items 6, 7 and 8 are built.**
+
+**Deployment is held to the end of the roadmap**, by instruction — and the roadmap has now reached its
+end. Everything from 2.13 sits on the branch, green, undeployed; the live stamp stays
+`build-20260909114959` until the owner lifts the hold.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

@@ -935,6 +935,19 @@ actual value, never its display fallback.** A variable that exists so a panel ca
 (`tempo || {bpm: 90, …}`) may not be the variable a motion's trigger reads, or the motion runs forever
 under a default nobody set.
 
+*Both readings of that clause are now built, and the second one is a decision rather than a derivation.*
+**Reading A** (2.18) put the pulse on the tempo control, where the claim is bounded to *this is the
+number you set*. **Reading B** (2.23) puts it across Rhyme's whole draft face. The tool knows exactly one
+thing here — a number typed into a panel. It has no audio, no clock aligned to any track, and §11 says
+the performance is never its; so a face-wide pulse makes a larger claim on the same evidence than the
+control-sized one does. **It is built at full scope by the owner's decision, recorded as one**, the
+standard this document already applies to the floor contradicting the substance and to every authored
+duration in the system. Measured rather than asserted: with no tempo set the face reads `--pulse` 0.000
+and the wash resolves fully transparent; with a real 95 bpm it peaks at 0.993 on 21 of 120 samples, and
+at peak the wash moves **22.4% of the face at a mean 1.00 L\*, max 4.47**. Under reduced motion the phase
+stays 0 across 120 samples and the resolved `background-image` is `none` — a still face, from the hook
+and from the stylesheet independently.
+
 **Written at 2.15, first worn at 2.22.** The law existed before the first floor, so the first floor was
 built against a written boundary rather than negotiating one afterwards — which is what it was for, and
 it is the first law here that can say so. Rhyme's draft face carries one; BTC carries none, and the
@@ -1200,7 +1213,7 @@ so the yield stress is visible in the token itself — below τ₀ it reads exac
 thumb has gone.
 
 *Rhyme's `--pulse` joins the tool-local row at 2.18* — the metronome's beat phase, written by
-`useBeatPulse` and read by `.cast`. It lands here rather than in §2a or §2ab because §2a-0 says where a
+`useBeatPulse` and read by `.cast`, and since 2.23 by `.draftface` as well (Reading B). It lands here rather than in §2a or §2ab because §2a-0 says where a
 token goes and this is neither spine-declared nor sundial-written. The census caught its absence from this
 table on the first run after it was written, which is the boundary refusing a change rather than
 describing one afterwards.
