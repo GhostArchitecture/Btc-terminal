@@ -1750,16 +1750,38 @@ rather than an invented accent (L6). Ungated, unmodulated, lawful at zero modula
 L13 a grant and not the gated-motion case. Reduced motion gets **one painted frame and no rAF at all** —
 a static frame, asserted by driving the shipped code, not by reading it.
 
-*And 2.21 shipped a mismatched cache name, caught here.* That commit's `index.html` reads
-`build-20260909214145` against an `sw.js` naming `tome-build-20260909212530`: the suite ran **before**
-`build.js --stamp`, and the copy that followed refreshed the page and not the worker. Every assertion had
-passed, against the previous state. A stamp check cannot catch that — it reads whatever is on disk when
-it runs. The new guard does not depend on ordering: the repo-root `index.html`, `sw.js` and
-`manifest.json` must be **byte-identical to `dist/`**, and a half-copied artifact is a difference between
-two files whenever anybody looks. Both guards were verified to bite. The branch tip is consistent; that
-one intermediate commit is not deployable and is left on the record rather than amended away.
+**And the standing rule was broken two releases running: CI was red and this file said green.**
+Rhyme's run **50 (2.20) failed** — *"Regenerate from tome-src and check nothing drifted"* — and 2.20 was
+reported here as green off the local gates, which is the one thing the rule about reading CI through the
+API exists to prevent. It is on the record as a wrong report, not a footnote. **What it was hiding is
+worse than a stale stamp:** 2.20's committed `index.html` bumped its two stamp sites and **carried none
+of the source change 2.20 made** — the §11 performance rule added to `tome-src/10_engine.js` is absent
+from that commit's artifact. It shipped a stamp and nothing else. 2.21 then shipped an `index.html` at
+`build-20260909214145` against an `sw.js` naming `tome-build-20260909212530`. Both are the same defect:
+the suite ran **before** the build, and the copy that followed was stale or partial. Every assertion had
+passed, against the previous state. **The existing stamp assertion was never missing — it ran at the
+wrong moment**, and no assertion placed after a stale copy can close an ordering hole.
+
+*Two wrong instruments were tried first and both are recorded.* The first compared the repo root against
+`dist/` with nothing guaranteeing `dist/` existed; it is not committed, so on a fresh checkout **CI failed
+on the guard rather than on the code — 101 of 102, the one failure mine.** The second added a `pretest`
+that built **and copied** `dist/` over the root. That one is worse than useless: it would have
+**laundered** the drift, on CI as well, repairing a stale committed artifact in the working tree and then
+passing every comparison downstream of it — a gate that repairs what it exists to detect. Caught by
+asking what it would do to the *previous* release rather than to this one.
+
+*What is in force.* `pretest` builds and **never** copies, so `dist/` always exists and is always fresh
+while the copy into the repo root stays a deliberate act; the guard then requires the committed
+`index.html`, `sw.js` and `manifest.json` to be **byte-identical to `dist/`**. A committed artifact that
+is not what a build produces fails, whatever order anything ran in — and the guard asserts `pretest`'s
+exact text, because the copy is the thing somebody will add back. Verified to bite on a stale worker
+(two failures, the pre-existing stamp check and this one). The branch tip is consistent and reproduces
+byte-for-byte; the two intermediate commits are not deployable and are left on the record rather than
+amended away.
 
 Rhyme: **102 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's total **762 → 766**.
+**Read CI through the API before reporting a release green.** It is written in §10.1 and in the 2.7 entry
+and it was still not done here.
 
 **Deployment is held to the end of the roadmap**, by instruction. Everything from 2.13 sits on the branch,
 green, undeployed; the live stamp stays `build-20260909114959` until that changes.
