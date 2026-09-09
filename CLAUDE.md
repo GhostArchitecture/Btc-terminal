@@ -1779,7 +1779,23 @@ exact text, because the copy is the thing somebody will add back. Verified to bi
 byte-for-byte; the two intermediate commits are not deployable and are left on the record rather than
 amended away.
 
-Rhyme: **102 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's total **762 → 766**.
+*And the floor was the wrong size on screen while every guard read green.* Driven in Chromium — the
+standard this system claims and had not applied to its own new surface. `size()` measured `.bars` once
+at mount, when a fresh draft has none, and nothing re-measured: **356×44 px** behind a face several times
+that. A `ResizeObserver` on the container is the fix; a canvas whose backing store comes from a
+measurement needs an observer on the thing it measures, or it is sized to a moment.
+
+*Then where it sat was measured too, rather than argued.* Inside `.bars` the floor moved **0.81%** of
+pixels at a mean **1.18 L\***: the bar cards are opaque and a floor between them has nowhere to show —
+present, and effectively absent, which is what P1 and 2.1/P4 both refused to ship. Behind the whole face
+it moves **28.35%** at a **median 0.42 L\***, p99 3.03, p999 8.66, max 22.65, with only 41 pixels past
+10 — a broad sub-threshold wash with rare brighter cores, which is what a floor is. **The authored alpha
+was never the lever and was not touched; the coverage was.** Widening beats brightening, and the
+difference between those two is the difference between fixing a placement and tuning a number toward a
+wanted picture. Both figures are from one frozen page load, toggling the canvas only, so nothing else
+could have moved.
+
+Rhyme: **103 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's total **762 → 766**.
 **Read CI through the API before reporting a release green.** It is written in §10.1 and in the 2.7 entry
 and it was still not done here.
 
