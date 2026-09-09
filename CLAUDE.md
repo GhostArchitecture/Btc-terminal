@@ -238,8 +238,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **766 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 416, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **769 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 419, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1839,6 +1839,51 @@ This tool's live surface moved from 2.12 to 2.17 in one step — the meniscus an
 worn at 2.12; what lands now is L13's boundary, the velocity-driven lock release, and the canvas reading
 the sun. Rhyme's moved from 2.12 to 2.23: the true swing grid, both readings of the beat, the swipe test
 bed, and the floor.
+
+**2.24 — the field report: three defects the guards never saw, and the roadmap's visual intent delivered
+a second time.** From the owner's first hour on the deployed build.
+
+**"We're visually still displaying crystal fractals."** True, and this tool is where it showed most —
+the whole body background. 2.8 wrote that the vein layer had become "a network suspended in the
+material, blurred where it was crisp"; that was true of the *mechanism* and false of the *picture*, and
+nobody had rendered the picture and looked. `field()` draws a wide blurred underlayer **and a 1.3 px
+crisp bright trace on top**, of a lattice aggregate whose every segment is at 0°, 45° or 90° — a
+snowflake, since 1.1. Worse: `field()` read `o.fine || 1.3`, so passing `0` to turn the crisp pass **off**
+silently restored it, and four "diffuse" variants measured identical edge energy before that was found
+by measuring rather than reading. `veins.js` now honours 0. **This tool draws the mass alone** —
+`wide:10, fine:0, soft:7` — measured on the live page at **41% of pixels, mean 1.08 L\***, max 4.7: a
+turbid wash, which is what a gel is at screen scale. Guarded in three directions (`fine:0` draws one
+pass, the default still draws two so the change is the caller's, and `veinLayer()` passes 0). **Rhyme
+retires the layer from its slabs entirely** and puts the globule field there instead — two decorative
+layers on one surface is noise.
+
+**"Hadn't we run through the roadmap resulting in globules as the visual layer?"** We had produced them
+as an *underlayer on one face* at a median 0.42 L\*, by an alpha I authored and then wrote up as a
+virtue, while the crystal stayed the layer that showed. Inverted from the roadmap's intent. Now the
+globule field is the substrate layer on **every** Rhyme slab — live on the draft face (L13's grant), a
+still frame on every other face, which is not motion and leaves the grant's scope where it was — at
+**0.24**, chosen from a five-point sweep on a live slab (0.05 → 0.78, 0.10 → 1.43, 0.16 → 2.20, **0.24 →
+3.21**, 0.32 → 4.20 L\* mean) to sit above this tool's vein wash and below a beat strike. The count follows
+slab area rather than a fixed seven. `veinSVG`, its cache and its bezier fallback are deleted from Rhyme
+rather than left declared.
+
+**"No visible effect to setting a bpm."** Reading B measured a mean **1.00 L\*** at peak — what 1 L\* is on
+a phone is nothing — and the strike lasted ~7 frames. Re-aimed on a four-point sweep: 9% → 1.66, **25% →
+5.05**, 40% → 8.36, 55% → 11.65; 25% matches Reading A's measured 5.9 on the control, so face and control
+state the same beat at the same weight. The strike window goes 0.18 → **0.32** of the beat (35 of 120
+samples non-zero at 95 bpm). Re-measured after: peak 0.996, **4.6 L\*** mean over the moved region.
+
+**"When cutting a bar, after the first character the space bar doesn't work."** `reading()` trims each
+line before building a bar, and `BarCut` was a controlled input bound to `bar.text` — so the space that
+made `"ink "` was erased by the same render that reacted to it. Pre-existing since bars existed, not the
+roadmap's; no test had ever typed a space into a bar and looked. Reproduced in Chromium on the deployed
+build (`"ink on the plate"` → `"inkontheplate"`), fixed by binding the editor to the raw line.
+
+**"Dead band feels alright."** The one measured thing that reached a thumb. Recorded.
+
+*The pattern across all four.* Every one of these was a value or a picture the guards had verified against
+a fixture, a fallback, or a claim — never against an eye or a thumb. `test/occvm.js` **416 → 419**; §6's
+total **766 → 769**. Rhyme **108 tests**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

@@ -212,14 +212,21 @@ var OCCVM_VEINS = (function () {
     if (g.segs.length < 8) throw new Error("occvm veins: suspension did not aggregate");
     var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
     var soft = o.soft === undefined ? 1.4 : Math.max(0, o.soft);
+    /* `wide` and `fine` read `o.x || default` until 2.24, so passing 0 silently restored the default — a
+       caller asking for NO crisp pass got the crisp pass, and every "diffuse" variant measured identical
+       edge energy to the current render because the sharp overlay was still being drawn. Found by
+       measuring rather than by reading. 0 now means none; the crisp pass is the one that reads as a
+       crystal, and a consumer must be able to turn it off. */
+    var wide = o.wide === undefined ? 4.5 : Math.max(0, o.wide);
+    var fine = o.fine === undefined ? 1.3 : Math.max(0, o.fine);
     var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
       (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
       "<defs><path id='v' d='" + d + "'/>" +
       (soft > 0 ? "<filter id='s' x='-3%' y='-3%' width='106%' height='106%'><feGaussianBlur stdDeviation='" + soft + "'/></filter>" : "") +
       "</defs>" +
       "<g fill='none' stroke-linecap='round' stroke-linejoin='round'>" +
-      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
-      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.7'/>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + wide + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
+      (fine > 0 ? "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + fine + "' opacity='.7'/>" : "") +
       "</g></svg>";
     return { svg: svg, particles: g.particles, clusters: g.clusters, bonds: g.segs.length / 4 };
   }

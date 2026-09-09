@@ -374,6 +374,14 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the deep stroke is blurred — the one authored rendering value, named as one",
     /feGaussianBlur/.test(same) && /filter='url\(#s\)'/.test(same));
   T("and soft 0 restores the seam", !/feGaussianBlur/.test(VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, soft: 0 }).svg));
+  /* 2.24 — the render vocabulary, corrected. 2.8 said the layer became "blurred where it was crisp";
+     rendered and looked at, it was a 1.3 px crisp trace of a lattice aggregate on every slab — a crystal.
+     Two guards: `fine: 0` must mean NO crisp pass (until 2.24 `o.fine || 1.3` silently restored it, so
+     every "diffuse" variant measured identical edge energy), and this tool must be passing 0. */
+  T("veins: fine 0 draws no crisp pass", (VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3, fine: 0 }).svg.match(/<use /g) || []).length === 1);
+  T("veins: the default still draws two passes, so the change is the caller's", (VEINS.field({ seed: 5, w: 96, h: 60, density: 0.3 }).svg.match(/<use /g) || []).length === 2);
+  T("veinLayer() asks for no crisp pass and a mass soft enough to hide the lattice",
+    /OCCVM_VEINS\.field\(\{[\s\S]*?wide:10, fine:0, soft:7\}\)/.test(require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8")));
 }
 /* --- OCCVM 1.8: the reference surface -----------------------------------------------------------
  * Its whole claim is that it holds no values of its own, so that anything wrong on it is wrong in the

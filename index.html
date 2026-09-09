@@ -1650,7 +1650,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
 /* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE veins.js — spliced from occvm/veins.js. do not edit. ==== */
-/* sha256:f96ae350d96b */
+/* sha256:48cbc1c2a565 */
 /* OCCVM 1.1 → 2.8 — the vein generator. One implementation, shared by every conforming tool (OCCVM-L10).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1865,14 +1865,21 @@ var OCCVM_VEINS = (function () {
     if (g.segs.length < 8) throw new Error("occvm veins: suspension did not aggregate");
     var d = paths(g, { scale: (o.viewW || 1200) / w, seed: o.seed });
     var soft = o.soft === undefined ? 1.4 : Math.max(0, o.soft);
+    /* `wide` and `fine` read `o.x || default` until 2.24, so passing 0 silently restored the default — a
+       caller asking for NO crisp pass got the crisp pass, and every "diffuse" variant measured identical
+       edge energy to the current render because the sharp overlay was still being drawn. Found by
+       measuring rather than by reading. 0 now means none; the crisp pass is the one that reads as a
+       crystal, and a consumer must be able to turn it off. */
+    var wide = o.wide === undefined ? 4.5 : Math.max(0, o.wide);
+    var fine = o.fine === undefined ? 1.3 : Math.max(0, o.fine);
     var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + (o.viewW || 1200) + " " +
       (o.viewH || Math.round((o.viewW || 1200) * h / w)) + "' preserveAspectRatio='none'>" +
       "<defs><path id='v' d='" + d + "'/>" +
       (soft > 0 ? "<filter id='s' x='-3%' y='-3%' width='106%' height='106%'><feGaussianBlur stdDeviation='" + soft + "'/></filter>" : "") +
       "</defs>" +
       "<g fill='none' stroke-linecap='round' stroke-linejoin='round'>" +
-      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + (o.wide || 4.5) + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
-      "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + (o.fine || 1.3) + "' opacity='.7'/>" +
+      "<use href='#v' stroke='" + (o.lo || "#1c6a45") + "' stroke-width='" + wide + "' opacity='.55'" + (soft > 0 ? " filter='url(#s)'" : "") + "/>" +
+      (fine > 0 ? "<use href='#v' stroke='" + (o.hi || "#3fbf7e") + "' stroke-width='" + fine + "' opacity='.7'/>" : "") +
       "</g></svg>";
     return { svg: svg, particles: g.particles, clusters: g.clusters, bonds: g.segs.length / 4 };
   }
@@ -3262,7 +3269,12 @@ function veinLayer(){
        and --vein-habit is retired (SPINE.md L10). density is the volume fraction. */
     svg=OCCVM_VEINS.field({seed,w:96,h:60,viewW:1200,viewH:800,
       density:num("--vein-density",0.3),
-      lo:str("--vein-lo",m.lo), hi:str("--vein-hi",m.hi), wide:4.5, fine:1.3}).svg;
+      /* 2.24 — the render vocabulary, corrected. 2.8 said the layer became "a network suspended in the
+         material, blurred where it was crisp"; rendered and looked at, it was a 1.3 px crisp trace of a
+         lattice aggregate — a crystal, on every slab, the thing 2.8 claimed to have left. The fine pass
+         is off (veins.js now honours 0; until 2.24 `fine:0` silently restored 1.3) and the mass is wide
+         and soft enough that the lattice steps vanish. Authored: wide, soft. */
+      lo:str("--vein-lo",m.lo), hi:str("--vein-hi",m.hi), wide:10, fine:0, soft:7}).svg;
     svg=encodeURIComponent(svg);   /* raw # would end the data URI; %23 would leave href="%23v" dead */
   }catch(e){ svg=encodeURIComponent(veinLayerLegacy(seed,mineral)); S.veinFallback=String(e&&e.message||e); }
   document.documentElement.style.setProperty("--vein","url(\"data:image/svg+xml;utf8,"+svg+"\")");
@@ -8157,7 +8169,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909203905";
+const BUILD_STAMP="build-20260909230353";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8174,5 +8186,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909203905 -->
+<!-- build-20260909230353 -->
 </html>
