@@ -4324,7 +4324,7 @@ function renderSweep(){
   /* 2.9 — a released lock relaxes to the free sweep on the cessation curve (relaxS is how much of the lock's
      domain is still held), and at u = 1 the relaxation ends exactly: S.lockRelax is cleared, nothing lingers */
   let relaxS=0;
-  if(S.lockRelax&&!S.lock){ const u=(now-S.lockRelax.at)/LOCK_RELAX_MS; if(u>=1) S.lockRelax=null; else { relaxS=1-relaxEase(u); t0+= (S.lockRelax.t0-t0)*relaxS; t1+=(S.lockRelax.t1-t1)*relaxS; } }
+  if(S.lockRelax&&!S.lock){ const u=(now-S.lockRelax.at)/(S.lockRelax.ms||LOCK_RELAX_MS); if(u>=1) S.lockRelax=null; else { relaxS=1-relaxEase(u,S.lockRelax.c); t0+= (S.lockRelax.t0-t0)*relaxS; t1+=(S.lockRelax.t1-t1)*relaxS; } }
   const SPAN=BACK;
   const Xt=t=>F.padL+(t-t0)/(t1-t0)*F.iw, X=q=>Xt(q.t);
   const R=(S.round&&(S.round.state!=="settled"||now-S.round.settledAt<=20000))?S.round:null;
@@ -7953,7 +7953,7 @@ $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
 $("secExpand").addEventListener("click",()=>setAllSections(false));
 function lockSwing(){ if(!S.k.cur) return; S.lock={mode:"swing",ticker:S.k.cur.ticker}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 swing window \u00b7 resume or esc releases"; }
-function lockRect(t0,t1,lo,hi){ S.lock={mode:"rect",t0,t1,lo,hi}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 region \u00b7 resume or esc releases"; }
+function lockRect(t0,t1,lo,hi,v0){ S.lock={mode:"rect",t0,t1,lo,hi,v0:(isFinite(v0)&&v0>0)?v0:1}; document.body.classList.add("locked"); $("locknote").textContent="lock \u00b7 region \u00b7 resume or esc releases"; }
 /* 2.9 — the lock release is the event response the roadmap's section 6 asked for: a region released relaxes
    back to the full sweep on the substance's cessation curve and STOPS, at an exact instant rather than an
    asymptote. The curve is derived (OCCVM_RHEOLOGY.easing, the yield-dominated quadratic at this substance's
@@ -7962,29 +7962,89 @@ function lockRect(t0,t1,lo,hi){ S.lock={mode:"rect",t0,t1,lo,hi}; document.body.
    unspliced or reduced motion on, the release is instant, as it was before 2.9: a degradation to the old
    behaviour, never a different curve. */
 const LOCK_RELAX_MS=360;
-let LOCK_RELAX_CURVE=null;
+/* 2.16 — v0 IS NOW REAL, and it is the roadmap's open item #12 closing for its first consumer. Until now
+   every release played the same 360 ms whatever the gesture; yield.js's v0 = 1 was an authored placeholder
+   and lockRelease had no input at all. The gesture that SEIZES a region is the disturbance, so its speed
+   is measured at the moment of seizure and travels on S.lock to the release that undoes it. lockSwing is
+   a button, carries no gesture, and keeps the reference v0 = 1 — which is why the reference exists.
+
+   WHAT IS DERIVED AND WHAT IS AUTHORED, kept apart as rheology.js keeps them:
+     derived   the curve's SHAPE at each v0, and the RATIO of stopping times (stoppingTime(v0)/stoppingTime(1))
+     authored  LOCK_V0_REF, the drag speed that reads as v0 = 1; the [MIN, MAX] clamp; and LOCK_RELAX_MS,
+               which is now explicitly the duration AT THE REFERENCE rather than the only duration.
+   No derivation maps px/ms onto a substance's initial velocity — rheology.js says so at its own #12 — so
+   the mapping is a person's and is named as one. Only the anchor is authored; everything the anchor is
+   multiplied by is measured.
+
+   THE ROADMAP'S STATED FEEL IS BACKWARDS AND THE SUBSTANCE WINS. It asks for "a hard drag settles faster,
+   a gentle release settles slower". A yield-stress fluid does the opposite: t_stop is bounded below by
+   v0/(tau0 + k*v0^n) and above by v0/tau0, both monotonically INCREASING in v0, so more momentum takes
+   longer to bring to rest. Measured on the shipped constants: 101 ms at v0 = 0.25, 360 at 1, 821 at 2.5.
+   Inverting the mapping to get the wanted feel would be fudging a derived number toward a picture, which
+   is what P1 and P4 both refused. A hard seize relaxes SLOWLY, and that is the finding.
+
+   THE CEILING IS BELOW THE REGIME CROSSOVER, DELIBERATELY. k*v0^n/tau0 reaches 1 at v0 = 2.92 (measured
+   here, and it reproduces rheology.js's own figure exactly), and past it the cessation exponent moves
+   2 -> 2.235: the same UI action would render two different physical vocabularies depending on how hard
+   somebody dragged. LOCK_V0_MAX = 2.5 keeps every release yield-dominated with the ratio at 0.962 against
+   1.000 - about 14% of headroom, stated rather than assumed. The guard fails the day the ceiling crosses
+   it, so the margin cannot rot. */
+const LOCK_V0_REF=1.0;      /* px/ms of release gesture that reads as the reference disturbance — authored */
+const LOCK_V0_MIN=0.25;     /* authored floor: a barely-moving release still relaxes rather than snapping */
+const LOCK_V0_MAX=2.5;      /* authored ceiling, below the 2.92 rate-dominated crossover */
+const LOCK_V0_WINDOW=120;   /* ms of trailing gesture the release speed is read over — a flick at the end
+                               of a slow drag is a flick, and a drag that stopped before release is stopped */
+let LOCK_RELAX_CACHE={};
 function reducedMotion(){ try{ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; } }
-function relaxEase(u){
-  if(!LOCK_RELAX_CURVE) LOCK_RELAX_CURVE=OCCVM_RHEOLOGY.easing(OCCVM_RHEOLOGY.SUBSTANCE,1,33);
-  const c=LOCK_RELAX_CURVE; if(u<=0) return 0; if(u>=1) return 1;
+function relaxCurve(v0){
+  const k=(Math.round(v0*20)/20).toFixed(2);
+  if(!LOCK_RELAX_CACHE[k]) LOCK_RELAX_CACHE[k]=OCCVM_RHEOLOGY.easing(OCCVM_RHEOLOGY.SUBSTANCE,+k,33);
+  return LOCK_RELAX_CACHE[k];
+}
+function relaxMs(v0){
+  const R=OCCVM_RHEOLOGY, m=R.SUBSTANCE;
+  return LOCK_RELAX_MS*(R.stoppingTime(m,v0)/R.stoppingTime(m,1));
+}
+function relaxEase(u,c){
+  c=c||relaxCurve(1); if(u<=0) return 0; if(u>=1) return 1;
   const x=u*(c.length-1), i=Math.floor(x), f=x-i; return c[i]+(c[i+1]-c[i])*f;
 }
+/* the release speed of the gesture that made the lock, in px/ms, read over the trailing window */
+function dragSpeed(d){
+  const tr=d&&d.tr; if(!tr||tr.length<2) return 0;
+  /* the oldest sample still INSIDE the window — walking past it would average the flick back into the
+     slow drag that preceded it, and stopping at the last pair alone would read one noisy mousemove */
+  const last=tr[tr.length-1]; let i=tr.length-2;
+  while(i>0&&last.t-tr[i-1].t<=LOCK_V0_WINDOW) i--;
+  const a=tr[i], dt=last.t-a.t; if(!(dt>0)) return 0;
+  return Math.hypot(last.x-a.x,last.y-a.y)/dt;
+}
+function lockV0(speed){
+  if(!(speed>0)) return 1;   /* no measurable gesture is not a slow one: fall back to the reference */
+  return Math.min(LOCK_V0_MAX,Math.max(LOCK_V0_MIN,speed/LOCK_V0_REF));
+}
 function lockRelease(){
-  if(S.lock&&S.lastMap&&typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion())
-    S.lockRelax={at:Date.now(),t0:S.lastMap.t0,t1:S.lastMap.t1,lo:S.lastMap.lo,hi:S.lastMap.hi};
+  if(S.lock&&S.lastMap&&typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion()){
+    const v0=(S.lock&&isFinite(S.lock.v0)&&S.lock.v0>0)?S.lock.v0:1;
+    S.lockRelax={at:Date.now(),t0:S.lastMap.t0,t1:S.lastMap.t1,lo:S.lastMap.lo,hi:S.lastMap.hi,
+                 v0,ms:relaxMs(v0),c:relaxCurve(v0)};
+  }
   S.lock=null; S.drag=null; document.body.classList.remove("locked"); $("locknote").textContent="sweep \u00b7 drag on the field to lock a region \u00b7 esc releases"; }
 $("lockSwing").addEventListener("click",lockSwing);
 $("lockResume").addEventListener("click",lockRelease);
 document.addEventListener("keydown",ev=>{ if(ev.key==="Escape") lockRelease(); });
 (function(){ const c=$("chart"); if(!c) return;
   const pos=ev=>{ const r=c.getBoundingClientRect(); return {x:ev.clientX-r.left,y:ev.clientY-r.top}; };
-  c.addEventListener("mousedown",ev=>{ if(ev.button!==0) return; const p=pos(ev); S.drag={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; });
-  c.addEventListener("mousemove",ev=>{ if(!S.drag) return; const p=pos(ev); S.drag.x1=p.x; S.drag.y1=p.y; });
+  c.addEventListener("mousedown",ev=>{ if(ev.button!==0) return; const p=pos(ev); S.drag={x0:p.x,y0:p.y,x1:p.x,y1:p.y,tr:[{x:p.x,y:p.y,t:Date.now()}]}; });
+  c.addEventListener("mousemove",ev=>{ if(!S.drag) return; const p=pos(ev); S.drag.x1=p.x; S.drag.y1=p.y;
+    /* the trail is the only new state: position tracking already existed, this adds the clock to it */
+    S.drag.tr.push({x:p.x,y:p.y,t:Date.now()});
+    while(S.drag.tr.length>2&&S.drag.tr[S.drag.tr.length-1].t-S.drag.tr[1].t>LOCK_V0_WINDOW) S.drag.tr.shift(); });
   const finish=()=>{ const d=S.drag, M=S.lastMap; S.drag=null; if(!d||!M) return;
     if(Math.abs(d.x1-d.x0)<24||Math.abs(d.y1-d.y0)<12) return;
     const xa=Math.min(d.x0,d.x1), xb=Math.max(d.x0,d.x1), ya=Math.min(d.y0,d.y1), yb=Math.max(d.y0,d.y1);
     const tAt=x=>M.t0+(x-M.padL)/M.iw*(M.t1-M.t0), pAt=y=>M.hi-(y-M.padT)/M.ih*(M.hi-M.lo);
-    lockRect(tAt(xa),tAt(xb),pAt(yb),pAt(ya)); };
+    lockRect(tAt(xa),tAt(xb),pAt(yb),pAt(ya),lockV0(dragSpeed(d))); };
   c.addEventListener("mouseup",finish); c.addEventListener("mouseleave",()=>{ if(S.drag) finish(); });
 })();
 $("sunLoc").addEventListener("click",sunUseLocation);
@@ -8072,7 +8132,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909131135";
+const BUILD_STAMP="build-20260909203405";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8089,5 +8149,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909131135 -->
+<!-- build-20260909203405 -->
 </html>

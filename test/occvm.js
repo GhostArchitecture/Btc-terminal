@@ -1277,6 +1277,45 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the duration is authored and named as authored; the curve is not", /const LOCK_RELAX_MS=360;/.test(src29) && !/cubic-bezier[^\n]*relax/i.test(src29));
   T("with reduced motion or no substance the release is instant, never a different curve",
     /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
+
+  /* ── 2.16: the release velocity is REAL, and the ceiling is below the regime crossover ──────────
+     Roadmap item #12 closing for its first consumer. Every assertion here is against the substance's
+     own functions rather than against a number typed twice. */
+  const crossover = (() => { let lo = 0, hi = 10;      /* where k*v0^n/tau0 reaches 1 */
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2;
+      (RH.SUBSTANCE.k * Math.pow(mid, RH.SUBSTANCE.n) / RH.SUBSTANCE.tau0 < 1) ? lo = mid : hi = mid; }
+    return lo; })();
+  T("the v0 ceiling stays inside the yield-dominated regime — the exponent cannot move with a gesture",
+    R29("LOCK_V0_MAX") < crossover, `max ${R29("LOCK_V0_MAX")} vs crossover ${crossover.toFixed(4)}`);
+  T("and it is not sitting on the boundary: the margin is real",
+    (crossover - R29("LOCK_V0_MAX")) / crossover > 0.1);
+  T("a faster seize maps to a higher v0, clamped at both ends",
+    R29("lockV0(0.01)") === 0.25 && R29("lockV0(1)") === 1 && R29("lockV0(99)") === 2.5);
+  T("no measurable gesture falls back to the reference, never to the floor",
+    R29("lockV0(0)") === 1 && R29("dragSpeed(null)") === 0 && R29("dragSpeed({tr:[{x:0,y:0,t:0}]})") === 0);
+  /* A FLICK AT THE END OF A SLOW DRAG IS A FLICK. 120px in the last 40ms after a full second of crawling
+     reads 3 px/ms, not the 0.125 the whole gesture averages to — the window is what makes release speed
+     mean release rather than journey. The first fixture written here expected 3 from a trail whose
+     trailing window legitimately spanned 100ms and measured 1.2, and the code was right: recorded because
+     the wrong half was nearly "corrected". */
+  T("speed is read over the trailing window, so a flick at the end of a slow drag reads as a flick",
+    Math.abs(R29("dragSpeed({tr:[{x:0,y:0,t:0},{x:10,y:0,t:1000},{x:130,y:0,t:1040}]})") - 3) < 1e-9);
+  T("and a drag that stopped before release reads as stopped, not as its journey",
+    R29("dragSpeed({tr:[{x:0,y:0,t:0},{x:500,y:0,t:1000},{x:500,y:0,t:1100}]})") === 0);
+  /* THE DURATION SCALES ON THE SUBSTANCE'S OWN STOPPING TIME, and the direction is the physics rather
+     than the roadmap's stated feel: t_stop is monotonically increasing in v0, so a HARDER seize relaxes
+     SLOWER. Inverting it to get "hard settles fast" would be tuning a derived number toward a picture. */
+  const ms = v => LOCK_RELAX_MS_EXPECT(v);
+  function LOCK_RELAX_MS_EXPECT(v) { return 360 * (RH.stoppingTime(RH.SUBSTANCE, v) / RH.stoppingTime(RH.SUBSTANCE, 1)); }
+  T("the reference disturbance still plays the authored 360 ms exactly", R29("relaxMs(1)") === 360);
+  T("duration rides the substance's stopping time, not a second authored curve",
+    Math.abs(R29("relaxMs(0.25)") - ms(0.25)) < 1e-9 && Math.abs(R29("relaxMs(2.5)") - ms(2.5)) < 1e-9);
+  T("more momentum takes longer to stop — the substance's direction, not the roadmap's",
+    R29("relaxMs(2.5)") > R29("relaxMs(1)") && R29("relaxMs(1)") > R29("relaxMs(0.25)"));
+  T("a region lock carries the gesture that made it; the swing button carries the reference",
+    R29(`lockRect(1,2,3,4,2.5); const a=S.lock.v0; lockRelease(); lockRect(1,2,3,4); const b=S.lock.v0; lockRelease(); [a,b]`).join() === "2.5,1");
+  T("the release stores its own duration and curve, so the frame loop reads no global",
+    /S\.lockRelax\.ms\|\|LOCK_RELAX_MS/.test(src29) && /relaxEase\(u,S\.lockRelax\.c\)/.test(src29));
 }
 
 /* --- 2.10 — the meniscus adopted, and the provenance correction under it ---------------------------

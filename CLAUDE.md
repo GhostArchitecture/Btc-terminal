@@ -235,8 +235,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **742 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 392, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **753 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 403, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1540,6 +1540,40 @@ declaring a thirteenth law failed them **on correct code** — the 2.14 class ag
 test wrapped around it. Both now read the count from SPINE.md's own `### OCCVM-L` headings and assert
 what the law actually promises: every law it declares is audited. `test/occvm.js` 388 → 392; §6's total
 738 → 742.
+
+**2.16 — the lock release gains a real velocity, and roadmap item #12 closes for its first consumer.**
+Since 2.9 every release played the same authored 360 ms whatever the gesture: `yield.js` ran at `v₀ = 1`,
+an authored placeholder, and `lockRelease` had no input at all. `S.drag` tracked `{x0,y0,x1,y1}` and no
+timestamp, so there was nothing to read. It now carries a **trail** — the position tracking already
+existed; this adds the clock to it — and the speed of the gesture that *seizes* a region travels on
+`S.lock` to the release that undoes it. `lockSwing` is a button, carries no gesture, and keeps the
+reference `v₀ = 1`, which is why the reference exists.
+
+**Derived and authored, kept apart.** Derived: the curve's shape at each `v₀`, and the **ratio** of
+stopping times `stoppingTime(v₀)/stoppingTime(1)`. Authored and named as such: `LOCK_V0_REF` (the drag
+speed reading as `v₀ = 1`), the `[0.25, 2.5]` clamp, and `LOCK_RELAX_MS = 360`, which is now explicitly
+the duration **at the reference** rather than the only duration. No derivation maps px/ms onto a
+substance's initial velocity — `rheology.js` says so at its own #12 — so the mapping is a person's. Only
+the anchor is authored; everything it is multiplied by is measured.
+
+**The roadmap's stated feel is backwards, and the substance wins.** It asks for *"a hard drag settles
+faster, a gentle release settles slower."* A yield-stress fluid does the opposite: `t_stop` is bounded by
+`v₀/(τ₀ + k·v₀ⁿ)` and `v₀/τ₀`, both monotonically **increasing** in `v₀`, so more momentum takes longer to
+bring to rest. Measured on the shipped constants: **101 ms at v₀ = 0.25, 360 at 1, 821 at 2.5.** Inverting
+the mapping to get the wanted feel would be fudging a derived number toward a picture, which P1 and P4
+both refused. A hard seize relaxes *slowly*, and that is the finding.
+
+**The ceiling sits below the regime crossover, deliberately.** `k·v₀ⁿ/τ₀` reaches 1 at **v₀ = 2.9196**
+(measured here by bisection, reproducing 2.10's 2.92 exactly), and past it the cessation exponent moves
+2 → 2.235 — the same UI action rendering two different physical vocabularies depending on how hard
+somebody dragged. `LOCK_V0_MAX = 2.5` keeps every release yield-dominated at ratio 0.962, **14.4% of
+headroom**, and the guard fails the day the ceiling crosses the measured crossover, so the margin cannot
+rot. Reduced motion and an unspliced substance both still degrade to instant, never to a different curve.
+
+*One correction on the way, recorded because the wrong half was nearly "corrected".* The first
+trailing-window fixture expected 3 px/ms from a trail whose window legitimately spanned 100 ms and
+measured 1.2. The code was right and the expectation was wrong. `test/occvm.js` 392 → 403; §6's total
+742 → 753.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
