@@ -680,6 +680,27 @@ checked against what renders. None of these three was ever checked against its s
 claim is a claim**, and it is now guarded like one: both suites assert the constants against the paper's
 published ranges, and that the retired pair cannot come back.
 
+**THE SURFACE TENSION IS STILL AN ESTIMATE, AND NOW A BRACKETED ONE.** γ was the last unsourced input
+in the substance and, since 2.10 closed τ₀, the only one the meniscus still depends on. Searched: **there
+is no published surface tension for ketchup, and the reason is methodological rather than a gap in the
+search.** Ordinary tensiometry assumes the fluid relaxes to an equilibrium shape, and a yield-stress fluid
+does not — a pendant drop of a Bingham material moves as a *plug*, necks into a "torpedo" and steps
+through pinch-off, so the Young-Laplace fit those instruments rest on has no valid regime here (Balmforth
+et al., *Applied Mathematical Modelling*, 2007). That the measurement is an open problem is itself
+published: Boujlel & Coussot, *Measuring the surface tension of yield stress fluids*, Soft Matter
+9(25):5898 (2013), which withdraws a blade from a bath precisely because the ordinary instruments cannot
+be used. Paywalled from here, and cited for the problem's existence only — **no number in it is quoted.**
+
+The nearest *measured* matrix brackets the estimate: fermented tomato juice at 12.5 °Brix on a force
+tensiometer, **40.5 mN/m** and **42.6 mN/m** (PMC11393597). Read the caveats with the numbers — juice, not
+ketchup, at under half this substance's Brix, fermented, and **both published values carry an added
+hydrocolloid, with no untreated control printed.** γ = 0.040 sits about 1% under the lower of them, in a
+matrix thinner and differently surfaced than this one, so it is **kept unchanged**: moving it to 0.0405
+shifts the radius 7.148 → 7.192 px, under half a pixel, and would trade a stated estimate for a proxy's
+decimal. What the search does settle is the opposite direction — **water's 0.072 is ruled out as a
+stand-in**, 78% high, and adopting it would carry τ₀ to 28.4 Pa and the meniscus to 9.59 px. The suite
+pins the bracket, the shipped radius, and that water's value cannot quietly become the input.
+
 **What retired with the crystal, and why nothing replaces it.** The unit cell owned the vein's twin angle,
 fracture's cleavage plane and P4's spacing triple; the stiffness tensor owned P1's per-axis durations; the
 three principal indices owned a face-to-index convention. A fluid has none of those, so each retires rather
