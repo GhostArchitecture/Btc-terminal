@@ -1144,7 +1144,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_YIELD;
 /* ==== END OCCVM yield.js ==== */
 
 /* ==== OCCVM SPINE rheology.js — spliced from occvm/rheology.js. do not edit. ==== */
-/* sha256:3df943fce21b */
+/* sha256:8073bf642da0 */
 /* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1281,11 +1281,35 @@ var OCCVM_RHEOLOGY = (function () {
     brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */
     ri: 1.381,         /* —       — refractive index at 30 °Bx, 20 °C (ICUMSA); see header */
     density: 1.14,     /* g/cm³ */
-    /* Surface tension. THE LEAST-SOURCED NUMBER IN THIS FILE and flagged as such: aqueous food systems
-       carrying solids and surfactants run well below water's 0.072, and 0.04 N/m is a mid-range estimate
-       rather than a measurement of ketchup. It is tolerable because the geometry it feeds goes as √γ:
-       being wrong by 2× moves the derived radius by 1.41×, from 7.1 px to 5.7 or 9.6. Stated so nobody
-       reads the radius as tighter than its input. */
+    /* Surface tension. STILL AN ESTIMATE, and now an estimate with a bracket and a reason, which is a
+       different thing from an unexamined one. Searched at the release that closed tau0; what came back:
+
+       THERE IS NO PUBLISHED SURFACE TENSION FOR KETCHUP, AND THE REASON IS METHODOLOGICAL, NOT A GAP IN
+       THE SEARCH. Standard tensiometry assumes the fluid relaxes to an equilibrium shape. A yield-stress
+       fluid does not: a pendant drop of a Bingham material moves as a PLUG, necks into a "torpedo" and
+       steps through pinch-off, so the Young-Laplace fit the method rests on has no valid regime here
+       (Balmforth et al., pendant-drop formation of shear-thinning and yield-stress fluids, Appl. Math.
+       Modelling 2007). That the measurement is an open problem is itself published: Boujlel & Coussot,
+       "Measuring the surface tension of yield stress fluids", Soft Matter 9(25):5898 (2013), which
+       withdraws a blade from a bath because the ordinary instruments cannot be used. Paywalled from here,
+       so it is cited for the problem's existence and NOT for any number - nothing in it is quoted.
+
+       THE NEAREST MEASURED MATRIX, and it brackets this value. Fermented tomato juice at 12.5 degrees
+       Brix, force tensiometer (DCAT21): 40.5 mN/m at 0.02% pullulan and 42.6 mN/m with a three-hydrocolloid
+       blend (Stabilization of fermented tomato juice by differently charged hydrocolloids, PMC11393597).
+       Read the caveats with the number: it is juice, not ketchup, at less than half our Brix, fermented,
+       and BOTH published values carry an added hydrocolloid - the paper prints no untreated control. So
+       0.040 sits about 1% under the lower of the two nearest real readings, in a matrix that is thinner
+       and differently surfaced than this one. Kept unchanged: moving it to 0.0405 would shift the derived
+       radius 7.148 -> 7.192 px, under half a pixel, and trading a stated estimate for a proxy's decimal
+       would buy precision the source does not carry.
+
+       WHAT THIS DOES RULE OUT is water's 0.072 as a stand-in, which is 78% high and would carry tau0 to
+       28.4 Pa and the meniscus to 9.59 px. Aqueous food systems carrying solids and surfactants run well
+       below water, and the two measured tomato readings say so directly.
+
+       The geometry this feeds goes as √γ, so being wrong by 2x moves the radius by 1.41x - 7.1 px to 5.7
+       or 9.6. Stated so nobody reads the radius as tighter than its input. */
     gamma: 0.040,      /* N/m — estimate, see note */
     /* THE BODY COLOUR, and it is judgment, named as judgment exactly as the crystal model named its own.
        A fluid's colour comes from what is dissolved in it, not from its flow curve, so no amount of

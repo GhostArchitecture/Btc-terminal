@@ -190,4 +190,30 @@ T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal"
   T("derived and consumed by nothing: no trap token ships", !require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "spine.css"), "utf8").includes("--trap"));
 }
 
+/* ── gamma: the estimate is bracketed now, and the bracket is what these hold ──────────────────────
+   No ketchup surface tension is published, and the reason is methodological rather than a gap in the
+   search: ordinary tensiometry has no valid regime on a yield-stress fluid — a pendant drop of one moves
+   as a plug and steps through pinch-off — which is why "Measuring the surface tension of yield stress
+   fluids" exists as a paper at all. The nearest MEASURED matrix is fermented tomato juice at 12.5 °Brix,
+   40.5 and 42.6 mN/m, both carrying an added hydrocolloid with no untreated control published. */
+{
+  const g = K.gamma, TOMATO_LO = 0.0405, TOMATO_HI = 0.0426, WATER = 0.072;
+  T("gamma is unchanged at the stated estimate", g === 0.040, g);
+  T("it sits within 5% of the nearest measured tomato matrix",
+    Math.abs(g - TOMATO_LO) / TOMATO_LO < 0.05, ((g - TOMATO_LO) / TOMATO_LO * 100).toFixed(2) + "%");
+  T("it is below both published tomato readings, as a thicker solids-loaded matrix should be",
+    g < TOMATO_LO && g < TOMATO_HI, g);
+  T("water's 0.072 is not the value and cannot become it silently", g !== WATER && g < WATER * 0.7, g);
+
+  const px = R.radiusPx(K);
+  T("the meniscus this gamma produces is the token that shipped", Math.abs(px - 7.148) < 0.001, px);
+  const atWater = Math.sqrt(WATER / (K.density * 1000 * 9.80665)) * 1000 / (25.4 / 96);
+  T("adopting water's value would move the meniscus by more than two pixels",
+    atWater - px > 2, (atWater - px).toFixed(3) + "px");
+
+  const src = require("fs").readFileSync(require("path").join(__dirname, "..", "occvm", "rheology.js"), "utf8");
+  T("the absence is recorded as methodological, with the matrix that brackets it",
+    /NO PUBLISHED SURFACE TENSION FOR KETCHUP/i.test(src) && /40\.5/.test(src) && /42\.6/.test(src));
+}
+
 process.exit(done());
