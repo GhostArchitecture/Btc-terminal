@@ -1313,6 +1313,11 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
   const btcWorn = (btc.match(/var\(--occvm-bevel\)/g) || []).length;
   T("BTC's bevel surfaces read the spine's meniscus", btcWorn >= 7, btcWorn + " consumers");
+  const btcWells = (btc.match(/var\(--occvm-well\)/g) || []).length;
+  T("and its recessed surfaces read the well — the same length, the opposite curvature",
+    btcWells === 2, btcWells + " wells: .pill and the chip row, which are the only two recesses here");
+  T("the well is derived from the meniscus, not authored beside it",
+    /--occvm-well:[\s\S]{0,400}var\(--occvm-meniscus\)/.test(btc));
 
   /* SELF-RETIRING: an inset bevel re-authored from the light vector is exactly what adoption replaced.
      An OUTER shadow is not a bevel and was never in scope — .pill and .shead keep theirs, deliberately. */
@@ -1340,8 +1345,18 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     /* THE ENGRAVED FIELD IS INVERTED ON PURPOSE: .cut is a groove, dark on the side the light hits,
        because the near wall shadows it. The meniscus there would turn a sunken input into a raised bead. */
     const cut = rhy.slice(rhy.indexOf(".cut {"), rhy.indexOf(".cut::placeholder"));
-    T("Rhyme's .cut keeps its inverted groove and does not adopt",
-      /inset calc\(var\(--lx\) \* 1px\)[\s\S]{0,40}rgba\(0,\s*0,\s*0/.test(cut) && !/occvm-bevel/.test(cut));
+    /* .cut is a WELL, not a bevel — it was hand-written inverted and is now the primitive it always was.
+       What must never happen is .cut adopting the BEVEL: that inverts a sunken field into a raised bead. */
+    T("Rhyme's .cut is a recess, and is never the raised bevel",
+      /occvm-well/.test(cut) && !/occvm-bevel/.test(cut));
+    const wells = (rhy.match(/var\(--occvm-well\)/g) || []).length;
+    T("Rhyme's recessed surfaces all read one derived well", wells >= 7, wells + " wells");
+    /* SELF-RETIRING: fixed-px depth is what 2.12 replaced. A ring, a glow and a directional wash are not
+       depth and keep their fixed geometry — they are named here so the guard cannot swallow them. */
+    const fixedDepth = (rhy.match(/inset 0 1px 2px rgba\(0,\s*0,\s*0/g) || []).length;
+    T("no Rhyme surface models depth in fixed pixels any more", fixedDepth === 0, fixedDepth);
+    T("rings and cabochon glows keep their fixed geometry — they are not depth",
+      /inset 0 0 0 1px/.test(rhy) && /inset 0 0 6px/.test(rhy));
   } else {
     T("Rhyme absent from this checkout — its adoption is asserted where it is present", true, "skipped");
   }

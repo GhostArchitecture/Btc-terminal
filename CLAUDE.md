@@ -1449,6 +1449,27 @@ consumer. The recorder now carries a `WORN` set — the resolved `box-shadow` an
 surfaces that wear the law — and the set is **561 → 600**. `test/occvm.js` 372 → 380, and the guard on
 re-authored bevels is self-retiring: it fails the day a surface goes back to writing its own.
 
+**2.12 — the recess is a law too, and every surface that models depth now reads the sun.** 2.11 put
+the meniscus on the raised surfaces and left the sunken ones alone. That was half a system: a well was
+still hand-written, and Rhyme carried **five slightly different depths** for what is one idea.
+`--occvm-well` is the second primitive — *the same capillary length at the opposite curvature*, derived
+from `--occvm-meniscus` rather than authored beside it. At a concave corner the meniscus curves the other
+way, so the wall facing the light is the one in shadow; that is why an engraved field reads dark where a
+raised one reads bright. Here `.pill` and the chip row adopt it; in Rhyme eleven surfaces move — four
+raised (`.binding`, `.edge`, `.cast`, `.cast:active`) and seven recessed (`.cut`, `.cut:focus`, `.picker`,
+`.verdict`, `.shelflist`, `.share`, `.fit .track`).
+
+*Three classes, and only two are depth.* Rings (`0 0 0 1px` inset), the cabochon glow on `.stone`, and
+`.bar`'s directional heat wash are **not** depth and keep their fixed geometry — pinned, so the
+self-retiring guard cannot swallow them. That guard now fails the day any surface models depth in fixed
+pixels again.
+
+*A scale consequence, stated rather than tuned away.* λc is a fixed physical length, so it occupies a
+larger fraction of a small surface than a large one — Rhyme's list rows carry a 7.148 px band across a
+~56 px row, and read markedly softer than BTC's chunky pills do. **That is what real fluid does** (a drop
+on a teaspoon is nearly all meniscus), so it is kept rather than scaled per element, which would put an
+authored number back on top of a derived one. Golden **600 → 609**; `test/occvm.js` 380 → 385.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.

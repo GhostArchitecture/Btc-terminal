@@ -890,6 +890,15 @@ Measured identical in both tools at all three golden instants. These are what `o
 --serif         "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif
 ```
 
+**Added at 2.12 (OCCVM-L2):** `--occvm-well`. Its two amplitudes are surface inputs read through
+fallbacks (well-a, rim-a), exactly as the bevel reads hi-a and cut-a — a consumer supplies them, the
+spine does not declare them, and neither is a token this section governs. The recess is the same capillary length at the opposite curvature: at a concave corner the
+meniscus curves the other way, so the wall facing the light is the one in shadow. That is why an engraved
+field reads dark where a raised one reads bright — and why hand-writing it produced five slightly
+different depths in one tool before it was a primitive. Derived from `--occvm-meniscus`, not authored
+beside it; its default amplitude is shallower than the bevel's because a recess occludes more light than
+it returns.
+
 **Added at 2.10 (OCCVM-L2):** `--occvm-meniscus` and `--occvm-gloss`, both derived and both read by
 `--occvm-bevel` on the line below them — see L2. Neither is authored: the first is λc from `rheology.js`,
 the second the substance's 60° gloss against the ASTM D523 reference, and `test/occvm.js` fails if either
@@ -1057,7 +1066,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Faces (L7)** | `--serif --reading` | **Owned since 2.7.** `--serif` leads with "OCCVM Serif" (Fraunces, `occvm/serif.css`, both tools); `--reading` is "OCCVM Reading" (Faustina, `occvm/reading.css`, Rhyme only — the one tool that sets running text in a serif). The fallback stacks stay behind the owned face. Neither tool restates either token; the spine governs both. | Nothing; delete any local `--serif` restatement. |
 | **Light (sun)** | `--lx --ly --elev --fill --rake --sheen --hi-a --cut-a --shade-a --lxpx --lypx` | **Unchanged in meaning.** Real astronomy already; 2.0 gives it real optics to interact with rather than replacing it. *One name changed at 2.2:* `--amb` → `--fill`, values byte-identical — see OCCVM-L3. | Rename `--amb` to `--fill`; nothing else. |
 | **Night & moon** | `--night --dusk-stage --phosphor --glow --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y` | **unchanged.** Emission from materials is 2.0's, but it is additive over these, not a replacement. | Nothing. |
-| **Cut & cast** | `--occvm-bevel --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
+| **Cut & cast** | `--occvm-bevel --occvm-well --well-a --rim-a --occvm-meniscus --occvm-gloss --occvm-cast-1 --occvm-cast-2 --occvm-cast-3 --lit-x --lit-y --cut-x --cut-y` | **gain a density term.** Cast weight and apparent mass become functions of the material's density rather than three fixed depths. The three depths survive as the named steps. | Nothing, unless the surface authored its own offset — which no conforming surface does. |
 | **Gilt, bronze, verdigris** | `--gilt-a --gilt-b --gilt-c --bronze-a --bronze-b --bronze-c --verdigris --verdigris-lo` | **verdigris becomes a process.** Oxidation as a function of exposure rather than a hex. Gilt and bronze stay authored: they are *finishes*, not minerals, and 2.0's non-goal clause covers them. | Read `--verdigris` as before; stop treating it as constant across time. |
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |

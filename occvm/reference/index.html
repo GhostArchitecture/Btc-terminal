@@ -137,7 +137,7 @@ table {
 /* ==== END OCCVM mono.css ==== */
 
 /* ==== OCCVM SPINE spine.css — spliced from occvm/spine.css. do not edit. ==== */
-/* sha256:dcc62320e3c8 */
+/* sha256:a1a74258c14a */
 /* OCCVM 1.0 — the spine. Authored in occvm/SPINE.md; this is its machine-readable half.
  *
  * Spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the spliced copy in a tool: the
@@ -254,6 +254,20 @@ table {
       rgba(255, 255, 255, calc(var(--hi-a, .12) * var(--occvm-gloss))),
     inset calc(var(--lx, 0) * -1 * var(--occvm-meniscus)) calc(var(--ly, 1) * -1 * var(--occvm-meniscus)) var(--occvm-meniscus)
       rgba(0, 0, 0, var(--cut-a, .35));
+
+  /* OCCVM-L2 (2.12) — THE RECESS, the same length at the opposite curvature. A well is not a bevel with
+     the alphas swapped by taste: at a concave corner the meniscus curves the other way, so the same
+     capillary length applies with the sign flipped, and the near wall — the one facing the light — is the
+     one in shadow. That is why an engraved field reads dark where a raised one reads bright, and why
+     hand-writing it per surface produced five slightly different depths in one tool. One primitive, so a
+     recess is as derived as a rim. --well-a is the shadowed near wall, --rim-a the lit far one; a well is
+     read at a shallower amplitude than a bevel by default because a recess returns less light than it
+     occludes. */
+  --occvm-well:
+    inset calc(var(--lx, 0) * var(--occvm-meniscus)) calc(var(--ly, 1) * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(0, 0, 0, var(--well-a, .55)),
+    inset calc(var(--lx, 0) * -1 * var(--occvm-meniscus)) calc(var(--ly, 1) * -1 * var(--occvm-meniscus)) var(--occvm-meniscus)
+      rgba(255, 255, 255, calc(var(--rim-a, .07) * var(--occvm-gloss)));
 
   /* OCCVM-L10 (1.1, re-derived 2.8) — vein habit. density is the VOLUME FRACTION of the suspension: the
      particle count as a fraction of the lattice, the same number it has been since 1.1 under the
