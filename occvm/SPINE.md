@@ -449,6 +449,19 @@ it has been since 1.1 under the walker-budget reading, and it is the one axis a 
 | .15 | separate flocs, matrix between | **1.46** — the 2-D DLCA literature's 1.44 |
 | **.30** — shipped | **past the gel point**; the network spans the field | 1.61, climbing toward 2 as a space-filling gel must |
 
+**2.24 — and none of that was what rendered.** The paragraph above was true of the *mechanism* and false
+of the *picture*, and nobody had rendered the picture and looked. Drawn at scale, `field()`'s output was a
+**1.3 px crisp bright trace of a lattice aggregate** — every segment at 0°, 45° or 90°, a snowflake — on
+every slab in both tools, and the owner said so: *"we're visually still displaying crystal fractals."* The
+"blurred where it was crisp" claim described only the wide underlayer; the fine pass on top was the
+crystal, and it had been drawn since 1.1. Worse, `field()` read `o.fine || 1.3`, so a caller passing `0`
+to switch the crisp pass **off** silently got it back — four "diffuse" variants measured identical edge
+energy before that was found. `0` now means none. **BTC** draws the mass alone (wide 10, soft 7):
+measured on the live page, **41% of pixels at a mean 1.08 L\***, max 4.7 — a turbid wash, which is what
+a gel at screen scale is. **Rhyme retires the layer from its slabs entirely** and puts the globule field
+in its place (L13, §9 2.24); two decorative layers on one surface is noise. The mechanism, the density
+axis and the measured dimension above all stand; the sentence about what it looked like did not.
+
 The dimension is an **output** of the process. The literature values are recorded in `rheology.js` so the
 generator is held to them rather than quoting them: **1.44** for a planar lattice (Meakin; Kolb, Botet &
 Jullien) and **1.75** in three dimensions (Weitz & Oliveria 1984; Lin et al. 1989 put the same regime at 1.86
@@ -915,7 +928,7 @@ immediately.
 
 | tool | ambient floor | why |
 |---|---|---|
-| **Rhyme Instrument** | **granted**, on the draft face | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. |
+| **Rhyme Instrument** | **granted**, on the draft face — and since 2.24 the same field stands as a **still frame** on every other slab | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. A still frame is not motion, so the grant's scope is unchanged: the field *moves* only on the draft face. |
 | **BTC Terminal** | **withheld**, from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal. §7.6 of the handoff forbids exactly that trade. |
 
 The withholding is a **decision, not an omission**, and it is reversible the way a law is reversible — by
@@ -1629,6 +1642,22 @@ merge itself sets. Across a plausible range: `γ̇ = 0.01` gives `η = 2,627 Pa�
 `η(γ̇)` arriving as a consumer and showing precisely why it was parked: the arithmetic is right and the
 input is undetermined. Per P-3's own disposition the magnitude is authored and named as authored, the
 `LOCK_RELAX_MS` treatment. P-4 stays parked; a consumer that cannot use it is not a consumer.
+
+**2.24 — the field report, and the globules become the layer.** Three things from the owner's first hour on
+the deployed build, each one a measurement this system had not taken. *The space bar did not work in a
+bar*: the editor was bound to the reading's **trimmed** text, so every trailing space was erased on the
+keystroke that typed it — pre-existing, reproduced on the deployed build (`"ink on the plate"` →
+`"inkontheplate"`), fixed at source. *Setting a bpm had no visible effect*: Reading B measured a mean
+**1.00 L\*** at peak and the strike lasted ~7 frames; re-aimed on a four-point sweep to **25%** (5.05 L\*,
+matching Reading A's measured 5.9 on the control) and a **0.32** strike. *The tools were still displaying
+crystal fractals*: they were — see L10. And the question that reframed all of it: **hadn't the roadmap
+produced globules as the visual layer?** It had produced them as an underlayer on one face at a median
+0.42 L\*, by an authored alpha named as a virtue, while the crystal stayed the layer that showed. **Now the
+globule field is the substrate layer on every Rhyme slab** — live on the draft face, a still frame
+elsewhere — at **0.24**, chosen from a five-point sweep (0.78 / 1.43 / 2.20 / **3.21** / 4.20 L\* mean) to sit
+above BTC's vein wash and below a beat strike. Rhyme's vein functions are deleted rather than left
+declared. What this release is, plainly: the roadmap's visual intent, delivered a second time, because the
+first delivery was measured against its own guards and never against an eye.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.
 
