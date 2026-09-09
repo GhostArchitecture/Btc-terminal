@@ -1365,4 +1365,56 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   }
 }
 
+
+/* ── 2.13: a primitive the spine declares must be WORN, and by whom is now measured ────────────────
+   OCCVM-D12 catches a TOKEN consumed by nothing. Nothing caught a CLASS worn by nothing, so the whole
+   primitive set sat decorative from 1.0 to 2.11 and no gate said a word — .occvm-slab carried the bevel
+   the law described, and zero elements in either tool wore it. 2.11 found that by hand. This is the
+   generalised version, and it is deliberately an EXACT-SET assertion in both directions: a new unworn
+   primitive fails, and adopting one of the recorded seven ALSO fails, so the record has to move with the
+   code rather than absorbing it. An exception ledger that silently grows is how the conformance table
+   came to read "violates: —" for six releases. */
+{
+  const fsB = require("fs"), pathB = require("path");
+  const ROOTB = pathB.join(__dirname, "..");
+  const rdB = (...f) => fsB.readFileSync(pathB.join(ROOTB, ...f), "utf8");
+  const spine = rdB("occvm", "spine.css");
+  const ref = rdB("occvm", "reference", "index.html");
+  const btcH = rdB("index.html");
+
+  const declared = [...new Set((spine.match(/^\s*\.occvm-[a-z0-9-]+/gm) || [])
+    .map(x => x.trim().slice(1)))].sort();
+  T("the spine declares the primitive set the law names", declared.length >= 8, declared.join(" "));
+
+  const wornIn = (txt, c) => new RegExp('class(?:Name)?="[^"]*\\b' + c + '\\b').test(txt);
+  const sib = process.env.OCCVM_SIBLING || pathB.resolve(ROOTB, "..", "Rhyme-Instrument");
+  const rhySrc = fsB.existsSync(pathB.join(sib, "tome-src", "30_ui.jsx"))
+    ? fsB.readFileSync(pathB.join(sib, "tome-src", "30_ui.jsx"), "utf8") +
+      fsB.readFileSync(pathB.join(sib, "tome-src", "25_card.js"), "utf8")
+    : null;
+
+  /* THE RECORD, dated 2.13. Seven of nine primitives reach neither tool; two of those reached nothing at
+     all until this release put a specimen of each on the reference surface. */
+  const UNWORN_BY_TOOLS = ["occvm-cast", "occvm-cast-1", "occvm-cast-3", "occvm-focus",
+                           "occvm-num", "occvm-rule", "occvm-slab"];
+  if (rhySrc !== null) {
+    const measured = declared.filter(c => !wornIn(btcH, c) && !wornIn(rhySrc, c)).sort();
+    T("the set of primitives no tool wears is exactly the set on the record",
+      measured.join(",") === UNWORN_BY_TOOLS.slice().sort().join(","),
+      "measured: " + measured.join(" "));
+  } else {
+    T("Rhyme absent — the unworn set is measured where both tools are present", true, "skipped");
+  }
+
+  /* THE REFERENCE SURFACE'S OWN CLAIM: one live specimen per law. A primitive absent from it cannot be
+     seen to stop applying, which is the single thing that surface exists to show. */
+  const missingFromRef = declared.filter(c => !wornIn(ref, c));
+  T("every primitive the spine declares has a specimen on the reference surface",
+    missingFromRef.length === 0, missingFromRef.join(" ") || "none");
+
+  /* and the record is prose somewhere a person will read, not only an array in a test */
+  T("the unworn set is recorded in the law, with its date",
+    /OCCVM-D14/.test(rdB("occvm", "SPINE.md")));
+}
+
 process.exit(done());

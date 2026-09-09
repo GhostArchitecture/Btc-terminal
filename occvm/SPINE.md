@@ -931,6 +931,23 @@ faces in the same order, differing only in whitespace — and at 1.0 that shadow
 spine is inlined above the tool's CSS and nothing else changes (2.0 migration process §3.2); deleting a
 now-redundant tool declaration is per-surface adoption work, done at the release whose law covers it.
 
+### 2a-0. Where a new token goes — the boundary, stated because it was not
+
+Three sections take tokens and a fourth thing is not a token at all. The distinction is mechanical, and
+until 2.13 it existed only in the guards, so the only way to learn it was to be refused three times:
+
+| it is | it belongs in | test |
+|---|---|---|
+| **declared by `spine.css`** at `:root`, one fixed value | **§2a** | is it a literal in the stylesheet? |
+| **written by `sundial.js`** every tick, no CSS default that survives | **§2ab** | does the sundial `setProperty` it? |
+| **a surface input** read through `var(--x, fallback)` and supplied per consumer | **neither** — it is not spine-governed | does the spine only ever *read* it? |
+| anything above, once it exists | **§6b's migration table**, always | the census scans `spine.css` and requires every `--name` it finds |
+
+`--hi-a`, `--cut-a`, `--well-a` and `--rim-a` are the third row: the spine reads them and never declares
+them, so a surface chooses its own amplitude without the law having an opinion. Putting one in §2a fails
+"the spine declares every token §2a lists"; putting one in §2ab fails the census; **omitting it from §6b
+fails whatever else you did**, because that table is fed by scanning the stylesheet rather than by hand.
+
 ### 2ab. Governed since 1.2 — written by the sundial
 
 `--lx --ly --elev --night --dusk-stage --phosphor --fill --rake --sheen --hi-a --cut-a --shade-a --glow
@@ -1022,6 +1039,40 @@ STATUS: promotes to a law amendment in 2.1 if a second surface needs it
 ---
 
 ## 6. Defect register
+**`OCCVM-D14` — seven of nine primitives are worn by neither tool. Open, recorded 2.13.** `OCCVM-D12`
+catches a *token* consumed by nothing. Nothing caught a *class* worn by nothing, so the primitive set has
+been decorative since 1.0 and no gate said a word: `.occvm-slab` carried the bevel this law describes
+while **zero elements in either tool wore it**, which is why 2.11's adoption had to be found by hand.
+
+Measured 2.13, `class=`/`className=` in each tool's own markup:
+
+```
+.occvm-act      btc  0   rhyme 14   worn
+.occvm-sym      btc  2   rhyme  0   worn
+.occvm-cast     btc  0   rhyme  0   UNWORN
+.occvm-cast-1   btc  0   rhyme  0   UNWORN
+.occvm-cast-3   btc  0   rhyme  0   UNWORN
+.occvm-focus    btc  0   rhyme  0   UNWORN
+.occvm-num      btc  0   rhyme  0   UNWORN   — and reached nothing anywhere until 2.13
+.occvm-rule     btc  0   rhyme  0   UNWORN   — likewise
+.occvm-slab     btc  0   rhyme  0   UNWORN
+```
+
+*The guard is an EXACT-SET assertion, in both directions.* A newly-unworn primitive fails it, and adopting
+one of these seven **also** fails it, so the record moves with the code instead of absorbing it. A ledger
+that only ever grows is how §7's conformance table came to read `violates: —` for six releases; this one
+cannot grow quietly and cannot shrink quietly either.
+
+*Two of the seven were worse than unworn and are fixed here.* `.occvm-num` and `.occvm-rule` reached **no
+element anywhere**, including the reference surface — whose entire claim is one live specimen per law. A
+primitive absent from it cannot be seen to stop applying, which is the one thing that surface exists to
+show. Both now have a specimen, and the guard asserts every declared primitive has one, permanently.
+
+**What closes D14 is adoption or deletion, per primitive, and neither is a correction commit's business.**
+A cast that no surface wears is either a shape both tools should be using or a shape the law should stop
+promising; deciding which is a design call, and the point of this entry is that it is now a visible one.
+
+
 **`OCCVM-D13` — the golden set cannot see an adoption. Open.** It records custom properties off `:root`,
 so a change to a *consumer* — a `box-shadow` on `.tile`, on `button`, on `.slab` — is invisible to it.
 Measured, not supposed: run against 2.11's finished adoption, the largest visual change this system has

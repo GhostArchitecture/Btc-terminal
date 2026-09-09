@@ -601,6 +601,16 @@ footer { margin-top: 34px; }
     <div class="occvm-slab slabdemo">.occvm-slab</div>
     <div class="occvm-slab slabdemo" style="border-radius:4px">radius 4px — the ceiling</div>
   </div>
+  <!-- 2.13: the primitive set is meant to carry ONE LIVE SPECIMEN EACH, and two of them carried none —
+       .occvm-num and .occvm-rule were declared in spine.css and worn by no element anywhere, not even
+       here. A conformance instrument that omits a primitive cannot show it stopping to apply. -->
+  <div class="row">
+    <span class="occvm-num">1,234.56</span>
+    <span class="occvm-num">   9.10</span>
+    <span class="lbl">.occvm-num — tabular, so a column stays a column</span>
+  </div>
+  <hr class="occvm-rule">
+  <div class="lbl">.occvm-rule — the hairline above, at L1's inscription alpha</div>
 </section>
 
 <section class="law occvm-slab">

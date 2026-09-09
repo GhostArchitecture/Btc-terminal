@@ -1472,6 +1472,25 @@ larger fraction of a small surface than a large one — Rhyme's list rows carry 
 on a teaspoon is nearly all meniscus), so it is kept rather than scaled per element, which would put an
 authored number back on top of a derived one. Golden **600 → 609**; `test/occvm.js` 380 → 385.
 
+**2.13 — the spine gets a boundary and an adoption guard, both adding coverage rather than easing it.**
+Two changes, from the question of whether the law should be *more accepting of future change*. Measured,
+the answer was no: what cost time was too few nouns and one blind guard, never a rule refusing too often.
+
+*Where a new token goes is now stated.* §2a-0: **declared** by `spine.css` → §2a; **written** by
+`sundial.js` → §2ab; **a surface input** read through `var(--x, fallback)` → neither, the spine only reads
+it; and everything in §6b's migration table always, because that census scans the stylesheet rather than
+being typed. That boundary existed only inside the guards, so the only way to learn it was to be refused —
+which is what happened three times while landing `--occvm-well`.
+
+*And a primitive must now be worn.* `OCCVM-D14`: `D12` catches a token consumed by nothing, and nothing
+caught a **class** worn by nothing, so the primitive set has been decorative since 1.0 with no gate saying
+a word — `.occvm-slab` carried the bevel the law describes while zero elements in either tool wore it.
+Measured: **seven of nine primitives reach neither tool.** The guard pins that set **exactly, in both
+directions** — a newly-unworn primitive fails, and adopting one of the seven also fails — so the record
+moves with the code instead of absorbing it. `.occvm-num` and `.occvm-rule` reached no element *anywhere*,
+including the reference surface whose whole claim is one live specimen per law; both have one now, and
+that property is asserted permanently. `test/occvm.js` 385 → 388.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
