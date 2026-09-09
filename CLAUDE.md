@@ -1665,6 +1665,52 @@ broad "does not model performance" assertion cannot be written and a guard that 
 it fails on a public function returning a syllable→onset assignment, on a `pace()` field named for
 placement, or on one carrying an entry per syllable. The grid's own onsets stay legal — those are the beat.
 
+**2.21 — the swipe test bed (Rhyme), and the dead band is the yield stress.** Roadmap item #6, built on
+bank rows only because that is what a test bed is. Not this tool's code; the law, the substance and the
+guards are shared, and the finding travels.
+
+**The gesture is the yield criterion, not a gesture with a physics label on it.** Finger travel maps to
+applied stress at one authored anchor — `SWIPE_YIELD_PX = 30`, the distance at which the stress reaches
+τ₀ — because SPINE.md §10 P-2 says nothing carries px into a substance's units and each consumer must
+name its own. Everything after that is Herschel-Bulkley: `shearRate` is exactly **0** below τ₀, so the
+row does not move at all through the first 30 px, and the transmitted fraction `(τ−τ₀)/τ` times the
+imposed travel is **identically `d − 30`**, so past yield it tracks the finger 1:1. A dead band and then
+an ordinary swipe — derived, with one authored number in it.
+
+**The dead band is also the tap/swipe discriminator, and that is the part worth keeping.** Inside it
+there is no movement to capture and no default to prevent, so `remove`, the stones button and the page's
+own scroll all stay live through a light drag. The usual heuristic — a px threshold plus a timer — is the
+same idea with an invented constant; here the constant is the substance's, and the guard asserts the
+ordering (`preventDefault` and `setPointerCapture` both sit *past* the yield point, never before).
+
+**The ceiling is derived, in the shape 2.16 established.** `k·γ̇ⁿ = τ₀` — the crossover this system has
+tracked since 2.10 — is `τ = 2τ₀`, which under this map is **exactly 2·`SWIPE_YIELD_PX`** of travel. So
+committing at an offset below the yield distance keeps the whole gesture yield-dominated:
+`SWIPE_COMMIT_PX = 26` lands at ratio **0.867**, **13.3% of headroom**, against `LOCK_V0_MAX`'s 14.4%.
+The guard fails the day the commit distance reaches the yield distance, so the margin cannot rot.
+
+**Released short of commit, the row returns — and the return is a driven flow, not a recoil.** Flow past
+τ₀ is irreversible; a spring-back would be the material claiming an elasticity it does not have, which is
+L13's closed line arriving through an easing curve. What returns the row is the same yield law driven the
+other way: the substance's cessation easing, over a duration that scales with the distance left to cover.
+`SWIPE_RETURN_MS = 260` is that duration at full commit distance, authored and named.
+
+*And one removal now has one vocabulary.* Both paths — button and swipe — go through one `remove()` that
+pinches (L11), because the same irreversible action rendering two different physical vocabularies
+depending on how it was triggered is precisely what 2.16 refused. Banked-word removal now matches draft
+removal, which it did not before.
+
+*The pinch guard was a typed count and a correct change failed it.* `spine.test.js` asserted
+`pinch` call sites `=== 1` — the 2.15 class again. L11 does not say one action is irreversible; it says
+the vocabulary belongs to the ones that are. It now asserts the property: every call site's own callback
+names a removal, so a third real removal passes and a pinch on a save or a toggle fails.
+
+Rhyme: **96 tests** (was 91), five new. `--slide` registered in §6b as tool-local, per the 2.13 boundary;
+it carries the **transmitted** travel rather than the finger's, so the yield stress is visible in the
+token itself. **Open risk, unresolved and stated:** this is a test bed. Nothing yet says the gesture
+generalises past bank rows, and a dead band that is right at 56 px of row is not automatically right on a
+draft line, a shelf row, or anything that scrolls horizontally.
+
 **Deployment is held to the end of the roadmap**, by instruction. Everything from 2.13 sits on the branch,
 green, undeployed; the live stamp stays `build-20260909114959` until that changes.
 
