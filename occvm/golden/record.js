@@ -195,6 +195,14 @@ async function record(tool, outDir) {
         const cs = getComputedStyle(document.documentElement);
         const values = {};
         for (const n of arg.tokens) { const v = cs.getPropertyValue(n).trim(); if (v !== "") values[n] = v; }
+        /* FORCE THE RECALC BEFORE READING A DEPENDENT VALUE. A custom property is readable the instant
+           it is written, but a box-shadow that MULTIPLIES it is not recomputed until layout runs — and in
+           a headless run with no paint, CI read the :root fallback (--lx .35 / --ly -.85) at all three
+           pinned instants while the token it depends on read correctly. Touching offsetHeight forces
+           layout, which forces the style recalc, so the resolved value is the one the tokens imply.
+           Two CI runs were spent on this: the first fix (one evaluate instead of two) was aimed at the
+           wrong mechanism and changed nothing, which is what a guess looks like when it is written down. */
+        void document.documentElement.offsetHeight;
         const worn = {};
         for (const sel of arg.worn) {
           const el = document.querySelector(sel);
