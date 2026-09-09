@@ -585,7 +585,15 @@ table {
   body.showData #viewChart{display:none}
   #viewChart canvas{height:calc(100dvh - 290px);min-height:460px}
   @supports not (height:100dvh){ #viewChart canvas{height:calc(100vh - 290px)} }
-</style>
+/* 11.9 regime ledger. Declared rows take gilt because a declaration is a human judgment and L5
+       reserves gilt for what decides; a flagged row is a machine observation and stays bone. */
+    #regime td,#regime th{ font-size:12px }
+    #regime .kind-declared{ color:var(--gilt-a); font-family:var(--serif) }
+    #regime .kind-flagged{ color:var(--bone-lo) }
+    #regime .boundary-active{ color:var(--bone) }
+    #regime .boundary-superseded,#regime .boundary-none{ color:var(--bone-dim) }
+    #regime .boundary-excluded{ color:var(--ruby) }
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -758,6 +766,16 @@ table {
       <tbody></tbody>
     </table></div>
     <div class="lbl" style="margin-top:6px;letter-spacing:.08em">weights are disclosed, not asserted — at 15-minute horizons every component is small; the read describes the present, the odds price the future</div>
+  </section>
+
+  <section class="tile" data-key="regime">
+    <div class="shead"><span class="lbl" style="color:var(--bone-lo)">Regime ledger — declared boundaries and flagged candidates</span>
+      <span class="note num" id="regimenote"></span></div>
+    <div class="tblwrap"><table id="regime">
+      <thead><tr><th>Effective</th><th>Kind</th><th>Detail</th><th>Boundary</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="lbl" style="margin-top:6px;letter-spacing:.08em">a record, not a signal — entries are written by hand with regimeDeclare() from the console (§11.9); a flagged row is an automatic candidate and never a boundary on its own</div>
   </section>
 
   <section class="tile" data-key="xt">
@@ -7690,8 +7708,11 @@ function regimeTick(now){
   }
   regimeSave();
 }
-/* THE ONLY OPERATOR ENTRY POINT. No UI exists or should be added (11.9, sec 7.6) - this is record-keeping,
-   not a trading signal, so it lives as a console-callable global rather than a rendered form. Re-validates
+/* THE ONLY OPERATOR ENTRY POINT, and the only one there should be. A read-only ledger renders the registry
+   since the ledger release - that is a DISPLAY, and this sentence forbids a CONTROL: nothing on the page can
+   declare, edit or retire a break, because deciding that BTC changed regime is a judgment call and a form
+   would dress it as a setting. The distinction is the whole of it - record-keeping,
+   not a trading signal, so DECLARING one lives as a console-callable global rather than a rendered form. Re-validates
    the WHOLE registry after pushing (not just the new entry) and reports plainly if the new row was excluded
    from the boundary walk - e.g. a same-millisecond t collision with an existing active entry - so a
    declaration can never silently fail to define the boundary it was written for. */
@@ -7722,6 +7743,60 @@ function regimeSupersede(oldId,effectiveAtIso,category,reason,source){
   if(bad.length){ console.error("regimeSupersede: entry \""+id+"\" was recorded but EXCLUDED: "+bad[0].why); }
   else console.log("regimeSupersede: \""+id+"\" recorded, supersedes \""+oldId+"\".");
   return id;
+}
+
+/* ---------------------------------------------------------------- 11.9: the regime registry, rendered
+   READ-ONLY, and regimeDeclare() stays the only operator entry point (11.9, 7.6): a form that could
+   declare a break from the page would dress a judgment call as a control. What this closes is narrower
+   and real - the registry was written, validated and exported since 11.9 landed, and never shown, so
+   the only way to read what had been declared was the console.
+
+   THE BOUNDARY COLUMN IS DERIVED FROM THE BOUNDARY WALK'S OWN FUNCTIONS, in the walk's own order of
+   checks (fault, then kind, then superseded), so this table and regimeBoundaries() cannot disagree
+   about which entries define a boundary. Four states, because collapsing them is how a record starts
+   asserting more than it knows:
+     excluded        a registry fault - the walk skips it. regimeDeclare promises this is never silent.
+     not a boundary  a FLAGGED row. 11.9: never sufficient on its own, whatever its statistic reads.
+     superseded      over-called and corrected: kept on the record, out of the walk.
+     active          a sound, unsuperseded declared break. These, exactly, are regimeBoundaries(). */
+function regimeEsc(v){ const m={"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"};
+  return String(v===undefined||v===null?"":v).replace(/[&<>"]/g,function(c){ return m[c]; }); }
+function regimeRowState(e,why,superseded){
+  if(why!==undefined) return { cls:"boundary-excluded", text:"excluded \u2014 "+why };
+  if(!e||e.kind!=="declared") return { cls:"boundary-none", text:"not a boundary" };
+  if(superseded[e.id]===true) return { cls:"boundary-superseded", text:"superseded" };
+  return { cls:"boundary-active", text:"active" };
+}
+function renderRegimeLedger(){
+  const tb=document.querySelector("#regime tbody"); if(!tb) return;
+  if(!S.regime||S.regime.v!==1) regimeLoad();
+  const src=Array.isArray(S.regime.entries)?S.regime.entries:[];
+  /* Faults are keyed by POSITION, never by id: an entry whose id is missing or not a string is exactly
+     the kind of row that faults, and keying on the id would drop that row's own fault silently. */
+  const whyByIdx=Object.create(null), faults=regimeRegistryFaults(src);
+  for(let i=0;i<faults.length;i++)
+    if(faults[i].i>=0&&whyByIdx[faults[i].i]===undefined) whyByIdx[faults[i].i]=faults[i].why;
+  const superseded=regimeSupersededIds(src);
+  const rows=src.map(function(e,i){ return { e:e, st:regimeRowState(e,whyByIdx[i],superseded) }; })
+                .sort(function(a,b){ return ((b.e&&b.e.t)||0)-((a.e&&a.e.t)||0); });
+  tb.innerHTML=rows.map(function(r){
+    const e=r.e||{}, declared=e.kind==="declared";
+    const when=(typeof e.t==="number"&&isFinite(e.t))?new Date(e.t).toISOString().slice(0,16).replace("T"," "):"\u2014";
+    let detail;
+    if(declared){ detail=regimeEsc(e.category)+" \u2014 "+regimeEsc(e.reason)
+        +(e.source?" ("+regimeEsc(e.source)+")":"")
+        +(e.supersedes?" \u00b7 supersedes "+regimeEsc(e.supersedes):""); }
+    else { const m=e.metric||{};
+      detail=regimeEsc(m.name||"?")+" "+(typeof m.value==="number"?m.value.toFixed(4):"?")
+            +" \u00b7 p"+(typeof m.percentile==="number"?m.percentile.toFixed(1):"?"); }
+    return "<tr><td class=\"num\">"+regimeEsc(when)+"</td>"
+      +"<td class=\""+(declared?"kind-declared":"kind-flagged")+"\">"+(declared?"declared":"flagged")+"</td>"
+      +"<td>"+detail+"</td>"
+      +"<td class=\""+r.st.cls+"\">"+regimeEsc(r.st.text)+"</td></tr>";
+  }).join("");
+  const note=$("regimenote");
+  if(note){ const act=rows.filter(function(r){ return r.st.cls==="boundary-active"; }).length;
+    note.textContent=src.length?(src.length+" entries \u00b7 "+act+" boundar"+(act===1?"y":"ies")):"no entries yet"; }
 }
 
 /* The book leg is taken from the edge ledger's own snapshots, because the order book at a past instant is
@@ -7927,7 +8002,7 @@ setInterval(()=>{
   if((Math.floor(Date.now()/1000)%5)===0){ try{ viaSample(Date.now()); renderViability(); }catch(e){} }
   try{ swingTick(Date.now()); swingGrade(Date.now()); }catch(e){}
   if((Math.floor(Date.now()/1000)%2)===0){ try{ renderSwing(); }catch(e){} }
-  if((Math.floor(Date.now()/1000)%10)===0){ try{ renderJournal(); }catch(e){} }
+  if((Math.floor(Date.now()/1000)%10)===0){ try{ renderJournal(); }catch(e){} try{ renderRegimeLedger(); }catch(e){} }
   try{ S.sig=computeSignals(Date.now()); }catch(e){ S.sig=null; }
   renderSignals();
   try{ const _n=Date.now(); S.xt.cur=extrapolate(_n); xtPin(_n); xtResolve(_n); renderXTData(); }catch(e){}
@@ -7959,7 +8034,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260908230310";
+const BUILD_STAMP="build-20260909014130";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7969,12 +8044,12 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
   kProbeSameOrigin(); initSections();
   try{ applyMineral(); veinLayer(); sunTick(); }catch(e){}
-  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
+  renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderRegimeLedger(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
   startWS();
 })();
 </script>
 </body>
-<!-- build-20260908230310 -->
+<!-- build-20260909014130 -->
 </html>
