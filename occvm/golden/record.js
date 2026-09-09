@@ -186,24 +186,25 @@ async function record(tool, outDir) {
           (errors.length ? "\n  " + errors.join("\n  ") : "\n  (no page or console errors reported)"));
       });
 
-      const values = await page.evaluate(list => {
+      /* ONE evaluate, both readings. They were two calls until CI caught it: the sundial rewrites the
+         light vector on an interval, so a tick landing between two evaluates resolves the tokens at one
+         instant and the worn surfaces at another — and a worn value is a RESOLVED box-shadow, which
+         multiplies that vector. The recording then differed by machine and by timing rather than by
+         anything the page declares, which is the one thing a baseline may never do. */
+      const captured = await page.evaluate(arg => {
         const cs = getComputedStyle(document.documentElement);
-        const o = {};
-        for (const n of list) { const v = cs.getPropertyValue(n).trim(); if (v !== "") o[n] = v; }
-        return o;
-      }, TOKENS);
-
-      /* the same page, asked what its worn surfaces actually resolve to */
-      const worn = await page.evaluate(sels => {
-        const o = {};
-        for (const sel of sels) {
+        const values = {};
+        for (const n of arg.tokens) { const v = cs.getPropertyValue(n).trim(); if (v !== "") values[n] = v; }
+        const worn = {};
+        for (const sel of arg.worn) {
           const el = document.querySelector(sel);
-          if (!el) { o[sel] = "ABSENT"; continue; }
-          const cs = getComputedStyle(el);
-          o[sel] = cs.boxShadow + " | r:" + cs.borderRadius;
+          if (!el) { worn[sel] = "ABSENT"; continue; }
+          const w = getComputedStyle(el);
+          worn[sel] = w.boxShadow + " | r:" + w.borderRadius;
         }
-        return o;
-      }, WORN[tool] || []);
+        return { values, worn };
+      }, { tokens: TOKENS, worn: WORN[tool] || [] });
+      const values = captured.values, worn = captured.worn;
 
       fs.mkdirSync(path.join(outDir, tool), { recursive: true });
       await page.screenshot({ path: path.join(outDir, tool, c.name + ".png") });
