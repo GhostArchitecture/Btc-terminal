@@ -1579,3 +1579,56 @@ was broken. Each was rewritten to say the smaller true thing rather than the lar
 the only reason the correction improved the suites instead of just moving them.
 
 A spine no tool has adopted is a proposal. This one is inlined in both.
+
+---
+
+## 10. Open physical questions — staged, and each one bounded
+
+**Every open question in this system that is genuinely about the substance rather than about a tool sits
+here, with what closes it and what it is allowed to cost.** The register exists because a physical question
+with no stated bound absorbs any amount of work: there is always another paper, another regime, another
+correction. A question nobody has bounded is not research, it is an appetite.
+
+The bound is part of the entry. If closing a question would cost more than the bound, the honest outcome is
+to record it as unclosed with the reason, exactly as §9 records a dropped concept — never to keep spending
+against it quietly.
+
+| # | question | what it touches | what would close it | bound |
+|---|---|---|---|---|
+| **P-1** | **γ, the substance's surface tension.** Carried at 0.040 N/m as an estimate, bracketed against fermented tomato juice at 40.5 / 42.6 mN/m and against water's 0.072, which is ruled out. | **λc alone** — one corner radius, ±2 px. Not τ₀ (anchored independently), not k/n, not cessation, not trap depth. | A published surface tension for a yield-stress tomato matrix. **None exists, and the reason is methodological**: ordinary tensiometry has no valid regime on a fluid that holds below τ₀. | **Closed as unclosable.** Reopens only if such a measurement is published. No further search. |
+| **P-2** | **The disturbance → v₀ map.** Closed for its first consumer at 2.16 with an authored `LOCK_V0_REF` and a clamp below the 2.9196 crossover. The *general* map — any UI gesture to a substance's initial velocity — is still authored. | Any future consumer of `yield.js` that wants a real v₀ rather than the reference. | Nothing in physics. There is no derivation from px/ms to a substance's velocity, and 2.16's entry says so. | **Closed as authored.** Each new consumer names its own anchor and its own clamp, and states both. Not a research question. |
+| **P-3** | **Droplet coalescence, if an ambient floor is ever built (L13, Rhyme).** Bridge growth is linear in the viscous regime, `r ∝ t`, not `√t`. | The floor's merge behaviour, and nothing else. Unbuilt. | One citation check against the standard result, **at the moment the floor is built and not before**. | **One pass, at build time.** If the scaling cannot be confirmed in that pass, the floor merges on an authored rate named as authored — the same disposition `LOCK_RELAX_MS` already has. |
+| **P-4** | **Trap depth, and the shear-thinning form η(γ̇).** Both derived and both unwired: trap depth from SGR's escape law at 2.8, η(γ̇) surveyed and parked with no consumer in either tool. | Nothing. Neither reaches a surface. | A consumer. Not a measurement — the arithmetic is already right. | **Parked, zero cost.** Revisited only when something wants to read one. |
+
+**Two questions that look physical and are not, kept out of this table on purpose.** `OCCVM-D13` — the
+golden set cannot see an adoption — is an instrument defect. `OCCVM-D14` — seven primitives worn by nothing —
+is a design decision per primitive. Both are in §6 where defects live; putting them here would make the
+physics register a place where anything unresolved can be filed, which is how a bound stops meaning anything.
+
+---
+
+## 11. What the tools model, and what they refuse to
+
+**A tool here describes what is written down and what is arithmetic. It does not model performance.**
+
+The distinction is not a limitation being apologised for; it is the line that keeps every readout honest, and
+it is the same line §9 draws between a derived curve and an authored duration.
+
+- **The beat is arithmetic and the tool may describe it.** BPM, time signature, subdivision, and — since
+  2.18 — where a swung pair actually places its two onsets. These follow from numbers a person entered.
+  Nothing is inferred and nothing is heard.
+- **The performance is not the tool's, and never will be.** Which slot a syllable lands in, how a writer
+  leans early or late against the grid, what a line does in a mouth — the tool has no access to any of it and
+  no business estimating it. 2.19 states the room the beat gives and stops there deliberately.
+- **A writer writes to the beat; the tool does not write to the writer.** The engine's own restraint —
+  *"reading what's written, not prescribing what to write"* — is this rule at the scale of one panel.
+
+**What this forbids, concretely.** No function may return an assignment of syllables to onsets. No readout
+may claim a line is late, early, wrong, or in the pocket. No feature may synthesise a performance from a
+draft, and none may treat using the tool as a substitute for having said the words out loud. A guard in
+`engine-node/test/engine.test.js` fails the day the engine's public surface acquires a syllable→onset map,
+and it is deliberately narrow: it catches the one shape this rule is most likely to be broken by.
+
+A tool that measured performance would be guessing, and a guess dressed as a measurement is the failure this
+whole document is organised against.
+

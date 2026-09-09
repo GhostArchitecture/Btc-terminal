@@ -1643,6 +1643,31 @@ stops it rather than slowing it.
 its absence from §6b's migration table on the first run, and this tool's suite failed until it landed
 there as tool-local — a rule that only describes changes after the fact is not a rule.
 
+**2.20 — the physics questions are staged and bounded, and the performance boundary is a rule.** Both
+land in `SPINE.md` and govern both tools; neither changes a surface.
+
+**§10 — open physical questions, each with what closes it and what it may cost.** A physical question with
+no stated bound absorbs any amount of work: there is always another paper, another regime. **P-1, γ:
+closed as unclosable** — it touches λc alone (one corner radius, ±2 px) and no published value exists
+because ordinary tensiometry has no valid regime on a fluid that holds below τ₀; reopens only if one is
+published. **P-2, disturbance → v₀: closed as authored** — no derivation exists, so each consumer names its
+own anchor and clamp and states both, as 2.16 did. **P-3, coalescence: one citation pass at build time**,
+not before, and if the scaling can't be confirmed there the floor merges on an authored rate named as
+authored. **P-4, trap depth and η(γ̇): parked at zero cost** — both derived, neither wired, no consumer.
+`D13` and `D14` are kept *out* of that table on purpose: they look unresolved and neither is physical, and
+a physics register that accepts anything unresolved has a bound that means nothing.
+
+**§11 — what the tools model, and what they refuse to.** The beat is arithmetic and may be described. **The
+performance is not the tool's and never will be** — which slot a syllable lands in, whether a writer leans
+early or late, what a line does in a mouth. A writer writes to the beat; the tool does not write to the
+writer, and never synthesises a performance from what is typed. The guard is deliberately narrow, because a
+broad "does not model performance" assertion cannot be written and a guard that cannot fail is decoration:
+it fails on a public function returning a syllable→onset assignment, on a `pace()` field named for
+placement, or on one carrying an entry per syllable. The grid's own onsets stay legal — those are the beat.
+
+**Deployment is held to the end of the roadmap**, by instruction. Everything from 2.13 sits on the branch,
+green, undeployed; the live stamp stays `build-20260909114959` until that changes.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
