@@ -4,11 +4,12 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260907213640` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260909114959` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
-plausibility gates, and the **structural-break registry** (§11.9). Nothing in it renders; it computes,
-stores and exports. One file, 6,331 lines,
-~428 KB, 286 top-level functions, zero dependencies, zero build step. **§10 (audit addendum) corrects and extends
+plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
+2.12 (§12). One file, **8,093 lines, 630 KB, 294 top-level functions**, zero dependencies, zero build
+step. *These four figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
+counted, not quoted, at 2.14.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -190,7 +191,9 @@ Obsidian substrate `#1b1a22 / #2c2a36 / #0e0d13` on `#09080d`; bone inscription 
 brushed bronze binding `#d9a866/#8f6a35/#4f3a1c` with verdigris `#3f9a86` in seams. Per-session vein layer
 (3 displaced beziers, seeded PRNG). **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
 `--lx --ly --elev --night` once a minute; every bevel, sheen, cabochon highlight and cast shadow reads those four
-custom properties. Canvas colours come from `PAL`. Serif for section heads, mono for numbers.
+custom properties. Canvas colours come from `PAL`, whose two ink weights refresh from the resolved spine on
+`sunTick`'s beat since 2.17 — the canvas reads the sun, at the sun's own cadence. Serif for section heads, mono
+for numbers.
 
 ---
 
@@ -234,8 +237,9 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **715 assertions across 7 harnesses** — the figure here read 231 across 5 long after both had grown,
-which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
+currently **766 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 416, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
@@ -1471,6 +1475,364 @@ larger fraction of a small surface than a large one — Rhyme's list rows carry 
 ~56 px row, and read markedly softer than BTC's chunky pills do. **That is what real fluid does** (a drop
 on a teaspoon is nearly all meniscus), so it is kept rather than scaled per element, which would put an
 authored number back on top of a derived one. Golden **600 → 609**; `test/occvm.js` 380 → 385.
+
+**2.13 — the spine gets a boundary and an adoption guard, both adding coverage rather than easing it.**
+Two changes, from the question of whether the law should be *more accepting of future change*. Measured,
+the answer was no: what cost time was too few nouns and one blind guard, never a rule refusing too often.
+
+*Where a new token goes is now stated.* §2a-0: **declared** by `spine.css` → §2a; **written** by
+`sundial.js` → §2ab; **a surface input** read through `var(--x, fallback)` → neither, the spine only reads
+it; and everything in §6b's migration table always, because that census scans the stylesheet rather than
+being typed. That boundary existed only inside the guards, so the only way to learn it was to be refused —
+which is what happened three times while landing `--occvm-well`.
+
+*And a primitive must now be worn.* `OCCVM-D14`: `D12` catches a token consumed by nothing, and nothing
+caught a **class** worn by nothing, so the primitive set has been decorative since 1.0 with no gate saying
+a word — `.occvm-slab` carried the bevel the law describes while zero elements in either tool wore it.
+Measured: **seven of nine primitives reach neither tool.** The guard pins that set **exactly, in both
+directions** — a newly-unworn primitive fails, and adopting one of the seven also fails — so the record
+moves with the code instead of absorbing it. `.occvm-num` and `.occvm-rule` reached no element *anywhere*,
+including the reference surface whose whole claim is one live specimen per law; both have one now, and
+that property is asserted permanently. `test/occvm.js` 385 → 388.
+
+**2.14 — the auditor was carrying the defect it exists to catch.** `law-audit.js`'s L2 line ended in
+a **typed string**: "(reference surface wears it; neither tool has adopted it)". True when it was written
+at 2.10, false from 2.11, and it went on printing through 2.12 — the two releases that put the meniscus
+and its recess onto both tools' own surfaces — and into `SPINE.md`'s generated L2 block, which is the one
+place the law records what the tools do. That is §7's `violates: —` table one level down, inside the
+instrument built to make that impossible. Replaced by a count taken from each tool's own CSS: **BTC 8
+sites (6 raised, 2 recessed), Rhyme 12 (5, 7)**. The measured half — band 7.148px against λc 7.15px — was
+right the whole time; only the sentence about who wears it was false, which is exactly how a stale claim
+survives a gate. `SPINE.md` regenerated with `--stamp`, byte-identical in both repositories.
+
+*Two more of the same class, found by counting rather than by reading:* this file's header claimed 6,331
+lines / ~428 KB / 286 functions against a measured **8,093 / 630 KB / 294**, and a deploy stamp three
+releases old; §6 claimed 715 assertions against a measured **738**. Both corrected, both with the
+superseded figure left visible beside the new one. `<Cast>`'s own header comment in Rhyme claims 28 call
+sites against 36 — recorded here, not fixed, because it is the sibling's file and nothing measures it yet.
+
+**2.15 — L13, ambient motion: a permission written where the prohibition never was.** The rule that has
+been killing motion proposals — §5.3's deforming highlight at 2.10, §5.6's caging jitter at the same
+release — was never in this law. It lives in the **master roadmap's §6**, which SPINE.md only ever
+*quoted* while recording a disposition. A rule that governs by being cited from another document is one
+nobody can read, bound or argue with, so `OCCVM-L13` states it here as a grant with its own edges, and §6
+stops being law by citation.
+
+**A decorative layer may move on its own; the material may not.** A slow continuous floor may run
+unconditionally — no gate, no triggering state — sourced from the system's own generators and palette. The
+cost is named rather than absorbed: a yield-stress fluid below τ₀ does not spontaneously convect or drift,
+so the floor **contradicts the substance's defining behaviour** and is recorded as the owner's aesthetic
+judgment, the standard §9 already applies to the crystal's replacement. What stays closed is the material
+deforming *at rest* — decoration **on** the substance is permitted, the substance lying about what it is
+is not. **L8 is untouched and L13 reaffirms it:** a floor under `prefers-reduced-motion` degrades to a
+static frame, never to a subtler floor.
+
+**The scope is per tool and deliberately asymmetric — and it is measured, not merely written.** Rhyme is
+granted the floor on the draft face: a reading surface is a document and nothing on it encodes an outcome.
+**This tool is withheld**, from the canvas and every surface §5 governs, because every moving mark on the
+sweep means something and a drifting decorative mass drawn from `PAL` beside marks that carry win/lose is
+§7.6's noise-as-opportunity trade. A scope living only in prose is how §7's table came to read
+`violates: —`, so `law-audit.js` measures it: a floor call site in this tool's own source reads DIVERGES,
+in Rhyme's it must be reduced-motion guarded at the call, and `test/occvm.js` drives all four cases on
+synthetic tools rather than waiting for a floor to exist. **UNADOPTED in both today** — the law is written
+before the first floor so the first one is built against a boundary rather than negotiating one after.
+
+*And the law-count guards were themselves a typed number.* Two assertions read `j.length === 12`, so
+declaring a thirteenth law failed them **on correct code** — the 2.14 class again, a stale claim with a
+test wrapped around it. Both now read the count from SPINE.md's own `### OCCVM-L` headings and assert
+what the law actually promises: every law it declares is audited. `test/occvm.js` 388 → 392; §6's total
+738 → 742.
+
+**2.16 — the lock release gains a real velocity, and roadmap item #12 closes for its first consumer.**
+Since 2.9 every release played the same authored 360 ms whatever the gesture: `yield.js` ran at `v₀ = 1`,
+an authored placeholder, and `lockRelease` had no input at all. `S.drag` tracked `{x0,y0,x1,y1}` and no
+timestamp, so there was nothing to read. It now carries a **trail** — the position tracking already
+existed; this adds the clock to it — and the speed of the gesture that *seizes* a region travels on
+`S.lock` to the release that undoes it. `lockSwing` is a button, carries no gesture, and keeps the
+reference `v₀ = 1`, which is why the reference exists.
+
+**Derived and authored, kept apart.** Derived: the curve's shape at each `v₀`, and the **ratio** of
+stopping times `stoppingTime(v₀)/stoppingTime(1)`. Authored and named as such: `LOCK_V0_REF` (the drag
+speed reading as `v₀ = 1`), the `[0.25, 2.5]` clamp, and `LOCK_RELAX_MS = 360`, which is now explicitly
+the duration **at the reference** rather than the only duration. No derivation maps px/ms onto a
+substance's initial velocity — `rheology.js` says so at its own #12 — so the mapping is a person's. Only
+the anchor is authored; everything it is multiplied by is measured.
+
+**The roadmap's stated feel is backwards, and the substance wins.** It asks for *"a hard drag settles
+faster, a gentle release settles slower."* A yield-stress fluid does the opposite: `t_stop` is bounded by
+`v₀/(τ₀ + k·v₀ⁿ)` and `v₀/τ₀`, both monotonically **increasing** in `v₀`, so more momentum takes longer to
+bring to rest. Measured on the shipped constants: **101 ms at v₀ = 0.25, 360 at 1, 821 at 2.5.** Inverting
+the mapping to get the wanted feel would be fudging a derived number toward a picture, which P1 and P4
+both refused. A hard seize relaxes *slowly*, and that is the finding.
+
+**The ceiling sits below the regime crossover, deliberately.** `k·v₀ⁿ/τ₀` reaches 1 at **v₀ = 2.9196**
+(measured here by bisection, reproducing 2.10's 2.92 exactly), and past it the cessation exponent moves
+2 → 2.235 — the same UI action rendering two different physical vocabularies depending on how hard
+somebody dragged. `LOCK_V0_MAX = 2.5` keeps every release yield-dominated at ratio 0.962, **14.4% of
+headroom**, and the guard fails the day the ceiling crosses the measured crossover, so the margin cannot
+rot. Reduced motion and an unspliced substance both still degrade to instant, never to a different curve.
+
+*One correction on the way, recorded because the wrong half was nearly "corrected".* The first
+trailing-window fixture expected 3 px/ms from a trail whose window legitimately spanned 100 ms and
+measured 1.2. The code was right and the expectation was wrong. `test/occvm.js` 392 → 403; §6's total
+742 → 753.
+
+**2.17 — the canvas reads the sun, and L6 could only see CSS.** Two findings from checking `renderSweep`,
+both closed here.
+
+**`renderSweep` contained zero references to the light.** No `--lx`, `--ly`, `--elev`, `--night`, `--glow`,
+no `Math.sin`/`Math.cos`; the only time call is `Date.now()`, driving scroll and the lock relaxation.
+`sunTick` wrote custom properties onto `documentElement` and mirrored into `S.sun`, and wrote **nothing** to
+the canvas — so the largest visual element in the tool, the one §5 calls its centre, drew identically at 3am
+and at noon. Not an L8 violation: **`OCCVM-L3` — one light — simply did not reach it**, the shape of `D13`
+one level down, where the golden set cannot see an adoption and here there was no adoption to see.
+
+**What moves is exactly what the sundial writes, measured rather than chosen.** `sundial.js` sets `--sub`,
+`--sub-hi`, `--sub-lo`, `--bone` and `--bone-lo` each tick and nothing else; `PAL` carries the two ink
+weights, so those two refresh and the rest stay literal. The outcome colours are untouched — not by a
+judgment about win/lose, but because **the sundial never moves them**, so there is nothing to read. The
+guard asserts every live key against the token list parsed out of `sundial.js` itself, so a key that stopped
+being sundial-written could not stay "live". Cost: **one read a minute**, on `sunTick`'s existing beat —
+resolving custom properties at ~30 fps is the wrong price for a value that changes once a minute. The
+literals stay as the fallback and are load-bearing: jsdom resolves no custom property, and a palette that
+silently became empty strings would paint nothing while every assertion passed.
+
+**And `PAL` answered §5's open L6 question by being counted.** `PAL.mal`/`PAL.ruby` are the malachite and
+ruby values typed a second time as JS literals, and the L6 measure read only `--token: #hex` **declarations**
+— a restatement of a protected token in JavaScript was invisible to the one instrument built to find
+restatements. Every mineral value is now counted wherever it appears, in four named classes: an accent
+declaration or **bare accent literal** diverges; a `:root` mineral fallback overwritten at load is tolerated
+and named, the same shape L12 already tolerates for the substrate; outcome colours in any syntax are the §5
+exception, counted rather than hidden. Measured: **BTC 7 outcome colours** (was reported as 3), **Rhyme 4
+`:root` fallbacks** (was reported as none). Both still CONFORM — `PAL` is the same granted exception in a
+second file, not a new violation, which is the answer rather than a deferral. `test/occvm.js` 403 → 412;
+§6's total 753 → 762.
+
+**2.18 — swing was a label on a straight grid (Rhyme), and Reading A rides a true one.** Not this
+tool's code, but the law and the guards are shared and the finding is the same class as 2.14's. Rhyme's
+`SUBDIVISION` gave `straight` and `swing` the same 4, `slotMs` was `beatMs/per` for both, and nothing
+carried an onset — so **`swing` produced a grid byte-identical to `straight`** while the comment three
+lines above claimed it "shifts where the offbeats sit in time". Swing now splits each pair 2:1 — the
+notated meaning, the value MPC swing percentage is measured against — applied at the pair, which at
+`per = 4` is sixteenth-note swing. Measured at 90 bpm: straight `0 / 166.7 / 333.3 / 500`, swing
+`0 / 222.2 / 333.3 / 555.6`. Slot count and bar length unmoved. Four new tests, two of which fail
+against the old engine — verified by simulating it.
+
+*2.19 corrects the claim this entry made about `pace()`.* It read "swing changes **where**, never how many
+or how fast", and called that a virtue. **The writing does not swing — the beat does, and a line is written
+against it**, so half a swung bar's slots are short: at 90 bpm a pair runs **222 ms long / 111 ms short**,
+which is **4.5/sec against 9.0/sec** for anything landing on either side. `rate` is a bar mean and sees
+neither; it reads 6.0 under both feels. A mean hiding an uneven constraint is the `meanSlotMs` defect one
+level up, in the readout instead of the grid. `pace()` now carries `tightMs`, `tightRate` and `even`, and
+the panel states the short side's rate — **reported, not modelled**: the tool does not know which slot a
+syllable lands in, that is the writer's ear, so it states the room the beat gives and stops.
+
+*And `slotMs` became `meanSlotMs`, which is the sharper half.* Under swing no slot has the mean's
+duration and the old name claimed every slot did. No product code read it; **its only two readers were
+assertions checking it tracked bpm** — true of a mean, and exactly what made the uniform-slot claim look
+verified. A guarded lie is worse than an unguarded one, because the guard is what stops anybody looking
+again.
+
+**Reading A** — the metronome pulse — is the first consumer of `L13`'s gated-motion clause, and obeys the
+sentence written for it: the gate is the actual value, never its display fallback. `TempoPanel`'s
+`tempo || {bpm: 90, …}` exists so the panel renders before a tempo is set; reading it would leave the
+pulse beating at 90 under a default nobody chose. `performance.now()`, never a frame count. Reduced motion
+stops it rather than slowing it.
+
+*The 2.13 boundary refused the change until the token was registered.* `--pulse` is new, the census caught
+its absence from §6b's migration table on the first run, and this tool's suite failed until it landed
+there as tool-local — a rule that only describes changes after the fact is not a rule.
+
+**2.20 — the physics questions are staged and bounded, and the performance boundary is a rule.** Both
+land in `SPINE.md` and govern both tools; neither changes a surface.
+
+**§10 — open physical questions, each with what closes it and what it may cost.** A physical question with
+no stated bound absorbs any amount of work: there is always another paper, another regime. **P-1, γ:
+closed as unclosable** — it touches λc alone (one corner radius, ±2 px) and no published value exists
+because ordinary tensiometry has no valid regime on a fluid that holds below τ₀; reopens only if one is
+published. **P-2, disturbance → v₀: closed as authored** — no derivation exists, so each consumer names its
+own anchor and clamp and states both, as 2.16 did. **P-3, coalescence: one citation pass at build time**,
+not before, and if the scaling can't be confirmed there the floor merges on an authored rate named as
+authored. **P-4, trap depth and η(γ̇): parked at zero cost** — both derived, neither wired, no consumer.
+`D13` and `D14` are kept *out* of that table on purpose: they look unresolved and neither is physical, and
+a physics register that accepts anything unresolved has a bound that means nothing.
+
+**§11 — what the tools model, and what they refuse to.** The beat is arithmetic and may be described. **The
+performance is not the tool's and never will be** — which slot a syllable lands in, whether a writer leans
+early or late, what a line does in a mouth. A writer writes to the beat; the tool does not write to the
+writer, and never synthesises a performance from what is typed. The guard is deliberately narrow, because a
+broad "does not model performance" assertion cannot be written and a guard that cannot fail is decoration:
+it fails on a public function returning a syllable→onset assignment, on a `pace()` field named for
+placement, or on one carrying an entry per syllable. The grid's own onsets stay legal — those are the beat.
+
+**2.21 — the swipe test bed (Rhyme), and the dead band is the yield stress.** Roadmap item #6, built on
+bank rows only because that is what a test bed is. Not this tool's code; the law, the substance and the
+guards are shared, and the finding travels.
+
+**The gesture is the yield criterion, not a gesture with a physics label on it.** Finger travel maps to
+applied stress at one authored anchor — `SWIPE_YIELD_PX = 30`, the distance at which the stress reaches
+τ₀ — because SPINE.md §10 P-2 says nothing carries px into a substance's units and each consumer must
+name its own. Everything after that is Herschel-Bulkley: `shearRate` is exactly **0** below τ₀, so the
+row does not move at all through the first 30 px, and the transmitted fraction `(τ−τ₀)/τ` times the
+imposed travel is **identically `d − 30`**, so past yield it tracks the finger 1:1. A dead band and then
+an ordinary swipe — derived, with one authored number in it.
+
+**The dead band is also the tap/swipe discriminator, and that is the part worth keeping.** Inside it
+there is no movement to capture and no default to prevent, so `remove`, the stones button and the page's
+own scroll all stay live through a light drag. The usual heuristic — a px threshold plus a timer — is the
+same idea with an invented constant; here the constant is the substance's, and the guard asserts the
+ordering (`preventDefault` and `setPointerCapture` both sit *past* the yield point, never before).
+
+**The ceiling is derived, in the shape 2.16 established.** `k·γ̇ⁿ = τ₀` — the crossover this system has
+tracked since 2.10 — is `τ = 2τ₀`, which under this map is **exactly 2·`SWIPE_YIELD_PX`** of travel. So
+committing at an offset below the yield distance keeps the whole gesture yield-dominated:
+`SWIPE_COMMIT_PX = 26` lands at ratio **0.867**, **13.3% of headroom**, against `LOCK_V0_MAX`'s 14.4%.
+The guard fails the day the commit distance reaches the yield distance, so the margin cannot rot.
+
+**Released short of commit, the row returns — and the return is a driven flow, not a recoil.** Flow past
+τ₀ is irreversible; a spring-back would be the material claiming an elasticity it does not have, which is
+L13's closed line arriving through an easing curve. What returns the row is the same yield law driven the
+other way: the substance's cessation easing, over a duration that scales with the distance left to cover.
+`SWIPE_RETURN_MS = 260` is that duration at full commit distance, authored and named.
+
+*And one removal now has one vocabulary.* Both paths — button and swipe — go through one `remove()` that
+pinches (L11), because the same irreversible action rendering two different physical vocabularies
+depending on how it was triggered is precisely what 2.16 refused. Banked-word removal now matches draft
+removal, which it did not before.
+
+*The pinch guard was a typed count and a correct change failed it.* `spine.test.js` asserted
+`pinch` call sites `=== 1` — the 2.15 class again. L11 does not say one action is irreversible; it says
+the vocabulary belongs to the ones that are. It now asserts the property: every call site's own callback
+names a removal, so a third real removal passes and a pinch on a save or a toggle fails.
+
+Rhyme: **96 tests** (was 91), five new. `--slide` registered in §6b as tool-local, per the 2.13 boundary;
+it carries the **transmitted** travel rather than the finger's, so the yield stress is visible in the
+token itself. **Open risk, unresolved and stated:** this is a test bed. Nothing yet says the gesture
+generalises past bank rows, and a dead band that is right at 56 px of row is not automatically right on a
+draft line, a shelf row, or anything that scrolls horizontally.
+
+**2.22 — L13 is worn, and the law that was written first was measured wrong the whole time.** Roadmap
+item #7. Rhyme's draft face carries an ambient floor; **this tool carries none, by the law, and the
+auditor now actually measures that.** L13 goes **UNADOPTED → IN FORCE** and the register reads **9 in
+force, 0 diverged, 0 unadopted, 4 unmeasured**.
+
+**The finding is in the auditor, not the floor.** `readTool` handed every measure `{raw, own}` and no
+name. L13 is the one law whose measure reads the name — its grant is per tool — so `/Rhyme/.test(undefined)`
+was false on every run since 2.15 and the auditor answered *withheld* for **both** tools, which is why it
+printed UNADOPTED rather than a divergence and why nothing noticed. Its four synthetic guards each built
+their own `{name, own}` and passed. **That is 2.7's hardcoded `SIBLING` one level along: a measure
+verified against its fixture instead of its call path**, and it surfaced the only way it could — a
+correct, granted, guarded floor reading DIVERGED. `readTool` and `TOOLS` are exported now and the suite
+asserts the shape the *runner* produces, so the fixture and the call path cannot drift apart again. A
+second, smaller half: the measure counted `function ambientFloor(` as a call site. Split by branch, and
+the asymmetry is the law's — a generator sitting in **this tool's** source is the violation whether or
+not anything calls it (the only reading under which the withholding cannot be walked back one commit at
+a time), while in Rhyme the definition is not a call site and L8's guard is owed at each call.
+
+**P-3 ran its one pass and is closed.** SPINE.md §10 said one citation check at the moment the floor was
+built and not before; that is exactly what it cost. **Confirmed:** in the viscous regime the coalescence
+bridge radius grows **linearly** in time (Eggers, Lister & Stone, *J. Fluid Mech.* **401**, 293–310,
+1999). `√t` is the **inertial** law and this substance is nowhere near it. Two things came back with it,
+both in SPINE.md §9. The **logarithmic correction is measured and dropped**: it is an early-time
+asymptotic, `−t·ln(t/t_v)` turns over at `t/t_v = 1/e` and then predicts the bridge shrinking, and a merge
+rendered to completion runs past that — an asymptotic outside its regime, the 2.8 and 2.10 error class.
+And the **absolute rate is not derivable, measured rather than asserted**: the magnitude is `γ/η`, `η` is
+the apparent viscosity, and it depends on the shear rate the merge itself sets — `γ̇ = 0.01` gives
+`5.8×10⁻⁵ px/ms`, `γ̇ = 10` gives `3.0×10⁻² px/ms`, **417 seconds against 0.8 for the same 24 px bridge**.
+That is P-4's `η(γ̇)` arriving as a consumer and demonstrating why it was parked. The magnitude is
+authored, the linearity is not, and the guard proves linearity by **doubling** rather than by matching
+source text.
+
+*What the floor is, in one line each.* Its own canvas at `z-index: -1` inside `.bars`, so it is a layer
+under the material and never over a bar — `.bar` carries `--heat`, a measured value, which L13 bars a
+floor from. Colour from the mineral tokens only: no literal, and an unresolved palette paints **nothing**
+rather than an invented accent (L6). Ungated, unmodulated, lawful at zero modulation, which is what makes
+L13 a grant and not the gated-motion case. Reduced motion gets **one painted frame and no rAF at all** —
+a static frame, asserted by driving the shipped code, not by reading it.
+
+**And the standing rule was broken two releases running: CI was red and this file said green.**
+Rhyme's run **50 (2.20) failed** — *"Regenerate from tome-src and check nothing drifted"* — and 2.20 was
+reported here as green off the local gates, which is the one thing the rule about reading CI through the
+API exists to prevent. It is on the record as a wrong report, not a footnote. **What it was hiding is
+worse than a stale stamp:** 2.20's committed `index.html` bumped its two stamp sites and **carried none
+of the source change 2.20 made** — the §11 performance rule added to `tome-src/10_engine.js` is absent
+from that commit's artifact. It shipped a stamp and nothing else. 2.21 then shipped an `index.html` at
+`build-20260909214145` against an `sw.js` naming `tome-build-20260909212530`. Both are the same defect:
+the suite ran **before** the build, and the copy that followed was stale or partial. Every assertion had
+passed, against the previous state. **The existing stamp assertion was never missing — it ran at the
+wrong moment**, and no assertion placed after a stale copy can close an ordering hole.
+
+*Two wrong instruments were tried first and both are recorded.* The first compared the repo root against
+`dist/` with nothing guaranteeing `dist/` existed; it is not committed, so on a fresh checkout **CI failed
+on the guard rather than on the code — 101 of 102, the one failure mine.** The second added a `pretest`
+that built **and copied** `dist/` over the root. That one is worse than useless: it would have
+**laundered** the drift, on CI as well, repairing a stale committed artifact in the working tree and then
+passing every comparison downstream of it — a gate that repairs what it exists to detect. Caught by
+asking what it would do to the *previous* release rather than to this one.
+
+*What is in force.* `pretest` builds and **never** copies, so `dist/` always exists and is always fresh
+while the copy into the repo root stays a deliberate act; the guard then requires the committed
+`index.html`, `sw.js` and `manifest.json` to be **byte-identical to `dist/`**. A committed artifact that
+is not what a build produces fails, whatever order anything ran in — and the guard asserts `pretest`'s
+exact text, because the copy is the thing somebody will add back. Verified to bite on a stale worker
+(two failures, the pre-existing stamp check and this one). The branch tip is consistent and reproduces
+byte-for-byte; the two intermediate commits are not deployable and are left on the record rather than
+amended away.
+
+*And the floor was the wrong size on screen while every guard read green.* Driven in Chromium — the
+standard this system claims and had not applied to its own new surface. `size()` measured `.bars` once
+at mount, when a fresh draft has none, and nothing re-measured: **356×44 px** behind a face several times
+that. A `ResizeObserver` on the container is the fix; a canvas whose backing store comes from a
+measurement needs an observer on the thing it measures, or it is sized to a moment.
+
+*Then where it sat was measured too, rather than argued.* Inside `.bars` the floor moved **0.81%** of
+pixels at a mean **1.18 L\***: the bar cards are opaque and a floor between them has nowhere to show —
+present, and effectively absent, which is what P1 and 2.1/P4 both refused to ship. Behind the whole face
+it moves **28.35%** at a **median 0.42 L\***, p99 3.03, p999 8.66, max 22.65, with only 41 pixels past
+10 — a broad sub-threshold wash with rare brighter cores, which is what a floor is. **The authored alpha
+was never the lever and was not touched; the coverage was.** Widening beats brightening, and the
+difference between those two is the difference between fixing a placement and tuning a number toward a
+wanted picture. Both figures are from one frozen page load, toggling the canvas only, so nothing else
+could have moved.
+
+Rhyme: **103 tests** (was 96). This tool: `test/occvm.js` **412 → 416**; §6's total **762 → 766**.
+**Read CI through the API before reporting a release green.** It is written in §10.1 and in the 2.7 entry
+and it was still not done here.
+
+**2.23 — Reading B, the last roadmap item, and it is a decision rather than a derivation.** Rhyme's whole
+draft face carries the beat, not just the tempo control. Not this tool's code; the law and the clause it
+turns on are shared.
+
+**Gated motion, and L13's one clause about it is the whole design.** The gate is the *actual* value,
+never its display fallback. `TempoPanel` keeps `tempo || {bpm: 90, …}` so it can render before a tempo
+exists; if the pulse read that, a draft nobody had set a tempo on would beat at 90 forever. Measured in
+Chromium: with no tempo the face reads `--pulse` **0.000** and the wash resolves fully transparent; after
+one `+5` the control reads **95 bpm** and the pulse peaks at **0.993 on 21 of 120 samples** — the hook's
+18% strike window, decaying 0.86 → 0.
+
+**What it claims, stated because it is the whole question.** The tool knows one thing: a number typed
+into a panel. No audio, no clock aligned to any track, and §11 says the performance is never its. A pulse
+on the control claims *this is the number you set*; a pulse across the face makes a larger claim on the
+same evidence. **My recommendation was not to build it.** It is built at full scope **by the owner's
+decision**, recorded as one — the standard SPINE.md already applies to the floor contradicting the
+substance and to every authored duration here. It is not dressed as a derivation.
+
+**Amplitude measured, not eyeballed.** At peak the wash moves **22.4% of the face at a mean 1.00 L\*,
+max 4.47** — a 114 ms strike inside a 632 ms beat. It paints on the element's own background, so it sits
+under every in-flow child: no bar, no `--heat`, no measured value has it drawn over, and the guard checks
+that no `.bar` rule reads `--pulse`. Under reduced motion the phase stays 0 across 120 samples **and**
+the resolved `background-image` is `none` — a still face from the hook and the stylesheet independently.
+
+*One find on the way.* The obvious class name, `.face`, was **already declared in the stylesheet and worn
+by nothing**, so the new element would have silently inherited `.face + .edge`'s margin. Renamed to
+`.draftface`; the orphan is **recorded rather than adopted**, and the guard pins that nothing wears it —
+`OCCVM-D14`'s shape one level down, in tool-local CSS rather than in the primitive set.
+
+Rhyme: **106 tests** (was 103). **The roadmap is complete: items 6, 7 and 8 are built.**
+
+**Deployment is held to the end of the roadmap**, by instruction — and the roadmap has now reached its
+end. Everything from 2.13 sits on the branch, green, undeployed; the live stamp stays
+`build-20260909114959` until the owner lifts the hold.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

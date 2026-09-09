@@ -1124,8 +1124,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const run = a => cp.spawnSync(process.execPath,
       [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), ...a], { encoding: "utf8" });
 
+    /* THE COUNT IS READ, NEVER TYPED. Both of these assertions carried a literal 12, so adding L13 at
+       2.15 failed them on correct code — a guard that has to be edited every time the thing it guards
+       grows is a stale claim with a test around it, which is the class 2.14 corrected in the auditor and
+       in the handoff's own header. What the law actually promises is that EVERY law it declares is
+       measured, so the expected count comes from SPINE.md's own headings. */
+    const LAW_IDS = [...fs20.readFileSync(path20.join(__dirname, "..", "occvm", "SPINE.md"), "utf8")
+      .matchAll(/^### OCCVM-(L\d+) —/gm)].map(m => m[1]);
     const j = JSON.parse(run(["--json"]).stdout);
-    T("every law is measured or explicitly labelled unmeasurable", j.length === 12);
+    T("every law SPINE.md declares is measured or explicitly labelled unmeasurable",
+      j.length === LAW_IDS.length && LAW_IDS.every(id => j.some(l => l.id === id)),
+      `${j.length} audited / ${LAW_IDS.length} declared`);
     T("no law reports IN FORCE without a tool measured as conforming",
       j.every(l => l.overall !== "IN FORCE" || l.per.some(p => p.state === "CONFORMS")),
       "unadopted + unmeasured rolling up to IN FORCE is how a declared law reads as a working one");
@@ -1139,7 +1148,7 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       [path20.join(__dirname, "..", "occvm", "tools", "law-audit.js"), "--json"],
       { encoding: "utf8", env: Object.assign({}, process.env, { OCCVM_SIBLING: "/nonexistent/sibling" }) }).stdout);
     T("with the sibling absent, every law carries an ABSENT row",
-      jp.length === 12 && jp.every(l => l.per.some(p => p.state === "ABSENT")));
+      jp.length === LAW_IDS.length && jp.every(l => l.per.some(p => p.state === "ABSENT")));
     T("a tool absent from the checkout is never counted as conforming",
       jp.every(l => l.overall === "PARTIAL" || l.overall === "DIVERGED"),
       "IN FORCE / UNADOPTED / UNMEASURED with one tool unread is a verdict on a tool nobody looked at");
@@ -1147,6 +1156,39 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        the last divergence, so it began failing on correct code. The rollup rule is what matters and it can
        be checked directly: DIVERGES on a present tool must outrank ABSENT on the missing one. Asserted on
        the auditor's own function rather than on the repository happening to be broken. */
+    /* ── OCCVM-L13, 2.15: ambient motion, and the per-tool split is MEASURED ──────────────────
+       L13 grants a decorative floor to Rhyme's draft face and withholds it from BTC, where every moving
+       mark on the sweep carries win/lose. A scope that lives only in the law's prose is the "violates: --"
+       failure waiting to recur, so the measure is driven here on synthetic tools rather than waiting for
+       a floor to exist. These four cases ARE the law's table. */
+    const L13 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L13");
+    const m13 = (name, own) => L13.measure({ name, own }).state;
+    T("L13: neither tool has a floor yet, and absence reads UNADOPTED",
+      m13("BTC Terminal", "") === "UNADOPTED" && m13("Rhyme Instrument", "") === "UNADOPTED");
+    T("L13: a floor in BTC's own source diverges — the withholding is enforced, not asked for",
+      m13("BTC Terminal", "if(!RM) ambientFloor(cx);") === "DIVERGES");
+    T("L13: Rhyme is granted the floor, and only reduced-motion guarded",
+      m13("Rhyme Instrument", "if (!reducedMotion()) ambientFloor(host);") === "CONFORMS");
+    T("L13: an unguarded floor diverges even where the floor is granted — L8 is not repealed",
+      m13("Rhyme Instrument", "useEffect(() => { ambientFloor(host); }, []);") === "DIVERGES");
+    T("L13: a declaration is not a call site — a granted, guarded floor does not diverge on its own definition",
+      m13("Rhyme Instrument",
+        "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);")
+        === "CONFORMS");
+    T("L13: but a declaration in BTC's own source is still the violation",
+      m13("BTC Terminal", "function ambientFloor(c){return 0;}") === "DIVERGES");
+
+    /* THE SHAPE THE RUNNER ACTUALLY PRODUCES. Every assertion above builds its own {name, own} object,
+       and until 2.22 readTool returned {raw, own} — so L13's per-tool grant read `undefined` for the
+       name and answered "withheld" for BOTH tools on every real run, while all four synthetic cases
+       passed. This is the guard that was missing: the fixture and the call path must agree. */
+    const LA = require("../occvm/tools/law-audit.js");
+    for (const t of LA.TOOLS) {
+      const src = LA.readTool(t);
+      if (!src) continue;
+      T(`law-audit: the runner hands ${t.name} its own name, which L13 measures by`, src.name === t.name);
+    }
+
     const rollup = require("../occvm/tools/law-audit.js").rollup;
     T("the auditor exposes its rollup so this can be tested without a real divergence", typeof rollup === "function");
     T("a measured divergence outranks an absent tool", rollup(["DIVERGES", "ABSENT"]) === "DIVERGED");
@@ -1252,6 +1294,85 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the duration is authored and named as authored; the curve is not", /const LOCK_RELAX_MS=360;/.test(src29) && !/cubic-bezier[^\n]*relax/i.test(src29));
   T("with reduced motion or no substance the release is instant, never a different curve",
     /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
+
+  /* ── 2.17: OCCVM-L3 reaches the canvas ──────────────────────────────────────────────────────────
+     renderSweep contained zero references to the light — the largest visual element in the tool drew
+     identically at 3am and at noon while every DOM surface tracked the sun. The palette now refreshes on
+     sunTick's beat, and WHICH KEYS MAY DO SO IS MEASURED AGAINST THE SUNDIAL rather than chosen: a token
+     the sundial never writes cannot be "live", and reading one would be a per-minute no-op pretending to
+     be a light. */
+  {
+    const fs17 = require("fs"), path17 = require("path");
+    const sun = fs17.readFileSync(path17.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
+    const written = new Set([...sun.matchAll(/"(--[a-z-]+)":/g)].map(m => m[1]));
+    const live = R29("JSON.stringify(PAL_LIVE)");
+    const map = JSON.parse(live);
+    T("the canvas refreshes on the sundial's beat, not per frame",
+      /palTick\(\);/.test(src29) && !/palTick\(\)[\s\S]{0,200}requestAnimationFrame/.test(src29));
+    T("every live palette key is a token the sundial actually writes",
+      Object.values(map).every(tok => written.has(tok)), Object.values(map).join(","));
+    T("and the outcome colours are not among them — the sundial never moves them, so nothing to read",
+      !Object.keys(map).some(k => ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC"].includes(k)));
+    T("the literals survive as the fallback — jsdom resolves no custom property and must still paint",
+      /^#[0-9a-f]{6}$/i.test(R29("PAL.bone")) && /^#[0-9a-f]{6}$/i.test(R29("PAL.boneLo")));
+    T("a junk resolved value never reaches the palette",
+      R29(`(function(){ const b=PAL.bone; const g=getComputedStyle; getComputedStyle=()=>({getPropertyValue:()=>"not a colour"}); palTick(); const after=PAL.bone; getComputedStyle=g; return after===b; })()`));
+  }
+
+  /* ── 2.17: L6 could only see CSS declarations, and PAL is the same exception in JavaScript ──────── */
+  {
+    const L6 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L6");
+    const m6 = own => L6.measure({ name: "BTC Terminal", own });
+    T("an accent hex typed as a bare JS literal now diverges, wherever it sits",
+      m6('const P={mineral:"#8d5cf0"};').state === "DIVERGES");
+    T("an outcome hex in JS is the same granted exception it is in CSS, counted not hidden",
+      m6('const P={mal:"#3fbf7e"};').state === "CONFORMS" &&
+      /granted exception/.test(m6('const P={mal:"#3fbf7e"};').detail));
+    T("a :root mineral fallback overwritten at load is tolerated and named, as L12 already tolerates one",
+      m6("--mineral: #8d5cf0;").state === "CONFORMS" &&
+      /fallback/.test(m6("--mineral: #8d5cf0;").detail));
+    T("and a declaration of the accent token itself still diverges — 1.4 stays closed",
+      m6("--amethyst: #8d5cf0;").state === "DIVERGES");
+  }
+
+  /* ── 2.16: the release velocity is REAL, and the ceiling is below the regime crossover ──────────
+     Roadmap item #12 closing for its first consumer. Every assertion here is against the substance's
+     own functions rather than against a number typed twice. */
+  const crossover = (() => { let lo = 0, hi = 10;      /* where k*v0^n/tau0 reaches 1 */
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2;
+      (RH.SUBSTANCE.k * Math.pow(mid, RH.SUBSTANCE.n) / RH.SUBSTANCE.tau0 < 1) ? lo = mid : hi = mid; }
+    return lo; })();
+  T("the v0 ceiling stays inside the yield-dominated regime — the exponent cannot move with a gesture",
+    R29("LOCK_V0_MAX") < crossover, `max ${R29("LOCK_V0_MAX")} vs crossover ${crossover.toFixed(4)}`);
+  T("and it is not sitting on the boundary: the margin is real",
+    (crossover - R29("LOCK_V0_MAX")) / crossover > 0.1);
+  T("a faster seize maps to a higher v0, clamped at both ends",
+    R29("lockV0(0.01)") === 0.25 && R29("lockV0(1)") === 1 && R29("lockV0(99)") === 2.5);
+  T("no measurable gesture falls back to the reference, never to the floor",
+    R29("lockV0(0)") === 1 && R29("dragSpeed(null)") === 0 && R29("dragSpeed({tr:[{x:0,y:0,t:0}]})") === 0);
+  /* A FLICK AT THE END OF A SLOW DRAG IS A FLICK. 120px in the last 40ms after a full second of crawling
+     reads 3 px/ms, not the 0.125 the whole gesture averages to — the window is what makes release speed
+     mean release rather than journey. The first fixture written here expected 3 from a trail whose
+     trailing window legitimately spanned 100ms and measured 1.2, and the code was right: recorded because
+     the wrong half was nearly "corrected". */
+  T("speed is read over the trailing window, so a flick at the end of a slow drag reads as a flick",
+    Math.abs(R29("dragSpeed({tr:[{x:0,y:0,t:0},{x:10,y:0,t:1000},{x:130,y:0,t:1040}]})") - 3) < 1e-9);
+  T("and a drag that stopped before release reads as stopped, not as its journey",
+    R29("dragSpeed({tr:[{x:0,y:0,t:0},{x:500,y:0,t:1000},{x:500,y:0,t:1100}]})") === 0);
+  /* THE DURATION SCALES ON THE SUBSTANCE'S OWN STOPPING TIME, and the direction is the physics rather
+     than the roadmap's stated feel: t_stop is monotonically increasing in v0, so a HARDER seize relaxes
+     SLOWER. Inverting it to get "hard settles fast" would be tuning a derived number toward a picture. */
+  const ms = v => LOCK_RELAX_MS_EXPECT(v);
+  function LOCK_RELAX_MS_EXPECT(v) { return 360 * (RH.stoppingTime(RH.SUBSTANCE, v) / RH.stoppingTime(RH.SUBSTANCE, 1)); }
+  T("the reference disturbance still plays the authored 360 ms exactly", R29("relaxMs(1)") === 360);
+  T("duration rides the substance's stopping time, not a second authored curve",
+    Math.abs(R29("relaxMs(0.25)") - ms(0.25)) < 1e-9 && Math.abs(R29("relaxMs(2.5)") - ms(2.5)) < 1e-9);
+  T("more momentum takes longer to stop — the substance's direction, not the roadmap's",
+    R29("relaxMs(2.5)") > R29("relaxMs(1)") && R29("relaxMs(1)") > R29("relaxMs(0.25)"));
+  T("a region lock carries the gesture that made it; the swing button carries the reference",
+    R29(`lockRect(1,2,3,4,2.5); const a=S.lock.v0; lockRelease(); lockRect(1,2,3,4); const b=S.lock.v0; lockRelease(); [a,b]`).join() === "2.5,1");
+  T("the release stores its own duration and curve, so the frame loop reads no global",
+    /S\.lockRelax\.ms\|\|LOCK_RELAX_MS/.test(src29) && /relaxEase\(u,S\.lockRelax\.c\)/.test(src29));
 }
 
 /* --- 2.10 — the meniscus adopted, and the provenance correction under it ---------------------------
@@ -1363,6 +1484,58 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   } else {
     T("Rhyme absent from this checkout — its adoption is asserted where it is present", true, "skipped");
   }
+}
+
+
+/* ── 2.13: a primitive the spine declares must be WORN, and by whom is now measured ────────────────
+   OCCVM-D12 catches a TOKEN consumed by nothing. Nothing caught a CLASS worn by nothing, so the whole
+   primitive set sat decorative from 1.0 to 2.11 and no gate said a word — .occvm-slab carried the bevel
+   the law described, and zero elements in either tool wore it. 2.11 found that by hand. This is the
+   generalised version, and it is deliberately an EXACT-SET assertion in both directions: a new unworn
+   primitive fails, and adopting one of the recorded seven ALSO fails, so the record has to move with the
+   code rather than absorbing it. An exception ledger that silently grows is how the conformance table
+   came to read "violates: —" for six releases. */
+{
+  const fsB = require("fs"), pathB = require("path");
+  const ROOTB = pathB.join(__dirname, "..");
+  const rdB = (...f) => fsB.readFileSync(pathB.join(ROOTB, ...f), "utf8");
+  const spine = rdB("occvm", "spine.css");
+  const ref = rdB("occvm", "reference", "index.html");
+  const btcH = rdB("index.html");
+
+  const declared = [...new Set((spine.match(/^\s*\.occvm-[a-z0-9-]+/gm) || [])
+    .map(x => x.trim().slice(1)))].sort();
+  T("the spine declares the primitive set the law names", declared.length >= 8, declared.join(" "));
+
+  const wornIn = (txt, c) => new RegExp('class(?:Name)?="[^"]*\\b' + c + '\\b').test(txt);
+  const sib = process.env.OCCVM_SIBLING || pathB.resolve(ROOTB, "..", "Rhyme-Instrument");
+  const rhySrc = fsB.existsSync(pathB.join(sib, "tome-src", "30_ui.jsx"))
+    ? fsB.readFileSync(pathB.join(sib, "tome-src", "30_ui.jsx"), "utf8") +
+      fsB.readFileSync(pathB.join(sib, "tome-src", "25_card.js"), "utf8")
+    : null;
+
+  /* THE RECORD, dated 2.13. Seven of nine primitives reach neither tool; two of those reached nothing at
+     all until this release put a specimen of each on the reference surface. */
+  const UNWORN_BY_TOOLS = ["occvm-cast", "occvm-cast-1", "occvm-cast-3", "occvm-focus",
+                           "occvm-num", "occvm-rule", "occvm-slab"];
+  if (rhySrc !== null) {
+    const measured = declared.filter(c => !wornIn(btcH, c) && !wornIn(rhySrc, c)).sort();
+    T("the set of primitives no tool wears is exactly the set on the record",
+      measured.join(",") === UNWORN_BY_TOOLS.slice().sort().join(","),
+      "measured: " + measured.join(" "));
+  } else {
+    T("Rhyme absent — the unworn set is measured where both tools are present", true, "skipped");
+  }
+
+  /* THE REFERENCE SURFACE'S OWN CLAIM: one live specimen per law. A primitive absent from it cannot be
+     seen to stop applying, which is the single thing that surface exists to show. */
+  const missingFromRef = declared.filter(c => !wornIn(ref, c));
+  T("every primitive the spine declares has a specimen on the reference surface",
+    missingFromRef.length === 0, missingFromRef.join(" ") || "none");
+
+  /* and the record is prose somewhere a person will read, not only an array in a test */
+  T("the unworn set is recorded in the law, with its date",
+    /OCCVM-D14/.test(rdB("occvm", "SPINE.md")));
 }
 
 process.exit(done());

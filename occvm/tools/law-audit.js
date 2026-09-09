@@ -66,7 +66,11 @@ function readTool(t) {
     parts.push(fs.readFileSync(p, "utf8"));
   }
   const raw = parts.join("\n");
-  return { raw, own: raw.replace(FENCE, "").replace(COMMENTS, "") };
+  /* The NAME travels with the source. It did not until 2.22, and L13 — the one law whose measure reads
+     it, because its grant is per tool — saw `undefined` on every run and answered "withheld" for both
+     tools. Its synthetic guards passed a {name, own} shape the runner never produced, which is 2.7's
+     hardcoded SIBLING one level along: a measure verified against a fixture instead of the call path. */
+  return { name: t.name, raw, own: raw.replace(FENCE, "").replace(COMMENTS, "") };
 }
 
 /* ---- the laws, each with what it claims and how that claim is measured ------------------------- */
@@ -101,9 +105,21 @@ const LAWS = [
       if (isNaN(men)) return { state: "DIVERGES", detail: `${vessel}; the bevel carries no meniscus — still the crystal's chisel` };
       if (!wears) return { state: "DIVERGES", detail: `${vessel}; --occvm-meniscus is declared but the bevel does not read it` };
       const ok = Math.abs(men - lc) < 0.05;
+      /* WHO WEARS IT IS MEASURED, NEVER TYPED. This line ended in the literal string "(reference
+         surface wears it; neither tool has adopted it)" from 2.10 until now — true when it was
+         written, false from 2.11, and it went on printing through 2.12 — the two releases that put the
+         meniscus and its recess onto both tools' own surfaces. An auditor that
+         exists because the conformance table read "violates: —" for six releases was carrying the
+         same defect one level down. Counted from the tool's own CSS now, so it cannot outlive its
+         fact. */
+      const bevel = (tool.own.match(/var\(--occvm-bevel\)/g) || []).length;
+      const well = (tool.own.match(/var\(--occvm-well\)/g) || []).length;
+      const worn = bevel + well
+        ? `worn at ${bevel + well} site(s): ${bevel} raised, ${well} recessed`
+        : "worn by no surface in this tool";
       return { state: ok ? "CONFORMS" : "DIVERGES",
-        detail: `${vessel}; meniscus: bevel band ${men}px against lc ${lc.toFixed(2)}px` +
-                (ok ? " (reference surface wears it; neither tool has adopted it)" : " — drifted from the substance") };
+        detail: `${vessel}; meniscus: bevel band ${men}px against lc ${lc.toFixed(2)}px — ` +
+                (ok ? worn : "drifted from the substance") };
     } },
 
   { id: "L3", name: "one light",
@@ -142,11 +158,36 @@ const LAWS = [
          hand-typed "violates: —" pointing the other way. Only the accent pair is the mineral set's. */
       const accent = (tool.own.match(/--amethyst(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
       const outcome = (tool.own.match(/--(malachite|ruby)(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
-      if (accent) return { state: "DIVERGES",
-        detail: `${accent} mineral accent hex restated outside minerals.js` +
-                (outcome ? ` (${outcome} outcome-colour declarations are the section 5 exception, not counted)` : "") };
+      /* 2.17 — THE MEASURE COULD ONLY SEE CSS DECLARATIONS, and a hex is a hex wherever it is typed. BTC
+         carries the malachite and ruby values a second time as JS literals in PAL, its canvas palette, and
+         this read them as absent: a restatement of a protected token in JavaScript was invisible to the one
+         instrument that exists to find restatements. Every mineral value is now counted wherever it appears
+         in a tool's own source, and each class is named rather than pooled:
+
+           accent declaration   --amethyst: #hex          DIVERGES — 1.4 closed this and it stays closed
+           accent bare literal  "#8d5cf0" in JS or CSS    DIVERGES — the same fact, a different syntax
+           accent fallback      --mineral: #hex at :root, overwritten by applyMineral on load — TOLERATED
+                                and counted, the same shape L12 already tolerates for the substrate
+           outcome, any syntax  malachite/ruby            the section 5 exception, counted not hidden
+
+         The outcome pair shares hexes with the mineral set while meaning something else entirely (win/lose,
+         CLAUDE.md section 5), and PAL is that same exception in a second file rather than a new violation —
+         which is the question OCCVM's own review left open and this answers by counting. */
+      const MIN = require(path.join(__dirname, "..", "minerals.js"));
+      const hexes = k => { const o = []; for (const f in MIN[k]) o.push(MIN[k][f]); return o; };
+      const bare = list => list.reduce((n, h) => n +
+        (tool.own.match(new RegExp("(?<!--[a-z-]{1,20}:\\s{0,4})" + h, "gi")) || []).length, 0);
+      const accentBare = bare(hexes("amethyst"));
+      const outcomeBare = bare(hexes("malachite").concat(hexes("ruby")));
+      const fallback = (tool.own.match(/--(mineral|mineral-lo|vein-hi|vein-lo):\s*#[0-9a-f]{6}/gi) || []).length;
+      const notes = [];
+      if (outcome || outcomeBare) notes.push(`${outcome + outcomeBare} outcome colour(s) are the granted exception`);
+      if (fallback) notes.push(`${fallback} :root mineral fallback(s), overwritten at load`);
+      if (accent || accentBare) return { state: "DIVERGES",
+        detail: `${accent + accentBare} mineral accent hex restated outside minerals.js` +
+                (notes.length ? ` (${notes.join("; ")}, not counted)` : "") };
       return { state: "CONFORMS",
-        detail: outcome ? `no accent restated; ${outcome} outcome colours are the granted exception` : "no local mineral hex" };
+        detail: notes.length ? `no accent restated; ${notes.join("; ")}` : "no local mineral hex" };
     } },
 
   { id: "L7", name: "figure discipline",
@@ -231,6 +272,50 @@ const LAWS = [
       return lit > 3
         ? { state: "DIVERGES", detail: `${lit} substrate literals in the tool's own CSS` }
         : { state: "CONFORMS", detail: lit ? `${lit} :root fallback(s), overwritten by the sundial` : "no literal" };
+    } },
+
+  { id: "L13", name: "ambient motion",
+    claim: "a decorative floor may run unconditionally; the material may not move at rest",
+    measure(tool) {
+      /* L13 grants the floor PER TOOL and the grant is asymmetric, so the split is measured rather than
+         merely written: Rhyme is granted the draft face, BTC is withheld. A law whose scope lives only in
+         prose is the "violates: --" failure waiting to happen again, so the table in L13 and this measure
+         say the same thing and the code is what is true.
+
+         The marker is the entry point's NAME. A floor declares itself by being called `ambientFloor` —
+         chosen rather than sniffed, because there is no honest way to detect "decorative perpetual motion"
+         generically, and a measure that guesses is worse than one that requires a word. */
+      if (!tool.name) throw new Error("L13 is measured per tool and this source carries no name");
+      const RHYME = /Rhyme/.test(tool.name);
+      /* Every appearance of the name, declaration included. The two branches then read it differently,
+         and the asymmetry is the law's own: BTC is withheld from HAVING a floor, so a generator sitting
+         in its source is the violation whether or not anything calls it yet — D12's discipline, and the
+         only reading under which the withholding cannot be walked back one commit at a time. Rhyme is
+         granted the floor and owes L8 a guard AT EACH CALL, so its own definition is not a call site and
+         must not be counted as an unguarded one. Found the first time a real floor was built, at 2.22:
+         a granted, correctly guarded floor read DIVERGED on the line that declares it. */
+      const sites = [...tool.own.matchAll(/ambientFloor\s*\(/g)];
+      const decl = /function\s+ambientFloor\s*\(/.test(tool.own);
+      const calls = sites.filter(m => !/function\s+$/.test(tool.own.slice(Math.max(0, m.index - 10), m.index)));
+      if (!sites.length)
+        return { state: "UNADOPTED", detail: "no ambient floor in this tool" };
+      if (!RHYME)
+        return { state: "DIVERGES",
+                 detail: `${calls.length} call site(s)${decl ? " and a generator declared here" : ""} — L13 withholds the floor from this tool` };
+      if (!calls.length)
+        return { state: "UNADOPTED", detail: "a floor generator is declared but nothing calls it" };
+      /* Granted is not unguarded: L8 still governs, so every call site must sit inside a reduced-motion
+         guard. Checked at the call rather than file-wide, because both tools already carry the string
+         somewhere and a file-wide match would pass a floor that ignores the setting entirely. */
+      const unguarded = calls.filter(m => {
+        const w = tool.own.slice(Math.max(0, m.index - 240), m.index + 240);
+        return !/prefers-reduced-motion|reducedMotion|\bRM\b/.test(w);
+      }).length;
+      return unguarded
+        ? { state: "DIVERGES",
+            detail: `${unguarded} of ${calls.length} floor call site(s) unguarded by prefers-reduced-motion` }
+        : { state: "CONFORMS",
+            detail: `${calls.length} floor call site(s), each reduced-motion guarded` };
     } }
 ];
 
@@ -265,7 +350,10 @@ function rollup(states) {
 /* 2.10 — the reporting half runs only when this file is INVOKED. It is required as a module now, so that
    rollup() can be tested on synthetic states rather than on the repository happening to carry a real
    divergence; without this guard that require would print a full audit into the harness output. */
-module.exports = { rollup };
+/* readTool and TOOLS are exported so a harness can check the shape the RUNNER produces, not only the
+   synthetic one it builds itself. L13's guards drove {name, own} and passed while the runner handed the
+   measure {raw, own} and got `undefined` for the name — a measure verified against its fixture. */
+module.exports = { rollup, LAWS, TOOLS, readTool };
 if (require.main === module) main();
 function main() {
 if (process.argv.includes("--json")) {

@@ -134,8 +134,8 @@ today: `OCCVM-D10`.
 ### OCCVM-L2 — cut geometry
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
-> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px (reference surface wears it; neither tool has adopted it)
+> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px — worn at 8 site(s): 6 raised, 2 recessed
+> - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px — worn at 14 site(s): 7 raised, 7 recessed
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -280,7 +280,7 @@ golden set a delta it cannot attribute.
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — 15 casts, all light-derived or inset
-> - Rhyme Instrument: **CONFORMS** — 23 casts, all light-derived or inset
+> - Rhyme Instrument: **CONFORMS** — 25 casts, all light-derived or inset
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -313,8 +313,8 @@ A surface that is merely important is not gilt. A number that settles something 
 ### OCCVM-L6 — the mineral set is frozen, with fixed meanings
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — no accent restated; 3 outcome colours are the granted exception
-> - Rhyme Instrument: **CONFORMS** — no local mineral hex
+> - BTC Terminal: **CONFORMS** — no accent restated; 7 outcome colour(s) are the granted exception
+> - Rhyme Instrument: **CONFORMS** — no accent restated; 4 :root mineral fallback(s), overwritten at load
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -502,7 +502,7 @@ right about a crystal, and all of it left with the crystal at 2.8.
 
 > **STATE: UNMEASURED** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **UNADOPTED** — no pinch call site
-> - Rhyme Instrument: **UNMEASURED** — 1 call site(s); whether each is irreversible needs an eye
+> - Rhyme Instrument: **UNMEASURED** — 2 call site(s); whether each is irreversible needs an eye
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -872,6 +872,94 @@ and that is the honest form of it.
 
 *BTC's `--night` was a binary step at −2° before 1.2: closed `OCCVM-D2`.*
 
+### OCCVM-L13 — ambient motion
+
+> **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
+> - BTC Terminal: **UNADOPTED** — no ambient floor in this tool
+> - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded
+>
+> *This block is generated. If it disagrees with the tools, the tools are what is true.*
+
+**A decorative layer may move on its own. The material may not.** That sentence is the whole law and the
+two halves are not the same claim.
+
+**What this grants, and why it is a grant rather than a repeal.** Nothing in this document ever forbade
+ambient motion. The prohibition that has been cited to kill features — §5.3's deforming highlight at 2.10,
+§5.6's always-on caging jitter at the same release — lives in the **master roadmap's §6**, a source
+document this law quotes when recording a disposition (see §9). A rule that governs by being quoted from
+somewhere else is a rule nobody can read, argue with, or bound. So it is written here, as a permission with
+its own edges, and §6 stops being law by citation.
+
+A slow, continuous decorative floor may run **unconditionally** — no gate, no triggering state, motion at
+rest — provided every clause below holds. It is sourced from the system's own generators, constants and
+palette rather than from invented animation.
+
+**The cost, named so it is decided rather than absorbed.** The substance does not do this. A yield-stress
+fluid below τ₀ holds: it does not spontaneously convect, coalesce or drift, and that is the defining
+property L11's whole vocabulary rests on. An ambient floor therefore **contradicts the substance's own
+behaviour** — it is decoration on the material, not a deeper expression of it. Recorded as the owner's
+aesthetic judgment, a legitimate call recorded as one rather than dressed as a derivation, the same
+standard §9 applies to the crystal's replacement.
+
+**The line that stays closed.** A floor is a **layer sitting on** the material. The material's own surface
+does not deform, breathe, settle or shimmer at rest — that is the substance lying about what it is, and
+§5.3 stays dropped for exactly the reason it was dropped: below τ₀ it cannot happen. Decoration on the
+substance is permitted; the substance pretending to a behaviour it does not have is not.
+
+**L8 is untouched and this law reaffirms it.** Every motion respects `prefers-reduced-motion`. A floor
+under that setting degrades to a **static frame** — never to a slower floor, a subtler floor, or a
+different curve. `lockRelease` already models the pattern: no snapshot, no animation, the end state
+immediately.
+
+**Scope is per tool, and it is deliberately not symmetric.**
+
+| tool | ambient floor | why |
+|---|---|---|
+| **Rhyme Instrument** | **granted**, on the draft face | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. |
+| **BTC Terminal** | **withheld**, from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal. §7.6 of the handoff forbids exactly that trade. |
+
+The withholding is a **decision, not an omission**, and it is reversible the way a law is reversible — by
+editing this table with a reason — never by a commit that quietly adds a floor and lets the audit catch up.
+The auditor measures the split: a floor appearing in BTC's own source reads DIVERGED, whatever it looks
+like.
+
+**Two further bounds, both narrow.** A floor never draws on a surface carrying an outcome colour or a
+measured value. And **modulation is not what makes it legal**: a real value may scale a floor's intensity
+(Rhyme's `--heat`, read-only, is the obvious first one), but the floor is lawful at zero modulation, which
+is precisely why this is a grant and not a case of the gated-motion rule.
+
+**Gated motion is a different question and is not this law.** Motion conditional on a real, actively
+created state — a lock held, a tempo set — was never prohibited and needs nothing from here. One clause
+belongs beside it and is stated here because this is where motion is now written down: **the gate is the
+actual value, never its display fallback.** A variable that exists so a panel can render a default
+(`tempo || {bpm: 90, …}`) may not be the variable a motion's trigger reads, or the motion runs forever
+under a default nobody set.
+
+*Both readings of that clause are now built, and the second one is a decision rather than a derivation.*
+**Reading A** (2.18) put the pulse on the tempo control, where the claim is bounded to *this is the
+number you set*. **Reading B** (2.23) puts it across Rhyme's whole draft face. The tool knows exactly one
+thing here — a number typed into a panel. It has no audio, no clock aligned to any track, and §11 says
+the performance is never its; so a face-wide pulse makes a larger claim on the same evidence than the
+control-sized one does. **It is built at full scope by the owner's decision, recorded as one**, the
+standard this document already applies to the floor contradicting the substance and to every authored
+duration in the system. Measured rather than asserted: with no tempo set the face reads `--pulse` 0.000
+and the wash resolves fully transparent; with a real 95 bpm it peaks at 0.993 on 21 of 120 samples, and
+at peak the wash moves **22.4% of the face at a mean 1.00 L\*, max 4.47**. Under reduced motion the phase
+stays 0 across 120 samples and the resolved `background-image` is `none` — a still face, from the hook
+and from the stylesheet independently.
+
+**Written at 2.15, first worn at 2.22.** The law existed before the first floor, so the first floor was
+built against a written boundary rather than negotiating one afterwards — which is what it was for, and
+it is the first law here that can say so. Rhyme's draft face carries one; BTC carries none, and the
+auditor measures the split rather than trusting this table.
+
+*The measure could not tell the tools apart until the day it was needed.* `readTool` handed each measure
+`{raw, own}` and no name, so L13 — the one law whose measure reads the name, because its grant is per
+tool — saw `undefined` and answered *withheld* for **both** tools on every run since 2.15. Four synthetic
+guards built their own `{name, own}` and passed. That is 2.7's hardcoded `SIBLING` one level along: a
+measure verified against its fixture instead of its call path. Found at 2.22 by a correct floor reading
+DIVERGED, fixed, and guarded through `readTool` itself so the fixture and the runner cannot drift again.
+
 ---
 
 ## 2. Tokens
@@ -930,6 +1018,23 @@ Neither tool's rendering moves: the token is added, no existing value changes, a
 faces in the same order, differing only in whitespace — and at 1.0 that shadowing declaration **stays**. The
 spine is inlined above the tool's CSS and nothing else changes (2.0 migration process §3.2); deleting a
 now-redundant tool declaration is per-surface adoption work, done at the release whose law covers it.
+
+### 2a-0. Where a new token goes — the boundary, stated because it was not
+
+Three sections take tokens and a fourth thing is not a token at all. The distinction is mechanical, and
+until 2.13 it existed only in the guards, so the only way to learn it was to be refused three times:
+
+| it is | it belongs in | test |
+|---|---|---|
+| **declared by `spine.css`** at `:root`, one fixed value | **§2a** | is it a literal in the stylesheet? |
+| **written by `sundial.js`** every tick, no CSS default that survives | **§2ab** | does the sundial `setProperty` it? |
+| **a surface input** read through `var(--x, fallback)` and supplied per consumer | **neither** — it is not spine-governed | does the spine only ever *read* it? |
+| anything above, once it exists | **§6b's migration table**, always | the census scans `spine.css` and requires every `--name` it finds |
+
+`--hi-a`, `--cut-a`, `--well-a` and `--rim-a` are the third row: the spine reads them and never declares
+them, so a surface chooses its own amplitude without the law having an opinion. Putting one in §2a fails
+"the spine declares every token §2a lists"; putting one in §2ab fails the census; **omitting it from §6b
+fails whatever else you did**, because that table is fed by scanning the stylesheet rather than by hand.
 
 ### 2ab. Governed since 1.2 — written by the sundial
 
@@ -1022,6 +1127,40 @@ STATUS: promotes to a law amendment in 2.1 if a second surface needs it
 ---
 
 ## 6. Defect register
+**`OCCVM-D14` — seven of nine primitives are worn by neither tool. Open, recorded 2.13.** `OCCVM-D12`
+catches a *token* consumed by nothing. Nothing caught a *class* worn by nothing, so the primitive set has
+been decorative since 1.0 and no gate said a word: `.occvm-slab` carried the bevel this law describes
+while **zero elements in either tool wore it**, which is why 2.11's adoption had to be found by hand.
+
+Measured 2.13, `class=`/`className=` in each tool's own markup:
+
+```
+.occvm-act      btc  0   rhyme 14   worn
+.occvm-sym      btc  2   rhyme  0   worn
+.occvm-cast     btc  0   rhyme  0   UNWORN
+.occvm-cast-1   btc  0   rhyme  0   UNWORN
+.occvm-cast-3   btc  0   rhyme  0   UNWORN
+.occvm-focus    btc  0   rhyme  0   UNWORN
+.occvm-num      btc  0   rhyme  0   UNWORN   — and reached nothing anywhere until 2.13
+.occvm-rule     btc  0   rhyme  0   UNWORN   — likewise
+.occvm-slab     btc  0   rhyme  0   UNWORN
+```
+
+*The guard is an EXACT-SET assertion, in both directions.* A newly-unworn primitive fails it, and adopting
+one of these seven **also** fails it, so the record moves with the code instead of absorbing it. A ledger
+that only ever grows is how §7's conformance table came to read `violates: —` for six releases; this one
+cannot grow quietly and cannot shrink quietly either.
+
+*Two of the seven were worse than unworn and are fixed here.* `.occvm-num` and `.occvm-rule` reached **no
+element anywhere**, including the reference surface — whose entire claim is one live specimen per law. A
+primitive absent from it cannot be seen to stop applying, which is the one thing that surface exists to
+show. Both now have a specimen, and the guard asserts every declared primitive has one, permanently.
+
+**What closes D14 is adoption or deletion, per primitive, and neither is a correction commit's business.**
+A cast that no surface wears is either a shape both tools should be using or a shape the law should stop
+promising; deciding which is a design call, and the point of this entry is that it is now a visible one.
+
+
 **`OCCVM-D13` — the golden set cannot see an adoption. Open.** It records custom properties off `:root`,
 so a change to a *consumer* — a `box-shadow` on `.tile`, on `button`, on `.slab` — is invisible to it.
 Measured, not supposed: run against 2.11's finished adoption, the largest visual change this system has
@@ -1067,6 +1206,18 @@ every time it runs; it is not a list kept by hand, and CI runs it with `--check`
 **Census at 1.9: 81 distinct tokens.** 27 written by the sundial each minute, 22 declared by the spine's
 CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
 
+*Rhyme's `--slide` joins the tool-local row at 2.21* — the bank row's **transmitted** travel under a
+swipe, written by `useSwipeYield` and read by `.bankrow`. Tool-local for the same reason `--pulse` is:
+neither spine-declared nor sundial-written. It carries the flowed displacement rather than the finger's,
+so the yield stress is visible in the token itself — below τ₀ it reads exactly `0px` however far the
+thumb has gone.
+
+*Rhyme's `--pulse` joins the tool-local row at 2.18* — the metronome's beat phase, written by
+`useBeatPulse` and read by `.cast`, and since 2.23 by `.draftface` as well (Reading B). It lands here rather than in §2a or §2ab because §2a-0 says where a
+token goes and this is neither spine-declared nor sundial-written. The census caught its absence from this
+table on the first run after it was written, which is the boundary refusing a change rather than
+describing one afterwards.
+
 ### What 2.0 does to each class
 
 2.0's break is that **a hex stops being authored and starts being derived**: `--sub: #1b1a22` becomes
@@ -1084,7 +1235,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein** | `--vein-density --vein --veins` | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
-| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
+| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse --slide` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
 ### What the audit found once it stopped trusting the checkout
 
@@ -1160,8 +1311,9 @@ law are generated from that run.
 | **L10** | vein habit | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
+| **L13** | ambient motion | IN FORCE | UNADOPTED | CONFORMS |
 
-**8 in force · 0 diverged · 4 unmeasured · 0 unadopted**
+**9 in force · 0 diverged · 4 unmeasured · 0 unadopted**
 
 ### What the four states mean, and why four rather than two
 
@@ -1454,4 +1606,81 @@ been passing — a regime claim, a curve identity, and a gate test that could on
 was broken. Each was rewritten to say the smaller true thing rather than the larger convenient one, which is
 the only reason the correction improved the suites instead of just moving them.
 
+**2.22 — P-3's one pass, and the two things it returned.** The bound was one citation check at the moment
+the floor was built, and that is exactly what it cost. **The scaling is confirmed:** in the viscous regime
+the coalescence bridge radius grows *linearly* in time — Eggers, Lister & Stone, *J. Fluid Mech.* **401**,
+293–310 (1999). The `√t` everybody reaches for is the **inertial** law, `r_b = D(γa/ρ)^{1/4} t^{1/2}`, and
+a yield-stress tomato matrix is nowhere near that regime. So the floor merges linearly, and that is not a
+preference.
+
+*The logarithmic correction was measured and dropped, with the reason.* ELS carry
+`r_m ~ (γt/πη)·ln[γt/(ηR)]`. It is an **early-time asymptotic**, valid for `t ≪ t_v = ηR/γ`; the form
+`−t·ln(t/t_v)` turns over at `t/t_v = 1/e` and past that predicts the bridge *shrinking*. A merge rendered
+to completion runs straight through that point, so carrying the log here would be using an asymptotic
+outside its regime — the class of error 2.8 caught in the 3-D fractal dimension on a planar lattice, and
+2.10 in `k` and `n`. Linear, without the correction, and the guard proves linearity by doubling rather
+than by matching source text.
+
+*And the absolute rate is not derivable, which is measured rather than asserted.* The linear rate's
+magnitude is `γ/η`, and `η` is the substance's apparent viscosity — which depends on the shear rate the
+merge itself sets. Across a plausible range: `γ̇ = 0.01` gives `η = 2,627 Pa·s` and `5.8×10⁻⁵ px/ms`;
+`γ̇ = 10` gives `η = 4.99` and `3.0×10⁻² px/ms`. **The same 24 px bridge takes 417 seconds at one end and
+0.8 s at the other**, and nothing fixes `γ̇` independently of the rate it would produce. That is P-4's
+`η(γ̇)` arriving as a consumer and showing precisely why it was parked: the arithmetic is right and the
+input is undetermined. Per P-3's own disposition the magnitude is authored and named as authored, the
+`LOCK_RELAX_MS` treatment. P-4 stays parked; a consumer that cannot use it is not a consumer.
+
 A spine no tool has adopted is a proposal. This one is inlined in both.
+
+---
+
+## 10. Open physical questions — staged, and each one bounded
+
+**Every open question in this system that is genuinely about the substance rather than about a tool sits
+here, with what closes it and what it is allowed to cost.** The register exists because a physical question
+with no stated bound absorbs any amount of work: there is always another paper, another regime, another
+correction. A question nobody has bounded is not research, it is an appetite.
+
+The bound is part of the entry. If closing a question would cost more than the bound, the honest outcome is
+to record it as unclosed with the reason, exactly as §9 records a dropped concept — never to keep spending
+against it quietly.
+
+| # | question | what it touches | what would close it | bound |
+|---|---|---|---|---|
+| **P-1** | **γ, the substance's surface tension.** Carried at 0.040 N/m as an estimate, bracketed against fermented tomato juice at 40.5 / 42.6 mN/m and against water's 0.072, which is ruled out. | **λc alone** — one corner radius, ±2 px. Not τ₀ (anchored independently), not k/n, not cessation, not trap depth. | A published surface tension for a yield-stress tomato matrix. **None exists, and the reason is methodological**: ordinary tensiometry has no valid regime on a fluid that holds below τ₀. | **Closed as unclosable.** Reopens only if such a measurement is published. No further search. |
+| **P-2** | **The disturbance → v₀ map.** Closed for its first consumer at 2.16 with an authored `LOCK_V0_REF` and a clamp below the 2.9196 crossover. The *general* map — any UI gesture to a substance's initial velocity — is still authored. | Any future consumer of `yield.js` that wants a real v₀ rather than the reference. | Nothing in physics. There is no derivation from px/ms to a substance's velocity, and 2.16's entry says so. | **Closed as authored.** Each new consumer names its own anchor and its own clamp, and states both. Not a research question. |
+| **P-3** | ~~**Droplet coalescence, if an ambient floor is ever built (L13, Rhyme).**~~ **CLOSED at 2.22 — the pass ran and the scaling is confirmed.** Viscous regime, `r ∝ t`, linear (Eggers, Lister & Stone, *J. Fluid Mech.* **401**, 293–310, 1999). `√t` is the *inertial* law and is not this substance's. | The floor's merge behaviour. Built. | Done: one pass, at build time, as this row said. | **Spent, in full.** The bound was one pass and one pass is what it cost. Two findings came with it and are in §9. |
+| **P-4** | **Trap depth, and the shear-thinning form η(γ̇).** Both derived and both unwired: trap depth from SGR's escape law at 2.8, η(γ̇) surveyed and parked with no consumer in either tool. | Nothing. Neither reaches a surface. | A consumer. Not a measurement — the arithmetic is already right. | **Parked, zero cost.** Revisited only when something wants to read one. |
+
+**Two questions that look physical and are not, kept out of this table on purpose.** `OCCVM-D13` — the
+golden set cannot see an adoption — is an instrument defect. `OCCVM-D14` — seven primitives worn by nothing —
+is a design decision per primitive. Both are in §6 where defects live; putting them here would make the
+physics register a place where anything unresolved can be filed, which is how a bound stops meaning anything.
+
+---
+
+## 11. What the tools model, and what they refuse to
+
+**A tool here describes what is written down and what is arithmetic. It does not model performance.**
+
+The distinction is not a limitation being apologised for; it is the line that keeps every readout honest, and
+it is the same line §9 draws between a derived curve and an authored duration.
+
+- **The beat is arithmetic and the tool may describe it.** BPM, time signature, subdivision, and — since
+  2.18 — where a swung pair actually places its two onsets. These follow from numbers a person entered.
+  Nothing is inferred and nothing is heard.
+- **The performance is not the tool's, and never will be.** Which slot a syllable lands in, how a writer
+  leans early or late against the grid, what a line does in a mouth — the tool has no access to any of it and
+  no business estimating it. 2.19 states the room the beat gives and stops there deliberately.
+- **A writer writes to the beat; the tool does not write to the writer.** The engine's own restraint —
+  *"reading what's written, not prescribing what to write"* — is this rule at the scale of one panel.
+
+**What this forbids, concretely.** No function may return an assignment of syllables to onsets. No readout
+may claim a line is late, early, wrong, or in the pocket. No feature may synthesise a performance from a
+draft, and none may treat using the tool as a substitute for having said the words out loud. A guard in
+`engine-node/test/engine.test.js` fails the day the engine's public surface acquires a syllable→onset map,
+and it is deliberately narrow: it catches the one shape this rule is most likely to be broken by.
+
+A tool that measured performance would be guessing, and a guess dressed as a measurement is the failure this
+whole document is organised against.
+
