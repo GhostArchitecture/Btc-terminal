@@ -154,11 +154,36 @@ const LAWS = [
          hand-typed "violates: —" pointing the other way. Only the accent pair is the mineral set's. */
       const accent = (tool.own.match(/--amethyst(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
       const outcome = (tool.own.match(/--(malachite|ruby)(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
-      if (accent) return { state: "DIVERGES",
-        detail: `${accent} mineral accent hex restated outside minerals.js` +
-                (outcome ? ` (${outcome} outcome-colour declarations are the section 5 exception, not counted)` : "") };
+      /* 2.17 — THE MEASURE COULD ONLY SEE CSS DECLARATIONS, and a hex is a hex wherever it is typed. BTC
+         carries the malachite and ruby values a second time as JS literals in PAL, its canvas palette, and
+         this read them as absent: a restatement of a protected token in JavaScript was invisible to the one
+         instrument that exists to find restatements. Every mineral value is now counted wherever it appears
+         in a tool's own source, and each class is named rather than pooled:
+
+           accent declaration   --amethyst: #hex          DIVERGES — 1.4 closed this and it stays closed
+           accent bare literal  "#8d5cf0" in JS or CSS    DIVERGES — the same fact, a different syntax
+           accent fallback      --mineral: #hex at :root, overwritten by applyMineral on load — TOLERATED
+                                and counted, the same shape L12 already tolerates for the substrate
+           outcome, any syntax  malachite/ruby            the section 5 exception, counted not hidden
+
+         The outcome pair shares hexes with the mineral set while meaning something else entirely (win/lose,
+         CLAUDE.md section 5), and PAL is that same exception in a second file rather than a new violation —
+         which is the question OCCVM's own review left open and this answers by counting. */
+      const MIN = require(path.join(__dirname, "..", "minerals.js"));
+      const hexes = k => { const o = []; for (const f in MIN[k]) o.push(MIN[k][f]); return o; };
+      const bare = list => list.reduce((n, h) => n +
+        (tool.own.match(new RegExp("(?<!--[a-z-]{1,20}:\\s{0,4})" + h, "gi")) || []).length, 0);
+      const accentBare = bare(hexes("amethyst"));
+      const outcomeBare = bare(hexes("malachite").concat(hexes("ruby")));
+      const fallback = (tool.own.match(/--(mineral|mineral-lo|vein-hi|vein-lo):\s*#[0-9a-f]{6}/gi) || []).length;
+      const notes = [];
+      if (outcome || outcomeBare) notes.push(`${outcome + outcomeBare} outcome colour(s) are the granted exception`);
+      if (fallback) notes.push(`${fallback} :root mineral fallback(s), overwritten at load`);
+      if (accent || accentBare) return { state: "DIVERGES",
+        detail: `${accent + accentBare} mineral accent hex restated outside minerals.js` +
+                (notes.length ? ` (${notes.join("; ")}, not counted)` : "") };
       return { state: "CONFORMS",
-        detail: outcome ? `no accent restated; ${outcome} outcome colours are the granted exception` : "no local mineral hex" };
+        detail: notes.length ? `no accent restated; ${notes.join("; ")}` : "no local mineral hex" };
     } },
 
   { id: "L7", name: "figure discipline",

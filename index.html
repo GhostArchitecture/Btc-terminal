@@ -3211,6 +3211,7 @@ function sunTick(){
   const loc=(S.cfg.sun&&isFinite(S.cfg.sun.lat))?S.cfg.sun:SUN_DEF;
   const r=OCCVM_SUN.tick(document.documentElement,loc,new Date());
   S.sun={elev:r.elev,az:r.az,lx:r.lx,ly:r.ly,elev01:r.e,night:r.night,stage:r.stage,name:r.name};
+  palTick();   /* the canvas takes the ink the sundial just wrote — L3, on the same beat as the CSS */
   const pill=$("sunpill");
   if(pill){ const phase=r.elev<-6?"night":r.elev<0?"dusk":r.elev<8?(r.az<180?"sun rise":"sun set"):r.elev>50?"sun high":(r.az<180?"morning":"afternoon");
     pill.textContent=phase+" \u00b7 "+r.dir+" \u00b7 "+Math.round(r.elev)+"\u00b0";
@@ -4216,8 +4217,32 @@ function renderSources(){
 const cv=$("chart"), cx=cv.getContext("2d");
 const RM=(window.matchMedia?matchMedia("(prefers-reduced-motion: reduce)").matches:false);
 const FONT=()=>getComputedStyle(document.body).fontFamily;
+/* 2.17 — THE CANVAS READS THE SUN. Until now renderSweep contained zero references to --lx, --ly, --elev,
+   --night or --glow: the largest visual element in the tool, the one section 5 calls its centre, drew
+   identically at 3am and at noon while every DOM surface tracked the light. OCCVM-L3 is "one light", and
+   it did not reach here — the shape of D13 one level down, where the golden set cannot see an adoption and
+   here there was no adoption to see.
+
+   WHAT MOVES IS EXACTLY WHAT THE SUNDIAL WRITES, measured rather than chosen: sundial.js sets --sub,
+   --sub-hi, --sub-lo, --bone and --bone-lo every tick and nothing else. Of those, this palette carries the
+   two ink weights, so those two are refreshed from the resolved spine and the rest stay literal. The
+   outcome colours are untouched — not by a judgment about win/lose, but because the sundial never moves
+   them, so there is nothing to read.
+
+   THE COST IS ONE READ A MINUTE, NOT ONE A FRAME. renderSweep runs at ~30fps and resolving custom
+   properties through getComputedStyle per frame is the wrong price for a value that changes once a minute;
+   palTick rides sunTick's existing beat, which is the same cadence the CSS itself changes on.
+
+   The literals stay as the fallback, and they are load-bearing: jsdom resolves no custom properties, and a
+   palette that silently became empty strings would paint nothing while every assertion passed. */
 const PAL={field:"#09080d",bone:"#ece3d0",boneLo:"#b7ad9c",boneDim:"#8e8778",gilt:"#ffe9a3",giltB:"#d9a52c",giltC:"#7a5510",
   mal:"#3fbf7e",malLo:"#1c6a45",ruby:"#e0475f",rubyLo:"#6b1a2e",verd:"#3f9a86",bronze:"#d9a866"};
+const PAL_LIVE={bone:"--bone",boneLo:"--bone-lo"};   /* the sundial-written tokens this palette carries */
+function palTick(){
+  try{ const cs=getComputedStyle(document.documentElement);
+    for(const k in PAL_LIVE){ const v=(cs.getPropertyValue(PAL_LIVE[k])||"").trim();
+      if(/^#[0-9a-f]{6}$/i.test(v)) PAL[k]=v; } }catch(e){}
+}
 const UPC=PAL.mal, DNC=PAL.ruby;
 function niceTicks(lo,hi,anchor){
   const span=Math.max(hi-lo,1e-6);
@@ -8132,7 +8157,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909203405";
+const BUILD_STAMP="build-20260909203905";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8149,5 +8174,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909203405 -->
+<!-- build-20260909203905 -->
 </html>

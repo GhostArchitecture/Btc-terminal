@@ -313,8 +313,8 @@ A surface that is merely important is not gilt. A number that settles something 
 ### OCCVM-L6 — the mineral set is frozen, with fixed meanings
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — no accent restated; 3 outcome colours are the granted exception
-> - Rhyme Instrument: **CONFORMS** — no local mineral hex
+> - BTC Terminal: **CONFORMS** — no accent restated; 7 outcome colour(s) are the granted exception
+> - Rhyme Instrument: **CONFORMS** — no accent restated; 4 :root mineral fallback(s), overwritten at load
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 

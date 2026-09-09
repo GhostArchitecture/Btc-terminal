@@ -191,7 +191,9 @@ Obsidian substrate `#1b1a22 / #2c2a36 / #0e0d13` on `#09080d`; bone inscription 
 brushed bronze binding `#d9a866/#8f6a35/#4f3a1c` with verdigris `#3f9a86` in seams. Per-session vein layer
 (3 displaced beziers, seeded PRNG). **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
 `--lx --ly --elev --night` once a minute; every bevel, sheen, cabochon highlight and cast shadow reads those four
-custom properties. Canvas colours come from `PAL`. Serif for section heads, mono for numbers.
+custom properties. Canvas colours come from `PAL`, whose two ink weights refresh from the resolved spine on
+`sunTick`'s beat since 2.17 — the canvas reads the sun, at the sun's own cadence. Serif for section heads, mono
+for numbers.
 
 ---
 
@@ -235,8 +237,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **753 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 403, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **762 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 412, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1574,6 +1576,37 @@ rot. Reduced motion and an unspliced substance both still degrade to instant, ne
 trailing-window fixture expected 3 px/ms from a trail whose window legitimately spanned 100 ms and
 measured 1.2. The code was right and the expectation was wrong. `test/occvm.js` 392 → 403; §6's total
 742 → 753.
+
+**2.17 — the canvas reads the sun, and L6 could only see CSS.** Two findings from checking `renderSweep`,
+both closed here.
+
+**`renderSweep` contained zero references to the light.** No `--lx`, `--ly`, `--elev`, `--night`, `--glow`,
+no `Math.sin`/`Math.cos`; the only time call is `Date.now()`, driving scroll and the lock relaxation.
+`sunTick` wrote custom properties onto `documentElement` and mirrored into `S.sun`, and wrote **nothing** to
+the canvas — so the largest visual element in the tool, the one §5 calls its centre, drew identically at 3am
+and at noon. Not an L8 violation: **`OCCVM-L3` — one light — simply did not reach it**, the shape of `D13`
+one level down, where the golden set cannot see an adoption and here there was no adoption to see.
+
+**What moves is exactly what the sundial writes, measured rather than chosen.** `sundial.js` sets `--sub`,
+`--sub-hi`, `--sub-lo`, `--bone` and `--bone-lo` each tick and nothing else; `PAL` carries the two ink
+weights, so those two refresh and the rest stay literal. The outcome colours are untouched — not by a
+judgment about win/lose, but because **the sundial never moves them**, so there is nothing to read. The
+guard asserts every live key against the token list parsed out of `sundial.js` itself, so a key that stopped
+being sundial-written could not stay "live". Cost: **one read a minute**, on `sunTick`'s existing beat —
+resolving custom properties at ~30 fps is the wrong price for a value that changes once a minute. The
+literals stay as the fallback and are load-bearing: jsdom resolves no custom property, and a palette that
+silently became empty strings would paint nothing while every assertion passed.
+
+**And `PAL` answered §5's open L6 question by being counted.** `PAL.mal`/`PAL.ruby` are the malachite and
+ruby values typed a second time as JS literals, and the L6 measure read only `--token: #hex` **declarations**
+— a restatement of a protected token in JavaScript was invisible to the one instrument built to find
+restatements. Every mineral value is now counted wherever it appears, in four named classes: an accent
+declaration or **bare accent literal** diverges; a `:root` mineral fallback overwritten at load is tolerated
+and named, the same shape L12 already tolerates for the substrate; outcome colours in any syntax are the §5
+exception, counted rather than hidden. Measured: **BTC 7 outcome colours** (was reported as 3), **Rhyme 4
+`:root` fallbacks** (was reported as none). Both still CONFORM — `PAL` is the same granted exception in a
+second file, not a new violation, which is the answer rather than a deferral. `test/occvm.js` 403 → 412;
+§6's total 753 → 762.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

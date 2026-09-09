@@ -1278,6 +1278,46 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("with reduced motion or no substance the release is instant, never a different curve",
     /typeof OCCVM_RHEOLOGY!=="undefined"&&!reducedMotion\(\)/.test(src29));
 
+  /* ── 2.17: OCCVM-L3 reaches the canvas ──────────────────────────────────────────────────────────
+     renderSweep contained zero references to the light — the largest visual element in the tool drew
+     identically at 3am and at noon while every DOM surface tracked the sun. The palette now refreshes on
+     sunTick's beat, and WHICH KEYS MAY DO SO IS MEASURED AGAINST THE SUNDIAL rather than chosen: a token
+     the sundial never writes cannot be "live", and reading one would be a per-minute no-op pretending to
+     be a light. */
+  {
+    const fs17 = require("fs"), path17 = require("path");
+    const sun = fs17.readFileSync(path17.join(__dirname, "..", "occvm", "sundial.js"), "utf8");
+    const written = new Set([...sun.matchAll(/"(--[a-z-]+)":/g)].map(m => m[1]));
+    const live = R29("JSON.stringify(PAL_LIVE)");
+    const map = JSON.parse(live);
+    T("the canvas refreshes on the sundial's beat, not per frame",
+      /palTick\(\);/.test(src29) && !/palTick\(\)[\s\S]{0,200}requestAnimationFrame/.test(src29));
+    T("every live palette key is a token the sundial actually writes",
+      Object.values(map).every(tok => written.has(tok)), Object.values(map).join(","));
+    T("and the outcome colours are not among them — the sundial never moves them, so nothing to read",
+      !Object.keys(map).some(k => ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC"].includes(k)));
+    T("the literals survive as the fallback — jsdom resolves no custom property and must still paint",
+      /^#[0-9a-f]{6}$/i.test(R29("PAL.bone")) && /^#[0-9a-f]{6}$/i.test(R29("PAL.boneLo")));
+    T("a junk resolved value never reaches the palette",
+      R29(`(function(){ const b=PAL.bone; const g=getComputedStyle; getComputedStyle=()=>({getPropertyValue:()=>"not a colour"}); palTick(); const after=PAL.bone; getComputedStyle=g; return after===b; })()`));
+  }
+
+  /* ── 2.17: L6 could only see CSS declarations, and PAL is the same exception in JavaScript ──────── */
+  {
+    const L6 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L6");
+    const m6 = own => L6.measure({ name: "BTC Terminal", own });
+    T("an accent hex typed as a bare JS literal now diverges, wherever it sits",
+      m6('const P={mineral:"#8d5cf0"};').state === "DIVERGES");
+    T("an outcome hex in JS is the same granted exception it is in CSS, counted not hidden",
+      m6('const P={mal:"#3fbf7e"};').state === "CONFORMS" &&
+      /granted exception/.test(m6('const P={mal:"#3fbf7e"};').detail));
+    T("a :root mineral fallback overwritten at load is tolerated and named, as L12 already tolerates one",
+      m6("--mineral: #8d5cf0;").state === "CONFORMS" &&
+      /fallback/.test(m6("--mineral: #8d5cf0;").detail));
+    T("and a declaration of the accent token itself still diverges — 1.4 stays closed",
+      m6("--amethyst: #8d5cf0;").state === "DIVERGES");
+  }
+
   /* ── 2.16: the release velocity is REAL, and the ceiling is below the regime crossover ──────────
      Roadmap item #12 closing for its first consumer. Every assertion here is against the substance's
      own functions rather than against a number typed twice. */
