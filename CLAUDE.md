@@ -15,9 +15,15 @@ references, the spliced `pigments.js` fence, three `confchip` sites, four `--glo
 the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
 the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **8,181 lines, 640 KB, 299 top-level functions**, zero dependencies, zero build
-step. *These figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
-counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (audit addendum) corrects and extends
+the deployment hold covered.* One file, **8,948 lines, 811 KB, 301 top-level functions of its own**, one pinned dependency
+(React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
+releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
+here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
+299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
+inside the sentence promising it would not recur. Counted again here, and the count now excludes the
+spliced dependency: 148,914 bytes of that total is React, whose minified UMD puts nine names at
+line-start (`D Df Id M Td mb oe oj y`) that are inside its own IIFE and are not this tool's
+namespace. §7.1's duplicate check is scoped the same way, in CI and in `test/react.js`.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -27,6 +33,12 @@ counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (aud
 ```
 GhostArchitecture/Btc-terminal   (main)
 ├─ index.html                    the entire instrument
+├─ vendor/                       React 18.3.1 + ReactDOM, pinned; byte-identical to Rhyme's copy (§13)
+├─ react/                        the React islands — components, and the splicer that puts them in
+│   ├─ LockBar.js                the lockbar: the first island and the S.lock bridge
+│   ├─ tools/resplice.js         splices vendor/ and react/ into index.html under fences, with --check
+│   └─ plans/                    REACT-MAP.md and PATCH.md as supplied; PATCH.md under a SUPERSEDED
+│                                banner, since three of its four changes are wrong against the file
 ├─ functions/api/[[path]].js     Cloudflare Pages Function: same-origin /api relay to Kalshi
 ├─ _routes.json                  Pages Functions routing (/api/* only)
 ├─ relay/deno.ts                 Deno Deploy relay (entrypoint; alternate egress pool)
@@ -245,14 +257,24 @@ Suite (`npm test`, after `npm install` for jsdom):
   document and recomputed. It also asserts the pre-registration invariants behaviourally: gate exogeneity, READY
   unreachable below the registered minimum n, the CI level `1 − α/k`, the bootstrap floor, phase separation, and
   that no execution path exists. **Verified to bite:** against `899276d` it fails 6 of 77.
+- `test/react.js` — the React island (§13): the dependency pinned by hash and asserted byte-identical
+  to Rhyme's copy, the splice and its load order (react before react-dom before any component, because
+  react-dom's UMD global branch reads `self.React`), the bridge driven — `window.S` really is undefined
+  and the store still reads the lock, which is the pair that proves it reads `S` lexically — the
+  snapshot's indifference to lock fields the UI never renders, and the three mirrors the island
+  replaced measured as *gone* rather than unused. Verified to bite: restoring `window.S` fails 2 of 30
+  — and only 2, because the defect's whole character is that the lock reads as permanently released.
+  Swapping react and react-dom fails the three splice assertions and then kills the harness outright,
+  since react-dom's UMD reads `self.React` as it evaluates.
 - `test/defects.js` (`npm run test:defects`, informational) — one reproduction per confirmed defect in §10.3; each
   prints REPRODUCED until fixed. All 16 currently print FIXED — it is the regression guard for this audit's fixes,
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **875 assertions across 7 harnesses** (invariants 80, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 508, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
-same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
+currently **910 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 26, h-protocol 89, prereg 84,
+occvm 509, rheology 61, react 30) — the figure here read 231 across 5, then 715, then 875, long after each had
+grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
+line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
@@ -350,6 +372,10 @@ records what differs, what is broken, and how the repo is worked from a clone.
 - **Tests:** `npm install` once (jsdom is the only dev dependency; `package-lock.json` is committed so the install
   is reproducible), then `npm test` before every push. `npm run test:defects` lists which §10.3 items still
   reproduce — currently none.
+- **Three splicers now write into `index.html`**, and all three are the same discipline: the source is the
+  file, the spliced block is an artifact, a hand-edit inside a fence is reverted silently by the next run.
+  `node occvm/tools/splice-spine.js`, `node units/tools/resplice.js <unit>...`, `node react/tools/resplice.js`
+  — each takes `--check`, and CI runs all three plus a re-splice-and-diff.
 - The relays (`relay/deno.ts`, `worker/kalshi-relay.js`) are still paste-deployed; nothing in the repo deploys them.
 - The calibration spine and the fit scripts behind `SEAS`, `TERM`, the residual coefficients and `SWING_BASE` are
   not in the repo. Until they are, treat those constants as frozen data (§3) and do not refit.
@@ -2523,3 +2549,132 @@ advance, and 1.8 builds the conformance instrument the roadmap named but never s
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.
+---
+
+## 13. React — the islands (2026-09-10)
+
+`REACT-MAP.md` maps Rhyme's React vocabulary onto this tool and orders the work: LockBar, `Cast`, the
+chart island, the ambient floor, then the ordinary panels. `PATCH.md` is the wiring for the first of
+those. This section records what shipped and what the two documents got wrong.
+
+**The headline, because it decides the shape of everything after it.** Rhyme has nothing to lend on the
+one problem this tool has. Rhyme's state has been inside React since its first line — `useSyncExternalStore`
+appears **zero** times in 1,198 lines of `30_ui.jsx`, counted. This tool's state is one `const S` mutated
+by ~300 vanilla functions. The bridge is this repository's own, and proving it is the entire reason the
+lockbar went first.
+
+### 13.1 Why React is spliced and not `<script src>`
+
+`PATCH.md` §1–2 wires three tags into the head. Measured, that is wrong here on three counts, and each
+one was already written down somewhere in this repository:
+
+1. **`test/page-load.js` cannot see an external script.** It loads the real page under jsdom with
+   `runScripts: "dangerously"` and *deliberately without* `resources: "usable"` — the network is blocked
+   so the harness can prove the page survives with none. jsdom therefore never fetches a `src`. React
+   would be absent in the only harness that loads the real page into a real DOM, and the component would
+   be unverifiable by construction.
+2. **The foot of `index.html` states the rule.** One style block and one script block are an
+   architectural property (§2), because `test/lib/load.js` reads the script by first-open to last-close.
+   That comment ends *"A second tag breaks every harness."*
+3. **OCCVM-D5 / roadmap 1.6.** Rhyme stopped fetching React from a CDN because *"first paint shows the
+   binding, not a blank frame; no tool installs to a home screen it cannot serve"* — measured, not
+   inferred: the golden recorder's first run captured a blank page. A tool that fetches its own UI
+   framework at load has the same failure one origin along, and `sw.js` would need a fourth shell entry
+   to cover a case that splicing does not create.
+
+So `react/tools/resplice.js` puts `vendor/react-18.3.1.umd.min.js`, `vendor/react-dom-18.3.1.umd.min.js`
+and `react/LockBar.js` into `index.html` under fences — the same five rules `occvm/tools/splice-spine.js`
+and `units/tools/resplice.js` already obey, and the same `--check`. **Load order is not incidental and
+the splicer cannot get it wrong**: react-dom's UMD global branch is called as `zb(self.ReactDOM={}, self.React)`,
+so react must evaluate first. Each part anchors on its predecessor's closing fence rather than all three
+on one anchor — which is precisely the defect occvm's splicer shipped from 1.1b to 2.0, where one anchor
+per part meant parts landed in reverse list order.
+
+**The cost, measured rather than estimated:** `index.html` 680,724 → 830,663 bytes, of which 148,914 is
+the dependency. No new network request, no `sw.js` change, no build step, still one file.
+
+### 13.2 Four defects in the supplied patch, three of them fatal
+
+Every line citation in `PATCH.md` and `REACT-MAP.md` was checked against the file rather than trusted.
+The citations are real — `index.html:666-668`, `:534-536`, `:8325`, `:8326`, `:8409`, `:4876`,
+`:3448-3477`, and Rhyme's `30_ui.jsx:80 / :136 / :194 / :254 / :714 / :944` — and `occvm/globules.js` is
+byte-identical between the repositories at 20,391 bytes, as claimed. What the documents missed:
+
+- **`$("lockSwing").addEventListener` and `$("lockResume").addEventListener` at `:8410-8411`.** The patch
+  enumerates three call sites and says *"nothing else in the page is touched."* Removing the static
+  markup leaves these two `$()` calls returning `null` at top-level script evaluation — a TypeError
+  before anything else runs. **The page would not have loaded at all.** They are deleted; the component
+  carries `onClick`.
+- **`#lockResume{display:none}` survives `body.locked`'s retirement.** `PATCH.md` §5 says the existing
+  styling *"attaches with zero changes."* It does attach — and it hides the button permanently, because
+  the only rule that ever showed it was the `body.locked` override the component retires. RESUME would
+  have been in the DOM, mounted, correct, and invisible; the lock releasable only by Escape. Both CSS
+  lines are deleted, and `test/page-load.js` asserts the **resolved** `display`, not the absence of a
+  rule.
+- **`window.S` is undefined.** `LockBar.js`'s store reads `window.S.lock` behind a null guard. `S` is a
+  top-level `const` in a classic script and a `const` does not become a property of the global object —
+  `test/page-load.js` already says so in its own source, one directory away. The store would have
+  returned `null` forever: idle note permanent, RESUME never rendered, **nothing thrown and nothing
+  logged.** The shipped store reads `S` lexically, which is only possible because the file is spliced
+  into the same script block — so defects 3 and 1 of this list are the same decision: the external-file
+  structure is what forced the reach for `window`.
+- **A stale citation.** `PATCH.md` §3 puts the mount at `index.html:8084` beside `applyMineral()`.
+  `applyMineral` has not existed since 2.27 and init's kick is at `:8521`.
+
+### 13.3 What shipped
+
+`react/LockBar.js`, ~95 lines. `useSyncExternalStore` over an `OCCVM_LOCK_STORE` that **does not touch
+React at all** — created and exported whether React loaded or not, so `lockSwing`/`lockRect`/`lockRelease`
+call `notify()` with no guard of their own. The component is a Fragment mounted into the page's own
+`#lockbar`, so that element keeps the id and the CSS it has had since the tile was built and nothing
+gains a wrapper.
+
+**Three mirrors of one fact are now one.** Each of the three mutators wrote the lock into `S.lock`, then
+into a `body` class, then into a note string typed by hand in code that cannot see the markup. The class
+and the strings are gone; `OCCVM_LOCK_NOTE` owns the three strings and the suite asserts each appears
+exactly once in the page.
+
+**The snapshot is the mode alone.** `lockRect` writes five fields and four of them render nothing, so
+the snapshot is stable across them and React skips the work — a primitive, compared by `Object.is`, with
+no memo pretending to be a discipline.
+
+**Measured on the page, not asserted.** Driven in Chromium: SWING renders at **87×44** and RESUME at
+**85×44**, both clearing L8's floor from the spine's own `button` rule; the malachite gradient resolves
+against the live light vector; taking a lock renders RESUME with a computed `display:flex`, and clicking
+it releases and unmounts. Zero page errors. Then the strip itself, before and after, at a pinned instant
+and a pinned session seed: **1050×53, 0 pixels moved.** The conversion is invisible, which is what a
+conversion should be.
+
+*The first run of that comparison read **18.30% of pixels at a mean 2.44 L\***, and the number was mine,
+not the tool's.* `globuleLayer()` seeds from `sessionStorage["btc.seed"]`, minted per session, so two
+page loads paint two different globule fields behind a transparent strip. A before/after diff that does
+not pin every generator is measuring the generators. The same error as 2.26's global worst case, in a
+different coordinate again.
+
+*And one guard was widened rather than satisfied.* `test/occvm.js` asserted `(html.match(/<script/g)).length === 1`
+— the string, anywhere in the file. React's UMD carries the literal `"<script>\x3c/script>"`, its close
+escaped exactly so no parser can see it, so a correct file failed a proxy for the property. Replaced by
+the property in two halves: the markup **outside** the script body declares one `<script` and one
+`<style`, and **nothing inside the body can close it early**, which is the only sequence that could hand
+`test/lib/load.js` a second block and had never been asserted at all.
+
+### 13.4 What is next, and what is not
+
+`REACT-MAP.md` §8's order stands, with one correction and one confirmation:
+
+2. **`Cast`** — the a11y contract (`aria-pressed` only when the caller passes `on` and has not marked the
+   control `action`) is portable and worth having. **`.cast`'s skin is not**: it is Rhyme's bronze binding
+   with Rhyme's own literals, and this tool's controls already wear `--occvm-bevel` from the spine since
+   2.11. Porting the class would be a second button treatment here, not a shared one.
+3. **Chart island** — `Threads`' quiet-mode scheduling over `loop`, which currently calls `render()` every
+   33 ms whether or not a tick arrived. `renderSweep` is untouched.
+4. **Ambient floor** — REACT-MAP lists a prerequisite: *"requires the `PAL`/sundial fix first."*
+   **That prerequisite is already met** — 2.27 wired ten of `PAL`'s thirteen keys to the resolved page on
+   `sunTick`'s beat and on every palette change. The floor's own blocker is L13, which withholds motion
+   from this tool and is measured by `law-audit.js`, so a live floor here is a change to the law and not
+   to the code.
+6. `useSwipeYield` and `useBeatPulse` — **not scheduled, and REACT-MAP is right about both.** There is no
+   low-stakes irreversible removal here to point a swipe at, and no tempo. Manufacturing either would be
+   inventing a trigger to fit a hook.
+
+**Open against the island:** none.

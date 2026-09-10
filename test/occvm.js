@@ -672,9 +672,22 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the page is network-first so a new stamp lands", sw.indexOf("fetch(req)") < sw.indexOf("caches.match(req)"));
 
   /* CLAUDE.md section 2 records one style block and one script as an architectural property, and
-     test/lib/load.js reads the script by first-open to last-close. A second tag breaks every harness. */
-  T("still one <script> and one <style>",
-    (html.match(/<script/g) || []).length === 1 && (html.match(/<style/g) || []).length === 1);
+     test/lib/load.js reads the script by first-open to last-close. A second tag breaks every harness.
+
+     This counted the STRING "<script" anywhere in the file, which is a proxy for that property rather
+     than the property. React's UMD build carries the literal "<script>\\x3c/script>" inside a string —
+     the close escaped precisely so no HTML parser can see it — and the proxy failed on a file every
+     parser reads as one script element. The 2.15 and 2.21 class: a typed proxy with a test around it,
+     refusing correct code. Measured instead, the two things that are actually load-bearing. */
+  const _open = html.indexOf("<script>"), _close = html.lastIndexOf("</script>");
+  const _outside = html.slice(0, _open + 8) + html.slice(_close);
+  T("still one <script> element and one <style>",
+    (_outside.match(/<script/g) || []).length === 1 && (_outside.match(/<style/g) || []).length === 1,
+    { script: (_outside.match(/<script/g) || []).length, style: (_outside.match(/<style/g) || []).length });
+  /* The only sequence that ends a script element, and therefore the only thing that could hand
+     test/lib/load.js's first-open-to-last-close a second block. Never asserted until a 132 KB minified
+     dependency was spliced in and made it worth asserting. */
+  T("nothing inside the script block can close it early", !/<\/script/i.test(html.slice(_open + 8, _close)));
 
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "manifest.webmanifest"), "utf8"));
   const tag = (html.match(/<meta name="theme-color" content="([^"]+)"/) || [])[1];

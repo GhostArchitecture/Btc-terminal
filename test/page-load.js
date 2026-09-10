@@ -52,6 +52,38 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
   T("viability strip reads NEGATIVE with no live fills", /NEGATIVE/.test(w.document.getElementById("vstrip").textContent), w.document.getElementById("vstrip").textContent.slice(0, 120));
   T("sundial set the four light custom properties", ["--lx", "--ly", "--elev", "--night"].every(p => w.document.documentElement.style.getPropertyValue(p) !== ""), null);
 
+  /* The React island (REACT-MAP step 1). This is the only harness that loads the real page into a real
+     DOM, which is exactly why the island is spliced rather than loaded from three <script src> tags:
+     jsdom runs scripts "dangerously" and fetches resources never, so an external React would be absent
+     here and the component would be unverifiable by construction. Driven, not read. */
+  {
+    const bar = w.document.getElementById("lockbar");
+    T("the island mounted and init recorded no UI error", g("S.uiErr") === undefined && !!bar && bar.children.length > 0,
+      { uiErr: g("S.uiErr"), children: bar && bar.children.length });
+    T("it rendered the note and SWING, and RESUME is absent with no lock held",
+      !!w.document.getElementById("locknote") && !!w.document.getElementById("lockSwing") && !w.document.getElementById("lockResume"));
+    T("SWING is a real button, so the spine's 44px interaction floor reaches it (L8)",
+      w.document.getElementById("lockSwing").tagName === "BUTTON" && w.document.getElementById("lockSwing").type === "button");
+
+    g("S.k.cur={ticker:'KXBTC15M-T',strike:100000,open:Date.now(),close:Date.now()+9e5}; lockSwing();");
+    await new Promise(r => setTimeout(r, 30));
+    const resume = w.document.getElementById("lockResume");
+    T("taking a lock renders RESUME and moves the note", !!resume && /swing window/.test(w.document.getElementById("locknote").textContent),
+      { resume: !!resume, note: w.document.getElementById("locknote").textContent });
+    /* The mirror this replaced was CSS: #lockResume{display:none} plus a body.locked override. If either
+       had survived, RESUME would be in the DOM and invisible — the component deciding to show a button
+       the stylesheet had already hidden. Measured on the resolved style, not on the absence of a rule. */
+    T("and RESUME is actually visible, not shown by React and hidden by CSS",
+      w.getComputedStyle(resume).display !== "none" && !w.document.body.classList.contains("locked"),
+      w.getComputedStyle(resume).display);
+
+    resume.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 30));
+    T("clicking RESUME releases the lock and unmounts it",
+      g("S.lock") === null && !w.document.getElementById("lockResume") && /drag on the field/.test(w.document.getElementById("locknote").textContent),
+      { lock: g("S.lock"), note: w.document.getElementById("locknote").textContent });
+  }
+
   /* §10.3 SEC1: EXPAND/COLLAPSE ALL must not be discarded by the very next single-section toggle (shared SEC_STATE, not two stale closures) */
   g("setAllSections(true)");
   const afterAll = JSON.parse(w.localStorage.getItem("btc.sections.v2"));
