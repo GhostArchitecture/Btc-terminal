@@ -4,26 +4,24 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910144317` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910174353` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.35** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.36** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
-floor on this tool's page ground under L13's bounded grant, and the field drawn **once** on that
-ground with the tiles frosted over it. *Verified by stamp at 2026-09-10 — `btc-terminal.pages.dev`
-read `build-20260910144317` at 14:46:08 UTC having **missed** on the poll 10 s earlier, so it landed
-in a bracket between 14:45:58 and 14:46:08, within ~12 s of the push: a measurement rather than the
-upper bound the previous line could only give. The GitHub Pages fallback read the same stamp at
-14:46:08 on its first poll, which is an upper bound and is named as one. Corroborated as this release
-rather than a cached stamp, which is corroboration and not the verification (§7.3): both hosts serve
-`--tile-fill:38%`, two `blur(var(--occvm-meniscus))` sites, two `#chartbox` background rules and
-**zero** `.tile::before` rules.* **Rhyme's served page is unchanged by this release and its stamp is
-therefore not evidence of anything having deployed.** Its artifact is byte-identical — `build.js`
-compared it with both stamps masked and preserved `build-20260910123606`, 2.30's rule doing its job —
-because what changed there is `occvm/SPINE.md`, the law, which is not served. Polling a stamp that
-could not have moved would be the §7.3 error inverted, so it is stated instead. Earlier
-lines: `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+floor on the page ground under L13's bounded grant, the field drawn **once** on that ground with the
+tiles frosted over it, and the safe area finally read as a token so the price is never under the
+status bar again. *Verified by stamp — both BTC hosts read `build-20260910174353` at 17:46:12 UTC on
+the first poll, about a second after the push, which is an upper bound and is named as one. Rhyme's
+GitHub Pages read `build-20260910171532` at 17:46:44 having **missed** three polls before it, so that
+one is a bracket between 17:46:33 and 17:46:44, and unlike the previous release **Rhyme's stamp
+verifies something**: its artifact really changed this time, `build.js` minted on the content, and
+its service worker names the same stamp. Corroborated as this release rather than a cached stamp,
+which is corroboration and not the verification (§7.3): both BTC hosts serve the `safe-area-inset-top`
+token, the status-bar band, the 560px width query and three `--tile-fill` mixes against the ground;
+Rhyme serves the token and the band.* Earlier
+lines: `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,578 lines, 853 KB, 302 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,626 lines, 857 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
@@ -3002,6 +3000,22 @@ through the frosted tiles with the serif legible over it, and **not one globule 
 
 `test/occvm.js` **561 → 565**; §6's total **985 → 989**. Rhyme **117 → 118**. Golden **546 → 561**, the
 delta being exactly the three new tokens at three instants and no existing value moved.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`9836c70` here,
+`122e2dc` in Rhyme), CI green on both branch heads through the API first (BTC run 119, Rhyme run 80).
+Both BTC hosts read `build-20260910174353`; Rhyme reads `build-20260910171532`, and this time that
+stamp is evidence rather than a formality — its artifact really changed, so the poll is answering the
+question it was asked. Times and which readings are brackets rather than bounds are in the header.
+
+*What the owner should see change on the phone.* Nothing sits under the clock any more, at rest or
+scrolled: the content column starts below the inset and an opaque band covers the strip above it. The
+header takes two rows instead of three and gives back a fifth of the screen. And the sweep's tile no
+longer reads as a lighter panel than the ones around it.
+
+*Four cosmetic findings from the same recordings are recorded and not fixed*, listed in 2.36: the
+DATA view's collisions at phone width, the duplicated strike label, Rhyme's globule scale on the
+draft face, and the `+ bar` overlap. The fifth is not a defect and is the owner's to settle — the two
+tools disagree about what "selected" means, and the law does not measure it.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
