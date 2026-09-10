@@ -2764,11 +2764,25 @@ undone and named here rather than quietly dropped.
 2. **`Cast`** — done, §13.4.
 3. **Chart island** — the scheduling half is done and the ownership half is deferred with its cost
    measured, §13.5. `renderSweep` is untouched, as the plan asks.
-4. **Ambient floor** — REACT-MAP lists a prerequisite: *"requires the `PAL`/sundial fix first."*
-   **That prerequisite is already met** — 2.27 wired ten of `PAL`'s thirteen keys to the resolved page on
-   `sunTick`'s beat and on every palette change. The floor's own blocker is L13, which withholds motion
-   from this tool and is measured by `law-audit.js`, so a live floor here is a change to the law and not
-   to the code.
+4. **Ambient floor — blocked by the law, and REACT-MAP does not mention it.** The map calls this *"MAPS
+   DIRECTLY, highest value"* and gives a port shape: splice `ambientFloor()`, add a `<canvas class="floor">`
+   where `body::before` paints the still frame. Two things are true and only the first is in the map.
+   *The prerequisite it does name is already met* — 2.27 wired ten of `PAL`'s thirteen keys to the
+   resolved page on `sunTick`'s beat and on every palette change. *The one it does not name is
+   **OCCVM-L13**,* which withholds ambient motion from this tool by name — "from the canvas and every
+   surface §5 governs, because every moving mark on the sweep means something and a drifting decorative
+   mass drawn from `PAL` beside marks that carry win/lose is §7.6's noise-as-opportunity trade" — and
+   which since 2.22 is **measured rather than written**: a floor call site in this tool's own source
+   diverges whether or not anything calls it, that being the only reading under which the withholding
+   cannot be walked back one commit at a time.
+   Demonstrated rather than quoted: one `ambientFloor(...)` call spliced into `index.html` moves the
+   register from **9 in force, 0 diverged** to **8 in force, 1 diverged**, `law-audit.js --check` exits
+   1, and CI goes red. So a live floor here is **a change to the shared law governing both tools**, and
+   L13's own text puts the floor's cost — that a yield-stress fluid below τ₀ does not drift, so the
+   floor contradicts the substance — on the record as the owner's aesthetic judgment. That is the
+   standard 2.23 was decided by. It is not a thing to slip in under "adding React", and it is left
+   undone for that reason and not for a technical one. **The still frame this tool already paints is
+   the L13-conforming form of exactly this field.**
 6. `useSwipeYield` and `useBeatPulse` — **not scheduled, and REACT-MAP is right about both.** There is no
    low-stakes irreversible removal here to point a swipe at, and no tempo. Manufacturing either would be
    inventing a trigger to fit a hook.
