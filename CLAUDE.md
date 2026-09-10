@@ -4,22 +4,26 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910174353` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910192734` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.36** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.37** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground under L13's bounded grant, the field drawn **once** on that ground with the
-tiles frosted over it, and the safe area finally read as a token so the price is never under the
-status bar again. *Verified by stamp — both BTC hosts read `build-20260910174353` at 17:46:12 UTC on
-the first poll, about a second after the push, which is an upper bound and is named as one. Rhyme's
-GitHub Pages read `build-20260910171532` at 17:46:44 having **missed** three polls before it, so that
-one is a bracket between 17:46:33 and 17:46:44, and unlike the previous release **Rhyme's stamp
-verifies something**: its artifact really changed this time, `build.js` minted on the content, and
-its service worker names the same stamp. Corroborated as this release rather than a cached stamp,
-which is corroboration and not the verification (§7.3): both BTC hosts serve the `safe-area-inset-top`
-token, the status-bar band, the 560px width query and three `--tile-fill` mixes against the ground;
-Rhyme serves the token and the band.* Earlier
-lines: `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+tiles frosted over it, the safe area read as a token so the price is never under the status bar, and
+2.37's phone-width `.shead` stacking and the duplicated strike label. *Verified by stamp. **Every
+reading here is a bracket, not a bound**, because the poll that preceded each hit is recorded: both
+BTC hosts missed at 19:33:49 UTC and hit at 19:34:00 (Cloudflare) and 19:34:01 (GitHub Pages), so each
+landed inside those eleven or twelve seconds. Rhyme's GitHub Pages missed four polls and hit
+`build-20260910192143` at 19:34:43, bracketed from 19:34:32 — **and that fourth poll returned no stamp
+at all**, a page served mid-swap, which is worth recording rather than smoothing: a single poll finding
+nothing is not evidence of anything and would have read as a failure had it been the only one. Rhyme's
+service worker on the wire names `tome-build-20260910192143`, the same stamp. Corroborated as this
+release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
+hosts serve the 560px `.shead` query and the `armedHere` strike guard, and Rhyme serves **four**
+corrected `atan2(…) + 90deg` gradients and **zero** of the `* 1rad` form that dropped four of its
+backgrounds, plus `#occvm-floor` fixed, `--tile-fill: 38%`, `GROUND_ALPHA = 0.11` and `.cast.on`
+reading `--verdigris`.* Earlier
+lines: `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **9,645 lines, 858 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
@@ -3105,6 +3109,41 @@ override stays: a swatch that names its own colour, offering a palette, is not a
 **118 → 119**. Golden holds at **564** — the atan2 repair and the alpha are both on consumers, which
 is `OCCVM-D13` exactly: the golden set reads `:root` and cannot see either, and the pictures above
 are the driven measurements instead.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`7d44dab` here,
+`2d7366d` in Rhyme), CI green on both branch heads through the API before either merged — **BTC run
+124 and Rhyme run 83, read step by step rather than off the rollup**, because Rhyme's whole run
+finished in twenty seconds and a rollup cannot tell a fast suite from a skipped one. All eight of its
+steps ran, including *"Regenerate from tome-src and check nothing drifted"*, which is the artifact
+guard 2.22 exists for; BTC's two jobs cover the harnesses, all three splicers, the token audit, the
+law conformance, the unit suites, the duplicate-definition check and both golden surfaces on Chromium.
+
+**Verified by stamp, and every reading is a bracket.** The header carries the times. Both BTC hosts
+missed at 19:33:49 UTC and hit `build-20260910192734` eleven and twelve seconds later; Rhyme hit
+`build-20260910192143` at 19:34:43 after four misses — **one of which returned no stamp at all**, a
+page served mid-swap. That empty poll is recorded rather than dropped, because it is the reading that
+would have looked like a failed deploy had the loop stopped there, and because §7.3's whole procedure
+is a poll whose negative results are as much a part of the record as its positive one.
+
+*What a reader sees change, and the Rhyme half is much larger than the release that caused it.* Its
+open face has a substrate again — it had none on the wire, so the field ran through it and its
+controls floated on the page ground — and its binding has its bronze back, and an override word in a
+draft is visible rather than painting nothing. On top of that repair: one field on the page ground
+under every face instead of a copy inside whichever slab was open, the slabs and closed faces frosted
+at 38% over it, and *selected* painted in the active colour rather than the decorative one. On this
+tool: the DATA view's section heads stop colliding at phone width, and the sweep prints each strike
+once.
+
+*Rhyme's stamp is evidence here rather than a formality* — its artifact really changed, `build.js`
+minted on the content under 2.30's rule, and its service worker on the wire names the same stamp. The
+distinction matters because at 2.35 the honest thing to say was that polling Rhyme proved nothing.
+
+**One thing this deploy does not close, stated because the record should not round up.** The 38% fill
+holds serif parity on Rhyme's closed faces and misses it by **3.49 L\*** on the open one, and no
+attainable fill closes that gap (SPINE.md §6b). And the general property behind this release's biggest
+find — *no declaration computes to its initial value by accident* — is guarded only for the one class
+that shipped. It is browser-only in general, the golden recorder is where it belongs, and it is not
+built.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
