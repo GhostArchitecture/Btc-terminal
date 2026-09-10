@@ -7,7 +7,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910062126`** — §11's closure, the `reversal`
+2.25 (§12). **On the branch and not deployed: `build-20260910063229`** — §11's closure, the `reversal`
 citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
 writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
 *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
@@ -2319,6 +2319,63 @@ carried by both tools alike while the cycle that reads it stays in the tool L13 
 
 Rhyme **110 → 111 tests**; three of the new assertions verified to fail against an authored period, an
 invented ease, and the old drift restored beside the cycle.
+
+**2.28 steps 4 and 5 — the coil decides where, τ₀ decides what.** One piece of work, because that is the
+build plan's own sentence for them. Not this tool's code; the shared part and the arrest model are.
+
+**Recombination happens at a fixed point.** A real lava lamp carries a metallic wire coil at the base
+acting as a surface-tension breaker, recombining cooled wax after it descends; free-floating pairwise
+merging anywhere on screen is the easier build and is not what the object does. **And the coil needs no
+geometry and no authored height**, because step 3 already put one at the bottom: a drop is at the coil
+exactly when it is in the bottom dwell of its cycle, which is also when a real lamp's wax pools. Two
+drops can only begin a weld while both are resting there. `cyclePos` returns exactly 0 only in that
+dwell, so the position function *is* the coil predicate — one function, two jobs, no third constant.
+
+**How far the bridge gets before it freezes is the Bingham number's.** Kern, Sæter & Carlson give the
+group — the arrested profile "depends on the fluid's yield stress τ_y and coalescence angle α,
+represented by the Bingham number τ_y·h_drop/σ" — not a closed form for the height, and their
+aspect-ratio modification is a sessile-drop geometry this floor does not have. So what is taken is the
+group and its **direction**, and the falloff `1/Bi` is named as authored. It has the one property that
+matters: it reaches a full lobe exactly where Bi reaches 1, which is the completion boundary the *same
+group* defines, so the three regimes meet with **no seam and no fourth constant** — asserted by
+approaching Bi = 1 from both sides. Measured across the band: a 9+9 pair freezes at **63%** of the
+smaller lobe, 15+15 at **38%**, 30+30 at **19%**. A pair of small globules keeps a thick waist; a pair
+of large ones barely touches.
+
+**The arrested pair is one stuck object, and that answers the plan's open accumulation question without
+inventing a rule.** The plan asks what a frozen dumbbell does — drift off as one object, or pile up at
+the recombination point and eventually clog the floor. It drifts off, because that is simply what a
+frozen dumbbell *is*: the bridge locked, so the two lobes are bonded and travel together. It is also
+self-limiting with nothing added — **a pair that has arrested is done**, since a third arrival would need
+the bridge to grow again against a yield stress that already stopped it, so a locked pair never welds
+again and the size distribution cannot run away. No cap, no splitting rule, no invented threshold.
+
+**And the first version of that was wrong in a way the render hid.** The follower lobe was given the
+leader's phase and left to compute its own height — but a drop's height depends on **its own radius**
+(`(h − r) − pos·(h − 2r)`), so two lobes of different size drifted apart over the cycle and the frozen
+bridge silently stretched. A frozen bridge does not stretch. The follower is placed from the leader plus
+the offset it froze at, every frame: one rigid body. **Found by driving the shipped floor and counting,
+not by looking** — the driven run reported **0 frozen pairs** where the arrest branch was firing all
+along, because the detector looks for a constant separation and the pairs did not have one. With the
+rigid body in place the same run reports **4 locked pairs, and all 4 of the touching pairs are locked**,
+which is what a 96%-arrest substance should produce.
+
+*The driven measurement is the guard, not a note about it.* `loadFloor` pumps the shipped `ambientFloor`
+through **40,000 frames — an hour of simulated time, 4.3 full cycles** — and then reads the arrest off
+the canvas: every drop is one `arc`, and a pair that has arrested holds a constant separation frame
+after frame while both move, which two drops that merely passed near each other cannot fake. Guards
+verified to bite against merging anywhere instead of at the coil, and against a follower left to drift.
+
+*And the harness caught the stale-artifact hole again.* `spine.test.js` reads the **repo-root**
+`index.html`, so the driven test ran against the previous release's floor and reported zero arrests from
+correct code. That is 2.22's ordering defect showing up as a confusing measurement rather than as a
+green build, which is the better failure mode and the reason that guard exists.
+
+*One more curve moved to module scope:* `cyclePos` and the sampled cessation curve are functions of a
+number, not of a canvas, so they sit beside their constants where a harness can drive them rather than
+inside a closure it has to infer. `atCoil` stays inside — it reads that instance's own clock.
+
+Rhyme **111 → 113 tests**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

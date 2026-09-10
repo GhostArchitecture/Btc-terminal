@@ -128,6 +128,22 @@ var OCCVM_GLOBULES = (function () {
     var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
   }
 
+  /* HOW FAR THE BRIDGE GETS BEFORE IT FREEZES, as a fraction of the smaller lobe (2.28, step 5).
+   * Kern, Sæter & Carlson state the arrested profile by the Bingham number — the arrested shape "depends
+   * on the fluid's yield stress τ_y and coalescence angle α, represented by the Bingham number
+   * τ_y·h_drop/σ modified by the drop's height-width aspect ratio". They give the group, not a closed
+   * form for the height, and the aspect-ratio modification is a sessile-drop geometry this floor does
+   * not have — so what is taken is the group and its DIRECTION, and the shape of the falloff is named
+   * as authored rather than dressed as theirs. 1/Bi is the simplest falloff with the right two limits:
+   * it reaches 1 exactly where Bi reaches 1, which is the completion boundary the same group defines,
+   * so the three regimes meet without a seam and without a fourth constant.
+   * Measured across the shipped band: 0.63 at r=9+9, 0.38 at 15+15, 0.19 at 30+30 — a pair of small
+   * globules freezes with a thick waist, a pair of large ones barely touches. */
+  function arrestedBridge(r1, r2) {
+    var Bi = bingham(r1, r2);
+    return Bi === null ? 1 : Math.min(1, 1 / Bi);
+  }
+
   var PX_PER_DROP = 9000;      /* authored: one droplet per ~95×95 px */
   var DRIFT_PX_S = 1.4;        /* authored: the live consumer's drift, carried on each drop so the field is one field */
 
@@ -257,6 +273,7 @@ var OCCVM_GLOBULES = (function () {
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
            PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
+           arrestedBridge: arrestedBridge,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
            GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();
