@@ -299,8 +299,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **998 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
-occvm 572, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **1,002 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
+occvm 576, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had

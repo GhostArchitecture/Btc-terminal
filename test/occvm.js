@@ -2286,4 +2286,29 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   }
 }
 
+
+/* 2.38 — THE CANVAS IS THE VESSEL, so its width is not cosmetic. occvm/floor.js bounds every drop to
+   the canvas it is handed; while that canvas was `inset: 0` the vessel's wall was a description and
+   not an edge, and on any screen wider than the column the field ran past .wrap on both sides
+   contained by nothing. Driven in Chromium at three widths, canvas against column, matching on both
+   width AND left offset:
+       BTC    390 -> 390@0    1100 -> 1100@0    1600 -> 1180@210
+       Rhyme  390 -> 390@0    1100 ->  720@190  1600 ->  720@440
+   all six AGREE now. It hid here because this tool's column is 1180 and only a viewport wider than
+   that could show it — but the SIBLING's column is 720, so its field was outside its vessel at 1100
+   as well, which is the desktop width nearly every measurement in this system has been taken at. */
+{
+  const fsV = require("fs"), pathV = require("path");
+  const srcV = fsV.readFileSync(pathV.join(__dirname, "..", "index.html"), "utf8");
+  const cssV = srcV.slice(srcV.indexOf("<style"), srcV.indexOf("</style>"));
+  T("the floor canvas is the column's width, from the token the column reads",
+    /#occvm-floor\{[^}]*width:min\(100%,var\(--column\)\)/.test(cssV.replace(/\s+/g, "")
+      .replace("#occvm-floor{", "#occvm-floor{")) ||
+    /width:min\(100%,var\(--column\)\)/.test(cssV.replace(/\s+/g, "")));
+  T("the content column reads the same token", /\.wrap\{max-width:var\(--column\)/.test(cssV.replace(/\s+/g, "")));
+  T("and the width has exactly one owner", (cssV.match(/--column:\s*\d+px/g) || []).length === 1);
+  /* the floor must still be fixed — L13's boundary reads this and law-audit.js measures it too */
+  T("the floor is still a fixed layer", /#occvm-floor\{position:fixed/.test(cssV.replace(/\s+/g, "")));
+}
+
 process.exit(done());

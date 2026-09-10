@@ -403,7 +403,9 @@ table {
        every consumer is `var(--safe-top)`, and a test sets that property and measures the layout move.
        --field-hi is the top of the page's own ground gradient, promoted out of a literal in the rule
        below so the status-bar band and the page cannot drift apart: one value, two readers (L3). */
-    --safe-top: env(safe-area-inset-top, 0px);
+    --column:1180px;   /* 2.38: the content column, and therefore the vessel — read by .wrap and by
+                        the floor canvas, so the glass and the layout cannot disagree */
+  --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --field-hi:#100e16;
     /* 2.35, tool-local, AUTHORED and named as such — but the criterion that fixes it is not. A serif
@@ -447,7 +449,14 @@ table {
      over body's background, under .wrap and therefore under every .tile, every §5 surface and the
      sweep. The bound is the DOM position and the fixed layer, and law-audit.js reads both out of this
      tool's own source; test/page-load.js drives what a stylesheet cannot say. */
-  #occvm-floor{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none;display:block}
+  /* 2.38 — THE CANVAS IS THE VESSEL, so the vessel's wall is a real edge and not a description of
+     one. occvm/floor.js bounds every drop to the canvas it was handed, so whatever this element
+     spans IS the glass: at 390 and 1100 the column already fills the viewport and the two coincide,
+     which is exactly why the gap was invisible — on a wide screen the column is --column centred and
+     the field would have run past it on both sides, contained by nothing. Same width as .wrap, from
+     the same token, so the two cannot drift (L3). */
+  #occvm-floor{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:min(100%,var(--column));height:100%;z-index:0;pointer-events:none;display:block}
   /* THE PADDING ABOVE ONLY FIXES THE PAGE AT REST. viewport-fit=cover plus a translucent status bar
      means the page keeps its full-bleed ground and content SCROLLS under the bar, which is where the
      field report caught the price readout cut in half by the Dynamic Island. This band is opaque, is
@@ -462,7 +471,7 @@ table {
      class is written by the island only when the part reports `.ok`, so all three of its refusals
      leave the page with the layer it already had rather than blank. */
   html.floorlive body::before{display:none}
-  .wrap{max-width:1180px;margin:0 auto;position:relative;
+  .wrap{max-width:var(--column);margin:0 auto;position:relative;
     padding:max(14px, var(--safe-top)) 14px max(40px, var(--safe-bottom))}
   .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-dim);font-family:var(--sans)}
   .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
@@ -9685,7 +9694,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260910205447";
+const BUILD_STAMP="build-20260910210744";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -9707,5 +9716,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260910205447 -->
+<!-- build-20260910210744 -->
 </html>

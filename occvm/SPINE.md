@@ -1417,6 +1417,19 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*`--column` joins the tool-local row at 2.38, in BOTH tools and at different values* — BTC 1180px,
+Rhyme 720px. It is the content column's width, and since 2.38 it is also **the vessel's**, which is
+why it had to become a token rather than stay a number in one rule. `occvm/floor.js` bounds every
+drop to the canvas it is handed, so the canvas IS the glass; while that canvas spanned the viewport
+the vessel's wall was a description rather than an edge, and on any screen wider than the column the
+field ran past the content on both sides contained by nothing. **It was invisible at the two widths
+anybody had measured** — 390 and 1100, where the column fills the viewport and the two coincide.
+Both the layout rule and the floor rule read the one token, so the glass and the content cannot
+drift apart (L3), and each tool asserts the width has exactly one owner. Tool-local rather than
+spine-declared for the same reason `--globules` is: the spine neither declares it nor writes it, and
+the two tools legitimately differ — a reading column and an instrument column are not the same
+width, and nothing about the substance says they should be.
+
 *`--safe-top` and `--safe-bottom` join the tool-local row at 2.36, in BOTH tools, and the reason they
 are tokens rather than inline `env()` is the defect that produced them.* A screen recording from the
 owner's phone showed the price readout cut in half by the Dynamic Island: BTC declared
