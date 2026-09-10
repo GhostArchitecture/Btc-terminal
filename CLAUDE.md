@@ -4,14 +4,16 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
-measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
-plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910065029`** — §11's closure, the `reversal`
-citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
-writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
-*Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
-Rhyme's GitHub Pages read `build-20260909232257`. Earlier lines: `build-20260909230353` / 2.24 (23:13
+Current deploy: `build-20260910065029` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
+correction, and OCCVM through **2.29** (§12): the pigment palettes, the metaball globule field and its
+whole build order, and one confidence vocabulary across the panels. *Verified on both hosts by stamp at
+2026-09-10 06:56 UTC — `btc-terminal.pages.dev` and the GitHub Pages fallback both read
+`build-20260910065029`, and both carry this release rather than a cached stamp: ten `OCCVM_PIGMENTS`
+references, the spliced `pigments.js` fence, three `confchip` sites, four `--globules-size` sites and
+**zero** `OCCVM_MINERALS`. Rhyme's GitHub Pages read `build-20260910070104` at 07:03 UTC, 45 s after
+the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
+the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **8,181 lines, 640 KB, 299 top-level functions**, zero dependencies, zero build
 step. *These figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
@@ -2483,6 +2485,37 @@ live — no fills yet · NEGATIVE clear` · `0 graded reads · — not enough da
 `test/invariants.js` **63 → 80**; §6's total **858 → 875**.
 
 *§4 is complete: 4.1, 4.2 and 4.3 here, 4.4 at 11.9.*
+
+**2.30 — the stamp did not move with the content, and the deploy is where that could be found.**
+Rhyme's, not this tool's, but the rule is this file's §1 step 4 and §7.3 and the finding belongs beside
+them. `build-20260910054846` was minted at **2.27** and then carried, unchanged, through **2.28 and its
+steps 3, 4+5 and 6** — Rhyme's `build.js` mints only on `--stamp` and a plain build preserves, and every
+build after the first was a plain one. **The host served four releases of content under one stamp.**
+
+**That is not cosmetic, and it is this file's own procedure that it breaks.** *"Verify deploys by build
+stamp, not feature grep"* (§7.3) and §1 step 4's poll are the whole verification, and a stamp that does
+not move with the content makes them answer a question they were never asked. Had it gone unnoticed,
+this deploy would have been reported verified while Rhyme's stamp identified 2.27 — which is precisely
+the shape of 2.22's wrong report, arriving through the stamp instead of through the ordering.
+
+**Preserve-unless-asked is right for iteration and blind at exactly one boundary.** A timestamp minted
+on every run makes the regeneration diff spurious and teaches everyone to ignore it, which is why the
+flag existed. So the rule is now the condition rather than a flag to remember: `build.js` assembles a
+trial copy and compares it against the committed artifact **with both stamps masked**. Identical content
+keeps its stamp, so CI's byte-identical check stays strict; changed content mints, so a stamp always
+identifies what it stamps. `--stamp` still forces, and `--keep-stamp` covers the one case the comparison
+cannot know about — a deliberate re-cut of an identical artifact.
+
+*The assembly became a function both paths call.* A second copy written to answer "did anything change?"
+is two sources of truth for what ships and drifts the first time a line is added to one and not the
+other — this system's most-repeated defect. The guard asserts there is exactly one `<!doctype html>` in
+that file, and the whole rule is proved by **driving the shipped build**: preserve on unchanged content,
+mint on a real source change, `--keep-stamp` still preserves, and the probe restores the source it
+touched and asserts the restore. Verified to bite — reverting to preserve-always fails it.
+
+**The new rule prevents recurrence and cannot repair what was already live**, so the deploy forced one
+mint. Rhyme now serves `build-20260910070104`, verified at 07:03 UTC with its service worker naming the
+same stamp. Rhyme **114 tests**, from 113.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
