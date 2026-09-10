@@ -54,6 +54,8 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
 │   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ floor.js                  the ambient floor (L13) — shared, spliced into Rhyme, NOT into this
+│                                tool: L13 still withholds the floor here (§12's 2.31 entry)
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
 │   ├─ tools/derive-pigments.js  generates pigments.js: authored roles in, derived ramps out, checks printed
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
@@ -2551,6 +2553,36 @@ touched and asserts the restore. Verified to bite — reverting to preserve-alwa
 mint. Rhyme now serves `build-20260910070104`, verified at 07:03 UTC with its service worker naming the
 same stamp. Rhyme **114 tests**, from 113.
 
+**2.31 — the floor becomes a shared part, and this tool does not adopt it yet.** `ambientFloor` and its
+six authored constants shipped inside Rhyme's `tome-src/30_ui.jsx` from 2.22, because L13's grant was
+Rhyme's alone and, in 2.25's own words, "a shared part must not carry what one tool is withheld." With
+BTC's adoption under consideration that reasoning inverts: two tools running one behaviour need one
+owner (L3). `occvm/floor.js` is that owner — the buoyancy cycle, the coil, the arrest, the metaball
+threshold, P-3's linear bridge, all of it. `useAmbientFloor` did **not** move: it is React lifecycle,
+and splicing a hook into `occvm/` would make React a dependency of every conforming tool.
+
+*Two things are genuinely a property of the SURFACE rather than the substance, and only those two are
+overridable:* `alpha` and `seed`. Everything else the caller gets is the substance's and is not the
+caller's to retune.
+
+**The move is proved inert rather than asserted.** The old floor and the new one were each driven 600
+frames in a vm against a recording 2-D context: **72,601 operations, byte-identical**. A first pass
+added one paint before the first rAF and the diff caught it at operation 7 — a change nobody asked for,
+removed rather than explained.
+
+*And the cessation curve is now sampled LAZILY, which is the one real change.* It was sampled at load,
+and a spliced part that captures a sibling global at load is the 2.0 `fracture.js` defect exactly:
+`fracture.js` captured a null `OCCVM_VEINS`, threw on every call in the browser, and passed in Node
+because `require` resolved what the page could not. Driven both ways — the part evaluates with **no**
+sibling in scope and still exposes its API, and the curve integrates **exactly once** however many
+times it is read. That closes the ordering hazard by construction, so where the splicer happens to put
+this part does not matter and nothing asserts an order.
+
+**This tool carries the part and splices it nowhere.** `law-audit.js` reads `L13 · BTC Terminal ·
+UNADOPTED` and the register is **9 in force, 0 diverged** — unchanged, which is the point. Granting the
+floor here is a change to the law and is not in this commit; see §13.6 item 4 for what it costs and
+§13.7 for what the first attempt measured.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
@@ -2786,5 +2818,52 @@ undone and named here rather than quietly dropped.
 6. `useSwipeYield` and `useBeatPulse` — **not scheduled, and REACT-MAP is right about both.** There is no
    low-stakes irreversible removal here to point a swipe at, and no tempo. Manufacturing either would be
    inventing a trigger to fit a hook.
+
+### 13.7 The floor on this tool's ground — attempted, measured, backed out of the commit
+
+L13's amendment and the floor island were built and are **not in this commit**, because the auditor
+does what it was built to do: with an `ambientFloor` call site in this tool's own source the register
+reads **8 in force, 1 diverged** and `law-audit.js --check` exits 1. Amending the law is the owner's
+call (§13.6 item 4), and three things were measured on the way that are worth more than the code was.
+
+**A negative z-index rendered nothing, five times.** The island mounted a fixed, full-viewport
+`<canvas id="occvm-floor">` at `z-index:-1`, on the reasoning that a negative stacking level is "the
+page ground". It is not, here: `html,body{background:var(--field)}` gives the root its own background,
+`body` carries an opaque `linear-gradient(180deg,#100e16,#09080d 40%)`, and `body` is
+`position:relative` — so body's paint lands in the positioned pass, **after** every negative level.
+Measured across a five-point weight sweep: **0.00% of pixels moved at every one of them.** Found by
+sweeping and getting the same zero five times, which is what a sweep is for; a single reading would
+have looked like a bad alpha. `z-index:0` mounted before `.wrap` is the layer `body::before` has
+actually occupied since 2.25.
+
+**The ground's weight is 0.20, chosen against what ships today** — the point being that the ground's
+weight must not move when it starts moving. Full 1100×1400 frame, clock and session seed pinned, each
+state diffed against no field at all:
+
+| state | pixels moved | mean ΔL\* | max |
+|---|---|---|---|
+| today (`body::before`, still) | 2.42% | 3.011 | 11.49 |
+| canvas α 0.14 | 2.11% | 1.946 | 8.22 |
+| canvas α 0.17 | 2.15% | 2.354 | 9.83 |
+| **canvas α 0.20** | **2.19%** | **2.864** | **11.87** |
+| canvas α 0.24 | 2.23% | 3.445 | 14.33 |
+| canvas α 0.30 | 2.28% | 4.386 | 18.13 |
+
+0.20 sits within 4.9% of today's mean and within 3.3% of its max. Coverage is slightly *lower* at
+matched weight — tighter coverage, greater per-pixel weight, which is the threshold signature 2.28
+already measured on the still field (12.76% → 11.24%).
+
+**And the cost is real and is not yet a number.** With the floor live, **every Chromium screenshot
+times out at 15 s** — element captures and clipped page captures alike, with the network blocked and
+CSS animations disabled. A full-viewport fixed canvas repainting at 60 Hz sits behind five
+`backdrop-filter: blur(18px) saturate(1.2)` tiles, so each frame invalidates and re-blurs every tile's
+backdrop. That is evidence of cost, **not a measurement of it**, and it is named as evidence: the frame
+rate was not captured before this was backed out. Two things follow and both are for the owner. The
+floor moves **1.4 px/s — 0.023 px per frame at 60 Hz**, so the repaint rate is buying nothing and is
+the obvious place to look first. And `GLASS-VESSEL-PLAN.md` §6 asks for a displacement map over a live
+canvas across several panels, on the reading that performance should be profiled before committing;
+this measurement says the cost is already present *before* any displacement map, on this tool, today.
+
+**Held in the scratchpad, not lost:** `react/Floor.js` and the page's adoption diff.
 
 **Open against the island:** none.

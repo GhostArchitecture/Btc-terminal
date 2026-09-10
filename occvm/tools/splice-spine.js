@@ -39,7 +39,18 @@ const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
    repository carries identically; the instruments that check them live in one place. */
 const REF = path.join("occvm", "reference", "index.html");
 
+/* 2.31 — floor.js is the one part that reads two siblings, OCCVM_GLOBULES and OCCVM_RHEOLOGY, so it
+   is the one part whose POSITION could matter. It does not, and that is a property rather than a
+   coincidence: it takes neither at load. Its cessation curve is sampled on first use, and everything
+   else it reads it reads inside ambientFloor, which nothing calls while the file evaluates. That
+   closes the 2.0 defect by construction instead of by ordering — fracture.js captured a null
+   OCCVM_VEINS at load, threw on every call in the browser, and passed in Node because `require`
+   resolved it. `test/occvm.js` asserts the property: no sibling global is referenced at this part's
+   top level. Where it actually lands is insertion history, not the list: parts go in after one anchor,
+   so on a fresh file the list reverses, and on a file that already carries the others a new part goes
+   in first. Neither ordering is relied on and neither is asserted. */
 const PARTS = IS_RHYME ? [
+  { name: "floor.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "spine.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
   /* 2.7 — the owned faces. serif.css ships to both tools; reading.css only where running text is set in a
      serif, which is Rhyme's whole body and nothing in BTC — the same rule that keeps mono.css BTC-only. */
@@ -55,6 +66,10 @@ const PARTS = IS_RHYME ? [
   { name: "pigments.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
+  /* floor.js is NOT in this list yet, and that is the state rather than an oversight. The part is
+     shared and it is committed here — occvm/ is mirrored between the repositories — but L13 still
+     withholds the floor from this tool, so splicing it in would put a generator in BTC's artifact that
+     nothing may call. It joins this list in the commit that amends the law and mounts the island. */
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
   { name: "mono.css",     target: "index.html", anchor: "<style>" },
