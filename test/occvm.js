@@ -1455,13 +1455,32 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
     T("L13: neither tool has a floor, and absence reads UNADOPTED",
       m13("BTC Terminal", "") === "UNADOPTED" && m13("Rhyme Instrument", "") === "UNADOPTED");
-    T("L13: Rhyme is granted the floor, and only reduced-motion guarded",
-      m13("Rhyme Instrument", "if (!reducedMotion()) ambientFloor(host);") === "CONFORMS");
+    /* 2.37 — RHYME'S GRANT IS BOUNDED NOW TOO, so its fixtures carry the same four conditions BTC's
+       do. Until this release the two branches were asymmetric: BTC's floor had to name its surface
+       and Rhyme's only had to be guarded, because Rhyme's floor lived inside whichever slab was open.
+       It lives on the page ground now, so one bound reads both tools and the fixtures say so. */
+    const RHY_OK_RAW = '.bar { position: relative; padding: 10px; }\n'
+      + '#occvm-floor { position: fixed; inset: 0; z-index: 0; }\n'
+      + '<canvas id="occvm-floor" />\n<header className="binding">';
+    /* the id lives in `own` because that is where the runner finds it: Rhyme's own source is its CSS
+       and its JSX together, and the canvas is declared in the JSX. */
+    const RHY_OK_OWN = '<canvas id="occvm-floor" />'
+      + 'if (!reducedMotion()) OCCVM_FLOOR.ambientFloor(host, still, heat);';
+    T("L13: Rhyme is granted the floor on its page ground, guarded and bounded",
+      m13("Rhyme Instrument", RHY_OK_OWN, RHY_OK_RAW + RHY_OK_OWN) === "CONFORMS",
+      L13.measure(mk("Rhyme Instrument", RHY_OK_OWN, RHY_OK_RAW + RHY_OK_OWN)).detail);
+    T("L13: and a bar that takes the frost diverges — a measured value never gets the ground behind it",
+      m13("Rhyme Instrument", RHY_OK_OWN,
+          '.bar { backdrop-filter: blur(2px); padding: 10px; }\n'
+          + '#occvm-floor { position: fixed; inset: 0; z-index: 0; }\n'
+          + '<canvas id="occvm-floor" />\n<header className="binding">' + RHY_OK_OWN) === "DIVERGES");
     T("L13: an unguarded floor diverges even where the floor is granted — L8 is not repealed",
-      m13("Rhyme Instrument", "useEffect(() => { ambientFloor(host); }, []);") === "DIVERGES");
+      m13("Rhyme Instrument", '<canvas id="occvm-floor" />useEffect(() => { ambientFloor(host); }, []);',
+          RHY_OK_RAW + "useEffect(() => { ambientFloor(host); }, []);") === "DIVERGES");
     T("L13: a declaration is not a call site — a granted, guarded floor does not diverge on its own definition",
       m13("Rhyme Instrument",
-        "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);")
+        '<canvas id="occvm-floor" />' + "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);",
+        RHY_OK_RAW + "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);")
         === "CONFORMS");
 
     /* BTC at 2.34: granted, and the grant is bounded. Each condition is dropped in turn, because a
@@ -2182,6 +2201,44 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        built to make typed sentences impossible, so the numbers on the page come from the part. */
     T("and it prints the figures from the part rather than typing them",
       /G\.floorPx\(\)/.test(ref) && /G\.shiftRangePx\(\)/.test(ref) && /inn\.criticalDeg/.test(ref));
+  }
+}
+
+
+/* 2.37 — AN ANGLE-VALUED TRIG FUNCTION MULTIPLIED BY A UNIT DROPS THE WHOLE DECLARATION.
+   The sibling shipped `linear-gradient(calc(atan2(var(--ly), var(--lx)) * 1rad + 90deg), ...)` on four
+   surfaces. CSS atan2() already returns an angle, so that is angle x angle; and because the expression
+   contains var(), it is invalid AT COMPUTED-VALUE TIME, which does NOT fall back to an earlier cascade
+   entry the way a parse error would — the property takes its initial value. background-image: none, on
+   the open face, the binding and the gilt override word, with no console message and every source-text
+   assertion in that repo still green. Found by reading the deployed page's computed styles.
+   This tool writes no trig in CSS today, so the guard is preventive here and pins the negative: it
+   fails the day one is written wrong. The sibling's own suite carries the same check against its
+   stylesheet, which is where the four sites are. Comments stripped first — a guard that reads its own
+   prose has been the defect four releases running. */
+{
+  const fsT = require("fs"), pathT = require("path");
+  const srcT = fsT.readFileSync(pathT.join(__dirname, "..", "index.html"), "utf8");
+  const cssT = srcT.slice(srcT.indexOf("<style"), srcT.indexOf("</style>")).replace(/\/\*[\s\S]*?\*\//g, " ");
+  const FN = /\b(atan2|atan|asin|acos)\s*\(/g;
+  const bad = [];
+  let mm;
+  while ((mm = FN.exec(cssT))) {
+    let i = mm.index + mm[0].length, d = 1;
+    while (i < cssT.length && d > 0) { if (cssT[i] === "(") d++; else if (cssT[i] === ")") d--; i++; }
+    if (/^\s*\*\s*[\d.]*\s*(deg|rad|grad|turn)\b/.test(cssT.slice(i, i + 24))) bad.push(mm[1]);
+  }
+  T("no angle-valued trig result is multiplied by an angle unit in this tool's CSS", bad.length === 0);
+  /* and the sibling's four sites are the corrected form, checked from here too because the defect
+     class is the law's and not one tool's. Skipped, and SAID to be skipped, when it is absent. */
+  const RH = pathT.join(__dirname, "..", "..", "Rhyme-Instrument", "tome-src", "20_style.css");
+  if (fsT.existsSync(RH)) {
+    const sib = fsT.readFileSync(RH, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+    T("the sibling's light-bearing gradients add the 90deg rather than scaling by it",
+      (sib.match(/atan2\(var\(--ly\), var\(--lx\)\) \+ 90deg/g) || []).length === 4 &&
+      !/atan2\([^)]*\)\)\s*\*\s*[\d.]*\s*(deg|rad|grad|turn)/.test(sib));
+  } else {
+    console.log("  skipped (not passed): the sibling is absent, so its four gradients are unchecked");
   }
 }
 
