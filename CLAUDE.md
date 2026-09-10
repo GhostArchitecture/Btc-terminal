@@ -15,13 +15,13 @@ references, the spliced `pigments.js` fence, three `confchip` sites, four `--glo
 the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
 the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **8,948 lines, 811 KB, 301 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,013 lines, 814 KB, 301 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
 inside the sentence promising it would not recur. Counted again here, and the count now excludes the
-spliced dependency: 148,914 bytes of that total is React, whose minified UMD puts nine names at
+spliced dependency: 142,929 bytes of that total is React, and 152,580 the whole island, whose minified UMD puts nine names at
 line-start (`D Df Id M Td mb oe oj y`) that are inside its own IIFE and are not this tool's
 namespace. §7.1's duplicate check is scoped the same way, in CI and in `test/react.js`.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
@@ -35,6 +35,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ index.html                    the entire instrument
 ├─ vendor/                       React 18.3.1 + ReactDOM, pinned; byte-identical to Rhyme's copy (§13)
 ├─ react/                        the React islands — components, and the splicer that puts them in
+│   ├─ Cast.js                   the one control every island renders — one a11y contract, no skin
 │   ├─ LockBar.js                the lockbar: the first island and the S.lock bridge
 │   ├─ tools/resplice.js         splices vendor/ and react/ into index.html under fences, with --check
 │   └─ plans/                    REACT-MAP.md and PATCH.md as supplied; PATCH.md under a SUPERSEDED
@@ -262,17 +263,19 @@ Suite (`npm test`, after `npm install` for jsdom):
   react-dom's UMD global branch reads `self.React`), the bridge driven — `window.S` really is undefined
   and the store still reads the lock, which is the pair that proves it reads `S` lexically — the
   snapshot's indifference to lock fields the UI never renders, and the three mirrors the island
-  replaced measured as *gone* rather than unused. Verified to bite: restoring `window.S` fails 2 of 30
-  — and only 2, because the defect's whole character is that the lock reads as permanently released.
-  Swapping react and react-dom fails the three splice assertions and then kills the harness outright,
-  since react-dom's UMD reads `self.React` as it evaluates.
+  replaced measured as *gone* rather than unused. It also carries `Cast`'s contract (§13.5) and the
+  guard that nothing renders a button around it. Verified to bite: restoring `window.S` fails 2 of 43
+  — and only 2, because the defect's whole character is that the lock reads as permanently released;
+  putting a bare `e("button")` back into an island fails 1; swapping react and react-dom fails the
+  splice assertions and then kills the harness outright, since react-dom's UMD reads `self.React` as it
+  evaluates.
 - `test/defects.js` (`npm run test:defects`, informational) — one reproduction per confirmed defect in §10.3; each
   prints REPRODUCED until fixed. All 16 currently print FIXED — it is the regression guard for this audit's fixes,
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **910 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 26, h-protocol 89, prereg 84,
-occvm 509, rheology 61, react 30) — the figure here read 231 across 5, then 715, then 875, long after each had
+currently **924 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 27, h-protocol 89, prereg 84,
+occvm 509, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
 
@@ -2658,14 +2661,55 @@ the property in two halves: the markup **outside** the script body declares one 
 `<style`, and **nothing inside the body can close it early**, which is the only sequence that could hand
 `test/lib/load.js` a second block and had never been asserted at all.
 
-### 13.4 What is next, and what is not
+### 13.4 `Cast` — one control, one contract (REACT-MAP step 2)
+
+`react/Cast.js`, ~25 lines of body. Every React-rendered control in this tool goes through it, and
+`test/react.js` fails on a bare `e("button")` anywhere in `react/` outside that file — so the contract
+is structural from one consumer onward rather than remembered at the second.
+
+**The rule, which is the whole reason the component exists.** `aria-pressed` is emitted only when the
+caller passes `on` **and** has not marked the control `action`. Rhyme's own sentence: a button that
+claims to be a pressed toggle announces a state it does not have. Both of LockBar's controls are marked
+`action` — SWING looks like a toggle and is not one, because RESUME undoes it rather than a second
+press. The static markup announced nothing either, so this is a port and not a behaviour change, and
+`test/page-load.js` reads the attribute off the real DOM rather than the props.
+
+**What did not port, and it is measured rather than preferred.** Rhyme's `Cast` carries `.cast occvm-act`.
+`.cast` is Rhyme's bronze binding with Rhyme's own literals, and this tool's controls have worn
+`--occvm-bevel` from the spine since 2.11 — importing it would be a second button treatment here, not a
+shared one. `occvm-act` is the sharper case, because it is a spine primitive and therefore the obvious
+thing to adopt. Driven in Chromium, adding it to this tool's controls erases exactly what the `button`
+element rule sets:
+
+| control | box | padding | border | radius |
+|---|---|---|---|---|
+| `#lockSwing` | **87×44 → 62×44** | 6px 14px → 0 | 1px → 0 | 999px → 0 |
+| `#armBtn` | **59×44 → 32×44** | 6px 14px → 0 | 1px → 0 | 999px → 0 |
+| `#callAbove` | unchanged | unchanged | unchanged | unchanged |
+
+The third row is the explanation: `#callAbove` is styled through `.sel` / `button[aria-pressed]`, which
+ties `.occvm-act` on specificity and wins on source order, while the other two are styled by the element
+rule the primitive exists to neutralise. **`.occvm-act` lets a surface *class* own a button's look — that
+is Rhyme's arrangement and is not this tool's**, so the primitive is right there and wrong here for a
+structural reason. Cast adds no class of its own. It does emit this tool's own on-word, `sel`, which has
+been paired with `aria-pressed` in one CSS rule here since before any of this.
+
+**Two copies of one rule, named as a mitigation and not a fix.** Cast is deliberately *not* a spine part:
+OCCVM's parts are CSS and framework-free JS, and splicing a React component into `occvm/` would make
+React a dependency of every conforming tool — a claim nobody has made and this does not make. So the
+a11y rule now exists in both repositories. What is guarded is that they cannot drift silently:
+`test/react.js` reads Rhyme's `30_ui.jsx` when the sibling is present and fails if its `aria-pressed`
+expression has changed, and says *skipped, not passed* when it is absent.
+
+**Nothing moved.** The lockbar strip, before and after the Cast adoption, at a pinned instant and a
+pinned session seed: **1050×53, 0 pixels moved**; SWING 87×44, RESUME 85×44, no page errors. A refactor
+that changes a pixel is not a refactor.
+
+### 13.5 What is next, and what is not
 
 `REACT-MAP.md` §8's order stands, with one correction and one confirmation:
 
-2. **`Cast`** — the a11y contract (`aria-pressed` only when the caller passes `on` and has not marked the
-   control `action`) is portable and worth having. **`.cast`'s skin is not**: it is Rhyme's bronze binding
-   with Rhyme's own literals, and this tool's controls already wear `--occvm-bevel` from the spine since
-   2.11. Porting the class would be a second button treatment here, not a shared one.
+2. **`Cast`** — done, §13.4.
 3. **Chart island** — `Threads`' quiet-mode scheduling over `loop`, which currently calls `render()` every
    33 ms whether or not a tick arrived. `renderSweep` is untouched.
 4. **Ambient floor** — REACT-MAP lists a prerequisite: *"requires the `PAL`/sundial fix first."*

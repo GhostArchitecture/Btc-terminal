@@ -4,6 +4,10 @@
  * no financially-critical path: it changes which control is on screen, never a number, never a colour
  * that means win or lose (CLAUDE.md §5), never a ledger.
  *
+ * Every control here goes through `OCCVM_CAST` (react/Cast.js) rather than a bare `e("button")`, so
+ * the a11y contract is structural and not remembered. `test/react.js` fails on a React-rendered button
+ * anywhere outside that file.
+ *
  * `React.createElement` only. No JSX, no babel, no build step — this file is spliced into index.html
  * verbatim by react/tools/resplice.js, under a fence, exactly as every occvm part already is.
  *
@@ -69,12 +73,16 @@
     const mode = React.useSyncExternalStore(LockStore.subscribe, LockStore.getSnapshot);
     return e(React.Fragment, null,
       e("span", { className: "note", id: "locknote" }, NOTE[mode] || NOTE.idle),
-      e("button", {
-        id: "lockSwing", type: "button",
+      /* Both are marked `action`: they fire, they do not hold. SWING looks like a toggle and is not
+         one — RESUME undoes it, not a second press of SWING — and a control that announces
+         aria-pressed it does not maintain is the exact thing OCCVM_CAST's rule exists to refuse. The
+         static markup announced nothing either, so this is a port and not a behaviour change. */
+      e(OCCVM_CAST, {
+        id: "lockSwing", action: true,
         title: "lock the view tight on the live window’s swing",
         onClick: () => lockSwing(),
       }, "◆ SWING"),
-      mode ? e("button", { id: "lockResume", type: "button", onClick: () => lockRelease() }, "RESUME") : null
+      mode ? e(OCCVM_CAST, { id: "lockResume", action: true, onClick: () => lockRelease() }, "RESUME") : null
     );
   }
 

@@ -138,6 +138,59 @@ const stripComments = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.
   }
 }
 
+/* --- 4b. Cast: one control, one contract (REACT-MAP step 2) --------------------------------------- */
+{
+  const H = load(), R = H.R;
+  /* Cast is a plain function returning a React element, so its contract is readable without a DOM:
+     call it and look at the props it produced. */
+  const props = j => R(`JSON.stringify(OCCVM_CAST(${JSON.stringify(j)}).props)`);
+  const P = j => JSON.parse(props(j));
+
+  T("a toggle announces its state", P({ on: true })["aria-pressed"] === true && P({ on: false })["aria-pressed"] === false);
+  T("a control with no state announces none", !("aria-pressed" in P({})) || P({})["aria-pressed"] === undefined);
+  /* Rhyme's own sentence for this: a button that claims to be a pressed toggle announces a state it
+     does not have. `action` is how a caller says "this fires, it does not hold". */
+  T("an action that merely looks on announces nothing", P({ on: true, action: true })["aria-pressed"] === undefined);
+  T("and it still takes the on skin, because looking on is the point", /\bsel\b/.test(P({ on: true, action: true }).className || ""));
+  T("the on skin is this tool's word, not Rhyme's", /\bsel\b/.test(P({ on: true }).className || "") && !/\bon\b/.test(P({ on: true }).className || ""));
+  T("the caller's class survives beside it", P({ className: "pgsw", on: true }).className === "pgsw sel");
+  T("off adds no class at all", P({ className: "pgsw" }).className === "pgsw");
+
+  /* type is not the caller's to get wrong: a bare <button> inside a form submits it. */
+  T("type is always button and cannot be overridden", P({ type: "submit" }).type === "button");
+
+  /* MEASURED, not preferred: adding the spine's occvm-act to this tool's controls erases what the
+     `button` element rule sets — #lockSwing 87x44 -> 62x44, padding 6px 14px -> 0, border 1px -> 0,
+     radius 999px -> 0 — because that primitive exists to let a surface CLASS own the look, which is
+     Rhyme's arrangement and not this tool's. Cast adds no class of its own; CLAUDE.md §13.5. */
+  T("Cast imports neither Rhyme's skin nor a primitive this tool's controls do not wear",
+    !/\bcast\b/.test(P({}).className || "") && !/occvm-act/.test(P({}).className || ""));
+
+  /* Structural, not remembered: the contract only holds if nothing renders a button around it. */
+  const dir = path.join(ROOT, "react");
+  const files = fs.readdirSync(dir).filter(f => f.endsWith(".js"));
+  /* comments stripped — the third time in three releases that a vocabulary guard read its own prose
+     and failed a correct file for naming what it forbids (2.28's floor guard, 2.29's dialect guard) */
+  const stray = files.filter(f => f !== "Cast.js" &&
+    /createElement\(\s*["\u0027]button|\be\(\s*["\u0027]button/.test(stripComments(fs.readFileSync(path.join(dir, f), "utf8"))));
+  T("no React island renders a bare button outside Cast.js", stray.length === 0, stray);
+  T("and LockBar really does go through it", /OCCVM_CAST/.test(fs.readFileSync(path.join(dir, "LockBar.js"), "utf8")));
+  T("Cast is spliced before its consumer", html.indexOf("REACT ISLAND Cast.js") < html.indexOf("REACT ISLAND LockBar.js"));
+
+  /* TWO COPIES OF ONE RULE, and this is the mitigation rather than a fix. Cast is not a spine part:
+     OCCVM's parts are CSS and framework-free JS, and splicing a React component into occvm/ would make
+     React a dependency of every conforming tool — a claim nobody has made. So the a11y rule exists in
+     both repositories, and the guard is that they cannot drift silently. */
+  const sib = path.resolve(ROOT, "..", "Rhyme-Instrument", "tome-src", "30_ui.jsx");
+  if (fs.existsSync(sib)) {
+    const rhy = fs.readFileSync(sib, "utf8");
+    T("Rhyme's Cast still carries the same rule, so the two copies have not drifted",
+      /aria-pressed=\{action \|\| on === undefined \? undefined : !!on\}/.test(rhy));
+  } else {
+    console.log("  --   sibling repository absent: the cross-tool rule check is skipped, not passed");
+  }
+}
+
 /* --- 5. the dependency's namespace is not this tool's ---------------------------------------------- */
 {
   /* §7.1's duplicate-definition check greps `^function name(`. Minified UMD puts names at line-start

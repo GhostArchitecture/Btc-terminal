@@ -32,6 +32,9 @@ const MARKER = "/* ==== REACT ISLAND — vendor and components are spliced below
 const PARTS = [
   { name: "react-18.3.1.umd.min.js",     from: path.join("vendor", "react-18.3.1.umd.min.js") },
   { name: "react-dom-18.3.1.umd.min.js", from: path.join("vendor", "react-dom-18.3.1.umd.min.js") },
+  /* Cast before LockBar: LockBar renders OCCVM_CAST, and the island's own guard forbids a bare button
+     anywhere else, so every later component depends on this one being defined first. */
+  { name: "Cast.js",                     from: path.join("react", "Cast.js") },
   { name: "LockBar.js",                  from: path.join("react", "LockBar.js") },
 ];
 /* A part removed from PARTS above goes here, so its block leaves index.html rather than shipping

@@ -64,6 +64,10 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
       !!w.document.getElementById("locknote") && !!w.document.getElementById("lockSwing") && !w.document.getElementById("lockResume"));
     T("SWING is a real button, so the spine's 44px interaction floor reaches it (L8)",
       w.document.getElementById("lockSwing").tagName === "BUTTON" && w.document.getElementById("lockSwing").type === "button");
+    /* Rendered through OCCVM_CAST and marked `action`: it fires, it does not hold, so it announces no
+       pressed state it would not maintain. RESUME, not a second press of SWING, is what undoes it. */
+    T("and it announces no state it does not hold (Cast's rule, on the real DOM)",
+      !w.document.getElementById("lockSwing").hasAttribute("aria-pressed"));
 
     g("S.k.cur={ticker:'KXBTC15M-T',strike:100000,open:Date.now(),close:Date.now()+9e5}; lockSwing();");
     await new Promise(r => setTimeout(r, 30));
