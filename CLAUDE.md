@@ -56,6 +56,8 @@ GhostArchitecture/Btc-terminal   (main)
 │   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
 │   ├─ floor.js                  the ambient floor (L13) — shared, spliced into Rhyme, NOT into this
 │                                tool: L13 still withholds the floor here (§12's 2.31 entry)
+│   ├─ glass.js                  the vessel (L2's other half) — borosilicate, spliced into the
+│                                reference surface only, worn by no tool (§12's 2.32 entry)
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
 │   ├─ tools/derive-pigments.js  generates pigments.js: authored roles in, derived ramps out, checks printed
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
@@ -276,8 +278,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **927 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 28, h-protocol 89, prereg 84,
-occvm 509, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
+currently **968 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 28, h-protocol 89, prereg 84,
+occvm 550, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
 
@@ -2582,6 +2584,53 @@ this part does not matter and nothing asserts an order.
 UNADOPTED` and the register is **9 in force, 0 diverged** — unchanged, which is the point. Granting the
 floor here is a change to the law and is not in this commit; see §13.6 item 4 for what it costs and
 §13.7 for what the first attempt measured.
+
+**2.32 — the vessel, which is L2's other half and was already the reference.** From
+`GLASS-VESSEL-PLAN.md`, step 1 of its own build order: Fresnel rim, no displacement. L2 has said since
+2.7 that the plan-view radius is the vessel's and the edge is the fluid's; the fluid's half was derived
+at 2.10 and worn at 2.11, and the vessel's stayed authored. `occvm/glass.js` derives it.
+
+**No new material and no new optics, which is the whole reason this was cheap.** `fresnel(n, thetaDeg)`
+has shipped in `rheology.js` since the crystal port, and `--occvm-gloss` = .685 has been computed
+against polished glass since 2.10 — ASTM D523 fixes the 60° standard as polished black glass at
+nD 1.567, defined as 100 GU. **The system has been measuring itself against glass since the wet edge**;
+this gives the reference a body. Borosilicate nD 1.474 and a 2.0 mm wall are sourced, the wall to the
+container-glass standard band because no lamp vessel spec is published.
+
+**The plan's §3.2 reproduces exactly** — every angle, every reflectance, every displacement, recomputed
+from the shipped `fresnel()` rather than compared against its table, because a guard that matched the
+document digit for digit would pin the document instead of the code. Its one slip is cosmetic: 34.9°
+where the refracted angle at u = 0.85 is 35.2°.
+
+**Its §4 is wrong, and in the direction a safety threshold must not be.** The plan puts the width floor
+at 48 px from a displacement range of 3.63 px across u = 0.85 → 1.0. **3.63 is `shiftPx(0.85)` itself**
+— the displacement *at* the band's inner edge, not the change *across* the band. The range is
+`shiftPx(1) − shiftPx(0.85) = 3.9445`, the floor is **52.6 px**, and every row of its table is 8.66%
+optimistic. Derived in the part from its two inputs, and pinned as arithmetic rather than as a digit.
+
+**The rim's stop set is adaptive, and both uniform schemes were measured before that was written.**
+A CSS gradient interpolates linearly between stops and this curve does not; uniform in *position*
+plateaus at |err| 0.047 however many stops are added, because no even sampling resolves a vertical, and
+uniform in *reflectance* fixes the rim and moves the failure to 0.021 at u ≈ 0.63 by leaving the flat
+70% as one chord. Subdividing any segment that exceeds the **8-bit alpha quantum** costs one recursion:
+**16 stops, max chord error 0.003755 against a tolerance of 0.003922**, and no authored step count.
+
+*The rim's colour is the light's and is resolved, not authored* — 2.4's finding that a specular return
+carries the source's colour, so it reads `--bone` at call time and paints **nothing** if that token is
+absent, which is L6's refusal applied to a highlight. Measured on the reference surface it resolves to
+`rgba(237,225,202)` — the sundial's live value, not the `:root` literal — so §7 item 2's *"the vessel's
+highlight must track the one light"* is satisfied by construction rather than by a later fix.
+
+*Two guards were tripped and both were right.* The reference surface refused a `#ffffff` in its own JS
+(1.8: it holds no values of its own), and the parts-parity guard refused a part on the reference
+surface that no tool carries. That second one forbids exactly what 2.10 did on purpose, so it is
+re-authored asymmetrically: every part the tool carries must appear there (unchanged — a part with no
+specimen cannot be seen to stop applying), and an extra is permitted only if it is on a pinned list,
+the D14 treatment. `PROTOTYPED_AHEAD = ["glass.js"]`.
+
+**Worn by no tool.** Only the rim exists and it is colour with no spatial extent, hence no resolution
+floor; the displacement map must clear 52.6 px with its sub-floor degradation built at the same time.
+`test/occvm.js` **509 → 550**; §6's total **927 → 968**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

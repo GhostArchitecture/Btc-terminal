@@ -420,12 +420,29 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the reference surface exists", fs6.existsSync(REF));
   const ref = fs6.existsSync(REF) ? fs6.readFileSync(REF, "utf8") : "";
 
-  /* derived, not a literal: the reference must carry exactly the parts the tool carries. A hardcoded
-     count is one more authored number to forget — it survived 1.8 and had to be hand-edited at 2.0. */
+  /* derived, not a literal: a hardcoded count is one more authored number to forget — it survived 1.8
+     and had to be hand-edited at 2.0.
+
+     2.32 RELAXES THIS IN ONE DIRECTION AND TIGHTENS IT IN THE OTHER, and the asymmetry is the point.
+     It read "exactly the parts the tool carries", which forbids the thing 2.10 did on purpose: the
+     meniscus was derived and adopted HERE FIRST, prototyped on the conformance surface a release
+     before either tool wore it, because that is what a surface whose whole job is being looked at is
+     for. glass.js is the same move. So: every part the tool carries must appear here — a part the tool
+     has and this surface does not is a part that cannot be seen to stop applying, which is the failure
+     the original guard was written against and it is unchanged. An EXTRA part is permitted only if it
+     is on the list below, which is the D14 treatment: the set is pinned in both directions, so a part
+     that quietly stays un-adopted is as loud as one that quietly appears. */
+  const PROTOTYPED_AHEAD = ["glass.js"];   /* L2's vessel half — see the 2.32 block at the foot */
   const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0).map(p => p.name).sort();
   const toolParts = PARTS6.filter(p => p.target === "index.html").map(p => p.name).sort();
-  T("the reference surface carries exactly the parts the tool carries",
-    refParts.join(",") === toolParts.join(","), refParts.join(",") + " vs " + toolParts.join(","));
+  const missing = toolParts.filter(n => !refParts.includes(n));
+  const extra = refParts.filter(n => !toolParts.includes(n)).sort();
+  T("every part the tool carries has a specimen surface to be seen on", missing.length === 0, missing);
+  T("and the parts prototyped here ahead of adoption are exactly the ones on the record",
+    extra.join(",") === PROTOTYPED_AHEAD.slice().sort().join(","), { extra, record: PROTOTYPED_AHEAD });
+  T("the reference surface carries exactly the parts the tool carries, plus those",
+    refParts.join(",") === toolParts.concat(PROTOTYPED_AHEAD).sort().join(","),
+    refParts.join(",") + " vs " + toolParts.concat(PROTOTYPED_AHEAD).sort().join(","));
   for (const name of refParts) {
     const f = fence6(name);
     const src = fs6.readFileSync(path6.join(ROOT6, "occvm", name), "utf8");
@@ -1861,5 +1878,164 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     lift([0x09, 0x08, 0x0d], b26) > 0.95 * b26 && substrate < 0.01);
 }
 
+
+/* ── 2.31/2.32 — the spliced parts that read a sibling, and the vessel ─────────────────────────────
+ * Two parts now depend on another part at CALL time: occvm/floor.js reads OCCVM_GLOBULES and
+ * OCCVM_RHEOLOGY, occvm/glass.js reads OCCVM_RHEOLOGY. The splicer inserts every part after one
+ * anchor, so a part's position in the file is insertion history rather than the list's order, and a
+ * part that captured a sibling at LOAD would be the 2.0 fracture.js defect: it captured a null
+ * OCCVM_VEINS, threw on every call in the browser, and passed in Node because `require` resolved what
+ * the page could not. The property that makes position irrelevant is that nothing is captured at load,
+ * and it is DRIVEN here rather than read, because a regex cannot tell a reference inside a function
+ * body from one outside it.
+ */
+{
+  const fs = require("fs"), path = require("path"), vm = require("vm");
+  const R7 = path.resolve(__dirname, "..");
+  for (const part of ["floor.js", "glass.js"]) {
+    const src = fs.readFileSync(path.join(R7, "occvm", part), "utf8");
+    const bare = { Math, console };
+    bare.globalThis = bare;
+    vm.createContext(bare);
+    let threw = null;
+    try { vm.runInContext(src, bare); } catch (e) { threw = String(e && e.message || e); }
+    T(`${part} evaluates with no sibling global in scope`, threw === null, threw);
+    const g = part === "floor.js" ? bare.OCCVM_FLOOR : bare.OCCVM_GLASS;
+    T(`${part} still exposes its API after that`, !!g && typeof g === "object", Object.keys(g || {}).length);
+  }
+  /* and the floor degrades rather than throwing when the substance really is absent */
+  {
+    const src = fs.readFileSync(path.join(R7, "occvm", "floor.js"), "utf8");
+    const bare = { Math }; bare.globalThis = bare; vm.createContext(bare); vm.runInContext(src, bare);
+    T("with no substance the floor's curve is the straight ramp, not an exception",
+      bare.OCCVM_FLOOR.cyclePos(0.25) > 0 && bare.OCCVM_FLOOR.cyclePos(0.99) === 0);
+  }
+}
+
+/* ── OCCVM-L2, the vessel's half (2.32) ───────────────────────────────────────────────────────────
+ * L2 has said since 2.7 that the plan-view radius is the VESSEL'S and the edge is the FLUID'S. The
+ * fluid's half was derived at 2.10 and worn at 2.11; this is the vessel's. Everything below is
+ * recomputed from the shipped fresnel() rather than compared against a typed table — GLASS-VESSEL-PLAN
+ * §3.2 is a table, and a guard that matched it digit for digit would be pinning the document instead
+ * of the code.
+ */
+{
+  const fs = require("fs"), path = require("path");
+  const R8 = path.resolve(__dirname, "..");
+  global.OCCVM_RHEOLOGY = require(path.join(R8, "occvm", "rheology.js"));
+  const G = require(path.join(R8, "occvm", "glass.js"));
+  const RH = global.OCCVM_RHEOLOGY;
+
+  /* SOURCED, and named as sourced: borosilicate rather than soda-lime's 1.520, and the bottom of the
+     container-glass standard wall band rather than a lamp spec, because no lamp spec is published. */
+  T("the vessel is borosilicate at the sourced index", G.VESSEL.ri === 1.474);
+  T("and its wall is the sourced 2.0 mm, carried in mm and converted here",
+    G.VESSEL.wallMm === 2.0 && Math.abs(G.wallPx() - 2.0 * 96 / 25.4) < 1e-9);
+
+  /* THE COINCIDENCE, pinned in both directions. 2.0 mm is 7.559 px and the substance's capillary
+     length is 7.148 px — 1.06x apart, under half a pixel — and they are unrelated: surface tension
+     over density on one side, a glass manufacturing standard on the other. Borrowing one for the other
+     is the cross-domain reuse this project has caught before, so the guard asserts they are CLOSE (so
+     a future reader is not surprised) and that neither is computed from the other (so nobody makes it
+     a dependency). */
+  {
+    const lc = RH.radiusPx(RH.SUBSTANCE);   /* the meniscus in px, from the part that owns it */
+    const wall = G.wallPx();
+    T("the wall and the capillary length land within 10% of each other, which is the trap",
+      Math.abs(wall / lc - 1) < 0.10, { wall: +wall.toFixed(4), lc: +lc.toFixed(4), ratio: +(wall / lc).toFixed(4) });
+    const src = fs.readFileSync(path.join(R8, "occvm", "glass.js"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    T("and the wall is not derived from the substance: no lc, no gamma, no tau0 in the code",
+      !/meniscus|capillar|gamma|tau0|SUBSTANCE\.(gamma|tau0)/.test(src));
+  }
+
+  /* THE INCIDENCE IS THE OFFSET. A cylinder has a continuum of incidences, so there is no angle table
+     to author — and rheology.js's CUT = {front:0, chamfer:45, edge:80} is a FLAT-FACE convention
+     inherited from the crystal that must not leak in here. */
+  for (const u of [0, 0.25, 0.5, 0.7, 0.85, 0.95, 0.99]) {
+    const want = Math.asin(u) * 180 / Math.PI;
+    T(`sin(theta) = u at u=${u}`, Math.abs(G.incidence(u) - want) < 1e-9);
+  }
+  {
+    const src = fs.readFileSync(path.join(R8, "occvm", "glass.js"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    T("the crystal's flat-face angle table does not reach the vessel", !/\bCUT\b/.test(src));
+  }
+
+  /* THE OPTICS ARE THE SHIPPED fresnel(), not a second implementation */
+  for (const u of [0, 0.5, 0.85, 0.99])
+    T(`reflectance at u=${u} is fresnel(n, asin(u))`,
+      Math.abs(G.reflectance(u) - RH.fresnel(G.VESSEL.ri, G.incidence(u))) < 1e-12);
+  /* and the shape is the finding: flat across the middle, vertical at the rim */
+  T("R is flat to within a tenth of a point across the middle 70%",
+    Math.abs(G.reflectance(0.7) - G.reflectance(0)) < 0.01, +(G.reflectance(0.7) - G.reflectance(0)).toFixed(4));
+  T("and past the turn it goes vertical: 5% by u=0.74, 10% by 0.89, 20% by 0.95, 45% by 0.99",
+    G.reflectance(0.74) >= 0.05 && G.reflectance(0.89) >= 0.10 &&
+    G.reflectance(0.95) >= 0.19 && G.reflectance(0.99) >= 0.45);
+
+  /* THE INNER FACE IS WHY THE FLOOR SURVIVES BEING PUT BEHIND GLASS, and it is derived from the
+     substance's own index so a substance swap moves it rather than leaving a stale constant. */
+  {
+    const inn = G.inner();
+    T("the inner interface is glass->substance, not glass->air",
+      inn.nSubstance === RH.SUBSTANCE.ri && Math.abs(inn.nRel - G.VESSEL.ri / RH.SUBSTANCE.ri) < 1e-12);
+    T("its reflectance is one part in a thousand — the globules are seen essentially directly",
+      inn.R0 < 0.0015, +inn.R0.toFixed(6));
+    T("and total internal reflection has a computed angle rather than an authored one",
+      Math.abs(inn.criticalDeg - Math.asin(RH.SUBSTANCE.ri / G.VESSEL.ri) * 180 / Math.PI) < 1e-9);
+  }
+
+  /* THE RESOLUTION FLOOR, and the plan got it wrong in the one direction it must not.
+     GLASS-VESSEL-PLAN §4 puts the floor at 48 px from a displacement range of 3.63 px across
+     u = 0.85 -> 1.0. 3.63 is shiftPx(0.85) itself — the displacement AT the band's inner edge, not the
+     change ACROSS the band. The range is shiftPx(1) - shiftPx(0.85) = 3.9445 and the floor is 52.6 px,
+     so every row of that table is 8.66% optimistic and a SAFETY threshold reads safer than it is.
+     Derived here from its two inputs so it cannot be typed wrong again. */
+  T("the shift range is the change across the band, not the value at its edge",
+    Math.abs(G.shiftRangePx() - (G.shiftPx(1) - G.shiftPx(G.U_RIM))) < 1e-12 &&
+    Math.abs(G.shiftRangePx() - 3.9445) < 0.001, +G.shiftRangePx().toFixed(4));
+  T("and it is NOT shiftPx(U_RIM), which is the number the plan used",
+    Math.abs(G.shiftRangePx() - G.shiftPx(G.U_RIM)) > 0.3, +G.shiftPx(G.U_RIM).toFixed(4));
+  T("the floor is the range over the band fraction, and it is 52.6px not 48",
+    Math.abs(G.floorPx() - G.shiftRangePx() / ((1 - G.U_RIM) / 2)) < 1e-12 &&
+    G.floorPx() > 52 && G.floorPx() < 53, +G.floorPx().toFixed(2));
+  T("U_RIM is the only authored number here and the floor scales with it",
+    G.U_RIM === 0.85 && Math.abs(G.floorPx() * ((1 - G.U_RIM) / 2) - G.shiftRangePx()) < 1e-12);
+
+  /* THE STOP SET IS ADAPTIVE, and the tolerance is the target's own quantum rather than a taste.
+     Measured before it was written: uniform in POSITION plateaus at |err| 0.047 however many stops are
+     added, because no even sampling resolves a vertical; uniform in REFLECTANCE fixes the rim and
+     moves the failure to 0.021 in the middle, because it leaves the flat 70% as one chord. */
+  {
+    const st = G.rimStops();
+    const R = u => G.reflectance(Math.min(u, G.U_MAX));
+    let worst = 0;
+    for (let i = 0; i < st.length - 1; i++)
+      for (let j = 1; j < 60; j++) {
+        const t = j / 60, u = st[i].u + (st[i + 1].u - st[i].u) * t;
+        worst = Math.max(worst, Math.abs(st[i].a + (st[i + 1].a - st[i].a) * t - R(u)));
+      }
+    T("the gradient's chord never departs from the curve by more than the 8-bit alpha quantum",
+      worst <= G.ALPHA_TOL, { worst: +worst.toFixed(6), tol: +G.ALPHA_TOL.toFixed(6), stops: st.length });
+    T("the stop count is derived from that tolerance, not authored",
+      st.length > 8 && st.length < 40 && G.rimStops(1 / 64).length < st.length,
+      { atQuantum: st.length, looser: G.rimStops(1 / 64).length });
+    T("the profile is the curve: no easing, no normalisation, alpha IS the reflectance",
+      Math.abs(st[0].a - G.reflectance(0)) < 1e-12 && st[st.length - 1].a === G.reflectance(G.U_MAX));
+  }
+
+  /* PROTOTYPED ON THE REFERENCE SURFACE AND WORN BY NO TOOL — the 2.10 shape exactly, where the
+     meniscus was adopted on this surface first and both tools took it one release later. */
+  {
+    const ref = fs.readFileSync(path.join(R8, "occvm", "reference", "index.html"), "utf8");
+    const btc = fs.readFileSync(path.join(R8, "index.html"), "utf8");
+    T("the vessel is spliced into the reference surface", ref.includes("OCCVM SPINE glass.js"));
+    T("and into no tool yet", !btc.includes("OCCVM SPINE glass.js"));
+    T("the reference surface carries a live #l2glass specimen", ref.includes('id="l2glass"'));
+    /* the specimen prints what it measures. 2.14's defect was a typed sentence inside the instrument
+       built to make typed sentences impossible, so the numbers on the page come from the part. */
+    T("and it prints the figures from the part rather than typing them",
+      /G\.floorPx\(\)/.test(ref) && /G\.shiftRangePx\(\)/.test(ref) && /inn\.criticalDeg/.test(ref));
+  }
+}
 
 process.exit(done());

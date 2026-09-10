@@ -152,6 +152,51 @@ corner radius belongs to whatever contains it. That is an authored quantity, per
 Rhyme's is tight (2–4px). Two vessels, one fluid. The conformance block above lists each tool's radii as
 the record of its vessel; neither is a violation of the other.
 
+**The vessel has a material too, and from 2.32 it is derived rather than authored.** The paragraph
+above records the vessel's *radius* per tool and declines to judge it. What it left unsaid for
+twenty-five releases is what the vessel is *made of* — and the answer was already in the file. A lava
+lamp is not wax and liquid, it is wax and liquid **in glass**; `fresnel(n, thetaDeg)` has shipped in
+`occvm/rheology.js` since the crystal port; and `--occvm-gloss` has been computed against polished
+glass since 2.10, because ASTM D523 fixes the 60° standard as polished black glass at nD 1.567 defined
+as 100 GU. This system had been measuring itself against glass since the wet edge. `occvm/glass.js`
+gives that reference a body: **borosilicate, nD 1.474, 2.0 mm wall** — sourced, the wall to the
+container-glass standard band (2.0–3.0 mm standard, below 2.0 lightweight) because no lamp-specific
+vessel spec is published.
+
+*For a cylinder seen head-on the incidence **is** the offset*, `sin θ = u`, so there is no angle table
+to author and `CUT`'s three flat-face angles are the crystal's and are not used. Two independent
+calculations then say the same thing: reflectance is flat near **3.7%** across the middle 70% and goes
+vertical past the turn — 5% at u = 0.74, 10% at 0.89, 20% at 0.95, 45% at 0.99 — and Snell's
+displacement runs half a pixel at quarter-width to 6.5 px at the silhouette. **The vessel announces
+itself at its edges and gets out of the way in the middle.** That is derived, not a preference.
+
+*And the inner face is why a floor survives being put behind glass.* The interface that matters for
+what is inside is glass→substance, not glass→air: `n_rel = 1.0673`, `R(0°) = 0.00106` — one part in a
+thousand — so the globules are seen essentially directly rather than through two surfaces of
+distortion. Total internal reflection at **69.54°** is the mechanism behind a real vessel's rim reading
+mirror-bright while its face reads clear, and it is a computed angle rather than an authored effect.
+
+*One authored number and one corrected one.* `U_RIM = 0.85` is where the curve turns, named authored at
+its declaration, and the width floor for the displacement half scales with it. That floor is
+**52.6 px**, not the 48 px `GLASS-VESSEL-PLAN.md` §4 states: the plan's displacement range of 3.63 px is
+`shiftPx(0.85) = 3.6145` itself — the value *at* the band's inner edge rather than the change *across*
+the band, which is `shiftPx(1) − shiftPx(0.85) = 3.9445`. Every row of that table is 8.66% optimistic,
+and a safety threshold reading safer than it is, is the one direction the error must not go. Derived in
+the part from its two inputs so it cannot be typed wrong again.
+
+*A coincidence, recorded so nobody makes it a dependency.* The 2.0 mm wall is **7.559 px** and λc is
+**7.148 px** — 1.06× apart, 0.41 px, under half a pixel on screen. They are unrelated: surface tension
+over density on one side, a glass manufacturing standard on the other. Borrowing λc for the wall would
+be exactly the cross-domain reuse this project has caught before, and it is not even necessary. The
+guard asserts they are close **and** that neither is computed from the other.
+
+**Prototyped on the reference surface and worn by no tool**, which is the shape 2.10 established: the
+meniscus was adopted there a release before either tool took it. Only the **rim** ships — a colour
+operation with no spatial extent and therefore no resolution floor at all, its stop set subdivided
+adaptively until the chord never departs from the curve by more than the 8-bit alpha quantum, so the
+stop count is derived and no step count is authored. The **displacement map** is a separate decision
+and must clear the 52.6 px floor with its sub-floor degradation built at the same time, not after.
+
 **The edge is the fluid's, and it is derived.** Where a fluid meets a wall it forms a meniscus of width
 `λc = √(γ/ρg)` — the capillary length, **7.15 px** for the substance in force (`occvm/rheology.js`,
 `radiusPx()`), and not fitted: it is what the substance's density and surface tension produce. On a

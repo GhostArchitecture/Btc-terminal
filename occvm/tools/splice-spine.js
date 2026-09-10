@@ -88,6 +88,9 @@ const PARTS = IS_RHYME ? [
   { name: "globules.js",  target: REF, anchor: "<script>" },
   { name: "pigments.js",  target: REF, anchor: "<script>" },
   { name: "yield.js",     target: REF, anchor: "<script>" },
+  /* 2.32 — the vessel is prototyped on the reference surface first, exactly where the meniscus was at
+     2.10 before both tools wore it at 2.11. It is spliced into no tool yet. */
+  { name: "glass.js",     target: REF, anchor: "<script>" },
 ];
 
 /* A RETIRED part is one the spine no longer carries. Its fenced block is REMOVED from every target it was
