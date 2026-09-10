@@ -2440,6 +2440,7 @@ const CF_CONST=["coinbase","kraken","bitstamp","gemini"];   /* CF Benchmarks BRT
 
 /* ---------------------------------------------------------------- state */
 const S={
+  frameSkip:0,                 /* frames the rAF loop declined because the canvas had no area to draw into */
   src:{},               // id -> {price,t,latency,status,errN}
   tape:[],              // validated leader-book prints {t,p,src}
   idx:[],               // settlement index proxy series {t,p,n} — median of fresh CF constituents
@@ -4874,9 +4875,28 @@ function renderXTData(){
   $("xtnote").textContent="pinned "+S.xt.pinned.length+" \u00b7 target coverage 90%";
 }
 function render(){ renderSweep(); }
+/* A frame is skipped only when it CANNOT produce a pixel, and that is the whole of the rule.
+   §10.5 recorded that "the rAF loop keeps rendering the sweep at zero width while the DATA view hides
+   the canvas" and left it as a nit. Measured in Chromium: in the DATA view the canvas is 0x0 and the
+   loop still issued 130 stroke calls in 500 ms, drawing into a zero-width backing store — and worse,
+   frame() resizes that store to 0 on every one of those passes. renderSweep costs a median 0.80 ms
+   (p90 1.0, max 7.8) with a live-like tape, so this is ~2.7% of a core spent where no pixel can result.
+
+   WHAT IS NOT GATED, and it is the more interesting half. REACT-MAP §2 proposes gating the redraw on
+   "data actually having changed", on the reading that render() runs every 33 ms "whether or not any
+   tick arrived". Measured: with the tape FROZEN and only the clock running, 10 of 12 consecutive
+   frames 40 ms apart are distinct — the sweep scrolls, so the frame IS the data, and the two that
+   matched landed inside the same scroll pixel rather than idling. Gating on data would freeze a
+   moving chart under a moving clock. Under a rect lock the domain is pinned and 10 of 10 frames are
+   identical, which is real waste — but no sound "nothing changed" signal exists here short of a
+   version counter across every writer of S, and a digest that can MISS a write puts a stale chart
+   under §5's own rule about the most dangerous bug this tool can have. Recorded, not taken.
+
+   The skip is counted rather than silent: a gate nobody can measure is a gate nobody can audit. */
 let _lastFrame=0;
+function chartCanDraw(){ return !document.hidden && cv.clientWidth>0 && cv.clientHeight>0; }
 function loop(ts){
-  if(ts-_lastFrame>33){ _lastFrame=ts; render(); }
+  if(ts-_lastFrame>33){ _lastFrame=ts; if(chartCanDraw()) render(); else S.frameSkip++; }
   requestAnimationFrame(loop);
 }
 

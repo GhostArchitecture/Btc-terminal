@@ -22,6 +22,12 @@ const dom = new JSDOM(html, {
   virtualConsole: vc,
   beforeParse(window) {
     window.HTMLCanvasElement.prototype.getContext = function () { return this._ctx || (this._ctx = mkCtx()); };
+    /* jsdom performs no layout, so every clientWidth is 0 and the rAF loop's "can this frame produce a
+       pixel" gate would skip every frame. A harness that wants to drive a layout-dependent path has to
+       supply the layout; _w/_h let a test put the canvas back to zero area deliberately. */
+    for (const k of ["Width", "Height"]) Object.defineProperty(window.HTMLCanvasElement.prototype, "client" + k, {
+      configurable: true, get() { const v = this["_" + k.toLowerCase()[0]]; return v === undefined ? (k === "Width" ? 800 : 340) : v; },
+    });
     window.WebSocket = class { constructor(url) { this.url = url; } send() {} close() {} addEventListener() {} };
     window.fetch = (u) => { fetches.push(String(u)); return Promise.reject(new TypeError("network blocked in harness")); };
     window.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
@@ -46,6 +52,21 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
   try { rafs[0](1000); } catch (e) { frameErrors.push(String(e.stack || e)); }
   T("one canvas frame renders without throwing", frameErrors.length === 0 && rafs.length >= 2, frameErrors);
   T("canvas drew the idle header", w.document.getElementById("chart")._ctx._calls.some(c => c.op === "fillText"), null);
+  /* §10.5's recorded nit, closed and measured: a frame that cannot produce a pixel is not drawn, and
+     the refusal is counted rather than silent. Driven both ways on the shipped loop, because a gate
+     asserted only in its skipping direction is a gate that could be stuck. */
+  {
+    const chart = w.document.getElementById("chart");
+    const before = g("S.frameSkip"), calls = chart._ctx._calls.length;
+    chart._w = 0;                                   /* the DATA view: the canvas is laid out at 0x0 */
+    rafs[0](2000);
+    const skipped = g("S.frameSkip") === before + 1 && chart._ctx._calls.length === calls;
+    chart._w = undefined;                           /* and back */
+    rafs[0](3000);
+    T("a frame with no area to draw into is skipped and counted, and drawing resumes when it returns",
+      skipped && g("S.frameSkip") === before + 1 && chart._ctx._calls.length > calls,
+      { before, after: g("S.frameSkip"), calls, now: chart._ctx._calls.length });
+  }
   const meta = w.document.querySelector('meta[name="theme-color"]');
   T("theme-color meta is the obsidian value (§8 item resolved)", meta && meta.content === "#1b1a22", meta && meta.content);
   T("verdict reads NOT READY on an empty ledger", /NOT READY/.test(w.document.getElementById("verdictbox").textContent), w.document.getElementById("verdictbox").textContent);

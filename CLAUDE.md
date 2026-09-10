@@ -15,7 +15,7 @@ references, the spliced `pigments.js` fence, three `confchip` sites, four `--glo
 the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
 the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,013 lines, 814 KB, 301 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,033 lines, 816 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
@@ -274,7 +274,7 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **924 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 27, h-protocol 89, prereg 84,
+currently **927 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 28, h-protocol 89, prereg 84,
 occvm 509, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
@@ -519,6 +519,11 @@ Counts are surfaced in the swing and journal panel notes, so an excluded row is 
 - **`indexProxy`'s `fallback:true` flag is write-only.** Nothing downstream of `indexProxy` reads it, so `S.idxPx`
   can silently become a single-book price with no trace beyond the "(1 books …)" count already shown in the arm
   bar. A full fix needs a UI decision (where does "the index is degraded" belong?), not just a code change.
+- **The rAF loop rendering the sweep at zero width in the DATA view** — closed at §13.5 and measured on
+  the way: 130 stroke calls in 500 ms into a 0×0 canvas, with `frame()` resizing the backing store to 0
+  on each pass. The loop now declines a frame that cannot produce a pixel and counts the refusal in
+  `S.frameSkip`: 0 strokes and 14 skips over the same 500 ms, 70 strokes and 0 skips on either side of
+  the round trip.
 - **The 1 Hz loop's `Math.floor(Date.now()/1000) % N === 0` duty gates** (viaSample every 5 s, `renderSwing` every
   2 s, `renderJournal` every 10 s, `renderVerdict` every 30 s, `sunTick` every 60 s) can skip a beat when the
   interval drifts across a second boundary (a throttled/backgrounded tab). None of these duties are
@@ -2705,13 +2710,60 @@ expression has changed, and says *skipped, not passed* when it is absent.
 pinned session seed: **1050×53, 0 pixels moved**; SWING 87×44, RESUME 85×44, no page errors. A refactor
 that changes a pixel is not a refactor.
 
-### 13.5 What is next, and what is not
+### 13.5 The chart: one gate taken, one refused, and the island deferred
+
+REACT-MAP §8 puts the chart third, wrapping `<canvas id="chart">` in a component that owns it via a ref
+and adding `Threads`' quiet-mode scheduling to `loop`. **The scheduling half shipped. The ownership half
+did not, and the plan's stated reason for the scheduling half is refuted by measurement.**
+
+**What was refused, with the numbers.** REACT-MAP reads `loop` as running `render()` every 33 ms
+*"whether or not any tick arrived"* and proposes gating on data having changed. Driven in Chromium with
+a live-like tape and the tape then **frozen** — only the clock running — **10 of 12 consecutive frames
+40 ms apart are distinct.** The sweep scrolls, so the frame *is* the data; the two that matched landed
+inside the same scroll pixel rather than idling. A data gate would freeze a moving chart under a moving
+clock. Under a **rect lock** the domain is pinned and **10 of 10 frames are identical** — that waste is
+real, and it is still not taken, because no sound "nothing changed" signal exists here short of a
+version counter across every writer of `S`, and a digest that can miss a write puts a stale chart under
+the one rule §5 calls the most dangerous bug this tool can have.
+
+**What shipped is the gate the plan did not name and §10.5 already had on the record**: a frame is
+skipped only when it *cannot produce a pixel*. Measured before: in the DATA view the canvas is laid out
+at 0×0 and the loop still issued **130 stroke calls in 500 ms**, with `frame()` resizing the backing
+store to 0 on every pass. Measured after: **0 strokes and 14 skips** over the same window, **70 strokes
+and 0 skips** on either side of the round trip, backing store restored to 1050×1110. `renderSweep`
+costs a median **0.80 ms** (p90 1.0, max 7.8) with a live-like tape, so the reclaimed slice is ~2.7% of
+a core spent where no pixel could result. The refusal is **counted** in `S.frameSkip`, because a gate
+nobody can measure is a gate nobody can audit, and `test/page-load.js` drives it **both ways** — a gate
+asserted only in its skipping direction is a gate that could be stuck.
+
+*jsdom performs no layout, so every `clientWidth` there is 0 and the gate would skip every frame.* The
+harness now supplies the layout it lacks, and a test puts the canvas back to zero area deliberately.
+That is the correct division: a harness that wants to drive a layout-dependent path has to provide the
+layout, not have the page pretend it does not need one.
+
+**The island is deferred, and this is the cost rather than a preference.** Making the canvas
+React-rendered means `const cv=$("chart"), cx=cv.getContext("2d")` at `index.html:4526` — a top-level
+const binding the element **and its 2d context** at parse — can no longer bind at parse. That is the
+same trap as §13.2's orphaned listeners, one element along and far worse: `cx` has **180 use sites
+across 7 functions**, and the canvas's own pointer gestures (`:8420`, the drag that carries 2.16's
+velocity-derived relax) attach to `$("chart")` at evaluation time and would find null. It also breaks
+the harness seam: `test/sweep.js`'s 33 assertions read the recorded 2d context that `load()` binds
+through that same const, and the whole call-keyed colour truth table — §5's own guard against the most
+dangerous bug here — hangs off it.
+
+So the island would cost a rewrite of the canvas seam in the harness, a move of the drag gesture, and a
+relaxation of a parse-time context binding, on the tool's most dangerous surface. Its stated benefit was
+the data gate, which is refuted; the remaining benefit is proving the pattern extends to a hot-path
+element. **That is a bad trade at this size and it is the owner's to make, not mine** — it is left
+undone and named here rather than quietly dropped.
+
+### 13.6 What is next, and what is not
 
 `REACT-MAP.md` §8's order stands, with one correction and one confirmation:
 
 2. **`Cast`** — done, §13.4.
-3. **Chart island** — `Threads`' quiet-mode scheduling over `loop`, which currently calls `render()` every
-   33 ms whether or not a tick arrived. `renderSweep` is untouched.
+3. **Chart island** — the scheduling half is done and the ownership half is deferred with its cost
+   measured, §13.5. `renderSweep` is untouched, as the plan asks.
 4. **Ambient floor** — REACT-MAP lists a prerequisite: *"requires the `PAL`/sundial fix first."*
    **That prerequisite is already met** — 2.27 wired ten of `PAL`'s thirteen keys to the resolved page on
    `sunTick`'s beat and on every palette change. The floor's own blocker is L13, which withholds motion
