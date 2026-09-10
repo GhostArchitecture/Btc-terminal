@@ -2242,4 +2242,48 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   }
 }
 
+
+/* 2.38 — THE SHARED PARTS ARE COPIED BETWEEN THE REPOSITORIES BY HAND, AND NOTHING CHECKED IT.
+   occvm/ is the spine: L3 says one fact has one owner, and a part carried twice is one fact written
+   twice the moment the two copies differ. Every other duplication in this system has a gate —
+   SPINE.md is asserted byte-identical, the React vendor is asserted byte-identical to the sibling's,
+   the splicers all re-splice and diff — and the parts themselves, which are the actual shared code,
+   had none. The seam has been open since occvm/ existed.
+   IT WAS ALREADY DRIFTING WHEN THIS WAS WRITTEN. `glass.js` differed: the sibling carried the
+   PRE-CORRECTION copy that authors `#ffffff` as the rim colour, while this repo carries the one that
+   resolves `--bone` at call time and paints NOTHING when the token is absent. That correction is
+   recorded in §12's 2.32 entry as made — it landed here and never reached there, in two commits that
+   share a message. It stayed invisible because glass.js is spliced nowhere in the sibling, so no
+   measure ever read it; a dormant divergence is still a divergence, and the day it was worn it would
+   have shipped a bare white literal into a tool L6 governs.
+   The set is taken from the FILESYSTEM INTERSECTION rather than a typed list, because a typed list of
+   parts is precisely what went stale twice in the token auditor (§12, 2.27). */
+{
+  const fsP = require("fs"), pathP = require("path");
+  const here = pathP.join(__dirname, "..", "occvm");
+  const there = pathP.join(__dirname, "..", "..", "Rhyme-Instrument", "occvm");
+  if (!fsP.existsSync(there)) {
+    console.log("  skipped (not passed): the sibling repository is absent, so part parity is unchecked");
+  } else {
+    /* BTC-only by design and named so the guard cannot quietly absorb a part going missing:
+       the numeric face ships only where mono is rendered (§12, 1.3). Everything else that exists in
+       both must be byte-identical. */
+    const BTC_ONLY = ["mono.css", "mono.head.css"];
+    const pick = d => fsP.readdirSync(d).filter(f => /\.(js|css)$/.test(f));
+    const mine = pick(here), theirs = new Set(pick(there));
+    const shared = mine.filter(f => theirs.has(f));
+    const missing = mine.filter(f => !theirs.has(f) && BTC_ONLY.indexOf(f) < 0);
+    T("every part this tool carries is either shared or a named exception: " + missing.join(","),
+      missing.length === 0);
+    T("the BTC-only list is exactly the parts the sibling really lacks",
+      BTC_ONLY.every(f => !theirs.has(f) && mine.indexOf(f) >= 0));
+    const drifted = shared.filter(f =>
+      !fsP.readFileSync(pathP.join(here, f)).equals(fsP.readFileSync(pathP.join(there, f))));
+    T("every shared part is byte-identical in both repositories: " + (drifted.join(",") || "none drifted"),
+      drifted.length === 0);
+    T("and there is a real set to check, so an empty intersection cannot pass as agreement",
+      shared.length >= 8);
+  }
+}
+
 process.exit(done());
