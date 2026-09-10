@@ -22,6 +22,12 @@ const dom = new JSDOM(html, {
   virtualConsole: vc,
   beforeParse(window) {
     window.HTMLCanvasElement.prototype.getContext = function () { return this._ctx || (this._ctx = mkCtx()); };
+    /* jsdom performs no layout, so every clientWidth is 0 and the rAF loop's "can this frame produce a
+       pixel" gate would skip every frame. A harness that wants to drive a layout-dependent path has to
+       supply the layout; _w/_h let a test put the canvas back to zero area deliberately. */
+    for (const k of ["Width", "Height"]) Object.defineProperty(window.HTMLCanvasElement.prototype, "client" + k, {
+      configurable: true, get() { const v = this["_" + k.toLowerCase()[0]]; return v === undefined ? (k === "Width" ? 800 : 340) : v; },
+    });
     window.WebSocket = class { constructor(url) { this.url = url; } send() {} close() {} addEventListener() {} };
     window.fetch = (u) => { fetches.push(String(u)); return Promise.reject(new TypeError("network blocked in harness")); };
     window.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return intervals.length; };
@@ -46,11 +52,87 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
   try { rafs[0](1000); } catch (e) { frameErrors.push(String(e.stack || e)); }
   T("one canvas frame renders without throwing", frameErrors.length === 0 && rafs.length >= 2, frameErrors);
   T("canvas drew the idle header", w.document.getElementById("chart")._ctx._calls.some(c => c.op === "fillText"), null);
+  /* §10.5's recorded nit, closed and measured: a frame that cannot produce a pixel is not drawn, and
+     the refusal is counted rather than silent. Driven both ways on the shipped loop, because a gate
+     asserted only in its skipping direction is a gate that could be stuck. */
+  {
+    const chart = w.document.getElementById("chart");
+    const before = g("S.frameSkip"), calls = chart._ctx._calls.length;
+    chart._w = 0;                                   /* the DATA view: the canvas is laid out at 0x0 */
+    rafs[0](2000);
+    const skipped = g("S.frameSkip") === before + 1 && chart._ctx._calls.length === calls;
+    chart._w = undefined;                           /* and back */
+    rafs[0](3000);
+    T("a frame with no area to draw into is skipped and counted, and drawing resumes when it returns",
+      skipped && g("S.frameSkip") === before + 1 && chart._ctx._calls.length > calls,
+      { before, after: g("S.frameSkip"), calls, now: chart._ctx._calls.length });
+  }
   const meta = w.document.querySelector('meta[name="theme-color"]');
   T("theme-color meta is the obsidian value (§8 item resolved)", meta && meta.content === "#1b1a22", meta && meta.content);
   T("verdict reads NOT READY on an empty ledger", /NOT READY/.test(w.document.getElementById("verdictbox").textContent), w.document.getElementById("verdictbox").textContent);
   T("viability strip reads NEGATIVE with no live fills", /NEGATIVE/.test(w.document.getElementById("vstrip").textContent), w.document.getElementById("vstrip").textContent.slice(0, 120));
   T("sundial set the four light custom properties", ["--lx", "--ly", "--elev", "--night"].every(p => w.document.documentElement.style.getPropertyValue(p) !== ""), null);
+
+  /* The React island (REACT-MAP step 1). This is the only harness that loads the real page into a real
+     DOM, which is exactly why the island is spliced rather than loaded from three <script src> tags:
+     jsdom runs scripts "dangerously" and fetches resources never, so an external React would be absent
+     here and the component would be unverifiable by construction. Driven, not read. */
+  {
+    const bar = w.document.getElementById("lockbar");
+    T("the island mounted and init recorded no UI error", g("S.uiErr") === undefined && !!bar && bar.children.length > 0,
+      { uiErr: g("S.uiErr"), children: bar && bar.children.length });
+    T("it rendered the note and SWING, and RESUME is absent with no lock held",
+      !!w.document.getElementById("locknote") && !!w.document.getElementById("lockSwing") && !w.document.getElementById("lockResume"));
+    T("SWING is a real button, so the spine's 44px interaction floor reaches it (L8)",
+      w.document.getElementById("lockSwing").tagName === "BUTTON" && w.document.getElementById("lockSwing").type === "button");
+    /* Rendered through OCCVM_CAST and marked `action`: it fires, it does not hold, so it announces no
+       pressed state it would not maintain. RESUME, not a second press of SWING, is what undoes it. */
+    T("and it announces no state it does not hold (Cast's rule, on the real DOM)",
+      !w.document.getElementById("lockSwing").hasAttribute("aria-pressed"));
+
+    g("S.k.cur={ticker:'KXBTC15M-T',strike:100000,open:Date.now(),close:Date.now()+9e5}; lockSwing();");
+    await new Promise(r => setTimeout(r, 30));
+    const resume = w.document.getElementById("lockResume");
+    T("taking a lock renders RESUME and moves the note", !!resume && /swing window/.test(w.document.getElementById("locknote").textContent),
+      { resume: !!resume, note: w.document.getElementById("locknote").textContent });
+    /* The mirror this replaced was CSS: #lockResume{display:none} plus a body.locked override. If either
+       had survived, RESUME would be in the DOM and invisible — the component deciding to show a button
+       the stylesheet had already hidden. Measured on the resolved style, not on the absence of a rule. */
+    T("and RESUME is actually visible, not shown by React and hidden by CSS",
+      w.getComputedStyle(resume).display !== "none" && !w.document.body.classList.contains("locked"),
+      w.getComputedStyle(resume).display);
+
+    resume.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+    await new Promise(r => setTimeout(r, 30));
+    T("clicking RESUME releases the lock and unmounts it",
+      g("S.lock") === null && !w.document.getElementById("lockResume") && /drag on the field/.test(w.document.getElementById("locknote").textContent),
+      { lock: g("S.lock"), note: w.document.getElementById("locknote").textContent });
+  }
+
+  /* OCCVM-L13 at 2.34 — the floor on this tool's page ground, and the half a stylesheet cannot say.
+     law-audit.js can check that the mount names the granted surface, that the surface is fixed, and
+     that it sits outside the content column. It cannot check that no §5 surface moved, so that is
+     here, driven on the real DOM: the floor's canvas must not be inside .wrap, and every .tile must
+     be a later sibling subtree than it, which is what puts the ground under them. */
+  {
+    const floor = w.document.getElementById("occvm-floor");
+    T("the floor mounted on the page ground", !!floor && floor.tagName === "CANVAS", floor && floor.id);
+    T("and the island reported no error", g("S.uiErr") === undefined, g("S.uiErr"));
+    if (floor) {
+      T("it is not inside the content column — the subtree every §5 surface lives in",
+        !floor.closest(".wrap"), floor.parentElement && floor.parentElement.id);
+      T("its own surface is the one the law names, fixed and pointer-transparent",
+        w.getComputedStyle(floor).position === "fixed" && w.getComputedStyle(floor).pointerEvents === "none",
+        w.getComputedStyle(floor).position);
+      /* the still frame is retired only when the part reports it took the surface */
+      T("the still ground is retired only because the floor took it",
+        w.document.documentElement.classList.contains("floorlive"));
+      /* and no .tile is an ancestor OR a descendant of it: the floor touches no §5 surface's subtree */
+      const tiles = [...w.document.querySelectorAll(".tile")];
+      T("no §5 surface contains the floor and the floor contains none",
+        tiles.length > 0 && tiles.every(t => !t.contains(floor) && !floor.contains(t)), tiles.length);
+    }
+  }
 
   /* §10.3 SEC1: EXPAND/COLLAPSE ALL must not be discarded by the very next single-section toggle (shared SEC_STATE, not two stale closures) */
   g("setAllSections(true)");

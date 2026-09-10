@@ -15,9 +15,15 @@ references, the spliced `pigments.js` fence, three `confchip` sites, four `--glo
 the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
 the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **8,181 lines, 640 KB, 299 top-level functions**, zero dependencies, zero build
-step. *These figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
-counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (audit addendum) corrects and extends
+the deployment hold covered.* One file, **9,033 lines, 816 KB, 302 top-level functions of its own**, one pinned dependency
+(React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
+releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
+here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
+299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
+inside the sentence promising it would not recur. Counted again here, and the count now excludes the
+spliced dependency: 142,929 bytes of that total is React, and 152,580 the whole island, whose minified UMD puts nine names at
+line-start (`D Df Id M Td mb oe oj y`) that are inside its own IIFE and are not this tool's
+namespace. §7.1's duplicate check is scoped the same way, in CI and in `test/react.js`.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -27,6 +33,14 @@ counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (aud
 ```
 GhostArchitecture/Btc-terminal   (main)
 ├─ index.html                    the entire instrument
+├─ vendor/                       React 18.3.1 + ReactDOM, pinned; byte-identical to Rhyme's copy (§13)
+├─ react/                        the React islands — components, and the splicer that puts them in
+│   ├─ Cast.js                   the one control every island renders — one a11y contract, no skin
+│   ├─ Floor.js                  the ambient floor on the page ground (L13, granted at 2.34)
+│   ├─ LockBar.js                the lockbar: the first island and the S.lock bridge
+│   ├─ tools/resplice.js         splices vendor/ and react/ into index.html under fences, with --check
+│   └─ plans/                    REACT-MAP.md and PATCH.md as supplied; PATCH.md under a SUPERSEDED
+│                                banner, since three of its four changes are wrong against the file
 ├─ functions/api/[[path]].js     Cloudflare Pages Function: same-origin /api relay to Kalshi
 ├─ _routes.json                  Pages Functions routing (/api/* only)
 ├─ relay/deno.ts                 Deno Deploy relay (entrypoint; alternate egress pool)
@@ -41,6 +55,9 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
 │   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ floor.js                  the ambient floor (L13) — shared, spliced into both tools since 2.34
+│   ├─ glass.js                  the vessel (L2's other half) — borosilicate, spliced into the
+│                                reference surface only, worn by no tool (§12's 2.32 entry)
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
 │   ├─ tools/derive-pigments.js  generates pigments.js: authored roles in, derived ramps out, checks printed
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
@@ -245,14 +262,26 @@ Suite (`npm test`, after `npm install` for jsdom):
   document and recomputed. It also asserts the pre-registration invariants behaviourally: gate exogeneity, READY
   unreachable below the registered minimum n, the CI level `1 − α/k`, the bootstrap floor, phase separation, and
   that no execution path exists. **Verified to bite:** against `899276d` it fails 6 of 77.
+- `test/react.js` — the React island (§13): the dependency pinned by hash and asserted byte-identical
+  to Rhyme's copy, the splice and its load order (react before react-dom before any component, because
+  react-dom's UMD global branch reads `self.React`), the bridge driven — `window.S` really is undefined
+  and the store still reads the lock, which is the pair that proves it reads `S` lexically — the
+  snapshot's indifference to lock fields the UI never renders, and the three mirrors the island
+  replaced measured as *gone* rather than unused. It also carries `Cast`'s contract (§13.5) and the
+  guard that nothing renders a button around it. Verified to bite: restoring `window.S` fails 2 of 43
+  — and only 2, because the defect's whole character is that the lock reads as permanently released;
+  putting a bare `e("button")` back into an island fails 1; swapping react and react-dom fails the
+  splice assertions and then kills the harness outright, since react-dom's UMD reads `self.React` as it
+  evaluates.
 - `test/defects.js` (`npm run test:defects`, informational) — one reproduction per confirmed defect in §10.3; each
   prints REPRODUCED until fixed. All 16 currently print FIXED — it is the regression guard for this audit's fixes,
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **875 assertions across 7 harnesses** (invariants 80, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 508, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
-same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
+currently **985 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
+occvm 561, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
+grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
+line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
 runs both. **The units are the source and `index.html` is the splice target** — edit a unit, then
@@ -350,6 +379,10 @@ records what differs, what is broken, and how the repo is worked from a clone.
 - **Tests:** `npm install` once (jsdom is the only dev dependency; `package-lock.json` is committed so the install
   is reproducible), then `npm test` before every push. `npm run test:defects` lists which §10.3 items still
   reproduce — currently none.
+- **Three splicers now write into `index.html`**, and all three are the same discipline: the source is the
+  file, the spliced block is an artifact, a hand-edit inside a fence is reverted silently by the next run.
+  `node occvm/tools/splice-spine.js`, `node units/tools/resplice.js <unit>...`, `node react/tools/resplice.js`
+  — each takes `--check`, and CI runs all three plus a re-splice-and-diff.
 - The relays (`relay/deno.ts`, `worker/kalshi-relay.js`) are still paste-deployed; nothing in the repo deploys them.
 - The calibration spine and the fit scripts behind `SEAS`, `TERM`, the residual coefficients and `SWING_BASE` are
   not in the repo. Until they are, treat those constants as frozen data (§3) and do not refit.
@@ -490,6 +523,11 @@ Counts are surfaced in the swing and journal panel notes, so an excluded row is 
 - **`indexProxy`'s `fallback:true` flag is write-only.** Nothing downstream of `indexProxy` reads it, so `S.idxPx`
   can silently become a single-book price with no trace beyond the "(1 books …)" count already shown in the arm
   bar. A full fix needs a UI decision (where does "the index is degraded" belong?), not just a code change.
+- **The rAF loop rendering the sweep at zero width in the DATA view** — closed at §13.5 and measured on
+  the way: 130 stroke calls in 500 ms into a 0×0 canvas, with `frame()` resizing the backing store to 0
+  on each pass. The loop now declines a frame that cannot produce a pixel and counts the refusal in
+  `S.frameSkip`: 0 strokes and 14 skips over the same 500 ms, 70 strokes and 0 skips on either side of
+  the round trip.
 - **The 1 Hz loop's `Math.floor(Date.now()/1000) % N === 0` duty gates** (viaSample every 5 s, `renderSwing` every
   2 s, `renderJournal` every 10 s, `renderVerdict` every 30 s, `sunTick` every 60 s) can skip a beat when the
   interval drifts across a second boundary (a throttled/backgrounded tab). None of these duties are
@@ -2517,9 +2555,494 @@ touched and asserts the restore. Verified to bite — reverting to preserve-alwa
 mint. Rhyme now serves `build-20260910070104`, verified at 07:03 UTC with its service worker naming the
 same stamp. Rhyme **114 tests**, from 113.
 
+**2.31 — the floor becomes a shared part, and this tool does not adopt it yet.** `ambientFloor` and its
+six authored constants shipped inside Rhyme's `tome-src/30_ui.jsx` from 2.22, because L13's grant was
+Rhyme's alone and, in 2.25's own words, "a shared part must not carry what one tool is withheld." With
+BTC's adoption under consideration that reasoning inverts: two tools running one behaviour need one
+owner (L3). `occvm/floor.js` is that owner — the buoyancy cycle, the coil, the arrest, the metaball
+threshold, P-3's linear bridge, all of it. `useAmbientFloor` did **not** move: it is React lifecycle,
+and splicing a hook into `occvm/` would make React a dependency of every conforming tool.
+
+*Two things are genuinely a property of the SURFACE rather than the substance, and only those two are
+overridable:* `alpha` and `seed`. Everything else the caller gets is the substance's and is not the
+caller's to retune.
+
+**The move is proved inert rather than asserted.** The old floor and the new one were each driven 600
+frames in a vm against a recording 2-D context: **72,601 operations, byte-identical**. A first pass
+added one paint before the first rAF and the diff caught it at operation 7 — a change nobody asked for,
+removed rather than explained.
+
+*And the cessation curve is now sampled LAZILY, which is the one real change.* It was sampled at load,
+and a spliced part that captures a sibling global at load is the 2.0 `fracture.js` defect exactly:
+`fracture.js` captured a null `OCCVM_VEINS`, threw on every call in the browser, and passed in Node
+because `require` resolved what the page could not. Driven both ways — the part evaluates with **no**
+sibling in scope and still exposes its API, and the curve integrates **exactly once** however many
+times it is read. That closes the ordering hazard by construction, so where the splicer happens to put
+this part does not matter and nothing asserts an order.
+
+**This tool carries the part and splices it nowhere.** `law-audit.js` reads `L13 · BTC Terminal ·
+UNADOPTED` and the register is **9 in force, 0 diverged** — unchanged, which is the point. Granting the
+floor here is a change to the law and is not in this commit; see §13.6 item 4 for what it costs and
+§13.7 for what the first attempt measured.
+
+**2.32 — the vessel, which is L2's other half and was already the reference.** From
+`GLASS-VESSEL-PLAN.md`, step 1 of its own build order: Fresnel rim, no displacement. L2 has said since
+2.7 that the plan-view radius is the vessel's and the edge is the fluid's; the fluid's half was derived
+at 2.10 and worn at 2.11, and the vessel's stayed authored. `occvm/glass.js` derives it.
+
+**No new material and no new optics, which is the whole reason this was cheap.** `fresnel(n, thetaDeg)`
+has shipped in `rheology.js` since the crystal port, and `--occvm-gloss` = .685 has been computed
+against polished glass since 2.10 — ASTM D523 fixes the 60° standard as polished black glass at
+nD 1.567, defined as 100 GU. **The system has been measuring itself against glass since the wet edge**;
+this gives the reference a body. Borosilicate nD 1.474 and a 2.0 mm wall are sourced, the wall to the
+container-glass standard band because no lamp vessel spec is published.
+
+**The plan's §3.2 reproduces exactly** — every angle, every reflectance, every displacement, recomputed
+from the shipped `fresnel()` rather than compared against its table, because a guard that matched the
+document digit for digit would pin the document instead of the code. Its one slip is cosmetic: 34.9°
+where the refracted angle at u = 0.85 is 35.2°.
+
+**Its §4 is wrong, and in the direction a safety threshold must not be.** The plan puts the width floor
+at 48 px from a displacement range of 3.63 px across u = 0.85 → 1.0. **3.63 is `shiftPx(0.85)` itself**
+— the displacement *at* the band's inner edge, not the change *across* the band. The range is
+`shiftPx(1) − shiftPx(0.85) = 3.9445`, the floor is **52.6 px**, and every row of its table is 8.66%
+optimistic. Derived in the part from its two inputs, and pinned as arithmetic rather than as a digit.
+
+**The rim's stop set is adaptive, and both uniform schemes were measured before that was written.**
+A CSS gradient interpolates linearly between stops and this curve does not; uniform in *position*
+plateaus at |err| 0.047 however many stops are added, because no even sampling resolves a vertical, and
+uniform in *reflectance* fixes the rim and moves the failure to 0.021 at u ≈ 0.63 by leaving the flat
+70% as one chord. Subdividing any segment that exceeds the **8-bit alpha quantum** costs one recursion:
+**16 stops, max chord error 0.003755 against a tolerance of 0.003922**, and no authored step count.
+
+*The rim's colour is the light's and is resolved, not authored* — 2.4's finding that a specular return
+carries the source's colour, so it reads `--bone` at call time and paints **nothing** if that token is
+absent, which is L6's refusal applied to a highlight. Measured on the reference surface it resolves to
+`rgba(237,225,202)` — the sundial's live value, not the `:root` literal — so §7 item 2's *"the vessel's
+highlight must track the one light"* is satisfied by construction rather than by a later fix.
+
+*Two guards were tripped and both were right.* The reference surface refused a `#ffffff` in its own JS
+(1.8: it holds no values of its own), and the parts-parity guard refused a part on the reference
+surface that no tool carries. That second one forbids exactly what 2.10 did on purpose, so it is
+re-authored asymmetrically: every part the tool carries must appear there (unchanged — a part with no
+specimen cannot be seen to stop applying), and an extra is permitted only if it is on a pinned list,
+the D14 treatment. `PROTOTYPED_AHEAD = ["glass.js"]`.
+
+**Worn by no tool.** Only the rim exists and it is colour with no spatial extent, hence no resolution
+floor; the displacement map must clear 52.6 px with its sub-floor degradation built at the same time.
+`test/occvm.js` **509 → 550**; §6's total **927 → 968**.
+
+**2.33 — the metaball field never merged on a canvas, and the fix is 3,278× cheaper.** Step 2 of the
+glass sequence was meant to be one number: the frame cost of a live floor. It found a defect in 2.28
+instead, in the shared part, shipped since that release.
+
+**What the frame cost actually is, and my own account of it was wrong.** Measured at 390×844 on the
+real page: **60.1 fps without the floor, 5.0 with it.** I had recorded — in two commit messages and in
+§13.7 — that the cost was the floor invalidating five `backdrop-filter` tiles every frame. It is not.
+Disabling `backdrop-filter` entirely gives **5.1 fps**; hiding the whole page behind the canvas gives
+**5.3**. The cost is the floor's own canvas and nothing else, and I asserted a mechanism I had not
+measured. Isolated: the metaball pass costs **196.67 ms/frame** against **0.06 ms** for the plain
+gradient pass it replaced, with 37 drops — **3,278×**.
+
+**Why, and it is the same fact as the defect.** `ctx.filter` filters every **drawing operation**
+separately. The part set the filter on the buffer's context and then made one `fill()` per drop, so N
+drops were N independent blur-and-threshold passes composited afterwards. That is not a metaball
+field: **fields cannot add if each is thresholded before the addition.** Measured on two r=24 discs,
+alpha at the midpoint:
+
+| gap between rims | 0 px | 2 px | 4 px | 6 px | 8 px |
+|---|---|---|---|---|---|
+| filtered per draw call — **what shipped** | 0 | 0 | 0 | 0 | 0 |
+| one filtered composite | 255 | 255 | 255 | 255 | 0 |
+
+**The canvas never joined two drops, at any separation, including touching.** 2.28 wrote that
+*"because fields add, two approaching drops join with no merge code"* and that one `gooFilter()`
+*"serves BTC's still data-URI SVG and Rhyme's live canvas … so the live floor and every still frame cut
+at the same level."* The first is false and the second is false. **This tool's still frame was always
+correct** — an SVG `<g filter>` wraps the *rendered group*, which is the summed field by construction,
+and it bridges to 6 px exactly as the corrected canvas now does. Only the canvas was wrong, so the two
+tools have been showing different pictures of "the same field" for five releases.
+
+**And the fix re-created 2.28's other bug on the way, which is why it is two buffers and not one.**
+Filtering on the way out and setting `globalAlpha` there reads correct and is not: `globalAlpha` on a
+filtered `drawImage` applies **before** the filter, so the weight went inside the isosurface and the
+threshold deleted the field — one r=25 drop at α 0.2 gave **max alpha 0 over 0 non-zero pixels**,
+which is 2.28's erasure verbatim. I read the canvas model instead of driving it. Two buffers: drops
+opaque into one, one filtered composite into the second, weight applied compositing that. Measured
+after: **51 over 1,804 pixels at α 0.2 against 255 over 1,804 at α 1** — same coverage, weight exactly
+0.2.
+
+**Measured after the fix:** bridging identical to the still frame (255 to 6 px, 0 at 8), and
+**5.0 → 54 fps** against a 60.3 baseline, 196.9 ms → 18.1 ms.
+
+*Three of Rhyme's guards were reading a canvas the code had stopped drawing on, and could not have
+caught any of this.* Its harness had no `document.createElement`, so `buf` creation threw inside its
+own `try/catch`, `filtered` fell to false, and **every assertion about the metaball path was a regex
+over source text while the harness drove the unthresholded fallback** — 2.22's "verified against its
+fixture instead of its call path", again. The sandbox now makes real recording canvases, the display
+context records every operation instead of a whitelist that had no `drawImage` in it, and the metaball
+assertions are counts off the driven op streams: the buffer carries no filter, the isosurface canvas
+carries exactly one, and the weight is set on the display after it. Verified to bite: putting the
+filter back on the buffer fails 3.
+
+**2.34 — L13 amended: this tool is granted the floor on its page ground, and nowhere else.** The
+owner's call, and the third step of the glass sequence. What was withheld from 2.15 to 2.33 is now
+granted to **one surface**: the fixed layer under the content column, which is the layer `body::before`
+has occupied since 2.25. Everything L13 said about why is unchanged and is the reason the grant is
+bounded rather than tool-wide — every moving mark on the sweep means something, and a drifting mass
+beside marks that carry win/lose is §7.6's trade. The ground carries no mark, no number, no outcome
+colour.
+
+**The boundary is measured in three places, not promised in one.** `law-audit.js` requires that the
+tool's own source name the granted surface and hold **exactly one** floor call site (one grant, one
+surface — a proximity check was tried first and is a property nobody can rely on: it would pass a
+second floor mounted anywhere); that `#occvm-floor` is declared `position:fixed`; and that
+`#floor-mount` sits **ahead of `.wrap`** in the markup. Each case is driven with a condition dropped in
+turn, because a three-part boundary only ever tested all-present is a boundary nobody has measured.
+What a static check cannot say — that no §5 surface's own pixels moved — is `test/page-load.js`'s, on a
+real DOM: the canvas is not inside `.wrap`, and no `.tile` contains it or is contained by it.
+
+**What the owner is getting, measured, because a grant should not oversell itself.** Tiles cover
+**87.6% of a 390×844 viewport and 93.5% of 1100×1400**, so the live ground is **6.5–12.4% of the
+screen**. The other nine tenths carries the *same field frozen*, through `.tile::before`, which exists
+only because the tiles are opaque. Today's picture is a moving frame around a still one. That is a real
+limitation of this grant and not a defect in it: how much page ground a reader sees is a question about
+the **vessel** — L2's other half, derived at 2.32 and worn by no tool — and `GLASS-VESSEL-PLAN.md` §0 is
+right that retiring `.tile::before` is glass's job and not the floor's. **The two layers were never
+alternatives; they are a dependency, and that is what settled the question.**
+
+**The ground's weight is 0.20**, re-swept against the *merging* field after 2.33 (the first sweep
+measured a field that never merged, so it did not count). Full frame, clock and session seed pinned,
+same state shot twice as a control (0.00% moved), each state against no field at all:
+
+| state | pixels moved | mean ΔL\* | max |
+|---|---|---|---|
+| today, the still frame | 2.91% | 3.011 | 11.08 |
+| canvas α 0.14 | 2.62% | 1.967 | 8.31 |
+| canvas α 0.17 | 2.66% | 2.391 | 9.91 |
+| **canvas α 0.20** | **2.71%** | **2.906** | **12.13** |
+| canvas α 0.24 | 2.74% | 3.489 | 14.14 |
+| canvas α 0.30 | 2.79% | 4.438 | 18.31 |
+
+Within 3.5% of today's mean, so the ground does not change weight when it starts moving. **Frame cost
+on the shipped page: 59.5 fps live against 60.1 hidden** — free, after 2.33; before it, the same floor
+ran the page at 5.0.
+
+*Heat is a literal 0 and guarded as literal.* L13's modulation clause names Rhyme's `--heat` as the
+first real value and says the floor is lawful at zero modulation. This tool has no drone depth and no
+equivalent, and REACT-MAP is explicit that it "should not invent one to fill the slot".
+
+*The still frame is retired only when the part reports it took the surface.* `.ok` is absent on all
+three of the part's refusals — no canvas, no field generator, no resolved palette — and in each of
+those `body::before` keeps the layer it already had rather than the ground going blank because a
+decoration declined.
+
+**And 2.31 had quietly cost Rhyme a law.** Moving the floor into a shared part took its only
+`OCCVM_GLOBULES.field` call out of its own source, so **L10 read UNADOPTED for the tool whose whole
+draft face is that field** — and nothing surfaced, because the rollup does not count a per-tool
+UNADOPTED. Found two releases later while reading an unrelated run. The measure now counts consumption
+through a mounted part, because the alternative reading is that moving code into the spine un-adopts
+every law it satisfied, which would make every future part a silent regression.
+
+*Two fixture defects on this same law, and the second is the second time.* L13's synthetic guards
+passed `{name, own}` while `readTool` produces `{name, raw, own}` — so the moment the measure read
+`raw`, which it must because BTC's boundary lives in markup and CSS, every case threw. That is 2.22's
+"verified against its fixture instead of its call path" on the identical law. The fixtures build the
+runner's shape through one helper now, and one case measures the **shipped tool through `readTool`
+itself** rather than a fixture at all.
+
+*And the reference surface shipped dead for one commit, which nothing local could see.* An edit script
+raised before its write, so the call to a new painter landed and the painter did not: the page threw
+`paintFloor is not defined` on every load. The whole suite passed — **nothing in Node loads that page**
+— and the only thing that caught it was the golden recorder refusing to record a dead page, in CI.
+That refusal is exactly what it is for and it should not have been the first line of defence. Two
+structural checks now run locally, either of which would have caught it: every function the page calls
+at its top level is defined in it, and every id its script paints into exists in its markup. The L13
+specimen it was missing is there too — three still frames of the shared floor, and the first seed shows
+a merged dumbbell, which is 2.33's correction visible rather than described.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
 
 `occvm/tools/solar-compare.js` compares the two tools' solar implementations; run it with
 `TZ=America/New_York`, because Rhyme's reads the local clock.
+---
+
+## 13. React — the islands (2026-09-10)
+
+`REACT-MAP.md` maps Rhyme's React vocabulary onto this tool and orders the work: LockBar, `Cast`, the
+chart island, the ambient floor, then the ordinary panels. `PATCH.md` is the wiring for the first of
+those. This section records what shipped and what the two documents got wrong.
+
+**The headline, because it decides the shape of everything after it.** Rhyme has nothing to lend on the
+one problem this tool has. Rhyme's state has been inside React since its first line — `useSyncExternalStore`
+appears **zero** times in 1,198 lines of `30_ui.jsx`, counted. This tool's state is one `const S` mutated
+by ~300 vanilla functions. The bridge is this repository's own, and proving it is the entire reason the
+lockbar went first.
+
+### 13.1 Why React is spliced and not `<script src>`
+
+`PATCH.md` §1–2 wires three tags into the head. Measured, that is wrong here on three counts, and each
+one was already written down somewhere in this repository:
+
+1. **`test/page-load.js` cannot see an external script.** It loads the real page under jsdom with
+   `runScripts: "dangerously"` and *deliberately without* `resources: "usable"` — the network is blocked
+   so the harness can prove the page survives with none. jsdom therefore never fetches a `src`. React
+   would be absent in the only harness that loads the real page into a real DOM, and the component would
+   be unverifiable by construction.
+2. **The foot of `index.html` states the rule.** One style block and one script block are an
+   architectural property (§2), because `test/lib/load.js` reads the script by first-open to last-close.
+   That comment ends *"A second tag breaks every harness."*
+3. **OCCVM-D5 / roadmap 1.6.** Rhyme stopped fetching React from a CDN because *"first paint shows the
+   binding, not a blank frame; no tool installs to a home screen it cannot serve"* — measured, not
+   inferred: the golden recorder's first run captured a blank page. A tool that fetches its own UI
+   framework at load has the same failure one origin along, and `sw.js` would need a fourth shell entry
+   to cover a case that splicing does not create.
+
+So `react/tools/resplice.js` puts `vendor/react-18.3.1.umd.min.js`, `vendor/react-dom-18.3.1.umd.min.js`
+and `react/LockBar.js` into `index.html` under fences — the same five rules `occvm/tools/splice-spine.js`
+and `units/tools/resplice.js` already obey, and the same `--check`. **Load order is not incidental and
+the splicer cannot get it wrong**: react-dom's UMD global branch is called as `zb(self.ReactDOM={}, self.React)`,
+so react must evaluate first. Each part anchors on its predecessor's closing fence rather than all three
+on one anchor — which is precisely the defect occvm's splicer shipped from 1.1b to 2.0, where one anchor
+per part meant parts landed in reverse list order.
+
+**The cost, measured rather than estimated:** `index.html` 680,724 → 830,663 bytes, of which 148,914 is
+the dependency. No new network request, no `sw.js` change, no build step, still one file.
+
+### 13.2 Four defects in the supplied patch, three of them fatal
+
+Every line citation in `PATCH.md` and `REACT-MAP.md` was checked against the file rather than trusted.
+The citations are real — `index.html:666-668`, `:534-536`, `:8325`, `:8326`, `:8409`, `:4876`,
+`:3448-3477`, and Rhyme's `30_ui.jsx:80 / :136 / :194 / :254 / :714 / :944` — and `occvm/globules.js` is
+byte-identical between the repositories at 20,391 bytes, as claimed. What the documents missed:
+
+- **`$("lockSwing").addEventListener` and `$("lockResume").addEventListener` at `:8410-8411`.** The patch
+  enumerates three call sites and says *"nothing else in the page is touched."* Removing the static
+  markup leaves these two `$()` calls returning `null` at top-level script evaluation — a TypeError
+  before anything else runs. **The page would not have loaded at all.** They are deleted; the component
+  carries `onClick`.
+- **`#lockResume{display:none}` survives `body.locked`'s retirement.** `PATCH.md` §5 says the existing
+  styling *"attaches with zero changes."* It does attach — and it hides the button permanently, because
+  the only rule that ever showed it was the `body.locked` override the component retires. RESUME would
+  have been in the DOM, mounted, correct, and invisible; the lock releasable only by Escape. Both CSS
+  lines are deleted, and `test/page-load.js` asserts the **resolved** `display`, not the absence of a
+  rule.
+- **`window.S` is undefined.** `LockBar.js`'s store reads `window.S.lock` behind a null guard. `S` is a
+  top-level `const` in a classic script and a `const` does not become a property of the global object —
+  `test/page-load.js` already says so in its own source, one directory away. The store would have
+  returned `null` forever: idle note permanent, RESUME never rendered, **nothing thrown and nothing
+  logged.** The shipped store reads `S` lexically, which is only possible because the file is spliced
+  into the same script block — so defects 3 and 1 of this list are the same decision: the external-file
+  structure is what forced the reach for `window`.
+- **A stale citation.** `PATCH.md` §3 puts the mount at `index.html:8084` beside `applyMineral()`.
+  `applyMineral` has not existed since 2.27 and init's kick is at `:8521`.
+
+### 13.3 What shipped
+
+`react/LockBar.js`, ~95 lines. `useSyncExternalStore` over an `OCCVM_LOCK_STORE` that **does not touch
+React at all** — created and exported whether React loaded or not, so `lockSwing`/`lockRect`/`lockRelease`
+call `notify()` with no guard of their own. The component is a Fragment mounted into the page's own
+`#lockbar`, so that element keeps the id and the CSS it has had since the tile was built and nothing
+gains a wrapper.
+
+**Three mirrors of one fact are now one.** Each of the three mutators wrote the lock into `S.lock`, then
+into a `body` class, then into a note string typed by hand in code that cannot see the markup. The class
+and the strings are gone; `OCCVM_LOCK_NOTE` owns the three strings and the suite asserts each appears
+exactly once in the page.
+
+**The snapshot is the mode alone.** `lockRect` writes five fields and four of them render nothing, so
+the snapshot is stable across them and React skips the work — a primitive, compared by `Object.is`, with
+no memo pretending to be a discipline.
+
+**Measured on the page, not asserted.** Driven in Chromium: SWING renders at **87×44** and RESUME at
+**85×44**, both clearing L8's floor from the spine's own `button` rule; the malachite gradient resolves
+against the live light vector; taking a lock renders RESUME with a computed `display:flex`, and clicking
+it releases and unmounts. Zero page errors. Then the strip itself, before and after, at a pinned instant
+and a pinned session seed: **1050×53, 0 pixels moved.** The conversion is invisible, which is what a
+conversion should be.
+
+*The first run of that comparison read **18.30% of pixels at a mean 2.44 L\***, and the number was mine,
+not the tool's.* `globuleLayer()` seeds from `sessionStorage["btc.seed"]`, minted per session, so two
+page loads paint two different globule fields behind a transparent strip. A before/after diff that does
+not pin every generator is measuring the generators. The same error as 2.26's global worst case, in a
+different coordinate again.
+
+*And one guard was widened rather than satisfied.* `test/occvm.js` asserted `(html.match(/<script/g)).length === 1`
+— the string, anywhere in the file. React's UMD carries the literal `"<script>\x3c/script>"`, its close
+escaped exactly so no parser can see it, so a correct file failed a proxy for the property. Replaced by
+the property in two halves: the markup **outside** the script body declares one `<script` and one
+`<style`, and **nothing inside the body can close it early**, which is the only sequence that could hand
+`test/lib/load.js` a second block and had never been asserted at all.
+
+### 13.4 `Cast` — one control, one contract (REACT-MAP step 2)
+
+`react/Cast.js`, ~25 lines of body. Every React-rendered control in this tool goes through it, and
+`test/react.js` fails on a bare `e("button")` anywhere in `react/` outside that file — so the contract
+is structural from one consumer onward rather than remembered at the second.
+
+**The rule, which is the whole reason the component exists.** `aria-pressed` is emitted only when the
+caller passes `on` **and** has not marked the control `action`. Rhyme's own sentence: a button that
+claims to be a pressed toggle announces a state it does not have. Both of LockBar's controls are marked
+`action` — SWING looks like a toggle and is not one, because RESUME undoes it rather than a second
+press. The static markup announced nothing either, so this is a port and not a behaviour change, and
+`test/page-load.js` reads the attribute off the real DOM rather than the props.
+
+**What did not port, and it is measured rather than preferred.** Rhyme's `Cast` carries `.cast occvm-act`.
+`.cast` is Rhyme's bronze binding with Rhyme's own literals, and this tool's controls have worn
+`--occvm-bevel` from the spine since 2.11 — importing it would be a second button treatment here, not a
+shared one. `occvm-act` is the sharper case, because it is a spine primitive and therefore the obvious
+thing to adopt. Driven in Chromium, adding it to this tool's controls erases exactly what the `button`
+element rule sets:
+
+| control | box | padding | border | radius |
+|---|---|---|---|---|
+| `#lockSwing` | **87×44 → 62×44** | 6px 14px → 0 | 1px → 0 | 999px → 0 |
+| `#armBtn` | **59×44 → 32×44** | 6px 14px → 0 | 1px → 0 | 999px → 0 |
+| `#callAbove` | unchanged | unchanged | unchanged | unchanged |
+
+The third row is the explanation: `#callAbove` is styled through `.sel` / `button[aria-pressed]`, which
+ties `.occvm-act` on specificity and wins on source order, while the other two are styled by the element
+rule the primitive exists to neutralise. **`.occvm-act` lets a surface *class* own a button's look — that
+is Rhyme's arrangement and is not this tool's**, so the primitive is right there and wrong here for a
+structural reason. Cast adds no class of its own. It does emit this tool's own on-word, `sel`, which has
+been paired with `aria-pressed` in one CSS rule here since before any of this.
+
+**Two copies of one rule, named as a mitigation and not a fix.** Cast is deliberately *not* a spine part:
+OCCVM's parts are CSS and framework-free JS, and splicing a React component into `occvm/` would make
+React a dependency of every conforming tool — a claim nobody has made and this does not make. So the
+a11y rule now exists in both repositories. What is guarded is that they cannot drift silently:
+`test/react.js` reads Rhyme's `30_ui.jsx` when the sibling is present and fails if its `aria-pressed`
+expression has changed, and says *skipped, not passed* when it is absent.
+
+**Nothing moved.** The lockbar strip, before and after the Cast adoption, at a pinned instant and a
+pinned session seed: **1050×53, 0 pixels moved**; SWING 87×44, RESUME 85×44, no page errors. A refactor
+that changes a pixel is not a refactor.
+
+### 13.5 The chart: one gate taken, one refused, and the island deferred
+
+REACT-MAP §8 puts the chart third, wrapping `<canvas id="chart">` in a component that owns it via a ref
+and adding `Threads`' quiet-mode scheduling to `loop`. **The scheduling half shipped. The ownership half
+did not, and the plan's stated reason for the scheduling half is refuted by measurement.**
+
+**What was refused, with the numbers.** REACT-MAP reads `loop` as running `render()` every 33 ms
+*"whether or not any tick arrived"* and proposes gating on data having changed. Driven in Chromium with
+a live-like tape and the tape then **frozen** — only the clock running — **10 of 12 consecutive frames
+40 ms apart are distinct.** The sweep scrolls, so the frame *is* the data; the two that matched landed
+inside the same scroll pixel rather than idling. A data gate would freeze a moving chart under a moving
+clock. Under a **rect lock** the domain is pinned and **10 of 10 frames are identical** — that waste is
+real, and it is still not taken, because no sound "nothing changed" signal exists here short of a
+version counter across every writer of `S`, and a digest that can miss a write puts a stale chart under
+the one rule §5 calls the most dangerous bug this tool can have.
+
+**What shipped is the gate the plan did not name and §10.5 already had on the record**: a frame is
+skipped only when it *cannot produce a pixel*. Measured before: in the DATA view the canvas is laid out
+at 0×0 and the loop still issued **130 stroke calls in 500 ms**, with `frame()` resizing the backing
+store to 0 on every pass. Measured after: **0 strokes and 14 skips** over the same window, **70 strokes
+and 0 skips** on either side of the round trip, backing store restored to 1050×1110. `renderSweep`
+costs a median **0.80 ms** (p90 1.0, max 7.8) with a live-like tape, so the reclaimed slice is ~2.7% of
+a core spent where no pixel could result. The refusal is **counted** in `S.frameSkip`, because a gate
+nobody can measure is a gate nobody can audit, and `test/page-load.js` drives it **both ways** — a gate
+asserted only in its skipping direction is a gate that could be stuck.
+
+*jsdom performs no layout, so every `clientWidth` there is 0 and the gate would skip every frame.* The
+harness now supplies the layout it lacks, and a test puts the canvas back to zero area deliberately.
+That is the correct division: a harness that wants to drive a layout-dependent path has to provide the
+layout, not have the page pretend it does not need one.
+
+**The island is deferred, and this is the cost rather than a preference.** Making the canvas
+React-rendered means `const cv=$("chart"), cx=cv.getContext("2d")` at `index.html:4526` — a top-level
+const binding the element **and its 2d context** at parse — can no longer bind at parse. That is the
+same trap as §13.2's orphaned listeners, one element along and far worse: `cx` has **180 use sites
+across 7 functions**, and the canvas's own pointer gestures (`:8420`, the drag that carries 2.16's
+velocity-derived relax) attach to `$("chart")` at evaluation time and would find null. It also breaks
+the harness seam: `test/sweep.js`'s 33 assertions read the recorded 2d context that `load()` binds
+through that same const, and the whole call-keyed colour truth table — §5's own guard against the most
+dangerous bug here — hangs off it.
+
+So the island would cost a rewrite of the canvas seam in the harness, a move of the drag gesture, and a
+relaxation of a parse-time context binding, on the tool's most dangerous surface. Its stated benefit was
+the data gate, which is refuted; the remaining benefit is proving the pattern extends to a hot-path
+element. **That is a bad trade at this size and it is the owner's to make, not mine** — it is left
+undone and named here rather than quietly dropped.
+
+### 13.6 What is next, and what is not
+
+`REACT-MAP.md` §8's order stands, with one correction and one confirmation:
+
+2. **`Cast`** — done, §13.4.
+3. **Chart island** — the scheduling half is done and the ownership half is deferred with its cost
+   measured, §13.5. `renderSweep` is untouched, as the plan asks.
+4. **Ambient floor — done at 2.34**, and REACT-MAP never mentioned the thing that actually blocked it.
+   Kept below as written, because the block was real and the record of it is the point.
+   ~~**Blocked by the law.**~~ The map calls this *"MAPS
+   DIRECTLY, highest value"* and gives a port shape: splice `ambientFloor()`, add a `<canvas class="floor">`
+   where `body::before` paints the still frame. Two things are true and only the first is in the map.
+   *The prerequisite it does name is already met* — 2.27 wired ten of `PAL`'s thirteen keys to the
+   resolved page on `sunTick`'s beat and on every palette change. *The one it does not name is
+   **OCCVM-L13**,* which withholds ambient motion from this tool by name — "from the canvas and every
+   surface §5 governs, because every moving mark on the sweep means something and a drifting decorative
+   mass drawn from `PAL` beside marks that carry win/lose is §7.6's noise-as-opportunity trade" — and
+   which since 2.22 is **measured rather than written**: a floor call site in this tool's own source
+   diverges whether or not anything calls it, that being the only reading under which the withholding
+   cannot be walked back one commit at a time.
+   Demonstrated rather than quoted: one `ambientFloor(...)` call spliced into `index.html` moves the
+   register from **9 in force, 0 diverged** to **8 in force, 1 diverged**, `law-audit.js --check` exits
+   1, and CI goes red. So a live floor here is **a change to the shared law governing both tools**, and
+   L13's own text puts the floor's cost — that a yield-stress fluid below τ₀ does not drift, so the
+   floor contradicts the substance — on the record as the owner's aesthetic judgment. That is the
+   standard 2.23 was decided by. It is not a thing to slip in under "adding React", and it is left
+   undone for that reason and not for a technical one. **The still frame this tool already paints is
+   the L13-conforming form of exactly this field.**
+6. `useSwipeYield` and `useBeatPulse` — **not scheduled, and REACT-MAP is right about both.** There is no
+   low-stakes irreversible removal here to point a swipe at, and no tempo. Manufacturing either would be
+   inventing a trigger to fit a hook.
+
+### 13.7 The floor on this tool's ground — attempted, measured, backed out of the commit
+
+L13's amendment and the floor island were built and are **not in this commit**, because the auditor
+does what it was built to do: with an `ambientFloor` call site in this tool's own source the register
+reads **8 in force, 1 diverged** and `law-audit.js --check` exits 1. Amending the law is the owner's
+call (§13.6 item 4), and three things were measured on the way that are worth more than the code was.
+
+**A negative z-index rendered nothing, five times.** The island mounted a fixed, full-viewport
+`<canvas id="occvm-floor">` at `z-index:-1`, on the reasoning that a negative stacking level is "the
+page ground". It is not, here: `html,body{background:var(--field)}` gives the root its own background,
+`body` carries an opaque `linear-gradient(180deg,#100e16,#09080d 40%)`, and `body` is
+`position:relative` — so body's paint lands in the positioned pass, **after** every negative level.
+Measured across a five-point weight sweep: **0.00% of pixels moved at every one of them.** Found by
+sweeping and getting the same zero five times, which is what a sweep is for; a single reading would
+have looked like a bad alpha. `z-index:0` mounted before `.wrap` is the layer `body::before` has
+actually occupied since 2.25.
+
+**The ground's weight is 0.20, chosen against what ships today** — the point being that the ground's
+weight must not move when it starts moving. Full 1100×1400 frame, clock and session seed pinned, each
+state diffed against no field at all:
+
+| state | pixels moved | mean ΔL\* | max |
+|---|---|---|---|
+| today (`body::before`, still) | 2.42% | 3.011 | 11.49 |
+| canvas α 0.14 | 2.11% | 1.946 | 8.22 |
+| canvas α 0.17 | 2.15% | 2.354 | 9.83 |
+| **canvas α 0.20** | **2.19%** | **2.864** | **11.87** |
+| canvas α 0.24 | 2.23% | 3.445 | 14.33 |
+| canvas α 0.30 | 2.28% | 4.386 | 18.13 |
+
+0.20 sits within 4.9% of today's mean and within 3.3% of its max. Coverage is slightly *lower* at
+matched weight — tighter coverage, greater per-pixel weight, which is the threshold signature 2.28
+already measured on the still field (12.76% → 11.24%).
+
+**And the cost was real — but the mechanism written here was wrong, and §12's 2.33 entry corrects it.**
+With the floor live every Chromium screenshot timed out at 15 s, and this paragraph attributed that to
+the floor invalidating five `backdrop-filter` tiles every frame. **Measured afterwards, that is not the
+cause**: disabling `backdrop-filter` gives 5.1 fps against the floor's 5.0, and hiding the entire page
+gives 5.3. The cost was the part's own canvas — `ctx.filter` applied once per drop rather than once per
+frame — and fixing it took the page from **5.0 to 54 fps** while also making the field actually merge,
+which it never had on a canvas. The screenshot timeout was real evidence of *a* cost and my account of
+*which* cost was a guess stated as a mechanism. Left here rather than rewritten, because the correction
+is the record.
+
+**Held in the scratchpad, not lost:** `react/Floor.js` and the page's adoption diff.
+
+**Open against the island:** none.

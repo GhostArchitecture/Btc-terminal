@@ -39,7 +39,18 @@ const IS_RHYME = fs.existsSync(path.join(ROOT, "tome-src", "20_style.css"));
    repository carries identically; the instruments that check them live in one place. */
 const REF = path.join("occvm", "reference", "index.html");
 
+/* 2.31 — floor.js is the one part that reads two siblings, OCCVM_GLOBULES and OCCVM_RHEOLOGY, so it
+   is the one part whose POSITION could matter. It does not, and that is a property rather than a
+   coincidence: it takes neither at load. Its cessation curve is sampled on first use, and everything
+   else it reads it reads inside ambientFloor, which nothing calls while the file evaluates. That
+   closes the 2.0 defect by construction instead of by ordering — fracture.js captured a null
+   OCCVM_VEINS at load, threw on every call in the browser, and passed in Node because `require`
+   resolved it. `test/occvm.js` asserts the property: no sibling global is referenced at this part's
+   top level. Where it actually lands is insertion history, not the list: parts go in after one anchor,
+   so on a fresh file the list reverses, and on a file that already carries the others a new part goes
+   in first. Neither ordering is relied on and neither is asserted. */
 const PARTS = IS_RHYME ? [
+  { name: "floor.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "spine.css",    target: path.join("tome-src", "20_style.css"), anchor: null },
   /* 2.7 — the owned faces. serif.css ships to both tools; reading.css only where running text is set in a
      serif, which is Rhyme's whole body and nothing in BTC — the same rule that keeps mono.css BTC-only. */
@@ -55,6 +66,10 @@ const PARTS = IS_RHYME ? [
   { name: "pigments.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
+  /* 2.34 — floor.js joins the list here, because L13 now grants this tool a floor on its page ground.
+     The grant is surface-bounded and law-audit.js measures the boundary; the part itself is the same
+     part Rhyme runs. */
+  { name: "floor.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
   { name: "mono.css",     target: "index.html", anchor: "<style>" },
@@ -73,6 +88,10 @@ const PARTS = IS_RHYME ? [
   { name: "globules.js",  target: REF, anchor: "<script>" },
   { name: "pigments.js",  target: REF, anchor: "<script>" },
   { name: "yield.js",     target: REF, anchor: "<script>" },
+  /* 2.32 — the vessel is prototyped on the reference surface first, exactly where the meniscus was at
+     2.10 before both tools wore it at 2.11. It is spliced into no tool yet. */
+  { name: "glass.js",     target: REF, anchor: "<script>" },
+  { name: "floor.js",     target: REF, anchor: "<script>" },
 ];
 
 /* A RETIRED part is one the spine no longer carries. Its fenced block is REMOVED from every target it was

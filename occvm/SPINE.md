@@ -152,6 +152,51 @@ corner radius belongs to whatever contains it. That is an authored quantity, per
 Rhyme's is tight (2–4px). Two vessels, one fluid. The conformance block above lists each tool's radii as
 the record of its vessel; neither is a violation of the other.
 
+**The vessel has a material too, and from 2.32 it is derived rather than authored.** The paragraph
+above records the vessel's *radius* per tool and declines to judge it. What it left unsaid for
+twenty-five releases is what the vessel is *made of* — and the answer was already in the file. A lava
+lamp is not wax and liquid, it is wax and liquid **in glass**; `fresnel(n, thetaDeg)` has shipped in
+`occvm/rheology.js` since the crystal port; and `--occvm-gloss` has been computed against polished
+glass since 2.10, because ASTM D523 fixes the 60° standard as polished black glass at nD 1.567 defined
+as 100 GU. This system had been measuring itself against glass since the wet edge. `occvm/glass.js`
+gives that reference a body: **borosilicate, nD 1.474, 2.0 mm wall** — sourced, the wall to the
+container-glass standard band (2.0–3.0 mm standard, below 2.0 lightweight) because no lamp-specific
+vessel spec is published.
+
+*For a cylinder seen head-on the incidence **is** the offset*, `sin θ = u`, so there is no angle table
+to author and `CUT`'s three flat-face angles are the crystal's and are not used. Two independent
+calculations then say the same thing: reflectance is flat near **3.7%** across the middle 70% and goes
+vertical past the turn — 5% at u = 0.74, 10% at 0.89, 20% at 0.95, 45% at 0.99 — and Snell's
+displacement runs half a pixel at quarter-width to 6.5 px at the silhouette. **The vessel announces
+itself at its edges and gets out of the way in the middle.** That is derived, not a preference.
+
+*And the inner face is why a floor survives being put behind glass.* The interface that matters for
+what is inside is glass→substance, not glass→air: `n_rel = 1.0673`, `R(0°) = 0.00106` — one part in a
+thousand — so the globules are seen essentially directly rather than through two surfaces of
+distortion. Total internal reflection at **69.54°** is the mechanism behind a real vessel's rim reading
+mirror-bright while its face reads clear, and it is a computed angle rather than an authored effect.
+
+*One authored number and one corrected one.* `U_RIM = 0.85` is where the curve turns, named authored at
+its declaration, and the width floor for the displacement half scales with it. That floor is
+**52.6 px**, not the 48 px `GLASS-VESSEL-PLAN.md` §4 states: the plan's displacement range of 3.63 px is
+`shiftPx(0.85) = 3.6145` itself — the value *at* the band's inner edge rather than the change *across*
+the band, which is `shiftPx(1) − shiftPx(0.85) = 3.9445`. Every row of that table is 8.66% optimistic,
+and a safety threshold reading safer than it is, is the one direction the error must not go. Derived in
+the part from its two inputs so it cannot be typed wrong again.
+
+*A coincidence, recorded so nobody makes it a dependency.* The 2.0 mm wall is **7.559 px** and λc is
+**7.148 px** — 1.06× apart, 0.41 px, under half a pixel on screen. They are unrelated: surface tension
+over density on one side, a glass manufacturing standard on the other. Borrowing λc for the wall would
+be exactly the cross-domain reuse this project has caught before, and it is not even necessary. The
+guard asserts they are close **and** that neither is computed from the other.
+
+**Prototyped on the reference surface and worn by no tool**, which is the shape 2.10 established: the
+meniscus was adopted there a release before either tool took it. Only the **rim** ships — a colour
+operation with no spatial extent and therefore no resolution floor at all, its stop set subdivided
+adaptively until the chord never departs from the curve by more than the 8-bit alpha quantum, so the
+stop count is derived and no step count is authored. The **displacement map** is a separate decision
+and must clear the 52.6 px floor with its sub-floor degradation built at the same time, not after.
+
 **The edge is the fluid's, and it is derived.** Where a fluid meets a wall it forms a meniscus of width
 `λc = √(γ/ρg)` — the capillary length, **7.15 px** for the substance in force (`occvm/rheology.js`,
 `radiusPx()`), and not fitted: it is what the substance's density and surface tension produce. On a
@@ -475,8 +520,8 @@ Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`
 ### OCCVM-L10 — the substrate layer
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — 2 consumer(s) of the shared field, no vein trace
-> - Rhyme Instrument: **CONFORMS** — 1 consumer(s) of the shared field, no vein trace
+> - BTC Terminal: **CONFORMS** — 2 direct consumer(s) and 1 through the shared floor of the field, no vein trace
+> - Rhyme Instrument: **CONFORMS** — 0 direct consumer(s) and 1 through the shared floor of the field, no vein trace
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -956,7 +1001,7 @@ and that is the honest form of it.
 ### OCCVM-L13 — ambient motion
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **UNADOPTED** — no ambient floor in this tool
+> - BTC Terminal: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded, on the page ground alone
 > - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
@@ -997,12 +1042,28 @@ immediately.
 | tool | ambient floor | why |
 |---|---|---|
 | **Rhyme Instrument** | **granted**, on the draft face — and since 2.24 the same field stands as a **still frame** on every other slab | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. A still frame is not motion, so the grant's scope is unchanged: the field *moves* only on the draft face. |
-| **BTC Terminal** | **withheld**, from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal. §7.6 of the handoff forbids exactly that trade. |
+| **BTC Terminal** | **granted at 2.34 on the page ground alone** — the fixed layer under the content column; still **withheld** from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal, and §7.6 of the handoff forbids exactly that trade. **None of that reasoning is repealed; it is why the grant is bounded to a surface rather than given to the tool.** The ground carries no mark, no number and no outcome colour. |
 
-The withholding is a **decision, not an omission**, and it is reversible the way a law is reversible — by
-editing this table with a reason — never by a commit that quietly adds a floor and lets the audit catch up.
-The auditor measures the split: a floor appearing in BTC's own source reads DIVERGED, whatever it looks
-like.
+The withholding was a **decision, not an omission**, and the grant is the same: reversible the way a law
+is reversible — by editing this table with a reason — never by a commit that quietly adds a floor and
+lets the audit catch up. What changed at 2.34 is the *scope*, and the boundary is measured rather than
+promised. `law-audit.js` requires three things of BTC's floor, each of them something a stylesheet or a
+markup file can actually state: the call names the granted surface's id; that id is declared
+`position:fixed`, so it is a layer over the page rather than a box inside it; and its mount sits
+**outside the content column**, so no rearrangement of a panel can carry it into one. A floor that fails
+any of the three reads DIVERGED, exactly as any floor at all used to.
+
+**What a static check cannot say is named here rather than implied**: that no §5 surface's own pixels
+moved. That is `test/page-load.js`'s, driven on a real DOM, and the split is deliberate — a measure that
+claimed to prove it from source text would be the kind of proxy 2.14 and 2.32 both had to undo.
+
+*What the owner is actually getting, measured, because a grant should not oversell itself.* Tiles cover
+**87.6% of a 390×844 viewport and 93.5% of 1100×1400**, so the live ground is **6.5–12.4% of the screen**
+— gutters and the gaps between panels. The other nine tenths carries the *same field* as a still frame
+through `.tile::before`, which exists only because the tiles are opaque. So the picture today is a moving
+frame around a still one. That is a real limitation of this grant and not a defect in it: the layer the
+floor paints on is the page ground, and how much of the page ground a reader sees is a question about the
+*vessel*, which L2's other half now derives and neither tool yet wears.
 
 **Two further bounds, both narrow.** A floor never draws on a surface carrying an outcome colour or a
 measured value. And **modulation is not what makes it legal**: a real value may scale a floor's intensity
@@ -1476,7 +1537,7 @@ law are generated from that run.
 | **L10** | the substrate layer | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
-| **L13** | ambient motion | IN FORCE | UNADOPTED | CONFORMS |
+| **L13** | ambient motion | IN FORCE | CONFORMS | CONFORMS |
 
 **9 in force · 0 diverged · 4 unmeasured · 0 unadopted**
 

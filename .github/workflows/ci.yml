@@ -28,6 +28,12 @@ jobs:
       - name: OCCVM spine is spliced and current
         run: node occvm/tools/splice-spine.js --check
 
+      # The React island's vendor and components are spliced under a fence for the same reason the
+      # spine is, and with the same failure mode: a hand-edit inside the fence is reverted silently by
+      # the next splice. See vendor/README.md for why these are spliced and not <script src>.
+      - name: React island is spliced and current
+        run: node react/tools/resplice.js --check
+
 
       # OCCVM 1.9: the token audit is a gate, not a paragraph. Fails on a token that resolves to
       # nothing, or a tool-local token its own tool never consumes.
@@ -45,11 +51,16 @@ jobs:
 
       # CLAUDE.md section 7.1: a usage-limit interruption once shipped duplicate function definitions
       # and a duplicate state key that turned S.edge into an array. This must print nothing.
+      # The spliced React UMD is minified and carries nine names at line-start that are not top-level at
+      # all (D, Df, Id, M, Td, mb, oe, oj, y — inside its own IIFE). Counting them would put a
+      # dependency's internals in this tool's namespace and let two vendor names collide as a "duplicate
+      # definition" in code nobody here wrote. The domain of this check is the tool's own source.
       - name: No duplicate top-level definitions (section 7.1)
         run: |
-          dupes=$(grep -oE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(' index.html | sort | uniq -d)
+          own=$(sed '/==== REACT ISLAND react-18\.3\.1/,/==== END REACT ISLAND react-dom-18\.3\.1/d' index.html)
+          dupes=$(echo "$own" | grep -oE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(' | sort | uniq -d)
           if [ -n "$dupes" ]; then echo "duplicate top-level definitions:"; echo "$dupes"; exit 1; fi
-          echo "none"
+          echo "none: $(echo "$own" | grep -cE '^(async )?function [A-Za-z_$][A-Za-z0-9_$]*\(') own top-level functions"
 
       # CLAUDE.md section 6: the units are the source and index.html is the splice target. Re-splicing
       # every unit must leave index.html byte-identical, or someone has patched the spliced copy and the
@@ -57,6 +68,7 @@ jobs:
       - name: Splice is reproducible (section 6)
         run: |
           node units/tools/resplice.js volspace calendar detect reversal schema prereg
+          node react/tools/resplice.js
           git diff --exit-code -- index.html
 
   golden:
