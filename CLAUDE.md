@@ -517,7 +517,62 @@ and the owner opened the deployed build and reported it running cleanly.
 
 ---
 
-## 11. The shock programme — pre-registered evidence standard (2026-09-06)
+## 11. The shock programme — CLOSED 2026-09-10. Pre-registered evidence standard (2026-09-06)
+
+> ## CLOSED — 2026-09-10, by owner decision, before any observation
+>
+> **Cause: a structural mismatch between this programme's unit of observation and the tool's actual use.**
+> §11 is denominated throughout in scheduled US macro releases — the ~100–150/year planning premise
+> (§11.1), the phase-1/phase-2 split (§11.5), the calendar cost table, and the 24-month deadline (§11.7
+> clause 5) all descend from that one assumption. **The operator does not trade scheduled releases.** The
+> tool is used continuously against 15-minute windows, of which there are ~35,040 a year. Every
+> feasibility number in this section is computed against an activity that is not happening.
+>
+> **This is not a threshold judged too demanding.** `dBrierFloor`, `k`, `maxMonths` and the required-n
+> arithmetic are internally consistent and were derived from real properties of this instrument. They
+> describe a different programme than the one the tool is used for. Nothing below is relaxed, and nothing
+> below may be quoted as relaxed.
+>
+> **No result motivated this closure, and there is no result that could have.** No shock window has been
+> scored; `reversal` was never spliced; H1's shock-size percentile is still `[TBD]`, uninvented; no scorer
+> exists for `regime`; the operator has not examined the tool's recorded data. **§11.7 clause 6 governs
+> thresholds moved *after seeing results*. No result exists to have moved them, and none of the six
+> falsification clauses fired** — this closure is outside them, which is why it is recorded here in full
+> rather than as a clause number. A closure that dodged a clause would look exactly like one that fired
+> one, so the distinction is stated instead of left to be inferred.
+>
+> **Provenance, because it is the part that matters.** The programme was authored to a framing the owner
+> did not set and did not review while it accumulated across sessions, and it continued on its own
+> momentum. **The structural mismatch above is the cause; owner authority is the mechanism, not the
+> justification.**
+>
+> **Sizing note, for anyone tempted to rescue it by tuning.** The arm count is the weakest lever in the
+> formula — multiplicity enters under a square root. Recomputed here against the shipped
+> `shockRequiredHoldN`, not quoted:
+>
+> | k | CI level | required holdout n (sd = 0.05, power 0.5) | at 80% |
+> |---|---|---|---|
+> | 20 | 0.9950 | 197 | 333 |
+> | 10 | 0.9900 | 166 | 292 |
+> | 5 | 0.9800 | 136 | 251 |
+> | 1 | 0.9000 | 68 | 155 |
+>
+> Giving up **every** exploratory arm buys a **65.5%** reduction and still leaves **68** scheduled
+> releases. The real driver is `sd` — squared, and unknowable before data by construction
+> (`shockRequiredHoldN` returns `null` rather than defaulting). The programme's feasibility was genuinely
+> undecidable in advance. That is not a flaw in this document; it is an accurate reflection of reality,
+> and it is a second, independent reason the framing does not fit an operator working alone.
+>
+> **The ledgers are kept**, per §11.7's own instruction. `btc.shock`, `btc.regime` and every H-protocol
+> column keep recording; recording was never the thing gated (§11.5). `SHOCK_RULE` stays in the code and
+> `test/prereg.js` keeps checking it against this document, so a closed programme cannot silently drift
+> either.
+>
+> **Superseded by: nothing.** **Any successor must state its own unit of observation before its first
+> number.**
+>
+> *Everything below this line is the standard as it stood, unaltered. It is a record, not a rule in
+> force.*
 
 Written before the first shock-conditioned observation exists. No number in this section was chosen with knowledge
 of a result. `SHOCK_RULE` in `index.html` is the machine-readable copy of these thresholds and `test/prereg.js`

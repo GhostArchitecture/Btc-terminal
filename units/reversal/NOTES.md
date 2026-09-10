@@ -21,8 +21,8 @@ not score."* This is the scoring half. It re-uses `shockMagnitudeBucket` for the
 for the scale, calls neither `detectShock` nor `standardisedMove`, and **defines no bucket edge and no
 size threshold of its own** (asserted by source scan).
 
-The claim under test is not "reversal exists". Roll 1984 / Jegadeesh-Titman 1995 / Eross et al. say
-reversion after a large move is real but **usually too small to survive costs — occasionally enough**.
+The claim under test is not "reversal exists". Reversion after a large move is real but **usually too
+small to survive costs — occasionally enough**.
 H1 therefore lives in the *tail* of shock sizes, and the answerable question is whether mean reversion
 crosses **round-trip cost** only in the top buckets. Its falsifier is that reversion is **flat** across
 buckets, or scales so gently it never clears cost even at the largest observed shock. Both readings need
@@ -98,9 +98,39 @@ the spine is `SIM_ENTRY`-shaped: it buys a side of the live Kalshi window at the
 tape return. Any statement of the form "reversion clears the round trip" is therefore a statement about
 `netC`, and the tape numbers cannot substitute for it under any transformation the row carries.
 
-The tape leg is kept because it is the only axis on which the *hypothesis* is stated — Roll and
-Jegadeesh-Titman are about the underlying, `detect` buckets on the underlying, and a book-only study
-could not say whether size-conditioning works at all, only whether one particular contract paid.
+The tape leg is kept because it is the only axis on which the *hypothesis* is stated — the literature
+below is about the underlying, `detect` buckets on the underlying, and a book-only study could not say
+whether size-conditioning works at all, only whether one particular contract paid.
+
+## The literature this reasons from — corrected 2026-09-10
+
+**What was here before, and why it was wrong.** This unit cited **Roll (1984)** and
+**Jegadeesh–Titman** — general *equity* reversal literature, decades old, neither crypto nor intraday.
+They are not wrong papers; they are the wrong papers for a 15-minute Bitcoin window, and a unit whose
+whole discipline is that a threshold must be derived from structure should not reason from an asset
+class and a horizon it does not operate in. Each of the three below was checked against a primary source
+on 2026-09-10 before being written here.
+
+**Wen, Bouri, Xu & Zhao (2022), "Intraday return predictability in the cryptocurrency markets: momentum,
+reversal, or both," *North American Journal of Economics and Finance* 62, 101733.** The paper this unit
+should reason from: high-frequency Bitcoin, 2013-03-03 to 2020-05-31. **Note the title.** It finds
+*both* momentum and reversal, and — the part that matters here — the pattern **changes** in the presence
+of large intraday price jumps, FOMC announcement releases, liquidity levels, and the COVID-19 outbreak.
+A single fixed ride-or-fade rule is not what this literature supports; conditioning is.
+
+**LeBaron (1992), *Journal of Business* 65(2):199–219.** Serial correlation inversely related to
+volatility — the "LeBaron effect". The general result, robust and old.
+
+**Bianco, Corsi & Renò (2009), "Intraday LeBaron effects," *PNAS* 106:11439–11443.** The refinement, and
+it is the one that stops a naïve rule: intraday serial correlation is negatively correlated to volatility
+**forecasts** and **positively** correlated to **unexpected** volatility — the part that could not be
+forecast. **A flat "high vol → revert" rule is therefore wrong**; the expected/unexpected decomposition
+is what makes it right. *Measured on S&P 500 index futures, not on crypto* — stated because this unit
+records what a number was measured on, and transferring it to BTC is an assumption, not a finding.
+
+**What this does not change.** No code, no threshold, no bucket edge. The falsifier is unchanged, the
+tape/book separation is unchanged, and no claim above is used to justify a value. This corrects what the
+unit says it is reasoning from, which was the cheapest real error in it.
 
 **Enforced, not merely documented:** cost never touches the tape leg anywhere in this code, the
 accumulator keeps `nTape` and `nBook` as separate counts, and `revBucketTable` reports `meanRev`,
