@@ -1002,7 +1002,7 @@ and that is the honest form of it.
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded, on the page ground alone
-> - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded
+> - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded, on the page ground alone
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -1041,7 +1041,7 @@ immediately.
 
 | tool | ambient floor | why |
 |---|---|---|
-| **Rhyme Instrument** | **granted**, on the draft face — and since 2.24 the same field stands as a **still frame** on every other slab | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. A still frame is not motion, so the grant's scope is unchanged: the field *moves* only on the draft face. |
+| **Rhyme Instrument** | **granted at 2.37 on the page ground alone** — the fixed layer under the content column; **withheld** from `.bar`, which carries `--heat`. ~~Granted on the draft face from 2.22, with the same field as a still frame on every other slab from 2.24.~~ | a reading surface is a document and nothing on it encodes an outcome, which is why this tool was granted a floor first. What changed at 2.37 is not the permission but the **address**: the field had been drawn inside whichever slab was open, so it reseeded when a face changed, stopped at that slab's edge, and left every closed face with none — the field was a property of the open face rather than of the page. One fixed layer under everything, with the slabs as glass over it, is the same arrangement the sibling has run since 2.34, and it removes the per-surface copies rather than adding a surface. The bar keeps an opaque substrate because a measured value never gets the ground behind it. |
 | **BTC Terminal** | **granted at 2.34 on the page ground alone** — the fixed layer under the content column; still **withheld** from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal, and §7.6 of the handoff forbids exactly that trade. **None of that reasoning is repealed; it is why the grant is bounded to a surface rather than given to the tool.** The ground carries no mark, no number and no outcome colour. |
 
 The withholding was a **decision, not an omission**, and the grant is the same: reversible the way a law
@@ -1436,7 +1436,7 @@ applied to a colour that was already written twice in effect. It also does the w
 sweep's opaque tile to its frosted neighbours (2.36), since compositing the fill against the ground
 rather than against transparency needs the ground to have a name.
 
-*BTC's `--tile-fill` joins the tool-local row at 2.35* — how much of a tile's own substrate survives,
+*`--tile-fill` joins the tool-local row at 2.35 for BTC and **at 2.37 for Rhyme as well*** — how much of a tile's own substrate survives,
 the rest being the page ground behind it seen through the frost. It exists because 2.35 retired the
 per-tile copy of the globule field: there is one field in that tool now, on the substrate, and a tile
 shows it by letting it through rather than by repainting it. **The value is authored and the criterion
@@ -1444,7 +1444,30 @@ that fixes it is not.** A serif set on a tile must read no worse than the same s
 ground beside it; measured over six seeds at the sundial's night instant the two cross at 38%, and what
 shipped before read 27.79 L\* worst core pixel in the tile against 36.69 on the ground — the tile was
 the worse surface to read on, and had been since it was built. Tool-local for the same reason
-`--globules` is: neither spine-declared nor spine-written, and no other tool has a tile.
+`--globules` is: neither spine-declared nor spine-written.
+
+*It stops being BTC's alone at 2.37, when Rhyme's floor moved to its page ground and its slabs and
+closed faces became the glass over it — the same token and the same criterion. **The number
+transfers; the verdict does not, and that was measured rather than assumed.*** Chromium, the
+sundial's night instant, five samples per surface, glyph core against the exact background under it,
+with a **constructed** ground twin — that tool carries no serif on its bare ground, so the twin is
+the same node at the same height with the same computed face, size, weight, colour and shadow, and
+only what is under it differs:
+
+| Rhyme, at 38% | worst core pixel | against its ground twin |
+|---|---|---|
+| a closed face (`.edge`, 22px) | **47.11** | 47.40 — **0.29 below: parity, the criterion holds** |
+| the open face (`.slab`, 30px) | **43.91** | 47.40 — **3.49 below: the criterion is missed** |
+
+**The open face misses it and ships missing it, which is recorded rather than tuned away.** Three
+things make that the honest disposition. *It is a widening, not a new gap:* the pre-2.37 opaque slab
+read 46.56 against the same 47.40, so that head has never been at parity with its ground and 2.37
+costs it a further 2.65. *No attainable fill closes it:* the sweep runs 42.66 at 70%, 43.52 at 46%,
+43.91 at 38%, 44.37 at 34% — monotone, and still 3.03 short at 34%, so parity would need a substrate
+that is not there. *And the cause is structural rather than the fill's:* `.slab` carries a
+`radial-gradient(140% 90% at 20% 0%, …)` highlight and its `h2` sits in it, so that head is on the
+brightest part of its own substrate by design. **The frost is free** — isolated, opaque reads 46.56
+unfrosted against 46.60 frosted, and 38% reads 44.42 against 44.49, so the fill is the whole cost.
 
 *That parity does not hold across the whole day, and the reason is a finding rather than a tolerance.*
 At high sun the same measurement reads 36.00 in the tile against 39.38 on the ground. The tile's

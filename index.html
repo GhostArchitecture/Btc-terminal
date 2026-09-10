@@ -630,6 +630,16 @@ table {
     box-shadow:var(--lit-x) var(--lit-y) 0 rgba(255,255,255,.06)}
   .shead .lbl{font-family:var(--serif);text-transform:none;letter-spacing:.01em;font-size:16px;color:var(--bone);text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .shead .note{font-size:10.5px;color:var(--bone-dim)}
+  /* 2.37 — THE SECTION HEADS AT PHONE WIDTH. `.shead` is a baseline-aligned row, which on a phone
+     gives the 16px serif about half the width and wraps it three deep beside its note, and where the
+     note holds a control (EXPORT CSV) the two overlap outright. Both are the same cause: a row that
+     cannot fit two things is still a row. Below 560px it stacks, the head takes the full width and
+     the note sits under it, left-aligned so the collapse chevron still leads the line. */
+  @media (max-width:560px){
+    .shead{flex-wrap:wrap;align-items:flex-start;gap:2px 10px}
+    .shead .lbl{flex:1 1 100%}
+    .shead .note{flex:1 1 100%;text-align:left}
+  }
   #viewData section{padding:14px 16px;border-radius:20px}
   #viewData .shead{padding-top:0}
 
@@ -5297,7 +5307,16 @@ function renderSweep(){
     if(g.result){ cx.fillStyle=col; cx.beginPath();cx.arc(Xt(g.close),y,hour?4.5:3.5,0,7);cx.fill();
       cx.fillStyle=PAL.field; cx.font="8px "+FONT(); cx.textAlign="center"; cx.fillText(g.result==="yes"?"Y":"N",Xt(g.close),y+3); cx.textAlign="left"; cx.font="11px "+FONT(); cx.globalAlpha=1; }
     else if(g.close>now){ cx.fillStyle=col; cx.font="10px "+FONT(); cx.textAlign="left";
-      cx.fillText((hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,y-5); cx.font="11px "+FONT(); }
+      /* 2.37 — one strike, one label. When the armed call sits on this window's own strike, which is
+         what happens every time the Kalshi strike is loaded and armed, the axis pill on the right
+         already prints that number WITH the call and its probability. Printing it again in the plot
+         is the same figure twice, four characters apart in colour, and it was reported off a phone
+         where both read "$77,312". The pill is the one that survives, because it carries more; the
+         gridline keeps its line and loses only the duplicated number. */
+      const armedHere = S.round && S.round.strike !== undefined && S.round.strike !== null &&
+        Math.round(S.round.strike) === Math.round(g.strike);
+      if(!armedHere) cx.fillText((hour?"hour ":"")+"$"+Math.round(g.strike).toLocaleString(),xa+4,y-5);
+      cx.font="11px "+FONT(); }
   }
   /* armed strike: dashed across its window, ghost fields confined to it */
   if(sk&&R){
@@ -9600,7 +9619,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260910174353";
+const BUILD_STAMP="build-20260910192734";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -9622,5 +9641,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260910174353 -->
+<!-- build-20260910192734 -->
 </html>

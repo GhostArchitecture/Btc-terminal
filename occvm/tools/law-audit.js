@@ -306,7 +306,9 @@ const LAWS = [
     claim: "a decorative floor may run unconditionally; the material may not move at rest",
     measure(tool) {
       /* L13 grants the floor PER TOOL and the grant is asymmetric, so the split is measured rather than
-         merely written: Rhyme is granted the draft face, BTC is withheld. A law whose scope lives only in
+         merely written. Rhyme was granted the draft face and BTC withheld; at 2.34 BTC was granted its
+         page ground under a bounded grant, and at 2.37 Rhyme's floor moved to the same surface, so the
+         two grants are now the SAME shape and this measure reads one bound for both tools. A law whose scope lives only in
          prose is the "violates: --" failure waiting to happen again, so the table in L13 and this measure
          say the same thing and the code is what is true.
 
@@ -341,8 +343,19 @@ const LAWS = [
          no rearrangement of a panel can carry it into one. What a static check cannot say — that no
          §5 surface's own pixels moved — is page-load.js's, driven, and is named here so the gap is on
          the record rather than implied. */
-      if (!RHYME) {
-        const ID = "occvm-floor", MOUNT = "floor-mount";
+      {
+        /* 2.37 — ONE BOUND, TWO TOOLS. Both grants are now the page ground, so what differs is only the
+           address of each tool's own mount and of the one surface that must stay opaque because it
+           carries a measured value: BTC's sweep, which every mark on means win or lose, and Rhyme's
+           bar, which carries --heat. A tile may SHOW the granted ground; the surface holding a
+           measurement may not. */
+        const ID = "occvm-floor";
+        const B = RHYME
+          ? { MOUNT: 'id="occvm-floor"', COLUMN: 'className="binding"', OPAQUE: ".bar",
+              RULES: /\.bar \{[\s\S]*?\}/g }
+          : { MOUNT: 'id="floor-mount"', COLUMN: '<div class="wrap"', OPAQUE: "#chartbox",
+              RULES: /#chartbox\{background:[\s\S]*?\}/g };
+        const MOUNT = B.MOUNT;
         /* ONE floor, and the tool's own source names the surface it mounts on. The first draft of this
            looked for the id within 400 characters of the call, which is proximity rather than a
            property: it would pass a second floor mounted anywhere as long as the first one was
@@ -350,8 +363,8 @@ const LAWS = [
            site plus a named surface cannot be satisfied by a floor somewhere else. */
         const namesSurface = calls.length === 1 && tool.own.indexOf(ID) >= 0;
         const decl = new RegExp("#" + ID + "\\s*\\{[^}]*position:\\s*fixed").test(tool.raw);
-        const mountIdx = tool.raw.indexOf('id="' + MOUNT + '"');
-        const wrapIdx = tool.raw.indexOf('<div class="wrap"');
+        const mountIdx = tool.raw.indexOf(MOUNT);
+        const wrapIdx = tool.raw.indexOf(B.COLUMN);
         const outside = mountIdx >= 0 && wrapIdx >= 0 && mountIdx < wrapIdx;
         /* 2.35 adds the fourth, and it is the one the grant now turns on. A tile may SHOW the granted
            ground through a partial fill — showing a layer is not running a floor on it, and the whole
@@ -360,11 +373,11 @@ const LAWS = [
            under marks that mean win/lose, which is the exact thing L13 withholds from this tool. So
            the sweep's own tile keeps an opaque substrate, stated as the absence of the fill token from
            its own background, and driven at 0.00% of the sweep's pixels moved. */
-        const CHART = "chartbox";
+        const CHART = B.OPAQUE;
         /* EVERY rule that gives the sweep's tile a background, not the first one found: the fill is a
            guarded enhancement, so the tile is declared twice on purpose, and a check that stopped at
            the first match would pass a translucent override added after it. */
-        const chartRules = tool.raw.match(new RegExp("#" + CHART + "\\{background:[\\s\\S]*?\\}", "g")) || [];
+        const chartRules = tool.raw.match(B.RULES) || [];
         /* 2.36 — THE PROPERTY IS "DOES NOT TRANSMIT", NOT "DOES NOT MENTION THE FILL TOKEN". The first
            form of this check refused a correct change: the sweep's tile may carry the same fill as its
            neighbours as long as that fill is composited against an OPAQUE ground rather than against
@@ -375,16 +388,17 @@ const LAWS = [
            it reading IN FORCE on a tile that transmitted. What is forbidden is the fill token standing
            as the first colour of a mix whose second colour is transparency. */
         const TRANSMITS = /var\(--tile-fill\)\s*,\s*transparent/;
-        const chartOpaque = chartRules.length > 0 && chartRules.every(r => !TRANSMITS.test(r));
+        const chartOpaque = chartRules.length > 0 &&
+          chartRules.every(r => !TRANSMITS.test(r) && !/backdrop-filter/.test(r));
         const bad = [];
         if (!namesSurface) bad.push(calls.length === 1
           ? "the tool's own source does not name the granted surface"
           : `${calls.length} floor call sites — the grant is one surface, so it is one floor`);
         if (!decl) bad.push(`#${ID} is not declared position:fixed`);
-        if (!outside) bad.push(`#${MOUNT} is not mounted ahead of the content column`);
+        if (!outside) bad.push(`${MOUNT} is not mounted ahead of the content column`);
         if (!chartOpaque) bad.push(chartRules.length
-          ? `#${CHART} mixes the tile fill toward transparent, so the ground shows through the sweep`
-          : `#${CHART} declares no substrate of its own, so it inherits the tile fill`);
+          ? `${CHART} lets the granted ground through, and it carries a measured value`
+          : `${CHART} declares no substrate of its own, so it inherits the fill`);
         if (bad.length)
           return { state: "DIVERGES",
                    detail: `${calls.length} floor call site(s) outside the grant — ${bad.join("; ")}` };
@@ -401,7 +415,7 @@ const LAWS = [
             detail: `${unguarded} of ${calls.length} floor call site(s) unguarded by prefers-reduced-motion` }
         : { state: "CONFORMS",
             detail: `${calls.length} floor call site(s), each reduced-motion guarded` +
-                    (RHYME ? "" : ", on the page ground alone") };
+                    ", on the page ground alone" };
     } }
 ];
 

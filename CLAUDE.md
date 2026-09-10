@@ -21,7 +21,7 @@ token, the status-bar band, the 560px width query and three `--tile-fill` mixes 
 Rhyme serves the token and the band.* Earlier
 lines: `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,626 lines, 857 KB, 302 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,645 lines, 858 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
@@ -295,8 +295,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **989 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
-occvm 565, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **994 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
+occvm 568, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
@@ -3016,6 +3016,95 @@ longer reads as a lighter panel than the ones around it.
 DATA view's collisions at phone width, the duplicated strike label, Rhyme's globule scale on the
 draft face, and the `+ bar` overlap. The fifth is not a defect and is the owner's to settle — the two
 tools disagree about what "selected" means, and the law does not measure it.
+
+**2.37 — Rhyme's floor moves to the page ground, and the thing that made it look wrong was never
+the floor.** The owner's call: *the globules should behave the way BTC's do — under the glass tiles,
+not drawn in them individually*, with the four cosmetic findings from 2.36 free game. Not this
+tool's code, except for two of those four; the law, the parts and the guard class are shared.
+
+**What was asked for.** Rhyme drew the field inside whichever slab was open — so the field was a
+property of the open face rather than of the page: it reseeded when a face changed, it stopped at
+that slab's edge, and every closed face had none. It is now one fixed full-viewport
+`<canvas id="occvm-floor">` mounted ahead of the content column, exactly the layer this tool has
+carried since 2.34, with `.slab` and `.edge` as 38% substrate plus a λc frost over it. **`.bar` is
+deliberately excluded and the auditor measures that** — it carries `--heat`, a measured value, and
+L13 does not put a drifting mass under one of those. Demonstrated rather than asserted: giving
+`.bar` the fill takes the register from **9 in force, 0 diverged** to **8 in force, 1 diverged** and
+`law-audit.js --check` exits 1. L13's bound, written for this tool at 2.34, is now measured against
+both — one call site naming the granted surface, `#occvm-floor` declared `position:fixed`, the mount
+ahead of the content column, and the measured-value surface opaque.
+
+**And then the field report's third finding turned out not to be about globules at all.** 2.36
+recorded *"Rhyme's globules read as large discrete blobs on the draft face"* and filed it as a
+question of scale. It was not scale. Read off the **deployed** build's computed styles, `.slab` had
+`background-image: none` and `background-color: rgba(0,0,0,0)` — **the open face had no substrate**,
+so the field ran straight through it and its controls floated on the page ground. Three more
+surfaces were dropped the same way: `.binding` lost its bronze, and `.text .w.override` —
+`color: transparent` over a `background-clip: text` gilt gradient — **painted nothing at all**, so an
+override word in a draft was invisible.
+
+**One expression, written four times:** `linear-gradient(calc(atan2(var(--ly), var(--lx)) * 1rad +
+90deg), …)`. CSS `atan2()` **already returns an angle**, so that is angle × angle. And because the
+expression contains `var()`, it is invalid **at computed-value time**, which — unlike a parse error —
+does *not* fall back to an earlier cascade entry: the property takes its **initial** value. No console
+message, no fallback, and every source-text assertion in that repo still green. The correction is
+`+ 90deg`, which is what its own `25_card.js` computes in JS as `Math.atan2(L.ly, L.lx) + Math.PI/2`.
+*It was found by driving the deployed page and reading `getComputedStyle`, while chasing an unrelated
+number* — which is the fourth time a defect in this system has surfaced only because something was
+rendered and looked at rather than read.
+
+**The guard is narrow on purpose and is named as not the general fix.** The general property is *no
+declaration computes to its initial value by accident*, and that is only visible in a browser; the
+golden recorder is where it belongs, and it is **not built here** — recorded as the gap it is, beside
+`OCCVM-D13`. What ships catches the class that actually shipped: an angle-valued trig result
+multiplied by a unit, comments stripped first (a guard reading its own prose has been the defect four
+releases running). It is in **both** suites — the four sites in Rhyme's own, preventively in this
+tool's, which writes no trig in CSS today, plus a cross-repo clause here that says *skipped, not
+passed* when the sibling is absent. Both verified to bite.
+
+**The 38% transfers as a number and not as a verdict, and that was measured rather than assumed.**
+Carrying a value fixed against this tool's substrate into a second tool without re-measuring is the
+error this project keeps catching in itself, so the criterion was re-run on Rhyme's own surfaces
+(SPINE.md §6b carries the table): a closed face reads **47.11** worst core pixel against a
+constructed ground twin's **47.40** — parity — and the open face reads **43.91**, missing by
+**3.49**. It ships missing it: the pre-2.37 opaque slab was already 0.84 below, no attainable fill
+closes the gap (44.37 at 34%, still 3.03 short), and the cause is that `.slab`'s own top-left radial
+highlight sits exactly under its `h2`. **The frost is free** — isolated, opaque reads 46.56 unfrosted
+against 46.60 frosted — so the fill is the whole cost.
+
+**`GROUND_ALPHA` was chosen against a broken page, and the number moved when the page was repaired.**
+0.24 was fixed at 2.24 against a slab-sized canvas; on a page ground it is roughly twice what this
+tool carries. The criterion is that the two grounds carry the field at the same measured weight,
+since 2.37 puts both tools on one law and one kind of surface. The first reading said 0.12 matched to
+0.2% — taken while every slab and the binding had *no background at all*, so the field showed through
+the whole frame and the moved region was not the ground. Re-measured on one instrument, both tools,
+same viewport and instant, the floor canvas the only thing toggled: this tool's ground reads **3.440
+mean ΔL\*** over 6.64% of the frame; Rhyme reads 3.024 at 0.10, **3.325 at 0.11**, 3.741 at 0.12.
+**`GROUND_ALPHA = 0.11`**, 3.3% off against 8.8% the other way. *Coverage stays far apart — 11.5%
+there against 6.6% here — and that is the two layouts, not the weight: Rhyme's column covers much
+less of its page. The alpha matches the per-pixel weight and is not asked to match the coverage.*
+
+**The four free-game findings.** *The DATA view's collisions at phone width* — `.shead` now wraps its
+label and its note to their own full-width lines below 560px; four heads that stood at four lines
+stand at none, verified by disabling the query. *The duplicated strike label* — `renderSweep` printed
+the gate's own strike beside the armed pill that already carries it; suppressed when the armed strike
+and the window strike round to the same number, driven through `renderSweep()` and counted off the
+gate's own `fillStyle` rather than off the frame, because a y-axis tick under the pill's opaque gilt
+rect is not a visible second copy. *Rhyme's globule scale* — closed above; it was the missing
+substrate. *The `+ bar` overlap* — closed with it, for the same reason.
+
+**And the fifth, which was the owner's to settle, is settled.** The two tools disagreed about what
+*selected* means: this tool has painted its on-state from `--verdigris` all along, and Rhyme painted
+it with `--pigment`, the palette's **decorative** colour. L6 names four roles and one of them is
+exactly this case — verdigris-adjacent is active — so a decorative accent was carrying state through
+a channel the law does not govern, and a palette change would have changed what *selected* looks
+like. Rhyme's `.cast.on` reads `--verdigris` now; `.cast.patina.on` beside it already did. *The `--m`
+override stays: a swatch that names its own colour, offering a palette, is not a state.*
+
+`test/occvm.js` **565 → 568**; §6's total **989 → 994** (sweep 33 → 35 for the strike label). Rhyme
+**118 → 119**. Golden holds at **564** — the atan2 repair and the alpha are both on consumers, which
+is `OCCVM-D13` exactly: the golden set reads `:root` and cannot see either, and the pictures above
+are the driven measurements instead.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

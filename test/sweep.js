@@ -142,4 +142,45 @@ T("settled marker: an ABOVE call that settled DOWN (a MISS) rings red", settledM
 T("settled marker: a BELOW call that settled UP (a MISS) rings red", settledMarkerScene("BELOW", "UP", false) === "red", null);
 T("settled marker: an ABOVE call that settled UP (a HIT) rings green", settledMarkerScene("ABOVE", "UP", true) === "green", null);
 
+/* ── 2.37 — one strike, one label ───────────────────────────────────────────────────────────────
+ * Reported off a phone: "$77,312" printed twice on the sweep, dim inside the plot at the window's
+ * dashed strike line and bright in the axis pill at the right edge. They are not the same drawing —
+ * one is the window's own strike, the other the armed call's pill, which also carries the call and
+ * its probability — but they are the same NUMBER whenever the armed strike is the Kalshi strike,
+ * which is what happens every time that strike is loaded and armed. The pill survives because it
+ * carries more. Driven both ways, because a suppression asserted only in its suppressing direction
+ * is one that could be stuck off. */
+function strikeLabelCount(armedStrike, windowStrike) {
+  R(`(function(){
+    S.lock=null; S.drag=null; S.swingActive=null; S.leader="coinbase"; S.k.hour=[];
+    S.tape=[]; for(let t=${now}-5*60000;t<=${now};t+=15000) S.tape.push({t,p:100050,src:"coinbase"});
+    S.lastPx=100050; S.idxPx=100050;
+    S.k.sched=[{ticker:"W1",strike:${windowStrike},close:${now}+8*60000,open:${now}-7*60000,result:null}];
+    S.k.cur={ticker:"W1",strike:${windowStrike},close:${now}+8*60000};
+    S.round={state:"armed",tStart:${tStart},tEnd:${now}+8*60000,strike:${armedStrike},
+      strikes:[{id:1,strike:${armedStrike},call:"ABOVE",withdrawn:false,probAtArm:0.6}]};
+  })()`);
+  const calls = canvasCalls(); calls.length = 0;
+  R("renderSweep()");
+  /* THE GATE'S OWN LABEL, identified by the colour only a gate draws in. Three things can print this
+     number at once and only two of them are visible: the gate label inside the plot, the armed pill
+     at the right edge, and a y-axis price tick that happens to land on the same value. The tick is
+     NOT a third copy — the pill paints an opaque gilt rect 26px tall over its own band first, and the
+     tick sits inside it — which is worth stating because the first version of this test counted it
+     and read three. What was reported off the phone, and what is suppressed, is the gate label. */
+  const GATE_FILL = "rgba(217,165,44,.55)";
+  const want = "$" + Math.round(windowStrike).toLocaleString("en-US");
+  const hits = calls.filter(c => c.op === "fillText" && String(c.args[0]) === want && c.fillStyle === GATE_FILL);
+  if (process.env.DUMP) for (const h of hits) console.log("   gate label:", JSON.stringify(h.args[0]), "y=", h.args[2]);
+  return hits.length;
+}
+{
+  const same = strikeLabelCount(100000, 100000);
+  const diff = strikeLabelCount(100400, 100000);
+  T("the gate stops printing its strike when the armed call sits on it — the pill already carries that number",
+    same === 0, `${same} gate label(s)`);
+  T("and it prints when the armed call is somewhere else, because then they are two different numbers",
+    diff === 1, `${diff} gate label(s)`);
+}
+
 process.exitCode = done() ? 1 : 0;
