@@ -4,35 +4,39 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910130216` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910144317` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.34** (§12): the pigment palettes, the metaball globule field and its
-whole build order, one confidence vocabulary across the panels, the React island (§13), and the
-ambient floor on this tool's page ground under L13's bounded grant. *Verified by stamp on both hosts
-at 2026-09-10 13:05:55 and 13:05:56 UTC, on the first poll — `btc-terminal.pages.dev` and the GitHub
-Pages fallback both read `build-20260910130216`. **That is an upper bound on the landing time, not a
-measurement of it:** the push completed at 13:04:50 and the first poll was 65 s later, so both hosts
-had it at or before 13:05:55 and nothing here says when. Corroborated as this release rather than a
-cached stamp, which is corroboration and not the verification (§7.3): two `occvm-floor` sites, two
-`floor-mount` sites and six `OCCVM_FLOOR` references on each host, and the reference surface at
-`/occvm/reference/` carrying four `OCCVM_GLASS` references, `paintVessel`, `paintFloor` and the `l13`
-section — the page that shipped dead for one commit, alive on the wire. Rhyme's GitHub Pages read
-`build-20260910123606` at 13:06:28 UTC, 47 s after its push, its service worker naming
-`tome-build-20260910123606`; that stamp was minted by 2.30's rule when the content changed and
-preserved by every build since, so it identifies what it stamps without a deliberate re-cut.* Earlier
-lines: `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+correction, and OCCVM through **2.35** (§12): the pigment palettes, the metaball globule field and its
+whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
+floor on this tool's page ground under L13's bounded grant, and the field drawn **once** on that
+ground with the tiles frosted over it. *Verified by stamp at 2026-09-10 — `btc-terminal.pages.dev`
+read `build-20260910144317` at 14:46:08 UTC having **missed** on the poll 10 s earlier, so it landed
+in a bracket between 14:45:58 and 14:46:08, within ~12 s of the push: a measurement rather than the
+upper bound the previous line could only give. The GitHub Pages fallback read the same stamp at
+14:46:08 on its first poll, which is an upper bound and is named as one. Corroborated as this release
+rather than a cached stamp, which is corroboration and not the verification (§7.3): both hosts serve
+`--tile-fill:38%`, two `blur(var(--occvm-meniscus))` sites, two `#chartbox` background rules and
+**zero** `.tile::before` rules.* **Rhyme's served page is unchanged by this release and its stamp is
+therefore not evidence of anything having deployed.** Its artifact is byte-identical — `build.js`
+compared it with both stamps masked and preserved `build-20260910123606`, 2.30's rule doing its job —
+because what changed there is `occvm/SPINE.md`, the law, which is not served. Polling a stamp that
+could not have moved would be the §7.3 error inverted, so it is stated instead. Earlier
+lines: `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,526 lines, 848 KB, 302 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,578 lines, 853 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
 inside the sentence promising it would not recur. Counted again at every release since, this one
-included, and the count excludes the spliced dependency. The island is **156,881 bytes** as spliced,
+included, and the count excludes the spliced dependency. The island is **156,947 bytes** as spliced,
 of which the vendor payload is **142,586** and the three components 13,499 — the rest is fence
-comments. *The figures here previously read 142,929 and 152,580 under a boundary that counted the
-fences into the vendor half; React is byte-identical and pinned, and the difference is the measure,
-not the dependency.* Its minified UMD puts nine names at
+comments. *Two measurement corrections live in that sentence, and neither is a change to the file.
+It read 156,881 one release ago because that count was taken over CHARACTERS and this one is taken
+over bytes; the island's comments carry 66 multi-byte characters and nothing in `react/` has moved.
+Before that it read 142,929 and 152,580 under a boundary that counted the fences into the vendor
+half. React is byte-identical and pinned across all three readings, and what moved each time was the
+instrument.* Its minified UMD puts nine names at
 line-start (`D Df Id M Td mb oe oj y`) that are inside its own IIFE and are not this tool's
 namespace. §7.1's duplicate check is scoped the same way, in CI and in `test/react.js`.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
@@ -2900,6 +2904,22 @@ source for the shared part, and its canvas merges two drops for the first time s
 ground is 6.5–12.4% of the screen and the rest of the field is still the frozen `.tile::before`
 overlay, so what ships is a moving frame around a still one. Retiring that overlay is the vessel's
 job, and the vessel is derived and worn by nothing (2.32).
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`1bf0d8b` here,
+`4d28980` in Rhyme), CI green on both branch heads through the API before either merged (BTC run 114,
+Rhyme run 77). Verified by stamp: both BTC hosts read `build-20260910144317`, with the Cloudflare read
+**bracketed** rather than bounded — it missed at 14:45:58 and hit at 14:46:08, so it landed inside
+those ten seconds. **Rhyme's page is unchanged and its stamp verifies nothing here**, which is worth
+saying rather than glossing: what changed there is the law, and the law is not served. `build.js`
+compared its artifact with both stamps masked, found no content change, and preserved
+`build-20260910123606` — 2.30's rule, working. Polling a stamp that could not have moved and calling
+the result a verification would be §7.3's error inverted.
+
+*What a reader sees change.* The whole page ground is one live field now, and it reads *through* the
+panels instead of stopping at their edges — the tiles are 38% of their own substrate over that field,
+frosted at the fluid's capillary length. The sweep is the one panel that does not take it, by the
+law. And the globules that used to sit **on top of** the chart, over the tape and the strikes and the
+settled pips, are gone: that layer was retired, not dimmed.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
