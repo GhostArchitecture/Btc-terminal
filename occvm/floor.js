@@ -319,7 +319,30 @@
          can only begin a weld while both are resting there, which is when a real lamp's wax pools. */
       for (i = 0; i < drops.length; i++) for (j = i + 1; j < drops.length; j++) {
         var p = drops[i], q = drops[j];
-        if (p.merging || q.merging || p.locked || q.locked) continue;
+        if (p.merging || q.merging) continue;
+        /* 2.39 — A PEANUT MAY REJOIN AT THE COIL, AND THE RULE THAT SAID IT COULD NOT WAS TOO WIDE.
+           2.28 step 5 excluded every locked lobe with this reasoning: "a third arrival would need the
+           bridge to grow again against a yield stress that already stopped it". That is true of the
+           FROZEN BRIDGE and only of it. A third drop touching the body somewhere else starts a NEW
+           bridge with its own capillary drive γ/R for the new pair; nothing about the arrested bridge
+           resists it, and Kern et al. describe arrest as a property of one coalescence event, not a
+           permanent inertness of the drops in it. So the blanket exclusion was a conclusion drawn
+           wider than its premise, and it had a measured cost: driven for two hours the shipped coil
+           fires 10 welds on a phone and then NOTHING — [7,3,0,0,0,0,0,0] per 15 minutes — with 20 of
+           37 drops locked out permanently.
+           TWO EXCLUSIONS SURVIVE, AND BOTH ARE STRUCTURAL RATHER THAN CAUTIOUS. */
+        /* A FOLLOWER IS INTERIOR. It is a lobe inside a rigid body, not a free surface a drop can
+           land on, and welding to one would put a bridge inside an object. */
+        if (p.lockedTo || q.lockedTo) continue;
+        /* AND A BODY MAY ACCRETE A FREE DROP BUT NOT ANOTHER BODY. This is a limit of the placement,
+           stated rather than dressed as physics: the rigid body here is ONE LEVEL DEEP by
+           construction — the extent loop above reads `fo.lockedTo === d`, and the follower pass makes
+           a single sweep over `drops` — so a two-level chain would leave a grand-follower outside its
+           leader's extent (through the glass, which is 2.38's bypass again) and one frame stale in
+           its position. Body-to-body welding needs a tree walk in both loops and is not built.
+           Measured cost of the looser rule that allows it: it produces chains, which those two loops
+           cannot place. */
+        if (p.locked && q.locked) continue;
         if (!atCoil(p, period) || !atCoil(q, period)) continue;
         if (Math.hypot(p.x - q.x, p.y - q.y) > p.r + q.r) continue;
         /* the substance decides the outcome BEFORE the bridge starts growing, from the radii alone —
@@ -327,7 +350,13 @@
         var reg = OCCVM_GLOBULES.arrestRegime(p.r, q.r);
         var lobe = Math.min(p.r, q.r);
         p.merging = q.merging = true;
-        welds.push({ a: p, b: q, t: 0, rb: 0, arrests: reg !== "completes",
+        /* 2.39 — THE LEADER GOES IN `a`, AND WITHOUT THIS THE ACCRETION INVERTS. The arrest branch
+           writes `b.lockedTo = a`, so if the existing body arrived as `q` it would become a follower
+           of a free drop and its own followers would become grand-followers — the two-level chain the
+           exclusion above exists to prevent, reintroduced by argument order. The pair is ordered so
+           the body leads; `p.locked && q.locked` is already excluded, so at most one of them is one. */
+        var lead = q.locked ? q : p, join = q.locked ? p : q;
+        welds.push({ a: lead, b: join, t: 0, rb: 0, arrests: reg !== "completes",
                      target: lobe * OCCVM_GLOBULES.arrestedBridge(p.r, q.r) });
       }
     }

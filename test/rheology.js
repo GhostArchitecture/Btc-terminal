@@ -216,4 +216,72 @@ T("and no stiffness tensor, so P1's anisotropic motion retires with the crystal"
     /NO PUBLISHED SURFACE TENSION FOR KETCHUP/i.test(src) && /40\.5/.test(src) && /42\.6/.test(src));
 }
 
+/* ---- 2.39: the carrier, and the direction it points ------------------------------------------
+   Appended BEFORE process.exit(done()) — 2.26's lesson, where a block placed after it never ran and
+   the suite reported PASS at an unchanged count. */
+{
+  const C = R.CARRIER, G = require("../occvm/globules.js");
+  const fs = require("fs"), path = require("path");
+  const gsrc = fs.readFileSync(path.join(__dirname, "..", "occvm", "globules.js"), "utf8");
+
+  T("the carrier is a named constant rather than a default argument", !!C && typeof C.contrast === "number");
+  T("its contrast is the value that shipped, inverted from the 30px ceiling", C.contrast === 0.0567, C.contrast);
+  /* the free parameter is the CONTRAST; the density derives from it and the wax's, so the two cannot drift */
+  T("the carrier density derives from the contrast and the wax, one fact one owner",
+    Math.abs(C.density - K.density * (1 - C.contrast)) < 1e-12, C.density.toFixed(4));
+  T("and it is genuinely lighter than the wax, which is what makes the wax sink at rest",
+    C.density < K.density && C.density > 0, C.density.toFixed(4));
+
+  /* THE INVERSION IS REAL AND IS THE REASON THE VALUE DOES NOT MOVE: the suspended capillary length
+     sqrt(gamma / (dRho * g)) lands on the authored 30px ceiling at exactly this contrast. Recomputed
+     from the constants rather than matched against the digit 0.0567, so it survives a change to gamma. */
+  const susp = Math.sqrt(K.gamma / (K.density * 1000 * C.contrast * R.G)) * 1000 / R.MM_PER_PX;
+  T("the contrast is what puts the suspended capillary length on the authored 30px ceiling",
+    Math.abs(susp - G.R[1]) < 0.1, susp.toFixed(3) + "px vs ceiling " + G.R[1]);
+
+  /* buoyantStress must READ the carrier, not carry copies. Both literals it used to hold are named. */
+  T("buoyantStress no longer types the contrast", !/0\.0567/.test(gsrc.split("function buoyantStress")[1].slice(0, 400)));
+  T("nor a second g beside rheology's", !/9\.80665/.test(gsrc.split("function buoyantStress")[1].slice(0, 400)));
+  T("it reads the carrier and the shared g", /r\.CARRIER\.contrast/.test(gsrc) && /\* r\.G \*/.test(gsrc));
+
+  /* THE MEASURED DIRECTION, asserted rather than left in prose, because it is the whole answer to
+     "a constant for the liquid": every carrier lever points AWAY from a more merged field. Both
+     arrest lengths are gamma over a stress, so they scale linearly in gamma — which is exactly what
+     the note this release corrected claimed they were immune to. */
+  const L = G.arrestLengths();
+  T("both arrest lengths are linear in gamma",
+    Math.abs(L.complete - K.gamma / K.tau0 * 1000 / R.MM_PER_PX) < 1e-9 &&
+    Math.abs(L.joined - K.gamma / K.tau0Dynamic * 1000 / R.MM_PER_PX) < 1e-9);
+  /* so scaling gamma down scales them down, and a 9+9 pair falls out of the dumbbell band.
+     THE FACTOR IS COMPUTED, NOT TYPED. My first draft of this clause asserted it at HALF the gamma
+     and failed on correct code: at gamma/2 the joined length is 17.141 px against a merged 11.339,
+     still a dumbbell. That is 2.38's own recorded failure — a figure written into a guard before
+     being measured — inside the release that records 2.38's. The threshold is where the merged
+     radius passes the joined length, and it is derived here so it cannot go stale. */
+  const r99 = G.merged(9, 9), fBarely = r99 / L.joined;
+  T("a 9+9 pair is a dumbbell at the shipped gamma", r99 > L.complete && r99 <= L.joined, r99.toFixed(3));
+  T("it takes gamma below a third of the shipped value to push it to BARELY JOINED",
+    fBarely > 0.30 && fBarely < 0.34, "gamma x " + fBarely.toFixed(4));
+  T("and below that it IS barely joined — a lower interfacial tension arrests MORE, never less",
+    r99 > L.joined * (fBarely * 0.9), r99.toFixed(3) + " vs joined " + (L.joined * fBarely * 0.9).toFixed(3));
+  /* and completion would need gamma to RISE, which a liquid/liquid interface does not do */
+  const needed = r99 * R.MM_PER_PX / 1000 * K.tau0;
+  T("completion needs gamma above the shipped value, not below", needed > K.gamma, needed.toFixed(4) + " N/m");
+
+  /* the note that claimed the arrest lengths were exempt is corrected in the file, not only here */
+  T("the exemption this release corrects is recorded where it was made",
+    /2\.39 CORRECTS THE EXEMPTION/.test(gsrc));
+  /* THE STALE PROMISE 2.38 LEFT BEHIND IS RETIRED — and the first form of this clause failed on
+     correct code by reading its own correction. The file now QUOTES the old sentence in order to
+     record that it was wrong, so a bare substring search finds it and calls the fix the defect.
+     That is the comment-counting trap for the FIFTH release running (2.27, 2.28 step 6, 2.29, 2.35,
+     here), and the fix is the same each time: ask the property. The property is that the phrase
+     survives only inside the block that retires it. */
+  const promise = /`vx`\/`vy` stay for the lateral wander/g;
+  const hits = (gsrc.match(promise) || []).length;
+  const inCorrection = (gsrc.split("2.39 — THIS SENTENCE USED TO END")[1] || "").slice(0, 400);
+  T("the sentence survives once, inside the note that retires it", hits === 1, hits);
+  T("and that note is what carries it", promise.test(inCorrection));
+}
+
 process.exit(done());

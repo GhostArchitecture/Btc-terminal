@@ -95,8 +95,34 @@ var OCCVM_GLOBULES = (function () {
    *    liquid — which is what a lava lamp is, and what the plan's own §0 establishes — has
    *    √(γ/(Δρ·g)), and Δρ is the one quantity such a lamp designs toward zero, so the length diverges:
    *    7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at 0.005. Sizing a suspended globule with the
-   *    air-interface value is the 2.8/2.10/2.22 error class. Note that the ARREST lengths above are
-   *    unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones used here.
+   *    air-interface value is the 2.8/2.10/2.22 error class.
+   *
+   *    2.39 CORRECTS THE EXEMPTION THIS PARAGRAPH GAVE ITSELF. It read: "Note that the ARREST lengths
+   *    above are unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones
+   *    used here." The clause is true and the conclusion does not follow. γ/τ₀ carries no g and no ρ,
+   *    so it is immune to the DENSITY half of the two-phase correction — which is the only half the
+   *    sentence looked at. It is not immune to the TENSION half: γ is a property OF AN INTERFACE, and
+   *    the interface changes from wax/air to wax/carrier at the same moment ρ changes to Δρ. Both
+   *    arrest lengths are γ over a stress, so both scale with it directly. The paragraph exempted the
+   *    arrest lengths from a correction by checking the one substitution they survive and not the one
+   *    they do not — which is 2.26's global-worst-case error in a third coordinate: the right
+   *    arithmetic on the wrong pair.
+   *
+   *    WHAT THAT COSTS, MEASURED, AND THE DIRECTION IS AGAINST THE PICTURE ANYBODY WANTS. Both lengths
+   *    scale linearly in γ, so a lower interfacial tension SHORTENS them and the field arrests MORE:
+   *    at γ 0.020 the 9+9 pair still reads dumbbell, at 0.010 it reads BARELY JOINED, and the merged
+   *    radius that completes falls from 7.148 px to 1.787. Completion would need γ to RISE — 0.0635
+   *    N/m for a 9+9 twin-merge (1.59× the shipped value), 0.2115 for 30+30 (5.29×) — and a
+   *    liquid/liquid interface is the direction away from that, not toward it.
+   *
+   *    AND NO SUCH CONSTANT IS ADOPTABLE HERE, FOR A WORSE REASON THAN P-1's. rheology.js closes γ as
+   *    unclosable because ordinary tensiometry has no valid regime on a fluid that holds below τ₀.
+   *    A wax/carrier γ for THIS substance is not merely unmeasured, it is ill-posed: the substance is
+   *    an aqueous matrix and the lamp analogy's carrier is aqueous too, so the two are not immiscible
+   *    and there is no interface to have a tension. The two-phase framing is an analogy laid over a
+   *    proxy chosen on other grounds, and it does not survive being asked for this number. So the
+   *    shipped γ stays the air interface's, USED KNOWINGLY OUTSIDE ITS REGIME AND SAID SO, which is
+   *    the honest form of what the sentence above was claiming by exemption.
    *    Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling implies
    *    Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
    *    sources are secondary, the bracket is reported as a bracket, and no constant here comes from
@@ -166,7 +192,12 @@ var OCCVM_GLOBULES = (function () {
      drop like its radius, not motion, which is why it is the field's and the cycle it feeds is the live
      consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
      withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
-     and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
+     and moves nothing on its own.
+     2.39 — THIS SENTENCE USED TO END "`vx`/`vy` stay for the lateral wander a real lamp shows", and
+     2.38 retired both of them one screen above without correcting it here. A comment promising a
+     field two properties the field stopped writing is 2.14's class exactly, inside the file that
+     records 2.14's class. Found by reading the part end to end rather than by any guard: nothing
+     measures a comment. */
   function drop(rnd, w, h, r0, r1, atCoil) {
     var r = r0 + rnd() * (r1 - r0);
     /* THE LANE IS CLAMPED INTO THE VESSEL, and a torus is why nobody noticed it needed to be. Until
@@ -201,10 +232,21 @@ var OCCVM_GLOBULES = (function () {
    * limited and one viscosity-limited with CONSTANT PERIODICITY. Rise, dwell, sink, dwell, one period
    * for every drop with its own phase: that is what this field carries, and it is the shape rather than
    * the speed that came from the source. */
+  /* 2.39 — THE CONTRAST AND g BOTH HAD AN OWNER SOMEWHERE ELSE, AND THIS FUNCTION OWNED COPIES.
+     `0.0567` sat here as a DEFAULT ARGUMENT — the least visible place a constant can hide, since it is
+     neither a token the auditor scans nor a named constant a reader finds — while being the whole of
+     what "the liquid" contributes to this model. It is `OCCVM_RHEOLOGY.CARRIER.contrast` now, with its
+     provenance (inverted from the authored 30 px ceiling, not measured) recorded beside the value.
+     And `9.80665` was a second g: rheology.js has fixed the physical constants for this system since
+     the crystal port and uses 9.81, so the two disagreed in the fifth digit for no reason. Reading its
+     G moves the buoyant stress by 0.034% — 1.5094 -> 1.5099 Pa at r = 9, 5.0314 -> 5.0331 at r = 30 —
+     which changes no verdict anywhere (the shortfall against tau-0 is 14.0x and 4.20x either way) and
+     is recorded rather than absorbed, because a figure in this file's own prose moved. */
   function buoyantStress(rPx, dRhoOverRho) {
     var r = rheo(); if (!r) return null;
     var m = r.SUBSTANCE;
-    return m.density * 1000 * (dRhoOverRho === undefined ? 0.0567 : dRhoOverRho) * 9.80665 * (rPx * r.MM_PER_PX / 1000);
+    var d = dRhoOverRho === undefined ? r.CARRIER.contrast : dRhoOverRho;
+    return m.density * 1000 * d * r.G * (rPx * r.MM_PER_PX / 1000);
   }
   function risesAt(rPx, dRhoOverRho) {
     var r = rheo(), t = buoyantStress(rPx, dRhoOverRho);
