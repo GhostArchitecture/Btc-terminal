@@ -4,26 +4,21 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910192734` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910213048` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.37** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.38** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
-floor on the page ground under L13's bounded grant, the field drawn **once** on that ground with the
-tiles frosted over it, the safe area read as a token so the price is never under the status bar, and
-2.37's phone-width `.shead` stacking and the duplicated strike label. *Verified by stamp. **Every
-reading here is a bracket, not a bound**, because the poll that preceded each hit is recorded: both
-BTC hosts missed at 19:33:49 UTC and hit at 19:34:00 (Cloudflare) and 19:34:01 (GitHub Pages), so each
-landed inside those eleven or twelve seconds. Rhyme's GitHub Pages missed four polls and hit
-`build-20260910192143` at 19:34:43, bracketed from 19:34:32 — **and that fourth poll returned no stamp
-at all**, a page served mid-swap, which is worth recording rather than smoothing: a single poll finding
-nothing is not evidence of anything and would have read as a failure had it been the only one. Rhyme's
-service worker on the wire names `tome-build-20260910192143`, the same stamp. Corroborated as this
-release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
-hosts serve the 560px `.shead` query and the `armedHere` strike guard, and Rhyme serves **four**
-corrected `atan2(…) + 90deg` gradients and **zero** of the `* 1rad` form that dropped four of its
-backgrounds, plus `#occvm-floor` fixed, `--tile-fill: 38%`, `GROUND_ALPHA = 0.11` and `.cast.on`
-reading `--verdigris`.* Earlier
-lines: `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
+a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
+screen edge, and the Fresnel rim on the column's walls. *Verified by stamp, every reading a bracket
+because the preceding miss is recorded: Cloudflare missed at 21:34:54 and hit at **21:35:05**; Rhyme
+missed at 21:35:06 and hit `build-20260910210243` at **21:35:17**; GitHub Pages for BTC took four
+misses and hit at **21:35:37**, the slowest of the three by half a minute. Rhyme's service worker on
+the wire names `tome-build-20260910210243`, the same stamp, and its artifact really changed, so that
+poll answers the question it was asked. Corroborated as this release rather than a cached stamp,
+which is corroboration and not the verification (§7.3): both BTC hosts serve the spliced `glass.js`
+fence, `RIM_GAIN = 0.25` and `max-width:var(--column)`; Rhyme serves the column token.* Earlier
+lines: `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **9,645 lines, 858 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
@@ -3252,6 +3247,22 @@ exactly what `build.js`'s parse check and the golden job exist to catch, and bot
 
 `test/occvm.js` **568 → 582**; §6's total **994 → 1,008** (the containment guard is Rhyme's, where
 the driven floor harness lives). Rhyme **119 → 120**. Golden **564 → 573**.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`31e4cf7` here,
+`0bc66f9` in Rhyme), CI green on both branch heads through the API first (BTC run 132, Rhyme run 89).
+Stamps and their brackets are in the header; BTC's GitHub Pages was the slow one at four misses.
+
+*What a reader sees change.* On a wide screen the field now **stops at the content column** with bare
+page either side, and a Fresnel rim brightens both walls — a lamp on a table rather than a wash to
+the screen edge. It was never contained before: the drops wrapped, leaving one edge and reappearing
+at the other. On a phone the column already filled the viewport, so what changes there is the rim and
+the fact that the field no longer teleports. In Rhyme the same, and its column is 720, so the
+containment is visible on any desktop.
+
+*What this deploy does not close.* Rhyme's open-face serif parity still misses by 3.49 L\* (SPINE.md
+§6b), the "no declaration computes to its initial value" property is guarded only for the one class
+that shipped, desktop frame cost is still ~13 fps from `backdrop-filter` across 21 tiles, and the
+chart island (§13.5) is still deferred with its cost measured.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
