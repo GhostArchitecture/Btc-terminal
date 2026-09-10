@@ -2632,6 +2632,59 @@ the D14 treatment. `PROTOTYPED_AHEAD = ["glass.js"]`.
 floor; the displacement map must clear 52.6 px with its sub-floor degradation built at the same time.
 `test/occvm.js` **509 → 550**; §6's total **927 → 968**.
 
+**2.33 — the metaball field never merged on a canvas, and the fix is 3,278× cheaper.** Step 2 of the
+glass sequence was meant to be one number: the frame cost of a live floor. It found a defect in 2.28
+instead, in the shared part, shipped since that release.
+
+**What the frame cost actually is, and my own account of it was wrong.** Measured at 390×844 on the
+real page: **60.1 fps without the floor, 5.0 with it.** I had recorded — in two commit messages and in
+§13.7 — that the cost was the floor invalidating five `backdrop-filter` tiles every frame. It is not.
+Disabling `backdrop-filter` entirely gives **5.1 fps**; hiding the whole page behind the canvas gives
+**5.3**. The cost is the floor's own canvas and nothing else, and I asserted a mechanism I had not
+measured. Isolated: the metaball pass costs **196.67 ms/frame** against **0.06 ms** for the plain
+gradient pass it replaced, with 37 drops — **3,278×**.
+
+**Why, and it is the same fact as the defect.** `ctx.filter` filters every **drawing operation**
+separately. The part set the filter on the buffer's context and then made one `fill()` per drop, so N
+drops were N independent blur-and-threshold passes composited afterwards. That is not a metaball
+field: **fields cannot add if each is thresholded before the addition.** Measured on two r=24 discs,
+alpha at the midpoint:
+
+| gap between rims | 0 px | 2 px | 4 px | 6 px | 8 px |
+|---|---|---|---|---|---|
+| filtered per draw call — **what shipped** | 0 | 0 | 0 | 0 | 0 |
+| one filtered composite | 255 | 255 | 255 | 255 | 0 |
+
+**The canvas never joined two drops, at any separation, including touching.** 2.28 wrote that
+*"because fields add, two approaching drops join with no merge code"* and that one `gooFilter()`
+*"serves BTC's still data-URI SVG and Rhyme's live canvas … so the live floor and every still frame cut
+at the same level."* The first is false and the second is false. **This tool's still frame was always
+correct** — an SVG `<g filter>` wraps the *rendered group*, which is the summed field by construction,
+and it bridges to 6 px exactly as the corrected canvas now does. Only the canvas was wrong, so the two
+tools have been showing different pictures of "the same field" for five releases.
+
+**And the fix re-created 2.28's other bug on the way, which is why it is two buffers and not one.**
+Filtering on the way out and setting `globalAlpha` there reads correct and is not: `globalAlpha` on a
+filtered `drawImage` applies **before** the filter, so the weight went inside the isosurface and the
+threshold deleted the field — one r=25 drop at α 0.2 gave **max alpha 0 over 0 non-zero pixels**,
+which is 2.28's erasure verbatim. I read the canvas model instead of driving it. Two buffers: drops
+opaque into one, one filtered composite into the second, weight applied compositing that. Measured
+after: **51 over 1,804 pixels at α 0.2 against 255 over 1,804 at α 1** — same coverage, weight exactly
+0.2.
+
+**Measured after the fix:** bridging identical to the still frame (255 to 6 px, 0 at 8), and
+**5.0 → 54 fps** against a 60.3 baseline, 196.9 ms → 18.1 ms.
+
+*Three of Rhyme's guards were reading a canvas the code had stopped drawing on, and could not have
+caught any of this.* Its harness had no `document.createElement`, so `buf` creation threw inside its
+own `try/catch`, `filtered` fell to false, and **every assertion about the metaball path was a regex
+over source text while the harness drove the unthresholded fallback** — 2.22's "verified against its
+fixture instead of its call path", again. The sandbox now makes real recording canvases, the display
+context records every operation instead of a whitelist that had no `drawImage` in it, and the metaball
+assertions are counts off the driven op streams: the buffer carries no filter, the isosurface canvas
+carries exactly one, and the weight is set on the display after it. Verified to bite: putting the
+filter back on the buffer fails 3.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
@@ -2902,16 +2955,15 @@ state diffed against no field at all:
 matched weight — tighter coverage, greater per-pixel weight, which is the threshold signature 2.28
 already measured on the still field (12.76% → 11.24%).
 
-**And the cost is real and is not yet a number.** With the floor live, **every Chromium screenshot
-times out at 15 s** — element captures and clipped page captures alike, with the network blocked and
-CSS animations disabled. A full-viewport fixed canvas repainting at 60 Hz sits behind five
-`backdrop-filter: blur(18px) saturate(1.2)` tiles, so each frame invalidates and re-blurs every tile's
-backdrop. That is evidence of cost, **not a measurement of it**, and it is named as evidence: the frame
-rate was not captured before this was backed out. Two things follow and both are for the owner. The
-floor moves **1.4 px/s — 0.023 px per frame at 60 Hz**, so the repaint rate is buying nothing and is
-the obvious place to look first. And `GLASS-VESSEL-PLAN.md` §6 asks for a displacement map over a live
-canvas across several panels, on the reading that performance should be profiled before committing;
-this measurement says the cost is already present *before* any displacement map, on this tool, today.
+**And the cost was real — but the mechanism written here was wrong, and §12's 2.33 entry corrects it.**
+With the floor live every Chromium screenshot timed out at 15 s, and this paragraph attributed that to
+the floor invalidating five `backdrop-filter` tiles every frame. **Measured afterwards, that is not the
+cause**: disabling `backdrop-filter` gives 5.1 fps against the floor's 5.0, and hiding the entire page
+gives 5.3. The cost was the part's own canvas — `ctx.filter` applied once per drop rather than once per
+frame — and fixing it took the page from **5.0 to 54 fps** while also making the field actually merge,
+which it never had on a canvas. The screenshot timeout was real evidence of *a* cost and my account of
+*which* cost was a guess stated as a mechanism. Left here rather than rewritten, because the correction
+is the record.
 
 **Held in the scratchpad, not lost:** `react/Floor.js` and the page's adoption diff.
 
