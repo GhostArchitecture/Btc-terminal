@@ -396,6 +396,12 @@ table {
        reader picks can make a won window and a lost one read alike (section 5). `--ruby-lo` is new: PAL
        carried that value as a bare literal with no token to resolve from, which is exactly the
        restatement L6 exists to catch, in the one file the measure could not see until 2.17. */
+    /* 2.35, tool-local, AUTHORED and named as such — but the criterion that fixes it is not. A serif
+       set on a tile must read no worse than the same serif set on the bare ground beside it; measured
+       over six seeds at the sundial's night instant, the two cross at 38% (36.78 L* worst core pixel
+       in the tile against 36.69 on the ground). What ships today reads 27.79 there, so the tile is a
+       WORSE surface to read on than the open page, and has been since it was built. */
+    --tile-fill:38%;
     --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
     /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
     --lx:.35; --ly:-.85; --elev:.55; --night:0;
@@ -444,6 +450,18 @@ table {
   a{color:var(--gilt-b)}
 
   /* slabs: obsidian glass — sheen where the light lands, bevel following the sun, self-lit at night */
+  /* 2.35 — THE SUBSTRATE CARRIES THE FIELD AND THE TILES ARE GLASS OVER IT. Until now the field was
+     drawn twice: live on the page ground, and again as a still copy on every `.tile::before`. That
+     second copy is retired here, so there is ONE field in the page and the tiles show it by letting it
+     through rather than by repainting it. Two consequences, both measured rather than argued.
+     The decoration is now strictly BENEATH the ink. `.tile::before` was position:absolute, so it
+     painted ABOVE its box's in-flow content — over the sweep and over every mark that carries win/lose,
+     which is the trade section 7.6 forbids and the reason 2.26 had to measure its way out. Nothing
+     paints over a mark any more, so that situation is gone rather than mitigated.
+     `--tile-fill` is how much of the tile's own substrate survives; the rest is the ground behind it,
+     blurred by the backdrop-filter this rule has carried since the tile was built. The blur was 18px
+     and authored; it is the substance's own capillary length now, the same length the metaball
+     isosurface is blurred at (2.28), so the frost and the field are cut to one scale. */
   .tile{position:relative;overflow:hidden;border-radius:20px;color:var(--bone);
     background:
       radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
@@ -454,13 +472,48 @@ table {
       inset calc(var(--lx)*1.2px) calc(var(--ly)*1.2px) 0 rgba(255,255,255,.14),
       inset calc(var(--lx)*-1.2px) calc(var(--ly)*-1.2px) 0 var(--shade),
       var(--occvm-cast-3), var(--occvm-cast-1);
-    -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
-  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--globules,none);
-    background-size:var(--globules-size,auto);background-position:0 0;opacity:.16;mix-blend-mode:screen}
+    -webkit-backdrop-filter:blur(var(--occvm-meniscus)) saturate(1.2);
+    backdrop-filter:blur(var(--occvm-meniscus)) saturate(1.2)}
+  /* OCCVM-L13, and this is the whole of the bound. The grant is the page ground; a tile may SHOW that
+     ground because showing is not running a floor. The sweep may not: a drifting mass behind marks that
+     mean win/lose is exactly what L13 withholds from this tool, so the one tile that carries the canvas
+     keeps an opaque substrate and the floor stops at its edge. law-audit.js measures this. */
+  #chartbox{background:
+      radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
+      radial-gradient(120% 90% at 100% 110%, rgba(63,191,126,.06) 0%, transparent 60%),
+      linear-gradient(160deg,var(--sub-hi) 0%,var(--sub) 45%,var(--sub-lo) 100%)}
   .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,calc(.22*var(--elev)+.08)),transparent)}
   .tile > *{position:relative;z-index:1}
-  @supports not ((backdrop-filter:blur(2px)) or (-webkit-backdrop-filter:blur(2px))){ .tile{background-color:#1b1a22} }
+  /* THE PARTIAL FILL IS AN ENHANCEMENT, NOT THE BASE, AND THAT ORDER IS THE WHOLE POINT OF THIS RULE.
+     The opaque substrate above is what every browser gets; this replaces it only where BOTH things the
+     effect needs actually exist. `color-mix` is four years younger than `backdrop-filter`, so writing
+     the fill into the base declaration would hand a browser with the frost and without the mix an
+     INVALID background and a tile with no substrate at all — a worse failure than not having the
+     effect, and one no harness here would have seen. And the two are required together rather than
+     separately: a partial fill with no frost shows the ground through every tile unblurred, sharp
+     globules under running text, which is the one thing the frost is for. Either missing, and the tool
+     renders exactly its pre-2.35 picture.
+     *Written once as `@supports ((color-mix(...)) and (backdrop-filter:...))`, which is not a support
+     condition at all — a bare value is not testable, so the whole block was dropped and every tile
+     silently stayed opaque. It cost nothing only because the field's reach was re-measured after the
+     restructure rather than assumed from it: 28.84% of the spot tile moving became 0.01%. A feature
+     query has to name a PROPERTY.* */
+  @supports ((background:color-mix(in srgb, red 50%, transparent)) and (backdrop-filter:blur(2px))) or
+            ((background:color-mix(in srgb, red 50%, transparent)) and (-webkit-backdrop-filter:blur(2px))){
+    .tile{background:
+      radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
+      radial-gradient(120% 90% at 100% 110%, rgba(63,191,126,.06) 0%, transparent 60%),
+      linear-gradient(160deg,
+        color-mix(in srgb, var(--sub-hi) var(--tile-fill), transparent) 0%,
+        color-mix(in srgb, var(--sub)    var(--tile-fill), transparent) 45%,
+        color-mix(in srgb, var(--sub-lo) var(--tile-fill), transparent) 100%)}
+    /* and the sweep's tile is restated inside the same block, because the rule above would otherwise
+       win on source order and take the granted ground through the canvas — L13's bound (2.35) */
+    #chartbox{background:
+      radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
+      radial-gradient(120% 90% at 100% 110%, rgba(63,191,126,.06) 0%, transparent 60%),
+      linear-gradient(160deg,var(--sub-hi) 0%,var(--sub) 45%,var(--sub-lo) 100%)} }
 
   /* cast bronze controls; the active one carries the patina */
   /* OCCVM-L8 (1.5) — the interaction floor. Every control is at least 44px square; inline-flex so the
@@ -505,7 +558,6 @@ table {
       linear-gradient(180deg,#6a4f2b 0%,#4a3520 60%,#3a2917 100%);
     border-color:rgba(0,0,0,.6);
     --hi-a:.28;--cut-a:.3;box-shadow:var(--occvm-bevel), inset calc(var(--cut-x)*3) calc(var(--cut-y)*3) 0 var(--verdigris-lo), var(--occvm-cast-3)}
-  header.tile::before{display:none}
   .mark{font-family:var(--serif);font-weight:400;letter-spacing:.01em;font-size:19px;color:#f3e6c6;text-shadow:0 1px 0 rgba(0,0,0,.6)}
   .mark small{color:#cdb98e;font-weight:400;letter-spacing:.18em;font-size:9px;margin-left:10px;text-transform:uppercase;font-family:var(--sans)}
   .hright{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

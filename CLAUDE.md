@@ -229,7 +229,11 @@ Obsidian substrate `#1b1a22 / #2c2a36 / #0e0d13` on `#09080d`; bone inscription 
 brushed bronze binding `#d9a866/#8f6a35/#4f3a1c` with verdigris `#3f9a86` in seams. Per-session vein layer
 (3 displaced beziers, seeded PRNG) — retired at 2.25 for the globule field. **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
 `--lx --ly --elev --night` once a minute; every bevel, sheen, cabochon highlight and cast shadow reads those four
-custom properties. Canvas colours come from `PAL`, which resolves **ten of its thirteen keys from the page** on
+custom properties. **Since 2.35 the globule field is drawn once, on the page ground, and the tiles are
+frosted glass over it** — a partial substrate plus a backdrop blur one capillary length wide, so a tile
+shows the one field rather than repainting a still copy of it. The tile carrying the sweep is the
+exception and keeps an opaque substrate: OCCVM-L13 withholds a drifting mass from behind anything that
+means win/lose, and `law-audit.js` measures that. Canvas colours come from `PAL`, which resolves **ten of its thirteen keys from the page** on
 `sunTick`'s beat — two ink weights since 2.17, the eight outcome and authority colours since 2.27, so the
 canvas reads both the sun and the chosen palette at the cadence each moves on. The other three name tokens
 nothing writes and stay literals. **Those hexes are the `obsidian` palette and one of five**; a palette is
@@ -290,7 +294,10 @@ Suite (`npm test`, after `npm install` for jsdom):
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
 currently **985 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
-occvm 561, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
+occvm 561, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+`occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
+reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
+entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
 
@@ -2771,6 +2778,114 @@ structural checks now run locally, either of which would have caught it: every f
 at its top level is defined in it, and every id its script paints into exists in its markup. The L13
 specimen it was missing is there too — three still frames of the shared floor, and the first seed shows
 a merged dumbbell, which is 2.33's correction visible rather than described.
+
+**2.35 — the substrate carries the field, and the tiles become the glass over it.** The owner's call:
+*only the substrate will carry globules; they won't be drawn per tile any more.* Until now the field
+was drawn twice — live on the page ground, and again as a still copy on every `.tile::before` — which
+is what 2.34's own entry was hedging when it called the picture "a moving frame around a still one".
+That is closed here by deleting the second field rather than by animating it.
+
+**The tiles show the one field by letting it through.** `--tile-fill` is how much of a tile's own
+substrate survives; the rest is the ground behind it, blurred by the `backdrop-filter` this rule has
+carried since the tile was built and which, against an opaque substrate, has been doing **nothing** the
+whole time. The frost the owner asked for as a "text underlay" was already there and already paid for;
+what this release does is give it something to work on.
+
+**The blur stops being authored.** It was 18px; it is `--occvm-meniscus` now — λc = 7.148px, the same
+length the metaball isosurface is blurred at (2.28), so the frost and the field are cut to one scale.
+Measured, the radius makes no difference to legibility (37.54 against 37.42 worst core pixel) and none
+to frame cost, so it is chosen on the one ground that separates them: one is derived and one is not.
+
+**The fill is authored and the criterion that fixes it is not.** *A serif set on a tile must read no
+worse than the same serif set on the bare ground beside it.* That is measurable, and it does not
+degenerate the way "match the ground's weight" does — matching the ground's per-pixel weight drives tile
+opacity to zero, because a tile that is not there **is** the ground. Worst core-pixel contrast of the
+16px Fraunces head, six seeds, glyph core against the exact background under it:
+
+| tile substrate | in a tile | on the bare ground | |
+|---|---|---|---|
+| **opaque — what shipped** | **27.79** | 37.11 | the tile was the *worse* place to read, and had been since it was built |
+| 70% | 32.64 | 37.11 | |
+| 46% | 35.82 | 37.11 | |
+| **38% — `--tile-fill`** | **36.74** | 37.11 | parity |
+| 34% | 37.54 | 37.11 | |
+
+**That parity does not hold across the whole day, and the reason is a finding rather than a tolerance.**
+At high sun the same measurement reads **35.96 in the tile against 39.38 on the ground**. The tile's
+substrate is sundial-written and brightens with the light; the page ground is not, because `--field`
+and the body gradient under it are literals the sundial never touches. So no single fill can hold parity
+at both ends of the day. That is **`OCCVM-L3` — one light — not reaching the page ground**, which is
+2.17's finding about the canvas one surface along. Recorded in SPINE.md §6b, not fixed here: making the
+ground read the sun moves a colour under every surface in the tool.
+
+**No text underlay was built, because the measurement says none is owed.** The ask was a frosted
+underlay for serif legibility; measured, every serif in the tool *gains* contrast from this change or
+holds flat — the section head +32% at night and +39% at high sun, the sun pill and the wordmark
+unmoved. And the one serif that is genuinely exposed is not in a tile at all: the arming tray's head
+sits on the bare ground with the live floor behind it and nothing frosting it. It reads **37.11**, above
+the in-tile figure, because the floor's own peak on the ground is only ~11 L\*. Building a scrim would
+have been machinery against a problem that does not exist.
+
+**What the change is worth, driven on a frozen page with the floor toggled:**
+
+| surface | pixels the floor moves | mean ΔL\* |
+|---|---|---|
+| the spot tile | **28.79%** | 2.410 |
+| the arm bar | **9.26%** | 2.610 |
+| **the sweep** | **0.00%** | **0.000** |
+
+That last row is L13's bound and it is now the fourth condition the auditor measures. A tile may *show*
+the granted ground — showing a layer is not running a floor on it — but the tile carrying the sweep may
+not, because a drifting mass under marks that mean win/lose is the exact trade L13 withholds from this
+tool. Demonstrated rather than asserted: giving `#chartbox` the fill takes the register from **9 in
+force, 0 diverged** to **8 in force, 1 diverged** and `law-audit.js --check` exits 1.
+
+**And the decoration is now strictly beneath the ink, which retires 2.26 rather than restating it.**
+`.tile::before` was `position:absolute`, so it painted *above* its box's in-flow content — over the
+sweep and over every mark on it. 2.26 measured its way out of that with the screen blend's
+self-limiting arithmetic. Nothing paints above a mark now, so eight of that block's assertions are
+retired: the blend mode, the weight, and the six arithmetic clauses that computed a lift onto ink that
+no longer receives one. Retiring a guard is the move this project distrusts most, so the standard is
+met — each is retired because *what it describes cannot be built from this stylesheet any more*, and
+what replaces it is strictly stronger: the still field must have exactly one reader, no `.tile::before`
+may paint, the fill and the meniscus blur must be present, and the sweep's tile must be opaque. All
+eight verified to bite.
+
+**Two defects of my own, both caught by measuring after the change rather than reasoning from it.**
+
+*The feature query tested nothing.* Written first as `@supports ((color-mix(…)) and
+(backdrop-filter:…))`, which is not a support condition — a bare value is not testable, so the whole
+block was dropped and every tile silently stayed opaque while every source-text guard went on passing.
+Found by re-running the reach measurement after the restructure: 28.84% of the spot tile became 0.01%.
+A guard now walks every `@supports` condition in the stylesheet and fails any leaf that does not name a
+property. It took three drafts — the first flagged correct code by reading its own comment (the
+comment-counting trap, for the **fourth** release running, after 2.27, 2.28 step 6 and 2.29), the
+second by descending into `color-mix`'s argument list as though it were a condition.
+
+*And the fill was nearly the base declaration rather than an enhancement.* `color-mix` is four years
+younger than `backdrop-filter`, so a browser with the frost and without the mix would have got an
+invalid `background` and a tile with **no substrate at all** — a worse failure than not having the
+effect, on a tool §8 says is used from an iOS home screen. The fill is now inside a query requiring
+both, so either missing renders exactly the pre-2.35 picture.
+
+**Frame cost is unchanged, and the desktop figure corrects 2.34's.** Phone 390×844: 60.2 fps shipped
+against 60.1 frosted — free. Desktop 1100×1400: **12.8–14.9 fps across every candidate including the
+shipped one**, so this change neither helps nor hurts it. *2.34 recorded "59.5 fps live against 60.1
+hidden" with no viewport named, and that was a phone-only reading.* At 1100×1400 the shipped page runs
+~13 fps, and the cost is `backdrop-filter` across 21 tiles: disabling it gives 23.8 fps, and the blur
+radius barely matters (13.7 at 18px, 14.9 at λc). Open, not fixed here, and now measured instead of
+implied. The one thing 2.35 changes about it is that the blur stops being free-and-useless and starts
+being paid-for-and-visible.
+
+*Golden re-recorded:* **546 values**, and the delta is exactly `--tile-fill` at three instants and
+nothing else — no existing recorded value moved on any of the three surfaces. As `OCCVM-D13` has said
+since 2.11, the golden set reads `:root` and cannot see a change on a consumer, so that is a real
+statement about the tokens and not about the picture; the picture is the driven table above.
+
+`test/occvm.js` **561 → 561** — **eight retired and eight added**, counted rather than estimated: the
+2.26 block goes 9 executed assertions to 7 (its four-mark arithmetic was one call site running four
+times) and L13's fixture gains the two failure shapes of the new bound. A total that does not move is
+exactly the kind of figure §7.3 warns about, so the composition is stated beside it.
 
 **Deployed.** `main` took the branch as one merge commit in each repository (`47aea62` here,
 `752bbec` in Rhyme), CI green on both mains through the API (BTC run 111, Rhyme run 75) before either
