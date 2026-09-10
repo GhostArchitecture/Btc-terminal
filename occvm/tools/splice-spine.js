@@ -80,6 +80,9 @@ const PARTS = IS_RHYME ? [
   { name: "globules.js",  target: "index.html", anchor: "<script>" },
   { name: "pigments.js",  target: "index.html", anchor: "<script>" },
   { name: "yield.js",     target: "index.html", anchor: "<script>" },
+  /* 2.38 — the vessel is worn. From 2.32 glass.js was spliced into the reference surface alone and
+     no tool carried it; the tool carries it now, because L2's vessel half is what bounds the field. */
+  { name: "glass.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
   { name: "mono.css",     target: REF, anchor: "<style>" },
   { name: "serif.css",    target: REF, anchor: "<style>" },

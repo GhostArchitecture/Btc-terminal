@@ -1417,6 +1417,19 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*`--vessel-rim` joins the tool-local row at 2.38, in BTC alone* — the Fresnel rim of L2's vessel,
+written by `vesselRim()` from `occvm/glass.js` on `palTick`'s existing beat. **It is written rather
+than declared because its colour is the light's:** 2.4's finding is that a specular return on a
+dielectric carries the source's colour, so the part reads `--bone` at call time and returns `none`
+when that token does not resolve — L6's refusal applied to a highlight. `--bone` is sundial-written
+and moves through the day, so a rim computed once at load would be a frozen highlight beside a light
+that moves, which is 2.17's finding about the canvas one surface along. The gradient's stop set is
+not authored here or anywhere: `rimGradient()` subdivides borosilicate's Fresnel curve until no
+chord exceeds the 8-bit alpha quantum, 16 stops at a maximum chord error of 0.003755 against a
+tolerance of 0.003922 (2.32). BTC-only for now because the vessel is worn on one tool; Rhyme carries
+the part and splices it nowhere, and the parts-parity guard added at 2.38 keeps the two copies
+identical while they differ in whether they are worn.
+
 *`--column` joins the tool-local row at 2.38, in BOTH tools and at different values* — BTC 1180px,
 Rhyme 720px. It is the content column's width, and since 2.38 it is also **the vessel's**, which is
 why it had to become a token rather than stay a number in one rule. `occvm/floor.js` bounds every

@@ -432,7 +432,15 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
      the original guard was written against and it is unchanged. An EXTRA part is permitted only if it
      is on the list below, which is the D14 treatment: the set is pinned in both directions, so a part
      that quietly stays un-adopted is as loud as one that quietly appears. */
-  const PROTOTYPED_AHEAD = ["glass.js"];   /* L2's vessel half — see the 2.32 block at the foot */
+  /* 2.38 — THE LIST IS EMPTY, AND EMPTYING IT IS THE POINT. It held "glass.js" from 2.32, when the
+     vessel was derived and worn by no tool, and the exception existed so a part could be prototyped
+     on the specimen surface without the parity guard calling it a mistake. The tool wears the vessel
+     now, so glass.js is no longer extra — it is an ordinary part with a specimen, which is the state
+     the guard was always written to expect. The exception retires because the thing it excepted was
+     adopted, which is the only reason this project retires one. The list stays declared rather than
+     deleted: it is pinned empty in both directions, so the next part prototyped ahead has to say so
+     here rather than slip through a hole the deletion would have left. */
+  const PROTOTYPED_AHEAD = [];
   const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0).map(p => p.name).sort();
   const toolParts = PARTS6.filter(p => p.target === "index.html").map(p => p.name).sort();
   const missing = toolParts.filter(n => !refParts.includes(n));
@@ -2195,7 +2203,12 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const ref = fs.readFileSync(path.join(R8, "occvm", "reference", "index.html"), "utf8");
     const btc = fs.readFileSync(path.join(R8, "index.html"), "utf8");
     T("the vessel is spliced into the reference surface", ref.includes("OCCVM SPINE glass.js"));
-    T("and into no tool yet", !btc.includes("OCCVM SPINE glass.js"));
+    /* 2.38 retires "and into no tool yet". It was true from 2.32 and pinned deliberately, because a
+       part derived and adopted nowhere is a claim about optics nobody can see and the guard kept that
+       honest. What replaces it is the stronger statement now available: the tool carries the vessel,
+       and the vessel is what bounds the field rather than an ornament on it. */
+    T("and now into the tool, because the vessel is what bounds the field",
+      btc.includes("OCCVM SPINE glass.js"));
     T("the reference surface carries a live #l2glass specimen", ref.includes('id="l2glass"'));
     /* the specimen prints what it measures. 2.14's defect was a typed sentence inside the instrument
        built to make typed sentences impossible, so the numbers on the page come from the part. */
@@ -2309,6 +2322,23 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("and the width has exactly one owner", (cssV.match(/--column:\s*\d+px/g) || []).length === 1);
   /* the floor must still be fixed — L13's boundary reads this and law-audit.js measures it too */
   T("the floor is still a fixed layer", /#occvm-floor\{position:fixed/.test(cssV.replace(/\s+/g, "")));
+
+  /* THE RIM IS THE LIGHT'S AND IS RESOLVED, NOT AUTHORED — 2.4's finding that a specular return on a
+     dielectric carries the source's colour. The part reads `--bone` at call time and returns "none"
+     when it does not resolve, so an absent token paints nothing rather than an invented white; the
+     tool must therefore never hand it a colour. Visible in the golden record rather than promised:
+     the three pinned instants carry three different rims — #f2d9b2 at low sun, #ece3d0 at high,
+     #ccd0e0 at night — which is the sundial reaching L2's vessel. */
+  T("the rim comes from the part rather than being written here",
+    /OCCVM_GLASS\.rimGradient\(\{gain:RIM_GAIN\}\)/.test(srcV));
+  T("and the tool never hands it a colour, so an unresolved --bone paints nothing",
+    !/rimGradient\(\{[^}]*color:/.test(srcV));
+  T("the rim's weight is named and is the measured one", /const RIM_GAIN = 0\.25;/.test(srcV));
+  {
+    const gj = fsV.readFileSync(pathV.join(__dirname, "..", "occvm", "golden", "btc", "tokens.json"), "utf8");
+    const rims = new Set(Object.values(JSON.parse(gj).cases).map(c => c.tokens["--vessel-rim"]));
+    T("and the golden record shows it moving with the light: three instants, three rims", rims.size === 3);
+  }
 }
 
 process.exit(done());
