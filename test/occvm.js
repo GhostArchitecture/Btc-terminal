@@ -1949,6 +1949,29 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     `${readers26} reader(s)`);
   T("and the field's own weight is the measured one", /^const GLOBULE_ALPHA=0\.36;/m.test(src26));
 
+  /* ── 2.36 — the safe area, and the guard that keeps it testable ──────────────────────────────
+   * A recording from the owner's phone showed the price readout cut in half by the Dynamic Island.
+   * The cause was not a wrong inset, it was NO inset: viewport-fit=cover and a translucent status bar
+   * with zero env(safe-area-inset-*) anywhere in the file, and §10.5 had it filed as "untestable in
+   * this environment", which is how it stayed unmeasured through every release.
+   * env() cannot be set from a harness and nothing here emulates a notch, so the rule is that env() is
+   * read ONCE into a custom property and every consumer reads the property. That is what makes the
+   * inset drivable: Chromium sets --safe-top and the layout moves, measured at 0 -> header at 14px and
+   * band 0 tall, at 59px -> header at 59px and band 59px. This assertion is the part a Node harness
+   * can hold: exactly one env() per tool, so an inline inset nobody can drive cannot come back. */
+  {
+    const envs = (css26.replace(/\/\*[\s\S]*?\*\//g, " ").match(/env\(safe-area-inset-[a-z]+/g) || []);
+    T("env() is read exactly twice, once per edge, and only into a token",
+      envs.length === 2, envs.join(" "));
+    T("the content column starts below the inset rather than at a fixed 14px",
+      /\.wrap\{[^}]*padding:max\(14px, var\(--safe-top\)\)/.test(css26.replace(/\n\s*/g, "")));
+    T("and an opaque band exactly the inset tall sits above the content, so nothing scrolls into the bar",
+      /body::after\{[^}]*height:var\(--safe-top\)[^}]*z-index:60/.test(css26.replace(/\n\s*/g, "")));
+    T("the band and the page ground read one value, so they cannot drift",
+      /--field-hi:#100e16/.test(css26) &&
+      (css26.match(/var\(--field-hi\)/g) || []).length >= 2);
+  }
+
   /* 2.35's own three, structural, because the stylesheet is where this bound is stated */
   T("the tile substrate is partial, so the one field reaches the eye through it",
     /\.tile\{[^}]*color-mix\(in srgb, var\(--sub-hi\) var\(--tile-fill\)/.test(src26.replace(/\n\s*/g, " ")));

@@ -365,7 +365,17 @@ const LAWS = [
            guarded enhancement, so the tile is declared twice on purpose, and a check that stopped at
            the first match would pass a translucent override added after it. */
         const chartRules = tool.raw.match(new RegExp("#" + CHART + "\\{background:[\\s\\S]*?\\}", "g")) || [];
-        const chartOpaque = chartRules.length > 0 && chartRules.every(r => r.indexOf("--tile-fill") < 0);
+        /* 2.36 — THE PROPERTY IS "DOES NOT TRANSMIT", NOT "DOES NOT MENTION THE FILL TOKEN". The first
+           form of this check refused a correct change: the sweep's tile may carry the same fill as its
+           neighbours as long as that fill is composited against an OPAQUE ground rather than against
+           transparent, which is what makes it match them without letting the floor through. What is
+           forbidden is the mix toward transparency, and that is what is read for now. */
+        /* the adjacency, not the whole function call: `[^)]*` cannot cross the parenthesis inside
+           var(--sub-hi), so the first form of this pattern could never match and the bite test caught
+           it reading IN FORCE on a tile that transmitted. What is forbidden is the fill token standing
+           as the first colour of a mix whose second colour is transparency. */
+        const TRANSMITS = /var\(--tile-fill\)\s*,\s*transparent/;
+        const chartOpaque = chartRules.length > 0 && chartRules.every(r => !TRANSMITS.test(r));
         const bad = [];
         if (!namesSurface) bad.push(calls.length === 1
           ? "the tool's own source does not name the granted surface"
@@ -373,7 +383,7 @@ const LAWS = [
         if (!decl) bad.push(`#${ID} is not declared position:fixed`);
         if (!outside) bad.push(`#${MOUNT} is not mounted ahead of the content column`);
         if (!chartOpaque) bad.push(chartRules.length
-          ? `#${CHART} takes the tile fill, so the granted ground shows through the sweep`
+          ? `#${CHART} mixes the tile fill toward transparent, so the ground shows through the sweep`
           : `#${CHART} declares no substrate of its own, so it inherits the tile fill`);
         if (bad.length)
           return { state: "DIVERGES",
