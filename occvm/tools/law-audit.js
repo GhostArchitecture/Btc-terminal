@@ -353,12 +353,28 @@ const LAWS = [
         const mountIdx = tool.raw.indexOf('id="' + MOUNT + '"');
         const wrapIdx = tool.raw.indexOf('<div class="wrap"');
         const outside = mountIdx >= 0 && wrapIdx >= 0 && mountIdx < wrapIdx;
+        /* 2.35 adds the fourth, and it is the one the grant now turns on. A tile may SHOW the granted
+           ground through a partial fill — showing a layer is not running a floor on it, and the whole
+           of the change is that there is one field rather than a copy per surface. The tile that
+           carries the SWEEP may not: the floor behind a translucent canvas tile is a drifting mass
+           under marks that mean win/lose, which is the exact thing L13 withholds from this tool. So
+           the sweep's own tile keeps an opaque substrate, stated as the absence of the fill token from
+           its own background, and driven at 0.00% of the sweep's pixels moved. */
+        const CHART = "chartbox";
+        /* EVERY rule that gives the sweep's tile a background, not the first one found: the fill is a
+           guarded enhancement, so the tile is declared twice on purpose, and a check that stopped at
+           the first match would pass a translucent override added after it. */
+        const chartRules = tool.raw.match(new RegExp("#" + CHART + "\\{background:[\\s\\S]*?\\}", "g")) || [];
+        const chartOpaque = chartRules.length > 0 && chartRules.every(r => r.indexOf("--tile-fill") < 0);
         const bad = [];
         if (!namesSurface) bad.push(calls.length === 1
           ? "the tool's own source does not name the granted surface"
           : `${calls.length} floor call sites — the grant is one surface, so it is one floor`);
         if (!decl) bad.push(`#${ID} is not declared position:fixed`);
         if (!outside) bad.push(`#${MOUNT} is not mounted ahead of the content column`);
+        if (!chartOpaque) bad.push(chartRules.length
+          ? `#${CHART} takes the tile fill, so the granted ground shows through the sweep`
+          : `#${CHART} declares no substrate of its own, so it inherits the tile fill`);
         if (bad.length)
           return { state: "DIVERGES",
                    detail: `${calls.length} floor call site(s) outside the grant — ${bad.join("; ")}` };

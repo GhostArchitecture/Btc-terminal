@@ -1059,11 +1059,15 @@ claimed to prove it from source text would be the kind of proxy 2.14 and 2.32 bo
 
 *What the owner is actually getting, measured, because a grant should not oversell itself.* Tiles cover
 **87.6% of a 390×844 viewport and 93.5% of 1100×1400**, so the live ground is **6.5–12.4% of the screen**
-— gutters and the gaps between panels. The other nine tenths carries the *same field* as a still frame
-through `.tile::before`, which exists only because the tiles are opaque. So the picture today is a moving
-frame around a still one. That is a real limitation of this grant and not a defect in it: the layer the
-floor paints on is the page ground, and how much of the page ground a reader sees is a question about the
-*vessel*, which L2's other half now derives and neither tool yet wears.
+— gutters and the gaps between panels. ~~The other nine tenths carries the *same field* as a still frame
+through `.tile::before`, which exists only because the tiles are opaque, so the picture is a moving frame
+around a still one.~~ **Closed at 2.35, and by deleting the second field rather than by animating it.**
+The per-tile copy is retired: there is one field, on the substrate, and a tile shows it by letting it
+through a partial fill rather than by repainting it. The live ground is still 6.5–12.4% of the screen —
+that number is about the *vessel* and has not moved — but the field a reader sees through the tiles is
+now the same one, at the same instant, frosted at the substance's own capillary length. And the trade is
+better than the one this paragraph was hedging: the still copy was a positioned pseudo-element, so it
+painted **above** the sweep and every mark on it, and nothing paints above a mark any more.
 
 **Two further bounds, both narrow.** A floor never draws on a surface carrying an outcome colour or a
 measured value. And **modulation is not what makes it legal**: a real value may scale a floor's intensity
@@ -1413,9 +1417,29 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*BTC's `--tile-fill` joins the tool-local row at 2.35* — how much of a tile's own substrate survives,
+the rest being the page ground behind it seen through the frost. It exists because 2.35 retired the
+per-tile copy of the globule field: there is one field in that tool now, on the substrate, and a tile
+shows it by letting it through rather than by repainting it. **The value is authored and the criterion
+that fixes it is not.** A serif set on a tile must read no worse than the same serif set on the bare
+ground beside it; measured over six seeds at the sundial's night instant the two cross at 38%, and what
+shipped before read 27.79 L\* worst core pixel in the tile against 36.69 on the ground — the tile was
+the worse surface to read on, and had been since it was built. Tool-local for the same reason
+`--globules` is: neither spine-declared nor spine-written, and no other tool has a tile.
+
+*That parity does not hold across the whole day, and the reason is a finding rather than a tolerance.*
+At high sun the same measurement reads 36.00 in the tile against 39.38 on the ground. The tile's
+substrate is sundial-written and brightens with the light; **the page ground is not, because `--field`
+and the body gradient beneath it are literals the sundial never touches.** So the gap opens at noon and
+closes at night, and no single fill can hold parity at both. That is `OCCVM-L3` — one light — not
+reaching the page ground, which is 2.17's finding on the canvas one surface along. Recorded here, not
+fixed here: making the ground read the sun moves a colour under every surface in the tool and is not
+something a tile change does.
+
 *BTC's `--globules-size` joins the tool-local row at 2.28* — the pixel dimensions the globule field was
 generated at, written beside `--globules` by the same call and read by `body::before` and every
-`.tile::before` as their `background-size`. It exists because of a defect it makes impossible to
+`body::before` as its `background-size` (`.tile::before` read it too until 2.35 retired the per-tile
+copy). It exists because of a defect it makes impossible to
 reintroduce: an SVG data URI carrying a viewBox and no intrinsic width has no `auto` background size, so
 the field had been STRETCHING to fill whatever box it landed in — a 1.9:1 vertical oval on a tall
 viewport, a different oval on every tile. A globule's shape was a property of the element rather than of
@@ -1429,8 +1453,9 @@ token and not a background: the offer and the applied state have to be able to d
 the same reason `--pulse` and `--slide` are — neither spine-declared nor spine-written.
 
 *BTC's `--globules` joins the tool-local row at 2.25* — the still frame of the globule field, written by
-`globuleLayer()` once per mineral change and read by `body::before` and `.tile::before`, where `--vein`
-was. Tool-local for the same reason `--pulse` and `--slide` are.
+`globuleLayer()` once per mineral change and read by `body::before`, where `--vein` was — and by
+`.tile::before` too until 2.35 retired that second copy, so the still frame now has exactly one reader
+and `test/occvm.js` counts it. Tool-local for the same reason `--pulse` and `--slide` are.
 
 *Rhyme's `--slide` joins the tool-local row at 2.21* — the bank row's **transmitted** travel under a
 swipe, written by `useSwipeYield` and read by `.bankrow`. Tool-local for the same reason `--pulse` is:

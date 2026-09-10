@@ -1449,7 +1449,8 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const m13 = (name, own, raw) => L13.measure(mk(name, own, raw)).state;
     /* BTC's grant is surface-bounded, so a conforming BTC needs all three conditions present. This is
        the shipped shape, reduced to its load-bearing lines. */
-    const BTC_OK_RAW = '#occvm-floor{position:fixed;inset:0;z-index:0}\n<div id="floor-mount"></div>\n<div class="wrap">';
+    const CHART_OPAQUE = '#chartbox{background:linear-gradient(160deg,var(--sub-hi) 0%,var(--sub) 45%,var(--sub-lo) 100%)}\n';
+    const BTC_OK_RAW = CHART_OPAQUE + '#occvm-floor{position:fixed;inset:0;z-index:0}\n<div id="floor-mount"></div>\n<div class="wrap">';
     const BTC_OK_OWN = 'e("canvas",{id:"occvm-floor"});OCCVM_FLOOR.ambientFloor(el, reducedMotion(), 0, {alpha:A, seed:S});';
 
     T("L13: neither tool has a floor, and absence reads UNADOPTED",
@@ -1482,6 +1483,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("L13: a floor mounted INSIDE the content column diverges — that is the subtree §5's surfaces live in",
       m13("BTC Terminal", BTC_OK_OWN,
           '#occvm-floor{position:fixed;inset:0}\n<div class="wrap"><div id="floor-mount"></div>' + BTC_OK_OWN) === "DIVERGES");
+    /* 2.35's condition, dropped in turn like the other three. A tile may SHOW the granted ground; the
+       tile carrying the SWEEP may not, because a drifting mass under marks that mean win/lose is the
+       trade L13 withholds from this tool. Both failure shapes are driven: the sweep's tile taking the
+       fill, and the sweep's tile declaring no substrate at all and inheriting it. */
+    T("L13: the sweep's tile taking the tile fill diverges — the granted ground would show through it",
+      m13("BTC Terminal", BTC_OK_OWN,
+          '#chartbox{background:linear-gradient(160deg,color-mix(in srgb,var(--sub-hi) var(--tile-fill),transparent) 0%,var(--sub-lo) 100%)}\n'
+          + '#occvm-floor{position:fixed;inset:0;z-index:0}\n<div id="floor-mount"></div>\n<div class="wrap">' + BTC_OK_OWN) === "DIVERGES");
+    T("L13: and the sweep's tile declaring no substrate of its own diverges — it would inherit the fill",
+      m13("BTC Terminal", BTC_OK_OWN,
+          '#occvm-floor{position:fixed;inset:0;z-index:0}\n<div id="floor-mount"></div>\n<div class="wrap">' + BTC_OK_OWN) === "DIVERGES");
     /* and the shipped tool is measured through the runner's own reader, not a fixture at all */
     {
       const real = LA13.TOOLS.map(t => LA13.readTool(t)).filter(Boolean).find(t => /BTC/.test(t.name));
@@ -1903,35 +1915,91 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
  * A METHOD CORRECTION, recorded because the first number was alarming and wrong. The first pass paired
  * the dimmest pixel of a mark against the brightest globule ANYWHERE IN THE FRAME and reported ruby at
  * −18%. Those two pixels are nowhere near each other; measured locally the same cell is −0.0%. A global
- * worst case that describes no pixel pair that exists is not a measurement of legibility. */
+ * worst case that describes no pixel pair that exists is not a measurement of legibility.
+ *
+ * ── TWO OF THIS BLOCK'S CLAUSES ARE RETIRED AT 2.35, AND THE SITUATION THEY GUARDED IS GONE ─────────
+ * They asserted `.tile::before{… mix-blend-mode:screen}` and `… opacity:.16` — the blend mode and the
+ * weight the measurement above was taken at. 2.35 retired `.tile::before` outright: the field is drawn
+ * ONCE, on the substrate, and a tile shows it by letting it through rather than by painting a second
+ * copy on top of its own content. So there is no longer a decorative layer above any mark, and the
+ * whole of 2.26 — which was an argument that the overlay was SURVIVABLE — is answered by the overlay
+ * not existing. Retiring a guard is the move this project distrusts most, so: these two are retired
+ * because what they describe cannot be built from this stylesheet any more, and what replaces them is
+ * strictly stronger than what they said. The screen arithmetic goes with them; it computed the lift a
+ * blend puts onto a mark, and nothing blends onto a mark now, so it would be a guard that cannot fail.
+ * Driven proof that the bound holds, which no Node harness can take: with the floor toggled on a frozen
+ * page, 0.00% of the sweep's own pixels move (0.000 mean, 0.00 max), against 28.84% of the spot tile at
+ * mean 2.408 and 9.31% of the arm bar at 2.594. The field is on the text tiles and absent from the
+ * canvas, measured rather than asserted. */
 {
   const fs26 = require("fs"), path26 = require("path");
   const src26 = fs26.readFileSync(path26.join(__dirname, "..", "index.html"), "utf8");
 
-  T("the tile overlay blends with screen — the self-limiting mode the measurement depends on",
-    /\.tile::before\{[^}]*mix-blend-mode:screen\}/.test(src26));
-  T("at the weight it was measured at", /\.tile::before\{[^}]*opacity:\.16;/.test(src26));
+  /* the per-tile copy is gone, and gone is the property — a pseudo-element cannot paint the field over
+     a mark if no rule declares one */
+  T("no .tile::before paints anything — the second copy of the field is retired",
+    !/\.tile::before\{content/.test(src26));
+  /* ONE field in the page. The still frame keeps exactly one reader — the ground — so a second copy
+     cannot come back on a tile without this failing. Scoped to the stylesheet, because globuleLayer()
+     WRITES the token in the script and a count over the whole file would confuse writing with reading. */
+  const css26 = src26.slice(src26.indexOf("<style"), src26.indexOf("</style>"));
+  const readers26 = (css26.match(/var\(--globules[,)]/g) || []).length;
+  T("the still field has exactly one reader in the stylesheet, and it is the ground",
+    readers26 === 1 && /body::before\{[^}]*var\(--globules/.test(css26.replace(/\n\s*/g, "")),
+    `${readers26} reader(s)`);
   T("and the field's own weight is the measured one", /^const GLOBULE_ALPHA=0\.36;/m.test(src26));
 
-  /* the reason, as arithmetic rather than as a comment: the brighter the ink, the less a screen blend
-     can reach it. Asserted at the three marks' own linear luminances, so the ordering is a property of
-     the palette and not of a number typed here. */
-  const lin26 = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  const lum26 = ([r, g, b]) => 0.2126 * lin26(r) + 0.7152 * lin26(g) + 0.0722 * lin26(b);
-  const lift = (mark, field) => (1 - lum26(mark)) * field;     /* screen(a,b) − a */
-  const substrate = lum26([0x09, 0x08, 0x0d]);                 /* PAL.field, the sweep's own ground */
-  const b26 = 0.36 * 0.16;                                     /* the field's weight × the overlay's */
+  /* 2.35's own three, structural, because the stylesheet is where this bound is stated */
+  T("the tile substrate is partial, so the one field reaches the eye through it",
+    /\.tile\{[^}]*color-mix\(in srgb, var\(--sub-hi\) var\(--tile-fill\)/.test(src26.replace(/\n\s*/g, " ")));
+  T("the frost is the substance's own capillary length, not an authored radius",
+    /backdrop-filter:blur\(var\(--occvm-meniscus\)\)/.test(src26));
+  /* A FEATURE QUERY HAS TO NAME A PROPERTY, and this guard exists because the 2.35 restructure shipped
+     one that did not for the length of a measurement. `@supports ((color-mix(in srgb, red 50%,
+     transparent)) and (backdrop-filter:blur(2px)))` looks like a test and is not one — a bare value is
+     not a support condition, so the whole block was dropped and every tile silently stayed opaque
+     while the source-text guards above went on passing. Caught by re-measuring the field's reach
+     (28.84% of the spot tile → 0.01%) rather than by reading the rule. Every parenthesised leaf of
+     every @supports condition here must carry a colon, which is the property it is testing. */
+  {
+    /* a balanced walk rather than a regex: `color-mix(in srgb, ...)` carries its own parentheses, so
+       "innermost group" is not the same as "leaf condition" and a pattern that assumes it flags
+       correct code — which this guard's first draft did, on the file it was written to protect. */
+    /* comments stripped FIRST, and this is the fourth release where a guard had to learn that: the
+       block below quotes the malformed query to explain it, and a scan that reads its own prose fails
+       a correct file for naming the thing it fixed (2.27's L6 colour guard, 2.28's floor vocabulary
+       guard and 2.29's dialect guard each arrived here separately). */
+    const conds = [...css26.replace(/\/\*[\s\S]*?\*\//g, " ").matchAll(/@supports([^{]+)\{/g)].map(m => m[1]);
+    const bare = [];
+    const groups = (t) => {           /* top-level balanced (...) groups of one condition */
+      const out = []; let d = 0, st = -1;
+      for (let i = 0; i < t.length; i++) {
+        if (t[i] === "(") { if (d++ === 0) st = i; }
+        else if (t[i] === ")") { if (--d === 0) out.push(t.slice(st + 1, i)); }
+      }
+      return out;
+    };
+    const walk = (t) => {
+      const g = groups(t);
+      /* a group whose own level joins sub-conditions is a branch; anything else is a leaf and must
+         declare the property it is testing */
+      const outer = t.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, " ");
+      if (g.length && /\b(and|or|not)\b/.test(outer)) { g.forEach(walk); return; }
+      /* a leaf is tested AS ITSELF. Descending into its parentheses reads the argument list of a value
+         function — `color-mix(in srgb, …)`, `blur(2px)` — as if it were a condition, which flagged the
+         correct file on this guard's second draft. */
+      const own = t.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, "");
+      if (!/[A-Za-z-]+\s*:/.test(own)) bare.push(t.trim().slice(0, 52));
+    };
+    conds.forEach(walk);
+    T("every @supports condition names a property — a bare value tests nothing and drops the block",
+      bare.length === 0, bare.join(" | "));
+  }
 
-  const marks = { mal: [0x3f, 0xbf, 0x7e], ruby: [0xe0, 0x47, 0x5f], gilt: [0xd9, 0xa5, 0x2c], bone: [0xec, 0xe3, 0xd0] };
-  for (const [k, m] of Object.entries(marks))
-    T(`screen reaches ${k} less than it reaches the substrate under it`,
-      lift(m, b26) < lift([0x09, 0x08, 0x0d], b26),
-      `${lift(m, b26).toFixed(4)} vs ${lift([0x09, 0x08, 0x0d], b26).toFixed(4)}`);
+  T("and the tile that carries the sweep keeps an opaque substrate — L13's bound (2.35)",
+    /#chartbox\{background:[^}]*linear-gradient\(160deg,var\(--sub-hi\) 0%,var\(--sub\) 45%,var\(--sub-lo\) 100%\)\}/
+      .test(src26.replace(/\n\s*/g, "")));
 
-  T("and the ordering is monotone in the mark's own luminance — the brighter the ink, the safer it is",
-    lift(marks.bone, b26) < lift(marks.mal, b26) && lift(marks.mal, b26) < lift(marks.ruby, b26));
-  T("the substrate takes the decoration, which is what a substrate layer is for",
-    lift([0x09, 0x08, 0x0d], b26) > 0.95 * b26 && substrate < 0.01);
 }
 
 
