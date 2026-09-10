@@ -62,8 +62,10 @@
    * it at all. That is not a reason to abandon the floor; L13 grants it and records the cost. It is a
    * reason to state the number rather than to reach for a derivation that returns zero.
    *
-   * RISE_PX_S is therefore 1.4 — the same magnitude `OCCVM_GLOBULES.DRIFT_PX_S` has carried since 2.22,
-   * now vertical and cyclic instead of random. The period FOLLOWS from it and the surface's own height
+   * RISE_PX_S is therefore 1.4. It carried that value alongside `OCCVM_GLOBULES.DRIFT_PX_S` from 2.22
+   * to 2.37, the two of them the same number written twice; 2.38 retires the drift with the lateral
+   * wander it fed, so this is now the ONE place 1.4 lives, which is what L3 wanted of it all along.
+   * The period FOLLOWS from it and the surface's own height
    * rather than being a second authored number: a drop crosses the face at that speed, so a tall face
    * cycles slowly and a short one quickly, which is what a taller vessel does. */
   var RISE_PX_S = 1.4;    /* authored: see above — the substance's own answer here is zero */
@@ -185,7 +187,12 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!drops.length) { fld = OCCVM_GLOBULES.field({ seed: seed, w: w, h: h }); drops = fld.drops.slice(); }
       else if (pw && ph && (pw !== w || ph !== h))
-        for (var j = 0; j < drops.length; j++) { drops[j].x *= w / pw; drops[j].y *= h / ph; }
+        for (var j = 0; j < drops.length; j++) {
+          drops[j].x *= w / pw; drops[j].y *= h / ph;
+          /* 2.38: the lane is a position too. Rescaling x and leaving the lane behind clamps
+             the next frame against a vessel that is no longer there. */
+          if (drops[j].lane !== undefined) drops[j].lane *= w / pw;
+        }
       pw = w; ph = h;
     }
 
@@ -215,12 +222,45 @@
       clock += dt;
       for (i = 0; i < drops.length; i++) {
         var d = drops[i];
-        d.x += d.vx * dt;                                        /* the lateral wander a real lamp shows */
-        if (d.x < -d.r * 2) d.x = w + d.r; else if (d.x > w + d.r * 2) d.x = -d.r;
         if (d.merging) continue;                                 /* a welding pair is driven by the weld */
         if (d.lockedTo) continue;                                /* a follower lobe is placed below */
         var u = ((clock / period) + (d.phase === undefined ? 0 : d.phase)) % 1;
         d.y = (h - d.r) - cyclePos(u) * (h - 2 * d.r);
+        /* 2.38 — THE VESSEL CONSTRAINS, AND IT NEEDS NO COLLISION RULE. What was here was
+           `d.x += d.vx * dt` with a WRAP: a drop leaving the left edge reappeared on the right. That
+           is a torus, and a vessel is the opposite of one. Neither obvious wall fixes it — measured
+           over an hour, absorbing pins 36/37 drops against the edges and reflecting is an elastic
+           bounce this material cannot claim (2.21). The constant drift was the defect, not the wall.
+           Gyure & Janosi's lamp, already the source for the cycle, is a CONVECTION ROLL: up the
+           interior, down by the wall. A true roll cannot be had here — it has no dwells and cyclePos
+           does, by derivation (2.28 step 3) — so what is taken is the roll's SHAPE traversed once per
+           cycle, on the one cycle parameter the vertical motion already uses. At the coil and at the
+           top the drop is on its lane; it swings one way through the rise and the other through the
+           descent. Bolting a streamfunction's horizontal component onto a prescribed vertical instead
+           was tried first and does not close: 6.8M wall crossings and every drop pinned.
+           The amplitude is the room the drop's own lane has, so crossing the wall is IMPOSSIBLE BY
+           CONSTRUCTION rather than prevented by a check — measured at 0 crossings over an hour at
+           both viewports, with a median excursion of 160px of 390 on a phone and 455 of 1100. */
+        /* 2.38 — THE BODY IS WHAT HAS TO FIT, NOT THE LOBE, and the first version of this got it
+           wrong in a way only the driven guard could see. A leader carrying a frozen follower is one
+           rigid object (2.28 steps 4+5): the follower is placed at the leader's position plus the
+           offset it froze at, so clamping the LOBE lets the pair's far side through the glass, and
+           clamping the FOLLOWER instead would stretch a bridge that by definition cannot stretch.
+           My own simulation said zero crossings and the shipped floor said 731 of 3383 samples —
+           the simulation modelled neither the merge growth nor the follower, which is 2.22's
+           "verified against a fixture instead of the call path" with me on the wrong side of it.
+           So the half-extents below are the BODY's, and a lobe's own radius is only the base case. */
+        var extL = d.r, extR = d.r, fo;
+        for (var q = 0; q < drops.length; q++) {
+          fo = drops[q];
+          if (fo.lockedTo !== d) continue;
+          extL = Math.max(extL, fo.r - fo.dx);
+          extR = Math.max(extR, fo.r + fo.dx);
+        }
+        var lane = Math.min(Math.max(d.lane === undefined ? d.x : d.lane, extL), Math.max(extL, w - extR));
+        d.lane = lane;
+        var room = Math.max(0, Math.min(lane - extL, (w - extR) - lane));
+        d.x = lane + room * Math.sin(2 * Math.PI * u);
       }
       /* the follower lobes, after every leader has moved: a frozen bridge holds its offset exactly */
       for (i = 0; i < drops.length; i++) {
@@ -259,8 +299,13 @@
           var wa = Math.pow(a.r, P), wb = Math.pow(b.r, P), m = wa + wb;
           a.x = (a.x * wa + b.x * wb) / m; a.y = (a.y * wa + b.y * wb) / m;
           a.r = OCCVM_GLOBULES.merged(a.r, b.r); a.merging = false; b.gone = true;
+          /* 2.38: the survivor is BIGGER than either parent, so the lane it inherited may no
+             longer have room for it. Re-clamped here, at the one place a radius ever grows. */
+          a.lane = Math.min(Math.max(a.x, a.r), Math.max(a.r, w - a.r));
           welds.splice(i--, 1);
           drops = drops.filter(function (x) { return !x.gone; });
+          /* 2.38: `spawn(true)` used to mean "enter from off-screen"; inside a vessel there is no
+             off-screen, so it means "born at the coil" — the same bottom dwell this merge happens in. */
           while (drops.length < count()) drops.push(spawn(true));
         }
       }

@@ -1417,6 +1417,32 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*`--vessel-rim` joins the tool-local row at 2.38, in BTC alone* — the Fresnel rim of L2's vessel,
+written by `vesselRim()` from `occvm/glass.js` on `palTick`'s existing beat. **It is written rather
+than declared because its colour is the light's:** 2.4's finding is that a specular return on a
+dielectric carries the source's colour, so the part reads `--bone` at call time and returns `none`
+when that token does not resolve — L6's refusal applied to a highlight. `--bone` is sundial-written
+and moves through the day, so a rim computed once at load would be a frozen highlight beside a light
+that moves, which is 2.17's finding about the canvas one surface along. The gradient's stop set is
+not authored here or anywhere: `rimGradient()` subdivides borosilicate's Fresnel curve until no
+chord exceeds the 8-bit alpha quantum, 16 stops at a maximum chord error of 0.003755 against a
+tolerance of 0.003922 (2.32). BTC-only for now because the vessel is worn on one tool; Rhyme carries
+the part and splices it nowhere, and the parts-parity guard added at 2.38 keeps the two copies
+identical while they differ in whether they are worn.
+
+*`--column` joins the tool-local row at 2.38, in BOTH tools and at different values* — BTC 1180px,
+Rhyme 720px. It is the content column's width, and since 2.38 it is also **the vessel's**, which is
+why it had to become a token rather than stay a number in one rule. `occvm/floor.js` bounds every
+drop to the canvas it is handed, so the canvas IS the glass; while that canvas spanned the viewport
+the vessel's wall was a description rather than an edge, and on any screen wider than the column the
+field ran past the content on both sides contained by nothing. **It was invisible at the two widths
+anybody had measured** — 390 and 1100, where the column fills the viewport and the two coincide.
+Both the layout rule and the floor rule read the one token, so the glass and the content cannot
+drift apart (L3), and each tool asserts the width has exactly one owner. Tool-local rather than
+spine-declared for the same reason `--globules` is: the spine neither declares it nor writes it, and
+the two tools legitimately differ — a reading column and an instrument column are not the same
+width, and nothing about the substance says they should be.
+
 *`--safe-top` and `--safe-bottom` join the tool-local row at 2.36, in BOTH tools, and the reason they
 are tokens rather than inline `env()` is the defect that produced them.* A screen recording from the
 owner's phone showed the price readout cut in half by the Dynamic Island: BTC declared
@@ -1976,6 +2002,7 @@ against it quietly.
 | **P-1** | **γ, the substance's surface tension.** Carried at 0.040 N/m as an estimate, bracketed against fermented tomato juice at 40.5 / 42.6 mN/m and against water's 0.072, which is ruled out. | **λc alone** — one corner radius, ±2 px. Not τ₀ (anchored independently), not k/n, not cessation, not trap depth. | A published surface tension for a yield-stress tomato matrix. **None exists, and the reason is methodological**: ordinary tensiometry has no valid regime on a fluid that holds below τ₀. | **Closed as unclosable.** Reopens only if such a measurement is published. No further search. |
 | **P-2** | **The disturbance → v₀ map.** Closed for its first consumer at 2.16 with an authored `LOCK_V0_REF` and a clamp below the 2.9196 crossover. The *general* map — any UI gesture to a substance's initial velocity — is still authored. | Any future consumer of `yield.js` that wants a real v₀ rather than the reference. | Nothing in physics. There is no derivation from px/ms to a substance's velocity, and 2.16's entry says so. | **Closed as authored.** Each new consumer names its own anchor and its own clamp, and states both. Not a research question. |
 | **P-3** | ~~**Droplet coalescence, if an ambient floor is ever built (L13, Rhyme).**~~ **CLOSED at 2.22 — the pass ran and the scaling is confirmed.** Viscous regime, `r ∝ t`, linear (Eggers, Lister & Stone, *J. Fluid Mech.* **401**, 293–310, 1999). `√t` is the *inertial* law and is not this substance's. | The floor's merge behaviour. Built. | Done: one pass, at build time, as this row said. | **Spent, in full.** The bound was one pass and one pass is what it cost. Two findings came with it and are in §9. |
+| **P-5** | **Does the substance wet the vessel?** Registered at 2.38, when the glass became a boundary the field is bounded by rather than an ornament on it. The question decides whether a globule reaching the wall **adheres** or **slides**. | Nothing that ships. The containment built at 2.38 needs no answer: the lateral motion is a closed orbit whose amplitude is the room the drop's lane has, so a drop never reaches the wall and there is no contact to model. | A contact angle for this substance on borosilicate. **None is published**, and the reason is P-1's exactly — ordinary tensiometry has no valid regime on a fluid that holds below τ₀. What the direction rests on is secondary: lava-lamp formulation sources say a surfactant exists precisely to stop the wax sticking to the globe, and that without one it sticks. Wikipedia confirms the tapered vessel and the coil breaking surface tension to recombine blobs, and says nothing about adhesion. | **Closed as authored, and it cost one pass.** Non-wetting is adopted, named as authored, with the direction corroborated and the magnitude unavailable — P-2's disposition, not P-1's, because the answer is a choice rather than a missing measurement. **And the choice is forced rather than aesthetic:** an adhesive wall is a one-way trap, since detaching needs the buoyant stress that `globules.js` measures at 4.2–14× short of τ₀. Driven over an hour it pins 36 of 37 drops on a phone and 162 of 171 on a desktop. The only other option, a reflecting wall, is an elastic bounce this material cannot claim (2.21). Reopens only if a contact angle is published. |
 | **P-4** | **Trap depth, and the shear-thinning form η(γ̇).** Both derived and both unwired: trap depth from SGR's escape law at 2.8, η(γ̇) surveyed and parked with no consumer in either tool. | Nothing. Neither reaches a surface. | A consumer. Not a measurement — the arithmetic is already right. | **Parked, zero cost.** Revisited only when something wants to read one. |
 
 **Two questions that look physical and are not, kept out of this table on purpose.** `OCCVM-D13` — the

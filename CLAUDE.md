@@ -4,22 +4,26 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910174353` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910192734` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.36** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.37** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground under L13's bounded grant, the field drawn **once** on that ground with the
-tiles frosted over it, and the safe area finally read as a token so the price is never under the
-status bar again. *Verified by stamp — both BTC hosts read `build-20260910174353` at 17:46:12 UTC on
-the first poll, about a second after the push, which is an upper bound and is named as one. Rhyme's
-GitHub Pages read `build-20260910171532` at 17:46:44 having **missed** three polls before it, so that
-one is a bracket between 17:46:33 and 17:46:44, and unlike the previous release **Rhyme's stamp
-verifies something**: its artifact really changed this time, `build.js` minted on the content, and
-its service worker names the same stamp. Corroborated as this release rather than a cached stamp,
-which is corroboration and not the verification (§7.3): both BTC hosts serve the `safe-area-inset-top`
-token, the status-bar band, the 560px width query and three `--tile-fill` mixes against the ground;
-Rhyme serves the token and the band.* Earlier
-lines: `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+tiles frosted over it, the safe area read as a token so the price is never under the status bar, and
+2.37's phone-width `.shead` stacking and the duplicated strike label. *Verified by stamp. **Every
+reading here is a bracket, not a bound**, because the poll that preceded each hit is recorded: both
+BTC hosts missed at 19:33:49 UTC and hit at 19:34:00 (Cloudflare) and 19:34:01 (GitHub Pages), so each
+landed inside those eleven or twelve seconds. Rhyme's GitHub Pages missed four polls and hit
+`build-20260910192143` at 19:34:43, bracketed from 19:34:32 — **and that fourth poll returned no stamp
+at all**, a page served mid-swap, which is worth recording rather than smoothing: a single poll finding
+nothing is not evidence of anything and would have read as a failure had it been the only one. Rhyme's
+service worker on the wire names `tome-build-20260910192143`, the same stamp. Corroborated as this
+release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
+hosts serve the 560px `.shead` query and the `armedHere` strike guard, and Rhyme serves **four**
+corrected `atan2(…) + 90deg` gradients and **zero** of the `* 1rad` form that dropped four of its
+backgrounds, plus `#occvm-floor` fixed, `--tile-fill: 38%`, `GROUND_ALPHA = 0.11` and `.cast.on`
+reading `--verdigris`.* Earlier
+lines: `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **9,645 lines, 858 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
@@ -295,8 +299,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **994 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
-occvm 568, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **1,008 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
+occvm 582, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
@@ -3105,6 +3109,149 @@ override stays: a swatch that names its own colour, offering a palette, is not a
 **118 → 119**. Golden holds at **564** — the atan2 repair and the alpha are both on consumers, which
 is `OCCVM-D13` exactly: the golden set reads `:root` and cannot see either, and the pictures above
 are the driven measurements instead.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`7d44dab` here,
+`2d7366d` in Rhyme), CI green on both branch heads through the API before either merged — **BTC run
+124 and Rhyme run 83, read step by step rather than off the rollup**, because Rhyme's whole run
+finished in twenty seconds and a rollup cannot tell a fast suite from a skipped one. All eight of its
+steps ran, including *"Regenerate from tome-src and check nothing drifted"*, which is the artifact
+guard 2.22 exists for; BTC's two jobs cover the harnesses, all three splicers, the token audit, the
+law conformance, the unit suites, the duplicate-definition check and both golden surfaces on Chromium.
+
+**Verified by stamp, and every reading is a bracket.** The header carries the times. Both BTC hosts
+missed at 19:33:49 UTC and hit `build-20260910192734` eleven and twelve seconds later; Rhyme hit
+`build-20260910192143` at 19:34:43 after four misses — **one of which returned no stamp at all**, a
+page served mid-swap. That empty poll is recorded rather than dropped, because it is the reading that
+would have looked like a failed deploy had the loop stopped there, and because §7.3's whole procedure
+is a poll whose negative results are as much a part of the record as its positive one.
+
+*What a reader sees change, and the Rhyme half is much larger than the release that caused it.* Its
+open face has a substrate again — it had none on the wire, so the field ran through it and its
+controls floated on the page ground — and its binding has its bronze back, and an override word in a
+draft is visible rather than painting nothing. On top of that repair: one field on the page ground
+under every face instead of a copy inside whichever slab was open, the slabs and closed faces frosted
+at 38% over it, and *selected* painted in the active colour rather than the decorative one. On this
+tool: the DATA view's section heads stop colliding at phone width, and the sweep prints each strike
+once.
+
+*Rhyme's stamp is evidence here rather than a formality* — its artifact really changed, `build.js`
+minted on the content under 2.30's rule, and its service worker on the wire names the same stamp. The
+distinction matters because at 2.35 the honest thing to say was that polling Rhyme proved nothing.
+
+**One thing this deploy does not close, stated because the record should not round up.** The 38% fill
+holds serif parity on Rhyme's closed faces and misses it by **3.49 L\*** on the open one, and no
+attainable fill closes that gap (SPINE.md §6b). And the general property behind this release's biggest
+find — *no declaration computes to its initial value by accident* — is guarded only for the one class
+that shipped. It is browser-only in general, the golden recorder is where it belongs, and it is not
+built.
+
+**2.38 — the vessel: the tiles express it, and it constrains the field.** The owner's call, and the
+second half of it is the one that reshaped the work: *the vessel is expressed by the tiles but is
+also intended to constrain globule behaviour as in actual lava lamps.* `GLASS-VESSEL-PLAN.md` §7
+leaves "per-panel vessels versus one page-level vessel" explicitly unmade; containment forces it,
+because a vessel that contains needs a real boundary in the field's own coordinates. **Decided with
+the owner: one vessel, the content column.** A rim between stacked tiles would draw a wall that is
+not there.
+
+**The field was a torus.** `floor.js` wrapped every drop at the screen edge — leave left, reappear
+right — which is the exact opposite of what glass does.
+
+**Neither obvious wall works, and both were measured before any code was written.** Over an hour of
+simulated time, an **absorbing** wall pins **36 of 37** drops on a phone and **162 of 171** on a
+desktop, emptying the middle into two stripes at the edges: peeling a drop off a wall needs the same
+buoyant stress `globules.js` measures at **4.2–14× short of τ₀**, so adhesion is a one-way trap. A
+**reflecting** wall survives with 0 pinned and is refused for a different reason — an elastic bounce
+is the material claiming an elasticity it does not have, the recoil 2.21 already refused.
+
+**So the constant lateral drift was the defect, not the wall.** It was a 2.22 leftover: step 3
+replaced the drift vertically with the buoyancy cycle and never replaced it sideways, under a comment
+still calling it "the lateral wander a real lamp shows". `DRIFT_PX_S`, `vx` and `vy` are retired,
+which also leaves `RISE_PX_S` as the one home of 1.4 (L3). **`vy` was the sharper half: written onto
+every drop and read by nothing** — D12 one level down, invisible because a value on an object is not
+a token the auditor scans.
+
+The replacement is the convection roll's **shape** — Gyüre & Jánosi, already this floor's source for
+the cycle — traversed once per cycle on the one parameter the vertical motion already uses, with the
+amplitude set to the room the drop's own lane has. **Crossing the wall is impossible by construction
+rather than prevented by a check.** Bolting a streamfunction's horizontal component onto the
+prescribed vertical was tried first and does not close: `cyclePos` has dwells and a roll has none —
+6.8M crossings and every drop pinned.
+
+**Three bypass paths the first version missed, each found by the driven guard rather than by reading:**
+resize rescaled `x` and left the lane behind; a merged drop is bigger than either parent and may not
+fit the lane it inherited; and a rigid pair must be bounded by the **body's** extent, since clamping
+the lobe puts the far side through the glass and clamping the follower would stretch a bridge that by
+definition cannot stretch. Spawn is clamped into the vessel too — centres were drawn anywhere in
+`[0,w]`, so a drop within `r` of an edge hung over it, invisible while the field wrapped. A
+replacement drop is now born **at the coil** rather than sliding in from off-screen, since a vessel
+has no off-screen.
+
+**And then the wall was still a description, because the canvas was the viewport.** `floor.js` bounds
+every drop to the canvas it is handed, so whatever that element spans *is* the glass — and it spanned
+the screen. This tool's column is 1180, so only a viewport wider than that could show it, and 390 and
+1100 are the two widths nearly everything in this system has been driven at. **Rhyme's column is 720,
+so its field was outside its vessel at 1100 as well** — the desktop width most of these measurements
+have been taken at. `--column` is a token now in both tools, read by the layout rule and the floor
+rule so the glass and the content cannot drift apart. Driven in Chromium, canvas against column,
+matching on width **and** left offset: BTC `390→390@0, 1100→1100@0, 1600→1180@210`; Rhyme
+`390→390@0, 1100→720@190, 1600→720@440`. All six agree.
+
+**The vessel is worn.** `glass.js` was derived at 2.32 and spliced into the reference surface alone;
+the tool carries it now. **The rim paints under the content, not over it** — a real wall sits between
+viewer and fluid, which argues for painting on top, and that is refused: the bright band is at the
+column's outer edges, the sweep tile spans the column, and a decorative overlay above marks that mean
+win/lose is the `.tile::before` arrangement 2.35 retired.
+
+**Its weight is authored and the criterion that fixes it is not:** the rim may not exceed the ground
+it sits beside, on the mean **or** the peak, because both are decoration on one surface.
+
+| gain | pixels moved | mean ΔL\* | p99 | max | |
+|---|---|---|---|---|---|
+| 1.00 | 54.38% | 5.054 | 37.64 | 39.69 | louder than anything else on the page |
+| 0.50 | 54.24% | 2.366 | 19.09 | 20.61 | mean passes, peak does not |
+| **0.25** | **46.55%** | **1.071** | **8.92** | **10.41** | **both pass** |
+| 0.15 | 23.60% | 0.942 | 4.92 | 5.89 | |
+| 0.08 | 18.20% | 0.537 | 2.30 | 3.39 | |
+
+against the ground's own **3.440 mean and 12.13 peak**. `RIM_GAIN = 0.25` is the largest that clears
+both. The *profile* is derived — borosilicate's Fresnel curve subdivided until no chord exceeds the
+8-bit alpha quantum — and only the overall weight is judgment, named beside `GROUND_ALPHA`.
+
+**The rim's colour is the light's, and the golden record shows it rather than promising it:** three
+pinned instants carry three different rims — `#f2d9b2` at low sun, `#ece3d0` at high, `#ccd0e0` at
+night. It refreshes on `palTick`'s existing beat, because `--bone` is sundial-written and a rim
+computed once at load would be a frozen highlight beside a moving light (2.17, one surface along).
+
+**A shared part had already drifted, and nothing was checking.** `occvm/` is copied between the
+repositories **by hand**: SPINE.md is asserted byte-identical, the React vendor is, all three
+splicers re-splice and diff — and the parts themselves, the actual shared code, had no gate.
+`glass.js` differed: Rhyme carried the **pre-correction** copy authoring `#ffffff` as the rim colour,
+where this repo resolves `--bone` and paints nothing without it. **That is the L6 fix 2.32 records
+making** — it landed one side only, in two commits sharing a message, and stayed invisible because
+`glass.js` was spliced nowhere there. The guard takes its set from the filesystem intersection rather
+than a typed list (2.27's stale-list defect), pins the BTC-only exceptions, and is mirrored both
+sides. **Stated limit: it only fires where both repositories are checked out, which is a development
+machine and not CI.**
+
+**Two guards retired, both because what they excepted was adopted** — the only reason this project
+retires one. `PROTOTYPED_AHEAD` held `glass.js` from 2.32 and is now pinned **empty** rather than
+deleted, so the next part prototyped ahead must declare itself; and "into no tool yet" becomes "into
+the tool, because the vessel is what bounds the field". `--column` and `--vessel-rim` registered in
+SPINE.md §6b — the census refused each change until they were. **P-5 registered in §10**: does the
+substance wet the vessel. Closed as authored at one pass, because containment needs no answer — the
+orbit never reaches the wall — and because the choice is forced rather than aesthetic.
+
+*Three process failures of mine, recorded because the pattern is one thing.* **The artifact was stale
+for an entire debugging pass**: `build.js` was *refusing to build* — my spliced part didn't parse —
+so `dist/` stayed old and the repo-root `index.html` that both my probe and the harness read was
+previous code. I reported two blockers off it, a NaN and an arrest regression, and **neither
+existed**. **I skipped `golden:verify`** from the gate set and learned it from CI run 128 going red.
+And **I wrote measured figures into a guard's comment before measuring them**, and had them wrong.
+The through-line is running a *subset* of the verification and treating it as the whole — which is
+exactly what `build.js`'s parse check and the golden job exist to catch, and both did catch it.
+
+`test/occvm.js` **568 → 582**; §6's total **994 → 1,008** (the containment guard is Rhyme's, where
+the driven floor harness lives). Rhyme **119 → 120**. Golden **564 → 573**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

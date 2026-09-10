@@ -432,7 +432,15 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
      the original guard was written against and it is unchanged. An EXTRA part is permitted only if it
      is on the list below, which is the D14 treatment: the set is pinned in both directions, so a part
      that quietly stays un-adopted is as loud as one that quietly appears. */
-  const PROTOTYPED_AHEAD = ["glass.js"];   /* L2's vessel half — see the 2.32 block at the foot */
+  /* 2.38 — THE LIST IS EMPTY, AND EMPTYING IT IS THE POINT. It held "glass.js" from 2.32, when the
+     vessel was derived and worn by no tool, and the exception existed so a part could be prototyped
+     on the specimen surface without the parity guard calling it a mistake. The tool wears the vessel
+     now, so glass.js is no longer extra — it is an ordinary part with a specimen, which is the state
+     the guard was always written to expect. The exception retires because the thing it excepted was
+     adopted, which is the only reason this project retires one. The list stays declared rather than
+     deleted: it is pinned empty in both directions, so the next part prototyped ahead has to say so
+     here rather than slip through a hole the deletion would have left. */
+  const PROTOTYPED_AHEAD = [];
   const refParts = PARTS6.filter(p => p.target.indexOf("reference") >= 0).map(p => p.name).sort();
   const toolParts = PARTS6.filter(p => p.target === "index.html").map(p => p.name).sort();
   const missing = toolParts.filter(n => !refParts.includes(n));
@@ -2195,7 +2203,12 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const ref = fs.readFileSync(path.join(R8, "occvm", "reference", "index.html"), "utf8");
     const btc = fs.readFileSync(path.join(R8, "index.html"), "utf8");
     T("the vessel is spliced into the reference surface", ref.includes("OCCVM SPINE glass.js"));
-    T("and into no tool yet", !btc.includes("OCCVM SPINE glass.js"));
+    /* 2.38 retires "and into no tool yet". It was true from 2.32 and pinned deliberately, because a
+       part derived and adopted nowhere is a claim about optics nobody can see and the guard kept that
+       honest. What replaces it is the stronger statement now available: the tool carries the vessel,
+       and the vessel is what bounds the field rather than an ornament on it. */
+    T("and now into the tool, because the vessel is what bounds the field",
+      btc.includes("OCCVM SPINE glass.js"));
     T("the reference surface carries a live #l2glass specimen", ref.includes('id="l2glass"'));
     /* the specimen prints what it measures. 2.14's defect was a typed sentence inside the instrument
        built to make typed sentences impossible, so the numbers on the page come from the part. */
@@ -2239,6 +2252,92 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       !/atan2\([^)]*\)\)\s*\*\s*[\d.]*\s*(deg|rad|grad|turn)/.test(sib));
   } else {
     console.log("  skipped (not passed): the sibling is absent, so its four gradients are unchecked");
+  }
+}
+
+
+/* 2.38 — THE SHARED PARTS ARE COPIED BETWEEN THE REPOSITORIES BY HAND, AND NOTHING CHECKED IT.
+   occvm/ is the spine: L3 says one fact has one owner, and a part carried twice is one fact written
+   twice the moment the two copies differ. Every other duplication in this system has a gate —
+   SPINE.md is asserted byte-identical, the React vendor is asserted byte-identical to the sibling's,
+   the splicers all re-splice and diff — and the parts themselves, which are the actual shared code,
+   had none. The seam has been open since occvm/ existed.
+   IT WAS ALREADY DRIFTING WHEN THIS WAS WRITTEN. `glass.js` differed: the sibling carried the
+   PRE-CORRECTION copy that authors `#ffffff` as the rim colour, while this repo carries the one that
+   resolves `--bone` at call time and paints NOTHING when the token is absent. That correction is
+   recorded in §12's 2.32 entry as made — it landed here and never reached there, in two commits that
+   share a message. It stayed invisible because glass.js is spliced nowhere in the sibling, so no
+   measure ever read it; a dormant divergence is still a divergence, and the day it was worn it would
+   have shipped a bare white literal into a tool L6 governs.
+   The set is taken from the FILESYSTEM INTERSECTION rather than a typed list, because a typed list of
+   parts is precisely what went stale twice in the token auditor (§12, 2.27). */
+{
+  const fsP = require("fs"), pathP = require("path");
+  const here = pathP.join(__dirname, "..", "occvm");
+  const there = pathP.join(__dirname, "..", "..", "Rhyme-Instrument", "occvm");
+  if (!fsP.existsSync(there)) {
+    console.log("  skipped (not passed): the sibling repository is absent, so part parity is unchecked");
+  } else {
+    /* BTC-only by design and named so the guard cannot quietly absorb a part going missing:
+       the numeric face ships only where mono is rendered (§12, 1.3). Everything else that exists in
+       both must be byte-identical. */
+    const BTC_ONLY = ["mono.css", "mono.head.css"];
+    const pick = d => fsP.readdirSync(d).filter(f => /\.(js|css)$/.test(f));
+    const mine = pick(here), theirs = new Set(pick(there));
+    const shared = mine.filter(f => theirs.has(f));
+    const missing = mine.filter(f => !theirs.has(f) && BTC_ONLY.indexOf(f) < 0);
+    T("every part this tool carries is either shared or a named exception: " + missing.join(","),
+      missing.length === 0);
+    T("the BTC-only list is exactly the parts the sibling really lacks",
+      BTC_ONLY.every(f => !theirs.has(f) && mine.indexOf(f) >= 0));
+    const drifted = shared.filter(f =>
+      !fsP.readFileSync(pathP.join(here, f)).equals(fsP.readFileSync(pathP.join(there, f))));
+    T("every shared part is byte-identical in both repositories: " + (drifted.join(",") || "none drifted"),
+      drifted.length === 0);
+    T("and there is a real set to check, so an empty intersection cannot pass as agreement",
+      shared.length >= 8);
+  }
+}
+
+
+/* 2.38 — THE CANVAS IS THE VESSEL, so its width is not cosmetic. occvm/floor.js bounds every drop to
+   the canvas it is handed; while that canvas was `inset: 0` the vessel's wall was a description and
+   not an edge, and on any screen wider than the column the field ran past .wrap on both sides
+   contained by nothing. Driven in Chromium at three widths, canvas against column, matching on both
+   width AND left offset:
+       BTC    390 -> 390@0    1100 -> 1100@0    1600 -> 1180@210
+       Rhyme  390 -> 390@0    1100 ->  720@190  1600 ->  720@440
+   all six AGREE now. It hid here because this tool's column is 1180 and only a viewport wider than
+   that could show it — but the SIBLING's column is 720, so its field was outside its vessel at 1100
+   as well, which is the desktop width nearly every measurement in this system has been taken at. */
+{
+  const fsV = require("fs"), pathV = require("path");
+  const srcV = fsV.readFileSync(pathV.join(__dirname, "..", "index.html"), "utf8");
+  const cssV = srcV.slice(srcV.indexOf("<style"), srcV.indexOf("</style>"));
+  T("the floor canvas is the column's width, from the token the column reads",
+    /#occvm-floor\{[^}]*width:min\(100%,var\(--column\)\)/.test(cssV.replace(/\s+/g, "")
+      .replace("#occvm-floor{", "#occvm-floor{")) ||
+    /width:min\(100%,var\(--column\)\)/.test(cssV.replace(/\s+/g, "")));
+  T("the content column reads the same token", /\.wrap\{max-width:var\(--column\)/.test(cssV.replace(/\s+/g, "")));
+  T("and the width has exactly one owner", (cssV.match(/--column:\s*\d+px/g) || []).length === 1);
+  /* the floor must still be fixed — L13's boundary reads this and law-audit.js measures it too */
+  T("the floor is still a fixed layer", /#occvm-floor\{position:fixed/.test(cssV.replace(/\s+/g, "")));
+
+  /* THE RIM IS THE LIGHT'S AND IS RESOLVED, NOT AUTHORED — 2.4's finding that a specular return on a
+     dielectric carries the source's colour. The part reads `--bone` at call time and returns "none"
+     when it does not resolve, so an absent token paints nothing rather than an invented white; the
+     tool must therefore never hand it a colour. Visible in the golden record rather than promised:
+     the three pinned instants carry three different rims — #f2d9b2 at low sun, #ece3d0 at high,
+     #ccd0e0 at night — which is the sundial reaching L2's vessel. */
+  T("the rim comes from the part rather than being written here",
+    /OCCVM_GLASS\.rimGradient\(\{gain:RIM_GAIN\}\)/.test(srcV));
+  T("and the tool never hands it a colour, so an unresolved --bone paints nothing",
+    !/rimGradient\(\{[^}]*color:/.test(srcV));
+  T("the rim's weight is named and is the measured one", /const RIM_GAIN = 0\.25;/.test(srcV));
+  {
+    const gj = fsV.readFileSync(pathV.join(__dirname, "..", "occvm", "golden", "btc", "tokens.json"), "utf8");
+    const rims = new Set(Object.values(JSON.parse(gj).cases).map(c => c.tokens["--vessel-rim"]));
+    T("and the golden record shows it moving with the light: three instants, three rims", rims.size === 3);
   }
 }
 
