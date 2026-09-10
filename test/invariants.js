@@ -286,5 +286,77 @@ function part2() {
     T("night reads below the horizon", r.night.elev < -10, r.night);
   }
 
+/* ── BTC-REDUCTION-PLAN §4.1-4.3 — one confidence vocabulary, and it may not claim clarity ──────── */
+{
+  const C = R(`({
+    levels: CONF_ORDER,
+    thin:       confidence({ n: 7,   nMin: 30 }),
+    enoughNoCI: confidence({ n: 40,  nMin: 30 }),
+    rule:       confidence({ n: 40,  nMin: 30, rule: true }),
+    spans:      confidence({ n: 40,  nMin: 30, spans: true }),
+    clear:      confidence({ n: 40,  nMin: 30, spans: false }),
+    clearNeg:   confidence({ n: 400, nMin: 30, spans: false, why: "loses money, decisively" }),
+    chipThin:   confChip(confidence({ n: 7,  nMin: 30 })),
+    chipClear:  confChip(confidence({ n: 40, nMin: 30, spans: false })),
+    badWhy:     confChip({ level: "clear", label: "clear", why: 'x" onmouseover=y <b>' })
+  })`);
+
+  T("the confidence scale is three levels and no more", C.levels.join(",") === "thin,borderline,clear");
+  T("below the registered minimum n it is thin, and says how far short",
+    C.thin.level === "thin" && /7 of 30/.test(C.thin.why), C.thin.why);
+
+  /* THE ONE THAT MATTERS: clarity is earned, never defaulted. A panel with enough rows and no stated
+     standard cannot call itself clear — "we have forty of something" is not a statement that the
+     reading sits outside the noise, and a scale that defaulted to `clear` would launder exactly that. */
+  T("enough data with no interval and no registered rule is BORDERLINE, never clear",
+    C.enoughNoCI.level === "borderline", C.enoughNoCI.level);
+  T("a pre-registered rule that is met earns clear — there the rule IS the standard", C.rule.level === "clear");
+  T("an interval that includes the bar is borderline", C.spans.level === "borderline");
+  T("an interval clear of the bar is clear", C.clear.level === "clear");
+
+  /* THE CONFLATION §4.2 EXISTS TO FIX: the level is about EVIDENCE, never about direction. §9 calls a
+     negative result the output this instrument is for, so a decisive loss is a CLEAR reading. */
+  T("a decisive NEGATIVE is a clear reading, not a weak one — section 9's whole point",
+    C.clearNeg.level === "clear" && /loses money/.test(C.clearNeg.why));
+
+  T("the chip carries its level as an attribute",
+    /data-conf="thin"/.test(C.chipThin) && /data-conf="clear"/.test(C.chipClear));
+  T("and it is never gilt and never an outcome colour — confidence decides nothing (section 5)",
+    !/--gilt|--up\)|--down\)|--malachite|--ruby/.test(C.chipThin + C.chipClear), C.chipClear);
+  T("a `why` cannot break out of its own attribute",
+    !/["<>]/.test(String(C.badWhy).split('title="')[1].split('"')[0]));
+
+  /* §4.1 — the panels state the reading and its confidence as SEPARATE fields, in fixed positions */
+  const src4 = require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+  const bodyOf = fn => src4.slice(src4.indexOf("function " + fn), src4.indexOf("\n}", src4.indexOf("function " + fn)));
+  for (const fn of ["renderViability", "renderSwing", "renderVerdict"])
+    T(fn + " states its confidence through the shared vocabulary",
+      /confChip\(/.test(bodyOf(fn)) && /confidence\(\{/.test(bodyOf(fn)), fn);
+
+  /* The private dialects are gone from those panels rather than left standing beside the shared one.
+     On the CODE, not the prose: these blocks quote the old wording to explain what replaced it, and a
+     substring check that counts its own comments fails on a correct panel for naming the thing it
+     removed. Rhyme's floor guard hit the identical trap in the same release. */
+  const bare4 = fn => bodyOf(fn).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  T("viability no longer says `insufficient (n…)` in its own dialect", !/insufficient/.test(bare4("renderViability")));
+  T("swing no longer says `unverified — n of 30` in its own dialect", !/unverified \\u2014/.test(bare4("renderSwing")));
+
+  /* §9 IS PRESERVED, and it is why the first draft of this was wrong. An unmeasured LIVE series must
+     not erase a real backtested finding: the strip still reads NEGATIVE with no live fills, and the
+     chip names history as the basis rather than letting the live series appear to have said it. */
+  T("the viability reading falls back to the backtested history rather than to a dash",
+    /liveOK\?l:h/.test(bodyOf("renderViability")) && /backtested history/.test(bodyOf("renderViability")));
+
+  /* AND THE CHIP MUST COUNT THE SAME SERIES THE READING CAME FROM. The first version fell back to
+     history for the reading and kept counting the live series for the confidence, so the strip read
+     "NEGATIVE · not enough data yet" — a decisive backtested finding and a claim that nothing had been
+     measured, in one breath. Every assertion above passed while it did. Pinned as arithmetic on the
+     shipped renderer's own branch rather than as a string. */
+  T("the confidence counts the same series the reading came from",
+    /confidence\(\{n:\(liveOK\?l\.n:\(h\.n\|\|0\)\)/.test(bare4("renderViability").replace(/\s+/g, "")) ||
+    /n:\(liveOK\?l\.n:\(h\.n\|\|0\)\)/.test(bodyOf("renderViability").replace(/\s+/g, "")),
+    "a chip that counts a different series than the reading is the section 4.1 conflation, one level along");
+}
+
   process.exitCode = done() ? 1 : 0;
 }

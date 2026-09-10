@@ -469,6 +469,14 @@ table {
   button.pgsw[aria-pressed="true"]{--pg:var(--pigment);
     background:linear-gradient(180deg,var(--pigment) 0%,var(--pigment-lo) 100%);
     box-shadow:var(--occvm-bevel),0 0 0 1px var(--gilt-b)}
+  /* BTC-REDUCTION-PLAN §4.1/§4.3 — the confidence chip. It sits BESIDE a reading and must never be
+     mistaken for one: no gilt (§5 reserves gilt for what decides, and confidence decides nothing), no
+     outcome colour, no fill, no border. It is lighter than the reading it qualifies, in the same line,
+     which is §4.3's "state the plain read and its own confidence in the same breath" — the alternative,
+     a clean headline with the caveat one click away, is how a summary starts looking like a signal. */
+  .confchip{font:400 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.85;
+    white-space:nowrap;padding-left:.15em}
+  .confchip[data-conf="thin"]{font-style:italic}
   button:disabled{opacity:.45;cursor:default;filter:none}
 
   /* binding: brushed raw bronze, verdigris in the seam */
@@ -3756,7 +3764,16 @@ function renderSwing(){
   if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
     +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--bone-dim)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
   const rnS=repairNote();
-  if(note) note.textContent=(st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting")+(rnS?(" \u00b7 "+rnS):"");
+  /* §4.2 — the same three words the other panels use. "verified/unverified" was this panel's private
+     dialect for the identical question, and the highlight gate is unchanged: highlights follow
+     st.verified exactly as before, and the chip only says out loud what that gate already knew. */
+  const swConf=confidence({n:st.n||0,nMin:30,spans:!(st.n>=30&&st.delta>0),
+    why:st.n>=30?(st.delta>0?"model beats the base rate over "+st.n+" graded reads":"model does not beat the base rate"):undefined});
+  if(note) note.innerHTML=(st.n
+      ? ('model \u2212 base '+((st.delta>=0?"+":"")+st.delta.toFixed(3))+' \u00b7 '
+         +'<span style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>0?"beats the base rate":"does not beat the base rate")+'</span> '
+         +confChip(swConf)+(st.verified?' \u00b7 highlights on':' \u00b7 highlights off'))
+      : ('0 graded reads \u00b7 \u2014 '+confChip(swConf)))+(rnS?(" \u00b7 "+rnS):"");
 }
 function renderJournal(){
   const ta=$("jarms")&&$("jarms").querySelector("tbody"), tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"); if(!ta||!tb) return;
@@ -3834,17 +3851,99 @@ function viaRows(){
 function renderViability(){
   const strip=$("vstrip"), tb=$("viatbl")&&$("viatbl").querySelector("tbody"), note=$("vianote");
   const rows=viaRows(); const f2=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(2)+"\u00a2");
-  const verdict=r=>r.n<30?"insufficient (n"+r.n+")":(r.net>0?"positive":"negative");
+  /* §4.1 — the READING and its CONFIDENCE are separate fields now. "insufficient (n7)" folded them
+     into one word; a row with no fills and a row with five hundred losing fills both read as a colour
+     and a noun, and only one of those is a finding (§9). */
+  const viaConf=r=>confidence({n:r.n,nMin:30,rule:true});
+  const verdict=r=>r.net===null?"\u2014":(r.net>0?"positive":"negative");
   if(tb) tb.innerHTML=rows.map(r=>'<tr'+(r.sub?' style="color:var(--bone-lo)"':'')+'><td>'+r.label+'</td><td class="num">'+r.n+(r.posts!==undefined?'<span class="sub">of '+r.posts+' posts</span>':'')+'</td>'
     +'<td class="num">'+(r.spread===null?"\u2014":r.spread.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.adv===null?"\u2014":r.adv.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.fee===null?"\u2014":r.fee.toFixed(2)+"\u00a2")+'</td>'
-    +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td><td class="num" style="color:var(--'+(r.n>=30&&r.net>0?"up":"down")+')">'+(r.spread===null?"no fills yet":verdict(r))+'</td></tr>').join("");
+    +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td>'
+    +'<td class="num" style="color:var(--'+(r.net===null?"bone-dim":(r.net>0?"up":"down"))+')">'+(r.spread===null?"no fills yet":verdict(r))
+    +(r.sub?"":' '+confChip(viaConf(r)))+'</td></tr>').join("");
   const live15=rows.find(r=>r.label==="15m \u00b7 live"), liveH=rows.find(r=>r.label==="hourly \u00b7 live");
   const h15=rows.find(r=>r.label==="15m \u00b7 history"), hH=rows.find(r=>r.label==="hourly \u00b7 history");
-  const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--bone-dim)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
-    +' \u00b7 <span style="color:var(--'+((l&&l.n>=30&&l.net>0)?"up":"down")+')">'+((l&&l.n>=30&&l.net>0)?"POSITIVE":"NEGATIVE")+'</span>';
+  /* Three fixed positions (§4.1): what happened (the cents), what it means (the word), how much to
+     trust it (the chip). The first draft of this made the WORD conditional on live n and showed
+     "\u2014" with no fills — and the page-load guard refused it, correctly. §9 says these panels read
+     negative and that this honesty is preserved above all else, and it is right: the history row is a
+     real backtested finding (\u22121.63¢ over the spine's fills), not an absence. Withholding the word
+     until a LIVE series matures would hide a measurement the tool has, which is the opposite failure
+     to the one §4.2 is fixing.
+     So the reading comes from the best evidence available and the chip names WHICH — live once it
+     clears the registered rule, history until then. Both are on the line; only the basis moves. */
+  /* THE CHIP MUST DESCRIBE THE BASIS OF THE READING SHOWN, and the first version of this did not:
+     the reading fell back to history while the chip kept counting the LIVE series, so the strip read
+     "NEGATIVE · not enough data yet" — a decisive backtested finding and a statement that nothing has
+     been measured, in the same breath. That is §4.1's conflation reintroduced one level along, caught
+     by rendering the line and reading it rather than by the assertions, which all passed. */
+  const txt=(k,h,l)=>{ const liveOK=!!(l&&l.n>=30&&l.net!==null);
+    const src=liveOK?l:h;
+    const from=liveOK?("live fills, n"+l.n):("the backtested history, n"+(h.n||0)+" \u2014 no live series yet");
+    const c=confidence({n:(liveOK?l.n:(h.n||0)),nMin:30,rule:true,why:from});
+    const read=src.net===null?"\u2014":(src.net>0?"POSITIVE":"NEGATIVE");
+    const col=src.net===null?"bone-dim":(src.net>0?"up":"down");
+    return '<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)):' \u00b7 live \u2014 no fills yet')
+      +' \u00b7 <span style="color:var(--'+col+')">'+read+'</span> '+confChip(c); };
   if(strip) strip.innerHTML='<span class="lbl">viability \u00b7 maker round trip \u00b7 spread \u2212 adverse \u2212 fees</span> '+txt("15m",h15,live15)+' \u00b7 '+txt("hour",hH,liveH);
-  if(note) note.textContent="reads positive only on net > 0 over \u2265 30 live fills";
+  if(note) note.textContent="the reading is the sign of net; the confidence is whether \u2265 30 live fills back it";
 }
+/* ---------------------------------------------------------------- legibility: one confidence vocabulary
+ * BTC-REDUCTION-PLAN §4.2. Five subsystems already say "how much to trust this number" and they say it
+ * in five dialects: the verdict panel counts criteria, viability says "insufficient (n7)", swing says
+ * "unverified — 7 of 30 graded reads", the H-protocol rows carry identifiability codes, and the regime
+ * registry carries percentile flags. All five do one job. A reader learns it five times.
+ *
+ * §4.1 IS THE REASON THIS IS THREE FIELDS AND NOT ONE STRING. Today a panel blurs three different
+ * things into one line — what happened, what it means, and how much to trust it — and the reader parses
+ * grammar to find out which part is the fact and which is the hedge. They are separated here into fixed
+ * positions, and nothing about any measurement changes.
+ *
+ * THE CONFLATION THIS FIXES IS REAL AND IT IS NOT COSMETIC. `NEGATIVE` renders in ruby whether the live
+ * viability series holds zero fills or five hundred. Those are opposite epistemic states — "we measured
+ * this and it loses money" against "we have not measured it" — and §9 says the first is the output this
+ * instrument exists for while the second is nothing at all. One of them is a finding. The display could
+ * not tell them apart.
+ *
+ * THE THREE LEVELS ARE ABOUT EVIDENCE, NEVER ABOUT DIRECTION. A clear NEGATIVE is a clear reading; §9 is
+ * explicit that "those are findings, not failures". Direction is the reading's own field and it is
+ * rendered beside this one, never folded into it.
+ *
+ *   thin        below the registered minimum n — not enough data yet
+ *   borderline  enough data, and the reading sits inside its own uncertainty
+ *   clear       enough data, and the reading is outside it — in EITHER direction
+ *
+ * AND "CLEAR" HAS TO BE EARNED. A panel with no interval and no pre-registered rule cannot reach it: the
+ * default at sufficient n is `borderline`, not `clear`, because "we have thirty of something" is not by
+ * itself a statement that the reading is outside the noise. A panel whose standard IS a registered rule
+ * (viability's "net > 0 over >= 30 live fills", §9) passes `rule:true` and clears on that rule, because
+ * there the rule is the standard and meeting it is the finding. Nothing may claim clarity by default. */
+const CONF_ORDER = ["thin", "borderline", "clear"];
+function confidence(o){
+  o = o || {};
+  const n = Number(o.n) || 0, nMin = Number(o.nMin) || 0;
+  const mk = (level, why) => ({ level: level, label: CONF_LABEL[level], why: why, n: n, nMin: nMin });
+  if (n < nMin) return mk("thin", n + " of " + nMin + " needed");
+  if (o.spans !== undefined) return o.spans
+    ? mk("borderline", o.why || "the interval includes the bar")
+    : mk("clear", o.why || ("n" + n + ", interval clear of the bar"));
+  if (o.rule) return mk("clear", o.why || ("n" + n + ", the registered rule is met"));
+  return mk("borderline", o.why || ("n" + n + ", no interval computed"));
+}
+const CONF_LABEL = { thin: "not enough data yet", borderline: "borderline", clear: "clear" };
+/* One chip, one place. Gilt is reserved for what decides (§5) and confidence decides nothing, so the
+   chip is never gilt and never an outcome colour — it must not be mistakable for the reading beside it. */
+function confChip(c){
+  if (!c) return "";
+  const col = c.level === "thin" ? "--bone-dim" : c.level === "borderline" ? "--bone-lo" : "--bone";
+  /* the `why` is generated here from numbers, never from anything a market or a user typed, so it
+     carries no quoting hazard — but it lands in an attribute, so the two characters that could close
+     one are stripped rather than trusted. */
+  const why = String(c.why || "").replace(/["<>]/g, "");
+  return '<span class="confchip" data-conf="' + c.level + '" style="color:var(' + col + ')" title="' +
+    why + '">' + c.label + '</span>';
+}
+
 /* ---------------------------------------------------------------- verdict (pre-registered decision rule) */
 const VERDICT_RULE={minWindows:200,brierCI:0.90,bandMinN:30,bandMargin:3,pnlMinN:100,pnlDays:2};
 function bootstrapCI(vals,fn,level,B){
@@ -3891,7 +3990,14 @@ function computeVerdict(){
 function renderVerdict(){
   const el=$("verdictbox"), tb=$("vcrit")&&$("vcrit").querySelector("tbody"); if(!el||!tb) return;
   const V=computeVerdict();
-  el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '+V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria';
+  /* §4.1 — READY is the reading; the criteria count is what happened; the chip is how much to trust
+     it. The three were one line and the reader had to know that "2/4 criteria" is a fact while READY
+     is a verdict. The n that gates confidence here is the graded-window count the rule itself names. */
+  const nW=(V.crit.find(c=>/window/i.test(c.name))||{}).n;
+  const vConf=confidence({n:Number(nW)||V.n||0,nMin:VERDICT_RULE.minWindows,
+    spans:!V.ready, why:V.ready?"every pre-registered criterion is met":"at least one criterion is not met"});
+  el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '
+    +V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria \u00b7 '+confChip(vConf);
   tb.innerHTML=V.crit.map(c=>'<tr><td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713":"\u2717")+'</td>'
     +'<td style="white-space:normal;min-width:11em">'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--bone-lo)">'+c.have+'</td></tr>').join("");
 }
@@ -8403,7 +8509,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260910063828";
+const BUILD_STAMP="build-20260910065029";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -8420,5 +8526,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260910063828 -->
+<!-- build-20260910065029 -->
 </html>

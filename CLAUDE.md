@@ -7,7 +7,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910063828`** — §11's closure, the `reversal`
+2.25 (§12). **On the branch and not deployed: `build-20260910065029`** — §11's closure, the `reversal`
 citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
 writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
 *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
@@ -248,7 +248,7 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **858 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+currently **875 assertions across 7 harnesses** (invariants 80, sweep 33, page-load 20, h-protocol 89, prereg 84,
 occvm 508, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
@@ -2417,6 +2417,72 @@ Rhyme **113 tests**, holding. Two guard retirements, each with its reason in the
 assertion that replaced it, and the replacement verified to bite.
 
 **The `GLOBULE-BUILD-PLAN` build order is complete: 1 through 6.**
+
+**2.29 — one confidence vocabulary, and a conflation the display could not see.** From
+`BTC-REDUCTION-PLAN.md` §4.1–4.3, whose §4.4 (the regime ledger view) already shipped at 11.9.
+**None of this changes a measurement.** The stated problem is that the data page needs a PhD to read,
+and it is a consequence of something good: every panel that could show a clean number shows a hedge
+instead, because a clean number would claim more certainty than the math has. The rigor is honest. It
+lived entirely in the grammar.
+
+**§4.2 — five dialects for one question.** The verdict panel counted criteria, viability said
+`insufficient (n7)`, swing said `unverified — 7 of 30 graded reads`, the H-protocol rows carry
+identifiability codes and the regime registry carries percentile flags. All five answer *how much should
+I trust this*, and a reader learns it five times. There is one scale now — **`thin` / `borderline` /
+`clear`** — with one `confidence()` and one `confChip()`.
+
+**§4.1 — and the split is the point, not the wording.** A panel line blurred *what happened*, *what it
+means* and *how much to trust it* into one string, so the reader parsed grammar to find out which part
+was the fact and which was the hedge. Fixed positions now. **The conflation that fixes is not
+cosmetic:** `NEGATIVE` rendered in ruby whether the live viability series held zero fills or five
+hundred. Those are opposite epistemic states — *we measured this and it loses money* against *we have
+not measured it* — and §9 says the first is the output this instrument exists for while the second is
+nothing at all. One is a finding. The display could not tell them apart.
+
+**The three levels are about evidence, never about direction, and that is what makes them compatible
+with §9.** A decisive loss is a **clear** reading, not a weak one. Direction is the reading's own field
+and renders beside the chip, never folded into it.
+
+**Clarity has to be earned and cannot be defaulted.** A panel with enough rows and no interval and no
+pre-registered rule reads `borderline`, not `clear` — *"we have forty of something"* is not a statement
+that the reading sits outside the noise, and a scale that defaulted to `clear` would launder exactly
+that. A panel whose standard **is** a registered rule (viability's "net > 0 over ≥ 30 live fills", §9)
+clears on that rule, because there the rule is the standard. Verified to bite: defaulting to `clear`
+fails three assertions.
+
+**§4.3 — the plain read and its confidence in the same breath**, which is the honest form of tiered
+disclosure rather than a clean headline with the caveat a click away. A summary line that reads too
+clean starts *looking* like a signal, which is the one thing every `NOTES.md` here refuses. The chip is
+10px mono, lower-case, no fill, no border, **never gilt and never an outcome colour** — §5 reserves gilt
+for what decides and confidence decides nothing, so it must not be mistakable for the reading it sits
+beside. The full `why` is on the element's title, which is the only thing kept a click away.
+
+**Two defects of my own, both caught by rendering the line and reading it while every assertion
+passed.**
+
+*The first draft made the viability word conditional on live n*, so with no fills the strip read `—`
+instead of `NEGATIVE`. **The page-load guard refused it and was right.** §9 says these panels read
+negative and that this honesty is preserved above all else — and the history row is a real backtested
+finding (−1.63¢ over the spine's fills), not an absence. Withholding the word until a *live* series
+matured would have hidden a measurement the tool has, which is the opposite failure to the one §4.2 is
+fixing. The reading now comes from the best evidence available and the chip names which.
+
+*The second was worse and no guard saw it.* Having made the reading fall back to history, I left the
+chip counting the **live** series — so the strip read **"NEGATIVE  not enough data yet"**: a decisive
+backtested finding and a claim that nothing had been measured, in one breath. That is §4.1's own
+conflation reintroduced one level along, inside the change meant to end it. Found by driving the page
+in Chromium and reading the sentence. The chip counts the reading's own series now, pinned as arithmetic
+on the shipped branch rather than as a string, and verified to bite.
+
+*And the dialect guard hit the comment-counting trap for the second time in two releases* — the blocks
+quote the old wording to explain what replaced it, so a substring check that reads its own comments
+fails a correct panel for naming the thing it removed. Stripped, exactly as Rhyme's floor guard was.
+
+Measured on the live page: `NOT READY · 0/4 criteria · not enough data yet` · `15m history −1.63¢ ·
+live — no fills yet · NEGATIVE clear` · `0 graded reads · — not enough data yet`.
+`test/invariants.js` **63 → 80**; §6's total **858 → 875**.
+
+*§4 is complete: 4.1, 4.2 and 4.3 here, 4.4 at 11.9.*
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
