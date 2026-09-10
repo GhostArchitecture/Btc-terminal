@@ -133,11 +133,45 @@ var OCCVM_GLOBULES = (function () {
 
   function count(w, h, pxPerDrop) { return Math.max(3, Math.round(w * h / (pxPerDrop || PX_PER_DROP))); }
 
-  /* one droplet, from the field's own PRNG */
+  /* one droplet, from the field's own PRNG.
+     `phase` is where this drop sits in the buoyancy cycle (2.28, step 3) — a STATIC property of the
+     drop like its radius, not motion, which is why it is the field's and the cycle it feeds is the live
+     consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
+     withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
+     and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
   function drop(rnd, w, h, r0, r1, edge) {
     var r = r0 + rnd() * (r1 - r0), a = rnd() * Math.PI * 2;
-    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r,
+    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r, phase: rnd(),
              vx: Math.cos(a) * DRIFT_PX_S / 1000, vy: Math.sin(a) * DRIFT_PX_S / 1000 };
+  }
+
+  /* ---- what the substance says about drift (2.28, step 3) ---------------------------------------
+   * L13 already records the floor's cost in a sentence: "a yield-stress fluid below τ₀ does not
+   * spontaneously convect or drift, so the floor contradicts the substance's defining behaviour". The
+   * buoyancy model gives that sentence a number, so it can be checked rather than believed.
+   *
+   * A globule rises when the buoyant stress Δρ·g·R exceeds τ₀. At the density contrast the authored
+   * 30 px ceiling implies (Δρ/ρ = 0.0567), that stress is 1.509 Pa at r = 9 px and 5.031 Pa at r = 30 —
+   * against a static yield stress of 21.15 Pa. **The substance is 14× short at the smallest globule in
+   * the field and 4.2× short at the largest**, and the radius at which buoyancy could move anything at
+   * all is 33.4 mm — **126 px**, four times the ceiling and larger than most surfaces the floor paints
+   * on. Nothing in this field can rise, by its own physics, at any speed.
+   *
+   * So the drift's MAGNITUDE is authored and there is no derivation to reach for; what is adopted from
+   * the literature is the cycle's SHAPE. Gyüre & Jánosi, "Basics of lava-lamp convection", Phys. Rev. E
+   * 80, 046307 (2009) — a real two-fluid lab analog — report the process as warm blobs rising from the
+   * bottom, ATTACHING at the top surface, then sinking again, and identify two modes, one heat-transport
+   * limited and one viscosity-limited with CONSTANT PERIODICITY. Rise, dwell, sink, dwell, one period
+   * for every drop with its own phase: that is what this field carries, and it is the shape rather than
+   * the speed that came from the source. */
+  function buoyantStress(rPx, dRhoOverRho) {
+    var r = rheo(); if (!r) return null;
+    var m = r.SUBSTANCE;
+    return m.density * 1000 * (dRhoOverRho === undefined ? 0.0567 : dRhoOverRho) * 9.80665 * (rPx * r.MM_PER_PX / 1000);
+  }
+  function risesAt(rPx, dRhoOverRho) {
+    var r = rheo(), t = buoyantStress(rPx, dRhoOverRho);
+    return r && t !== null ? t > r.SUBSTANCE.tau0 : null;
   }
 
   /* the field: deterministic in (seed, w, h). Returns the drops and the PRNG positioned after them, so a
@@ -223,7 +257,7 @@ var OCCVM_GLOBULES = (function () {
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
            PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
-           gooFilter: gooFilter, blurPx: blurPx,
+           gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
            GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_GLOBULES;

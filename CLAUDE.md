@@ -7,7 +7,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910061147`** — §11's closure, the `reversal`
+2.25 (§12). **On the branch and not deployed: `build-20260910062126`** — §11's closure, the `reversal`
 citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
 writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
 *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
@@ -2276,6 +2276,49 @@ visible in the render, produced with no merge code, which is the arrested end st
 
 `--globules-size` registered in §6b; the census refused the change until it was. `test/occvm.js`
 **484 → 508**; §6's total **834 → 858**. Rhyme **108 → 110 tests**, both new ones verified to bite.
+
+**2.28 step 3 — buoyancy, and L13's recorded cost becomes a number.** Not this tool's code; the shared
+part and the law are, and the finding travels. The build plan's reframing: **a lava lamp is not one
+substance getting restless, it is two immiscible phases in a heat-driven density race** — the wax sits
+slightly denser at rest, heat expands it more than the carrier, past a crossover it becomes buoyant,
+rises, cools and sinks. *The motion is buoyancy; rheology governs shape and merging, not drive.* Which
+makes the drift Rhyme shipped at 2.22 — a random constant direction per drop — the wrong model rather
+than a coarse one: it had no bottom, no top and no turnaround.
+
+**The shape is sourced; the speed is authored; the substance says the speed is zero.** Gyüre & Jánosi,
+"Basics of lava-lamp convection", *Phys. Rev. E* **80**, 046307 (2009), a real two-fluid lab analog:
+blobs rise from the bottom, **attach** at the top surface, then sink — rise, dwell, sink, dwell — with
+two modes, one heat-transport limited and one **viscosity-limited with constant periodicity**. The
+constant-period mode is taken, so every drop shares one period and differs only in the phase the seeded
+field already gives it.
+
+**L13 has recorded since 2.15 that "a yield-stress fluid below τ₀ does not spontaneously convect or
+drift". That is now measured.** A globule rises when the buoyant stress `Δρ·g·R` exceeds τ₀. At the
+contrast the authored 30 px ceiling implies, that stress is **1.509 Pa at r = 9 px and 5.031 Pa at
+r = 30**, against **τ₀ = 21.15** — **14× short at the smallest globule in the field, 4.2× at the
+largest** — and the radius at which buoyancy could move anything at all is 33.4 mm, **126 px**, four
+times the ceiling and larger than most surfaces the floor paints on. Nothing in this field can rise, by
+its own physics, at any speed. That is not a reason to drop the floor (L13 grants it and records the
+cost); it is the reason there is no derivation to reach for, so the pace is authored at the magnitude it
+already had — `FLOOR_RISE_PX_S = 1.4`, `DRIFT_PX_S`'s number, now vertical and cyclic instead of random.
+
+**One authored number, not three.** The period **follows** from that speed and the surface's own height
+rather than sitting beside it, so a tall face cycles slowly and a short one quickly — 523 s on a 300 px
+face — which is what a taller vessel does. And the turn at each end rides the substance's **own**
+cessation curve (`OCCVM_RHEOLOGY.easing`, derived at 2.8 with its hard stop) rather than an invented
+ease: a blob arriving at the top decelerates to rest, and this system owns exactly one curve for coming
+irreversibly to rest. *Recorded as one-sided:* it owns no curve for setting off, so the departure
+inherits the arrival's rather than a time-reversal being invented, which would be a shape nobody
+derived. The curve is sampled **once** — `easing` integrates 4,000 steps, and it is a property of the
+substance, not of the frame.
+
+Driven in Chromium on the shipped functions: starts at 0, rises monotonically, holds exactly 1 through
+the dwell, sinks monotonically, holds 0. `phase` joins the shared field as a **static** property of a
+drop like its radius — a number saying where in the cycle it starts moves nothing on its own, so it is
+carried by both tools alike while the cycle that reads it stays in the tool L13 grants motion to.
+
+Rhyme **110 → 111 tests**; three of the new assertions verified to fail against an authored period, an
+invented ease, and the old drift restored beside the cycle.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
