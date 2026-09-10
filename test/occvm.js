@@ -1563,4 +1563,57 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     /OCCVM-D14/.test(rdB("occvm", "SPINE.md")));
 }
 
+
+/* ── 2.26 — the field over the sweep: why the win/lose marks survive it ────────────────────────────
+ * §7.6 forbids noise presented beside signal, and L13 withholds MOTION from this tool for exactly that
+ * reason — but the still field is overlaid on the sweep, because `.tile::before` is position:absolute and
+ * a positioned pseudo-element paints ABOVE its box's in-flow content. So the decoration does sit on top
+ * of every mark that carries win/lose. Driven in Chromium across five states (ABOVE winning, ABOVE
+ * losing, BELOW winning, no-call, and the swing-activated inversion §5 designs to be most saturated),
+ * with the overlay toggled on a frozen page:
+ *
+ *   the marks themselves never move   — ΔL* ≤ 0.07, Δhue ≤ 3°, every class, every cell
+ *   local contrast to the substrate beside them   — 0.0% to 4.9% lost, worst case gilt
+ *   every mark keeps > 22 L* of local contrast    — ruby in the swing view is the tightest, and unmoved
+ *
+ * WHY, and it is not a coincidence: `screen` blend is self-limiting on bright ink. screen(a,b) = 1 −
+ * (1−a)(1−b), so the lift is (1−a)·b — it FALLS as the mark brightens, and vanishes as a → 1. The field
+ * lands on the substrate and gets out of the way of the ink. That is the property this guards, because a
+ * change of blend mode or a raised weight would silently take it away.
+ *
+ * A METHOD CORRECTION, recorded because the first number was alarming and wrong. The first pass paired
+ * the dimmest pixel of a mark against the brightest globule ANYWHERE IN THE FRAME and reported ruby at
+ * −18%. Those two pixels are nowhere near each other; measured locally the same cell is −0.0%. A global
+ * worst case that describes no pixel pair that exists is not a measurement of legibility. */
+{
+  const fs26 = require("fs"), path26 = require("path");
+  const src26 = fs26.readFileSync(path26.join(__dirname, "..", "index.html"), "utf8");
+
+  T("the tile overlay blends with screen — the self-limiting mode the measurement depends on",
+    /\.tile::before\{[^}]*mix-blend-mode:screen\}/.test(src26));
+  T("at the weight it was measured at", /\.tile::before\{[^}]*opacity:\.16;/.test(src26));
+  T("and the field's own weight is the measured one", /^const GLOBULE_ALPHA=0\.36;/m.test(src26));
+
+  /* the reason, as arithmetic rather than as a comment: the brighter the ink, the less a screen blend
+     can reach it. Asserted at the three marks' own linear luminances, so the ordering is a property of
+     the palette and not of a number typed here. */
+  const lin26 = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum26 = ([r, g, b]) => 0.2126 * lin26(r) + 0.7152 * lin26(g) + 0.0722 * lin26(b);
+  const lift = (mark, field) => (1 - lum26(mark)) * field;     /* screen(a,b) − a */
+  const substrate = lum26([0x09, 0x08, 0x0d]);                 /* PAL.field, the sweep's own ground */
+  const b26 = 0.36 * 0.16;                                     /* the field's weight × the overlay's */
+
+  const marks = { mal: [0x3f, 0xbf, 0x7e], ruby: [0xe0, 0x47, 0x5f], gilt: [0xd9, 0xa5, 0x2c], bone: [0xec, 0xe3, 0xd0] };
+  for (const [k, m] of Object.entries(marks))
+    T(`screen reaches ${k} less than it reaches the substrate under it`,
+      lift(m, b26) < lift([0x09, 0x08, 0x0d], b26),
+      `${lift(m, b26).toFixed(4)} vs ${lift([0x09, 0x08, 0x0d], b26).toFixed(4)}`);
+
+  T("and the ordering is monotone in the mark's own luminance — the brighter the ink, the safer it is",
+    lift(marks.bone, b26) < lift(marks.mal, b26) && lift(marks.mal, b26) < lift(marks.ruby, b26));
+  T("the substrate takes the decoration, which is what a substrate layer is for",
+    lift([0x09, 0x08, 0x0d], b26) > 0.95 * b26 && substrate < 0.01);
+}
+
+
 process.exit(done());
