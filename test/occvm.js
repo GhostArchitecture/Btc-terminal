@@ -476,6 +476,27 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     ref.includes("var(--occvm-bevel), var(--occvm-cast-2)"));
   T("its controls carry the interaction primitives (L8)", ref.includes("occvm-act occvm-focus"));
 
+  /* 2.34 — THE PAGE MUST ACTUALLY RUN, and nothing local checked that until this release.
+     The reference surface threw `paintFloor is not defined` on every load and shipped that way,
+     because an edit script raised before its write: the call to the painter landed and the painter
+     itself did not. The whole suite passed — nothing in Node loads this page — and the only thing
+     that saw it was the golden recorder, which is CI-only in this container and refuses to record a
+     dead page. That refusal is exactly what it is for, and it should not have been the first line of
+     defence. Two cheap structural checks, both of which would have caught it:
+       every function the page calls at its top level is defined in the page, and
+       every id the script paints into exists in the markup. */
+  {
+    const script = ref.slice(ref.lastIndexOf("<script>"), ref.lastIndexOf("</script>"));
+    const boot = [...script.matchAll(/^([A-Za-z_$][\w$]*)\(\);$/gm)].map(m => m[1]);
+    const undef = boot.filter(n => !new RegExp("function\\s+" + n + "\\s*\\(").test(script));
+    T("every function the reference surface calls at boot is defined in it",
+      boot.length > 4 && undef.length === 0, { boot: boot.length, undefined: undef });
+    const painted = [...script.matchAll(/\$\("([a-z0-9_-]+)"\)/g)].map(m => m[1]);
+    const missing = [...new Set(painted)].filter(id => !ref.includes(`id="${id}"`));
+    T("every id the reference surface paints into exists in its markup",
+      painted.length > 4 && missing.length === 0, { painted: new Set(painted).size, missing });
+  }
+
   /* one specimen per law, and the ids the wiring paints into must exist */
   for (const id of ["l1", "l3", "l5", "l6", "l9", "l10", "tok", "pick"])
     T(`the reference surface carries a #${id} specimen`, ref.includes(`id="${id}"`), id);

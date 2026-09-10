@@ -636,6 +636,21 @@ footer { margin-top: 34px; }
 </section>
 
 <section class="law occvm-slab">
+  <div class="hd"><span class="id">OCCVM-L13</span><h2>Ambient motion</h2></div>
+  <p>A decorative layer may move on its own; the material may not. The floor is one shared part,
+  <code>occvm/floor.js</code>, and the grant is <b>per tool and per surface</b>: Rhyme's draft face,
+  and — since 2.34 — BTC's page ground, never its canvas and never a surface its §5 governs.</p>
+  <div class="specimen" id="l13"></div>
+  <p class="note" style="margin-top:10px"><b>This is the still branch, deliberately.</b> A conformance
+  surface is recorded at three pinned instants, so a moving specimen could not be diffed and a
+  screenshot of one would say nothing. The still branch is not a lesser version of the floor — it is
+  the branch <code>prefers-reduced-motion</code> takes and the one every non-draft slab in Rhyme takes,
+  so what is shown is a state the law requires to exist rather than a stand-in for one it does not.
+  The drops merge through the isosurface with no merge code: fields add, and until 2.33 they did not,
+  because the filter was applied per drop rather than to the summed field.</p>
+</section>
+
+<section class="law occvm-slab">
   <div class="hd"><span class="id">OCCVM-L3</span><h2>One light</h2></div>
   <p>Position is the full NOAA solar algorithm; response is the derivation of every surface quantity from
   it. One implementation, <code>occvm/sundial.js</code>, shared by every conforming tool — a second solar
@@ -2958,6 +2973,24 @@ function paintPaletteSwatches() {
     box.appendChild(el("div", "nm", names[i] + (names[i] === palette ? " \u00b7 chosen" : "")));
     box.appendChild(el("div", "vl", "pos/neg \u0394E " + OCCVM_PIGMENT_SEPARATION[names[i]].posNeg));
     host.appendChild(box);
+  }
+}
+
+/* ---- the floor, still (L13) ---------------------------------------------------------------------
+   The still branch of the shared part, driven rather than described: three canvases at one seed each,
+   so what this page shows is what ambientFloor renders and not a picture of it. */
+function paintFloor() {
+  var host = $("l13"); if (!host) return;
+  host.textContent = "";
+  for (var i = 0; i < 3; i++) {
+    var wrap = el("div");
+    var c = document.createElement("canvas");
+    c.className = "floorbox"; c.setAttribute("aria-hidden", "true");
+    wrap.appendChild(c);
+    host.appendChild(wrap);
+    var stop = OCCVM_FLOOR.ambientFloor(c, true, 0, { seed: FIELD_SEED + i });
+    wrap.appendChild(el("div", "cap", "seed " + (FIELD_SEED + i) +
+      (stop && stop.ok ? "" : " — declined: no palette or no field")));
   }
 }
 

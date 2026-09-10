@@ -278,8 +278,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **983 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
-occvm 559, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
+currently **985 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
+occvm 561, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
 
@@ -2750,6 +2750,16 @@ passed `{name, own}` while `readTool` produces `{name, raw, own}` — so the mom
 "verified against its fixture instead of its call path" on the identical law. The fixtures build the
 runner's shape through one helper now, and one case measures the **shipped tool through `readTool`
 itself** rather than a fixture at all.
+
+*And the reference surface shipped dead for one commit, which nothing local could see.* An edit script
+raised before its write, so the call to a new painter landed and the painter did not: the page threw
+`paintFloor is not defined` on every load. The whole suite passed — **nothing in Node loads that page**
+— and the only thing that caught it was the golden recorder refusing to record a dead page, in CI.
+That refusal is exactly what it is for and it should not have been the first line of defence. Two
+structural checks now run locally, either of which would have caught it: every function the page calls
+at its top level is defined in it, and every id its script paints into exists in its markup. The L13
+specimen it was missing is there too — three still frames of the shared floor, and the first seed shows
+a merged dumbbell, which is 2.33's correction visible rather than described.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
