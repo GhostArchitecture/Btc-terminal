@@ -1352,7 +1352,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
 /* ==== END OCCVM glass.js ==== */
 
 /* ==== OCCVM SPINE floor.js — spliced from occvm/floor.js. do not edit. ==== */
-/* sha256:f4ae6f68bed6 */
+/* sha256:ba91ddd712bd */
 /* occvm/floor.js — the ambient floor (OCCVM-L13). One implementation, shared by every tool the law
  * grants it to.
  *
@@ -1444,6 +1444,19 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
      is exactly how `fracture.js` captured a null `OCCVM_VEINS` and threw on every call in the browser
      while Node's `require` resolved it and every assertion passed. Sampled on first use, the ordering
      cannot silently degrade this to the straight-ramp fallback. */
+  /* 2.40 — the retraction after a pinch is timed by the part that owns that duration already:
+     yield.js's RETRACT_MS, authored and named there since 2.8 as "the duration at the reference".
+     Read lazily and never copied — a second 260 here would be L3's defect, and if yield.js is not
+     spliced the break still happens without the transient rather than inventing a number for it. */
+  var RETRACT_TRIED = false, RETRACT_MS = null;
+  function retractMs() {
+    if (!RETRACT_TRIED) {
+      RETRACT_TRIED = true;
+      try { RETRACT_MS = OCCVM_YIELD.RETRACT_MS; } catch (e) { RETRACT_MS = null; }
+    }
+    return RETRACT_MS;
+  }
+
   var EASE, EASE_TRIED = false;
   function ease(x) {
     if (!EASE_TRIED) {
@@ -1616,6 +1629,23 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
         d.lane = lane;
         var room = Math.max(0, Math.min(lane - extL, (w - extR) - lane));
         d.x = lane + room * Math.sin(2 * Math.PI * u);
+        /* 2.40 — A LOBE THAT HAS JUST BEEN SHED RETRACTS FROM THE BREAK, on the substance's own
+           cessation curve rather than on an invented ease: `ease` runs 0 -> 1 and the offset is
+           1 - ease, so the lobe leaves the break at speed and arrives at rest in finite time, which
+           is the property L11 says distinguishes an irreversible event from every elastic one.
+           CLAMPED, because an unclamped transient is 2.38's containment bypass arriving through a
+           different door — the lane is inside the vessel and the offset could still carry a rim out. */
+        var rms = retractMs();
+        if (d.rt !== undefined && rms) {
+          d.rt += dt;
+          if (d.rt >= rms) { d.rt = undefined; d.rx = d.ry = 0; }
+          else {
+            var k = 1 - ease(d.rt / rms);
+            d.x += d.rx * k; d.y += d.ry * k;
+            d.x = Math.min(Math.max(d.x, d.r), Math.max(d.r, w - d.r));
+            d.y = Math.min(Math.max(d.y, d.r), Math.max(d.r, h - d.r));
+          }
+        }
       }
       /* the follower lobes, after every leader has moved: a frozen bridge holds its offset exactly */
       for (i = 0; i < drops.length; i++) {
@@ -1643,6 +1673,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
                cycle. A frozen bridge does not stretch: the follower's position is the leader's plus the
                offset they froze at, and nothing else. */
             b.lockedTo = a; b.dx = b.x - a.x; b.dy = b.y - a.y;
+            /* 2.40 — the bond's own neck, kept because the shed below has to pick the THINNEST
+               one and that is a fact this branch already computed rather than a new estimate. */
+            b.neck = wd.target;
             welds.splice(i--, 1);
             continue;
           }
@@ -1674,7 +1707,42 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
          can only begin a weld while both are resting there, which is when a real lamp's wax pools. */
       for (i = 0; i < drops.length; i++) for (j = i + 1; j < drops.length; j++) {
         var p = drops[i], q = drops[j];
-        if (p.merging || q.merging || p.locked || q.locked) continue;
+        if (p.merging || q.merging) continue;
+        /* 2.39 — A PEANUT MAY REJOIN AT THE COIL, AND THE RULE THAT SAID IT COULD NOT WAS TOO WIDE.
+           2.28 step 5 excluded every locked lobe with this reasoning: "a third arrival would need the
+           bridge to grow again against a yield stress that already stopped it". That is true of the
+           FROZEN BRIDGE and only of it. A third drop touching the body somewhere else starts a NEW
+           bridge with its own capillary drive γ/R for the new pair; nothing about the arrested bridge
+           resists it, and Kern et al. describe arrest as a property of one coalescence event, not a
+           permanent inertness of the drops in it. So the blanket exclusion was a conclusion drawn
+           wider than its premise, and it had a measured cost: driven for two hours the shipped coil
+           fires 10 welds on a phone and then NOTHING — [7,3,0,0,0,0,0,0] per 15 minutes — with 20 of
+           37 drops locked out permanently.
+           TWO EXCLUSIONS SURVIVE, AND BOTH ARE STRUCTURAL RATHER THAN CAUTIOUS. */
+        /* A FOLLOWER IS INTERIOR. It is a lobe inside a rigid body, not a free surface a drop can
+           land on, and welding to one would put a bridge inside an object. */
+        if (p.lockedTo || q.lockedTo) continue;
+        /* AND A BODY MAY ACCRETE A FREE DROP BUT NOT ANOTHER BODY. This is a limit of the
+           PLACEMENT, stated rather than dressed as physics: the extent loop above reads
+           `fo.lockedTo === d`, so it sums DIRECT followers only. In a chain g -> b -> a the clamp
+           sees b and not g, and g sits at b's position plus its own frozen offset — about a lobe
+           further out — so if b is at the wall, g is through it. That is 2.38's containment bypass
+           arriving through the topology instead of through the lane.
+           MEASURED, AND THE FIRST VERSION OF THIS COMMENT ASSERTED A SECOND MECHANISM THAT DOES NOT
+           EXIST. It claimed a grand-follower would also be "one frame stale in its position",
+           reasoning from the follower pass being a single sweep over `drops`. It cannot be: the coil
+           loop is `for i; for j = i + 1` and the arrest writes `join.lockedTo = lead`, so without the
+           ordering below a follower always takes the HIGHER index and the sweep places parent before
+           child deterministically — and WITH the ordering a follower may take a lower index, which is
+           equally harmless, because leaders are positioned in the motion loop above and not in this
+           sweep. Driven at four viewports: 0 non-rigid pairs, 0.0000 px of wander, every time.
+           The extent gap is the whole of it, and it is real: removing the ordering below and driving
+           720x1400 for an hour puts 4,984 of 8,064,000 lobe-frames past the glass, worst overhang
+           38.6 px, at chain depth 4. It needs a wide enough vessel AND a deep enough chain — the same
+           removal at 390x844 reaches depth 2 and crosses nothing over 2,664,000 lobe-frames, which is
+           why a phone-sized bite test first called this clause conservative and was wrong.
+           Body-to-body welding needs a tree walk in both loops and is not built. */
+        if (p.locked && q.locked) continue;
         if (!atCoil(p, period) || !atCoil(q, period)) continue;
         if (Math.hypot(p.x - q.x, p.y - q.y) > p.r + q.r) continue;
         /* the substance decides the outcome BEFORE the bridge starts growing, from the radii alone —
@@ -1682,8 +1750,66 @@ if (typeof module !== "undefined" && module.exports) module.exports = OCCVM_GLAS
         var reg = OCCVM_GLOBULES.arrestRegime(p.r, q.r);
         var lobe = Math.min(p.r, q.r);
         p.merging = q.merging = true;
-        welds.push({ a: p, b: q, t: 0, rb: 0, arrests: reg !== "completes",
+        /* 2.39 — THE LEADER GOES IN `a`, AND WITHOUT THIS THE ACCRETION INVERTS. The arrest branch
+           writes `b.lockedTo = a`, so if the existing body arrived as `q` it would become a follower
+           of a free drop and its own followers would become grand-followers — the two-level chain the
+           exclusion above exists to prevent, reintroduced by argument order. The pair is ordered so
+           the body leads; `p.locked && q.locked` is already excluded, so at most one of them is one. */
+        var lead = q.locked ? q : p, join = q.locked ? p : q;
+        welds.push({ a: lead, b: join, t: 0, rb: 0, arrests: reg !== "completes",
                      target: lobe * OCCVM_GLOBULES.arrestedBridge(p.r, q.r) });
+      }
+
+      /* ---- 2.40: THE OTHER HALF OF THE CYCLE ------------------------------------------------
+         A field that merges and never breaks can only coarsen. 2.39 measured the consequence: the
+         coil consumes its fixed neighbour set and goes quiet, and every body that forms is
+         permanent. This is the break, and occvm/globules.js records why none of it is derived —
+         four routes closed, and it rides the grant L13 already makes for the coalescence named in
+         its own sentence. What IS derived: where it breaks, what the fragments are, and the shape
+         of the retraction.
+         AT THE COIL, like every other irreversible event here (step 4), so it needs no clock of its
+         own and no authored rate. */
+      for (i = 0; i < drops.length; i++) {
+        var ld = drops[i];
+        if (ld.lockedTo || !ld.locked || ld.merging) continue;      /* leaders of real bodies only */
+        if (!atCoil(ld, period)) continue;
+        var kids = [], kk;
+        for (kk = 0; kk < drops.length; kk++) if (drops[kk].lockedTo === ld) kids.push(drops[kk]);
+        if (!kids.length) { ld.locked = false; continue; }           /* a body of one is a drop */
+        var radii = [ld.r];
+        for (kk = 0; kk < kids.length; kk++) radii.push(kids[kk].r);
+        if (!OCCVM_GLOBULES.overCeiling(radii)) continue;
+        /* THE THINNEST NECK GOES. Each bond froze at a height the Bingham number set, recorded on
+           the follower at arrest, so the weakest bond is a measurement and not a choice. */
+        var weak = kids[0];
+        for (kk = 1; kk < kids.length; kk++)
+          if ((kids[kk].neck === undefined ? Infinity : kids[kk].neck) <
+              (weak.neck === undefined ? Infinity : weak.neck)) weak = kids[kk];
+        /* it leaves as its own drop, on its own lane, in step with the body it left so nothing
+           jumps vertically; the cycle carries them apart from there. */
+        weak.lockedTo = null; weak.locked = false; weak.neck = undefined;
+        /* THE FRAGMENT DEPARTS, AND THE FIRST VERSION OF THIS LINE IS WHY IT DID NOT. It read
+           `weak.phase = ld.phase`, on the reasoning that a shared phase keeps the two in step so
+           nothing jumps vertically. It does keep them in step — permanently. Same phase means the
+           same cycle position forever, so the fragment returned to the coil beside its parent every
+           cycle and re-welded. Measured: 90 sheds, 83 of them re-welds, median 3.0 s free (0.20% of
+           a cycle) and **86.7% straight back to the body they were cut from**. That is a limit
+           cycle wearing a big weld count, the same shape as 2.39's naive unlock at 3,502.
+           The fix needs no constant, because the coil is a DWELL and not an instant: cyclePos is
+           exactly 0 across the whole bottom rest, so any phase inside it gives the same height. Put
+           the fragment at u = 0 — the far end of that dwell, about to rise — and it leaves at once
+           while the parent sees out the rest of its own. They separate in TIME rather than in
+           space, so there is no lateral teleport and no vertical jump, and departing is what a
+           pinched fragment does. */
+        weak.phase = ((1 - (clock / period)) % 1 + 1) % 1;
+        weak.lane = Math.min(Math.max(weak.x, weak.r), Math.max(weak.r, w - weak.r));
+        /* AND IT RETRACTS FROM THE BREAK ON THE SUBSTANCE'S OWN CESSATION CURVE — the one curve this
+           system owns for coming irreversibly to rest (L11, yield.js, and the turn at each end of
+           this very cycle). A break that simply teleported the lobe free would be the same
+           irreversible action rendered in a second vocabulary, which 2.16 and 2.21 both refused.
+           The distance is the bond's own frozen offset; nothing is authored here. */
+        weak.rx = weak.x - ld.x; weak.ry = weak.y - ld.y; weak.rt = 0;
+        if (kids.length === 1) ld.locked = false;
       }
     }
 
@@ -1939,7 +2065,7 @@ if (typeof module !== "undefined") module.exports = {
 /* ==== END OCCVM pigments.js ==== */
 
 /* ==== OCCVM SPINE globules.js — spliced from occvm/globules.js. do not edit. ==== */
-/* sha256:09639c84b16e */
+/* sha256:32c7b0c94f21 */
 /* OCCVM — the globule field (2.25). The substrate decoration both tools share: a seeded field of
    droplets, one generator, two renderers. Rhyme paints it live on the draft face and as a still frame on
    every other slab (30_ui.jsx: ambientFloor); BTC writes a still frame to --globules as a data URI
@@ -2037,8 +2163,34 @@ var OCCVM_GLOBULES = (function () {
    *    liquid — which is what a lava lamp is, and what the plan's own §0 establishes — has
    *    √(γ/(Δρ·g)), and Δρ is the one quantity such a lamp designs toward zero, so the length diverges:
    *    7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at 0.005. Sizing a suspended globule with the
-   *    air-interface value is the 2.8/2.10/2.22 error class. Note that the ARREST lengths above are
-   *    unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones used here.
+   *    air-interface value is the 2.8/2.10/2.22 error class.
+   *
+   *    2.39 CORRECTS THE EXEMPTION THIS PARAGRAPH GAVE ITSELF. It read: "Note that the ARREST lengths
+   *    above are unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones
+   *    used here." The clause is true and the conclusion does not follow. γ/τ₀ carries no g and no ρ,
+   *    so it is immune to the DENSITY half of the two-phase correction — which is the only half the
+   *    sentence looked at. It is not immune to the TENSION half: γ is a property OF AN INTERFACE, and
+   *    the interface changes from wax/air to wax/carrier at the same moment ρ changes to Δρ. Both
+   *    arrest lengths are γ over a stress, so both scale with it directly. The paragraph exempted the
+   *    arrest lengths from a correction by checking the one substitution they survive and not the one
+   *    they do not — which is 2.26's global-worst-case error in a third coordinate: the right
+   *    arithmetic on the wrong pair.
+   *
+   *    WHAT THAT COSTS, MEASURED, AND THE DIRECTION IS AGAINST THE PICTURE ANYBODY WANTS. Both lengths
+   *    scale linearly in γ, so a lower interfacial tension SHORTENS them and the field arrests MORE:
+   *    at γ 0.020 the 9+9 pair still reads dumbbell, at 0.010 it reads BARELY JOINED, and the merged
+   *    radius that completes falls from 7.148 px to 1.787. Completion would need γ to RISE — 0.0635
+   *    N/m for a 9+9 twin-merge (1.59× the shipped value), 0.2115 for 30+30 (5.29×) — and a
+   *    liquid/liquid interface is the direction away from that, not toward it.
+   *
+   *    AND NO SUCH CONSTANT IS ADOPTABLE HERE, FOR A WORSE REASON THAN P-1's. rheology.js closes γ as
+   *    unclosable because ordinary tensiometry has no valid regime on a fluid that holds below τ₀.
+   *    A wax/carrier γ for THIS substance is not merely unmeasured, it is ill-posed: the substance is
+   *    an aqueous matrix and the lamp analogy's carrier is aqueous too, so the two are not immiscible
+   *    and there is no interface to have a tension. The two-phase framing is an analogy laid over a
+   *    proxy chosen on other grounds, and it does not survive being asked for this number. So the
+   *    shipped γ stays the air interface's, USED KNOWINGLY OUTSIDE ITS REGIME AND SAID SO, which is
+   *    the honest form of what the sentence above was claiming by exemption.
    *    Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling implies
    *    Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
    *    sources are secondary, the bracket is reported as a bracket, and no constant here comes from
@@ -2065,6 +2217,60 @@ var OCCVM_GLOBULES = (function () {
     var R2 = merged(r1, r2);
     return R2 < L.complete ? "completes" : R2 <= L.joined ? "dumbbell" : "joined";
   }
+  /* ---- 2.40: when a body sheds a lobe, and why nothing here derives it -------------------------
+   * The field MERGES and never BREAKS, so it can only coarsen: 2.39 measured the coil going quiet
+   * after its fixed neighbour set is consumed, and every body that forms is permanent. Closing that
+   * needs the other half of the cycle. FOUR DERIVATIONS WERE TRIED AND ALL FOUR CLOSED, which is why
+   * the criterion below reuses an authored value instead of producing one.
+   *
+   * 1. NOTHING CAN BREAK A FROZEN BRIDGE, because the bridge arrested precisely when the residual
+   *    stress fell below τ₀ — the drive that made it cannot undo it. Measured against τ₀ = 21.15 Pa:
+   *    buoyancy is 4.2–14× short (`buoyantStress`), and the convection orbit's own extensional
+   *    stress — the bridge holding a lobe off the path it would ride alone — is **1.6 to 2.6 MILLION
+   *    times short**, because the cycle runs at 1.4 px/s and that acceleration is ~2e-7 m/s².
+   *
+   * 2. THE NECK CANNOT DRAIN ITSELF. A neck is thinner than its lobes, so γ/r_neck is larger than
+   *    γ/r_lobe and appears to clear τ₀ — 26.65 Pa at every twin pair, since the arrested neck is
+   *    γ/τ₀ / 2^(1/3) = 5.673 px whatever the lobe size. That reasoning double-counts, and the tell
+   *    is that it would break EVERY pair the instant it formed. Kern, Sæter & Carlson have the
+   *    arrested profile as the END STATE: the material yielded until the residual fell below τ₀ and
+   *    stopped, so no curvature left in that shape is still above it. Closed by the source.
+   *
+   * 3. RAYLEIGH-PLATEAU DOES NOT APPLY, because these bodies are not filaments. A chain of N lobes
+   *    would be unstable past N > π, but the arrest builds a STAR — every follower hangs off one
+   *    leader — and the lobes overlap rather than extending. Measured on the shipped field: span
+   *    over its own circumference is 0.48 at two lobes and only **0.86 at seven**. Stable at every
+   *    size the field produces. A clump is not a filament and Plateau has nothing to say about it.
+   *
+   * 4. AND THE THERMAL ROUTE IS ALREADY REFUSED at 2.39: Koocheki's Table 3 gives the DYNAMIC
+   *    intercept against temperature and no series exists for the static stress.
+   *
+   * SO SHEDDING IS GRANTED, NOT DERIVED, and it is the same grant L13 already makes one clause over.
+   * That law's own text names what the substance will not do — "it does not spontaneously convect,
+   * COALESCE or drift" — and the floor convects and coalesces anyway, recorded as the owner's
+   * aesthetic judgment. Severing is the inverse of the coalescence sitting in that same sentence,
+   * so it rides the same grant rather than needing a new one. What L13 keeps closed is the
+   * material's surface deforming at rest; a discrete topology event at the coil is the category
+   * already permitted.
+   *
+   * WHAT IS STILL DERIVED, so the grant is as small as it can be: WHERE it breaks (the thinnest
+   * neck, which `arrestedBridge` already computes per bond), WHAT the fragments are (volume
+   * conserved, this file's own convention), and the SHAPE of the retraction (the substance's
+   * cessation curve, the one curve this system owns for coming irreversibly to rest).
+   *
+   * AND THE THRESHOLD ADDS NO NUMBER. A body sheds once it is bigger than the biggest drop the field
+   * will spawn — `R[1]`, authored at 2.25 and approved on the page then. Nothing inside the vessel
+   * should exceed the field's own ceiling. Measured, that keeps every DUMBBELL in the band, which is
+   * the outcome the substance actually gives (96.2% arrest) and must not be swept away, and sheds
+   * only the clump: four ordinary lobes (30.80 px equivalent) or two at the top of the band (37.80).
+   * It lands where Plateau would have put a filament, N ≥ 4 — corroboration, not derivation. */
+  function bodyRadius(radii) {
+    var s = 0;
+    for (var i = 0; i < radii.length; i++) s += Math.pow(radii[i], MERGE_POWER);
+    return Math.pow(s, 1 / MERGE_POWER);
+  }
+  function overCeiling(radii) { return bodyRadius(radii) > R[1]; }
+
   /* the Bingham number the source states the arrested shape by: τ_y·R/γ, i.e. R/ℓ */
   function bingham(r1, r2) {
     var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
@@ -2108,7 +2314,12 @@ var OCCVM_GLOBULES = (function () {
      drop like its radius, not motion, which is why it is the field's and the cycle it feeds is the live
      consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
      withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
-     and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
+     and moves nothing on its own.
+     2.39 — THIS SENTENCE USED TO END "`vx`/`vy` stay for the lateral wander a real lamp shows", and
+     2.38 retired both of them one screen above without correcting it here. A comment promising a
+     field two properties the field stopped writing is 2.14's class exactly, inside the file that
+     records 2.14's class. Found by reading the part end to end rather than by any guard: nothing
+     measures a comment. */
   function drop(rnd, w, h, r0, r1, atCoil) {
     var r = r0 + rnd() * (r1 - r0);
     /* THE LANE IS CLAMPED INTO THE VESSEL, and a torus is why nobody noticed it needed to be. Until
@@ -2143,10 +2354,21 @@ var OCCVM_GLOBULES = (function () {
    * limited and one viscosity-limited with CONSTANT PERIODICITY. Rise, dwell, sink, dwell, one period
    * for every drop with its own phase: that is what this field carries, and it is the shape rather than
    * the speed that came from the source. */
+  /* 2.39 — THE CONTRAST AND g BOTH HAD AN OWNER SOMEWHERE ELSE, AND THIS FUNCTION OWNED COPIES.
+     `0.0567` sat here as a DEFAULT ARGUMENT — the least visible place a constant can hide, since it is
+     neither a token the auditor scans nor a named constant a reader finds — while being the whole of
+     what "the liquid" contributes to this model. It is `OCCVM_RHEOLOGY.CARRIER.contrast` now, with its
+     provenance (inverted from the authored 30 px ceiling, not measured) recorded beside the value.
+     And `9.80665` was a second g: rheology.js has fixed the physical constants for this system since
+     the crystal port and uses 9.81, so the two disagreed in the fifth digit for no reason. Reading its
+     G moves the buoyant stress by 0.034% — 1.5094 -> 1.5099 Pa at r = 9, 5.0314 -> 5.0331 at r = 30 —
+     which changes no verdict anywhere (the shortfall against tau-0 is 14.0x and 4.20x either way) and
+     is recorded rather than absorbed, because a figure in this file's own prose moved. */
   function buoyantStress(rPx, dRhoOverRho) {
     var r = rheo(); if (!r) return null;
     var m = r.SUBSTANCE;
-    return m.density * 1000 * (dRhoOverRho === undefined ? 0.0567 : dRhoOverRho) * 9.80665 * (rPx * r.MM_PER_PX / 1000);
+    var d = dRhoOverRho === undefined ? r.CARRIER.contrast : dRhoOverRho;
+    return m.density * 1000 * d * r.G * (rPx * r.MM_PER_PX / 1000);
   }
   function risesAt(rPx, dRhoOverRho) {
     var r = rheo(), t = buoyantStress(rPx, dRhoOverRho);
@@ -2236,7 +2458,7 @@ var OCCVM_GLOBULES = (function () {
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
            PX_PER_DROP: PX_PER_DROP, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
-           arrestedBridge: arrestedBridge,
+           arrestedBridge: arrestedBridge, bodyRadius: bodyRadius, overCeiling: overCeiling,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
            GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();
@@ -2417,7 +2639,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_YIELD;
 /* ==== END OCCVM yield.js ==== */
 
 /* ==== OCCVM SPINE rheology.js — spliced from occvm/rheology.js. do not edit. ==== */
-/* sha256:89b1af14672c */
+/* sha256:5fca483eeb2f */
 /* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -2600,6 +2822,54 @@ var OCCVM_RHEOLOGY = (function () {
        for the same reason, and with the same objection standing: fixing a free parameter FROM the tools
        is a fit, and a free parameter has to be fixed from something. */
     body: "#0e0d13"
+  };
+
+  /* ---- THE CARRIER (2.39) ------------------------------------------------------------------------
+   * "We'll probably need a constant for the liquid." We do, and this is it — but only one of the three
+   * a second phase would supply is adoptable, and saying which is most of the value here.
+   *
+   * WHAT THE MODEL HAS CARRIED UNTIL NOW IS ONE PHASE. Everything in KETCHUP is the wax: its flow
+   * curve, its density, its surface tension against air. A lava lamp is two phases, and the build plan
+   * said so at step 3 — "not one substance getting restless, two immiscible phases in a heat-driven
+   * density race". The carrier was named in that sentence and never entered the code. What entered
+   * instead was `0.0567`, typed as a DEFAULT ARGUMENT inside globules.js `buoyantStress`, reachable by
+   * no other consumer and owned by nothing. That is L3's defect in the least visible place a number
+   * can sit: not a token the auditor scans, not a constant a reader finds, a fallback in a signature.
+   *
+   * THE ONE CONSTANT THAT IS ADOPTABLE IS THE DENSITY CONTRAST, and it is FREE rather than measured.
+   * It is inverted from the authored 30 px radius ceiling: the suspended capillary length
+   * √(γ/(Δρ·g)) equals 30 px exactly when Δρ/ρ = 0.0567. So the ceiling fixes the contrast, not the
+   * other way round, and that circularity is the reason this ships as the value it already had rather
+   * than as a new one. Secondary sources put a real lamp's contrast at roughly 0.022–0.056; 0.0567
+   * sits just above that bracket. Moving it into the bracket would change no rendered pixel — the
+   * buoyant stress it produces is 4.2–14x short of tau-0 at every radius in the field, and a SMALLER
+   * contrast is further short, not nearer — so it would trade a stated inversion for a secondary
+   * source's decimal, which is the trade this file already refused for gamma at 2.10 (0.040 -> 0.0405).
+   *
+   * WHAT IS NOT ADOPTABLE, AND THE REASON IS WORSE THAN P-1's. A second phase also changes the
+   * INTERFACE, so gamma should become the wax/carrier interfacial tension rather than the wax/air one.
+   * It cannot, here: P-1 closes gamma as unclosable because ordinary tensiometry has no valid regime
+   * on a fluid that holds below tau-0, and a wax/carrier gamma for THIS substance is not merely
+   * unmeasured but ill-posed — the substance is an aqueous matrix and the lamp analogy's carrier is
+   * aqueous, so the two are not immiscible and there is no interface to have a tension. globules.js
+   * carries the measured consequence: both arrest lengths are gamma over a stress, so a lower
+   * interfacial tension shortens them and the field arrests MORE. Every honest direction the carrier
+   * points is away from a more merged picture, which is a finding rather than a shortfall.
+   *
+   * AND THE VISCOSITY IS NOT HERE EITHER. A carrier viscosity would set the rise speed through
+   * Stokes/Hadamard and the merge rate through gamma/eta — but the rise speed is authored precisely
+   * BECAUSE the substance says it is zero (globules.js `risesAt` returns false at every radius in the
+   * field and up to r = 126 px), so a viscosity would be a derivation feeding a quantity nothing
+   * derives from it. P-4 already parks eta(gamma-dot) for the same reason: derived, unwired, no
+   * consumer. Adding a number with no consumer is D12.
+   *
+   * So the carrier is ONE value, named, with its provenance on it, replacing a default argument. */
+  var CARRIER = {
+    name: "carrier",
+    /* FREE, and inverted rather than measured — see above. Dimensionless (rho_wax - rho_carrier)/rho_wax. */
+    contrast: 0.0567,
+    /* derived from it and the wax's own density, so the two cannot drift: g/cm3 */
+    get density() { return KETCHUP.density * (1 - this.contrast); }
   };
 
   /* The substance under its ROLE rather than its identity. The sundial reads this, not `KETCHUP`, so the
@@ -2878,7 +3148,7 @@ var OCCVM_RHEOLOGY = (function () {
   }
 
   return {
-    KETCHUP: KETCHUP, SUBSTANCE: SUBSTANCE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
+    KETCHUP: KETCHUP, CARRIER: CARRIER, SUBSTANCE: SUBSTANCE, G: G, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
     fresnel: fresnel, faces: faces, substrate: substrate,
     renderedContrast: renderedContrast, faceRatios: faceRatios,
     shearRate: shearRate, stress: stress,
@@ -9933,7 +10203,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260910213048";
+const BUILD_STAMP="build-20260910232759";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -9955,5 +10225,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260910213048 -->
+<!-- build-20260910232759 -->
 </html>

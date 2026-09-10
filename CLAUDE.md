@@ -4,34 +4,29 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910192734` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current build: `build-20260910222806` (not yet deployed — 2.39 is on the branch) — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.37** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.40** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
-floor on the page ground under L13's bounded grant, the field drawn **once** on that ground with the
-tiles frosted over it, the safe area read as a token so the price is never under the status bar, and
-2.37's phone-width `.shead` stacking and the duplicated strike label. *Verified by stamp. **Every
-reading here is a bracket, not a bound**, because the poll that preceded each hit is recorded: both
-BTC hosts missed at 19:33:49 UTC and hit at 19:34:00 (Cloudflare) and 19:34:01 (GitHub Pages), so each
-landed inside those eleven or twelve seconds. Rhyme's GitHub Pages missed four polls and hit
-`build-20260910192143` at 19:34:43, bracketed from 19:34:32 — **and that fourth poll returned no stamp
-at all**, a page served mid-swap, which is worth recording rather than smoothing: a single poll finding
-nothing is not evidence of anything and would have read as a failure had it been the only one. Rhyme's
-service worker on the wire names `tome-build-20260910192143`, the same stamp. Corroborated as this
-release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
-hosts serve the 560px `.shead` query and the `armedHere` strike guard, and Rhyme serves **four**
-corrected `atan2(…) + 90deg` gradients and **zero** of the `* 1rad` form that dropped four of its
-backgrounds, plus `#occvm-floor` fixed, `--tile-fill: 38%`, `GROUND_ALPHA = 0.11` and `.cast.on`
-reading `--verdigris`.* Earlier
-lines: `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
+a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
+screen edge, and the Fresnel rim on the column's walls. *Verified by stamp, every reading a bracket
+because the preceding miss is recorded: Cloudflare missed at 21:34:54 and hit at **21:35:05**; Rhyme
+missed at 21:35:06 and hit `build-20260910210243` at **21:35:17**; GitHub Pages for BTC took four
+misses and hit at **21:35:37**, the slowest of the three by half a minute. Rhyme's service worker on
+the wire names `tome-build-20260910210243`, the same stamp, and its artifact really changed, so that
+poll answers the question it was asked. Corroborated as this release rather than a cached stamp,
+which is corroboration and not the verification (§7.3): both BTC hosts serve the spliced `glass.js`
+fence, `RIM_GAIN = 0.25` and `max-width:var(--column)`; Rhyme serves the column token.* Earlier
+lines: `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,645 lines, 858 KB, 302 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **10,078 lines, 888 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
 inside the sentence promising it would not recur. Counted again at every release since, this one
-included, and the count excludes the spliced dependency. The island is **156,947 bytes** as spliced,
+included, and the count excludes the spliced dependency. *At 2.39 the function figure read **302** against a measured **303**, counted by the header's own stated method — 312 line-start declarations less the nine inside React's vendor fences, enumerated from the fences rather than from the list of names. A drift of one is the 2.14 class at its smallest, and it is corrected here rather than quietly overwritten, because the sentence above promises this is counted every release.* The island is **156,947 bytes** as spliced,
 of which the vendor payload is **142,586** and the three components 13,499 — the rest is fence
 comments. *Two measurement corrections live in that sentence, and neither is a change to the file.
 It read 156,881 one release ago because that count was taken over CHARACTERS and this one is taken
@@ -299,8 +294,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **1,008 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
-occvm 582, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **1,024 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
+occvm 582, rheology 77, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
@@ -3252,6 +3247,243 @@ exactly what `build.js`'s parse check and the golden job exist to catch, and bot
 
 `test/occvm.js` **568 → 582**; §6's total **994 → 1,008** (the containment guard is Rhyme's, where
 the driven floor harness lives). Rhyme **119 → 120**. Golden **564 → 573**.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`31e4cf7` here,
+`0bc66f9` in Rhyme), CI green on both branch heads through the API first (BTC run 132, Rhyme run 89).
+Stamps and their brackets are in the header; BTC's GitHub Pages was the slow one at four misses.
+
+*What a reader sees change.* On a wide screen the field now **stops at the content column** with bare
+page either side, and a Fresnel rim brightens both walls — a lamp on a table rather than a wash to
+the screen edge. It was never contained before: the drops wrapped, leaving one edge and reappearing
+at the other. On a phone the column already filled the viewport, so what changes there is the rim and
+the fact that the field no longer teleports. In Rhyme the same, and its column is 720, so the
+containment is visible on any desktop.
+
+*What this deploy does not close.* Rhyme's open-face serif parity still misses by 3.49 L\* (SPINE.md
+§6b), the "no declaration computes to its initial value" property is guarded only for the one class
+that shipped, desktop frame cost is still ~13 fps from `backdrop-filter` across 21 tiles, and the
+chart island (§13.5) is still deferred with its cost measured.
+
+**2.39 — the coil, measured: it fires ten times and then stops forever, and only one of the three
+carrier constants is adoptable.** The owner's call: *tune up the globule behaviour — the near heat
+coil re-combinations; rising peanut globules probably need to go the final distance to full merges
+unless peanuts can satisfy the sink factors to rejoin at the coil; we'll probably need a constant for
+the liquid.* Three asks, and measuring the shipped field first answered them in a different order
+than they were given.
+
+**THE FIELD GOES INERT, AND NOTHING IN THE CODE SAYS SO.** Driven for two hours of simulated time on
+the shipped floor, the coil fires **10 welds on a phone and then nothing** — `[7, 3, 0, 0, 0, 0, 0, 0]`
+per fifteen minutes — 44 on a desktop column, 48 in Rhyme's, every one of them an **arrest** and not
+one a completion, and each arrest locks two drops out permanently. After thirty minutes **20 of 37
+drops are inert** and the recombination the owner is asking about has already finished happening.
+*It is not new: the pre-2.38 floor reads `[8, 6, 2, 1, 0, 0, 0, 0]` — 17 welds over the same two
+hours. 2.38's lane-clamped orbit **aggravated** the freeze and did not cause it, which is the
+opposite of my first hypothesis and is recorded that way rather than pinned on the release that
+made it worse.*
+
+**THE ROOT CAUSE IS COUNTED, NOT INFERRED.** A drop's `lane` and its `phase` are both fixed for its
+whole life, and every drop shares one period (2.28 step 3 took Gyüre & Jánosi's constant-periodicity
+mode), so **any two drops' phase difference is constant forever** and each drop's neighbour set is
+decided at spawn. Enumerated over the whole cycle at 4,000 samples: of 666 pairs on a phone only
+**25 can EVER meet at the coil** (3.75%); 136 of 6,216 in Rhyme's column, 237 of 16,836 in BTC's. The
+coil consumes that fixed set and is then finished. **And the field's only mechanism for drawing a new
+lane is the respawn after a COMPLETED merge — which never fires, because completion needs a merged
+radius under 7.148 px and the band's own floor puts the smallest possible merged radius at 11.339.**
+No completions, no lane refresh, guaranteed freeze. That is a property of the shipped code, not a
+tuning observation.
+
+**"UNLESS PEANUTS CAN SATISFY THE SINK FACTORS" IS THE BRANCH THE SUBSTANCE SUPPORTS, AND IT SHIPS.**
+2.28 step 5 excluded every locked lobe from every future weld, reasoning that "a third arrival would
+need the bridge to grow again against a yield stress that already stopped it". **That is true of the
+frozen bridge and only of it.** A third drop touching the body elsewhere opens a *new* bridge with
+its own capillary drive γ/R; Kern et al. describe arrest as the end state of one coalescence event,
+not a permanent inertness of the drops in it. The conclusion was drawn wider than its premise. Two
+exclusions replace it, and both are structural rather than cautious: **a follower is an interior
+lobe**, not a free surface a drop can land on; and **a body accretes a free drop but never another
+body**, because the rigid placement here is one level deep by construction — the extent loop reads
+`fo.lockedTo === d` and the follower pass makes a single sweep — so a two-level chain would leave a
+grand-follower outside its leader's extent, which is 2.38's containment bypass again.
+
+*Measured on the shipped edit, two hours, phone: welds **10 → 16**, bodies **27 → 21**, the biggest
+body **2 lobes → 5**, chain depth **1**, and containment holds at **0 of 5,328,000 lobe-frames past
+the glass**.* A peanut can rejoin at the coil now, which is the "unless" clause satisfied.
+
+**AND THE FIRST TWO ATTEMPTS AT IT WERE MEASURED AND REFUSED BEFORE ANY OF THAT WAS WRITTEN.** Simply
+deleting the lock check thrashes: **3,502 welds** in the same two hours, the same pairs re-welding
+every frame they touch. Allowing body-to-body welding produces the two-level chain above. Both were
+driven, both are on the record, and the shipped rule is the third.
+
+**"GO THE FINAL DISTANCE TO FULL MERGES" HAS NO MECHANISM, AND THE REFUSAL IS THE FINDING.** A rising
+pair translates as a rigid body — translation imposes no shear, so nothing re-mobilises the frozen
+bridge. Buoyancy cannot do it either: `buoyantStress` reads **1.51 Pa at r = 9 and 5.03 at r = 30**
+against τ₀ = 21.15, and `risesAt` is false at every radius the field contains and up to **r = 126 px**.
+The one mechanism that would work is thermal — the coil IS the heat source, and a lower τ₀ there
+lengthens γ/τ₀ — and it is **checked against the source and refused**: Koocheki et al. Table 3, the
+row this system already takes k and n from, gives the control's yield stress at four temperatures as
+**4.41 / 2.18 / 2.39 / 2.57 Pa at 25 / 35 / 45 / 55 °C** — non-monotonic, and it is the **dynamic**
+intercept. No temperature series exists for the **static** stress that governs completion. Softening
+τ₀ at the coil would therefore be authorship with no source behind it, producing exactly the wanted
+picture, which is what P1, 2.1/P4, 2.16 and 2.28 §3 each refused.
+
+**THE CONSTANT FOR THE LIQUID IS ONE VALUE, AND TWO MORE ARE REFUSED — SPINE.md §10 P-6.** The model
+has carried one phase since it began; the carrier entered only as **`0.0567` typed as a default
+argument** inside `buoyantStress`, owned by nothing and invisible to the token auditor because a
+fallback in a signature is not a token. It is `OCCVM_RHEOLOGY.CARRIER.contrast` now, with the carrier
+density derived from it so the two cannot drift, and **it ships at the value it already had**: the
+contrast is *inverted from* the authored 30 px ceiling (√(γ/(Δρ·g)) = 30 px exactly at 0.0567), so
+the ceiling fixes the contrast rather than the reverse, and moving it into the 0.022–0.056 bracket
+secondary sources give would change no pixel while trading a stated inversion for a secondary
+decimal — 2.10's refusal for γ. **γ_wc is refused for a worse reason than P-1's:** it is not merely
+unmeasured but ill-posed, since this substance is an aqueous matrix and the analogy's carrier is
+aqueous, so there is no immiscible interface to have a tension. **η_c is refused as D12:** the rise
+speed is authored *because* the substance says buoyancy is zero, so a derivation feeding it has no
+consumer.
+
+**AND THE DIRECTION IS THE ANSWER.** globules.js §4 exempted the arrest lengths from the two-phase
+correction — "γ/τ₀ carries no g and no density at all" — which is true of the **density** half and
+misses the **tension** half: both lengths are γ over a stress. Corrected, with the consequence
+asserted rather than described: a *lower* liquid/liquid tension **shortens** them and the field
+arrests **more** (a 9+9 pair leaves the dumbbell band below γ × 0.331), and completion would need γ
+to **rise** to 0.0635 N/m for a 9+9 and 0.2115 for a 30+30. **Every honest carrier lever points away
+from a more merged field.**
+
+*Two smaller corrections carried along.* 2.38 retired `DRIFT_PX_S`, `vx` and `vy` and left a comment
+one screen below still promising "`vx`/`vy` stay for the lateral wander a real lamp shows" — the 2.14
+class inside the file that records the 2.14 class, found by reading the part end to end, because
+nothing measures a comment. And `buoyantStress` carried **9.80665** where rheology.js, which owns this
+system's physical constants, uses **9.81**; reading its `G` moves the buoyant stress by 0.034%
+(1.5094 → 1.5099 Pa at r = 9) and changes no verdict, recorded because a figure in the file's own
+prose moved.
+
+*Three failures of mine, and two are the same trap this file has now recorded five releases running.*
+My new driven guard read the **display** context for its arcs — the canvas 2.33 records the code
+stopped drawing on — and reported a field of one lobe from correct code. I asserted a 9+9 pair goes
+*barely joined* at half the shipped γ; it does not, it goes there below **γ × 0.331**, and that is
+2.38's own "figures written into a guard before measuring them" inside the release recording 2.38's.
+And the vx/vy guard failed on correct code by matching the sentence in the note that **retires** it —
+the comment-counting trap, after 2.27, 2.28 step 6, 2.29 and 2.35. Each is fixed by asking the
+property instead of the string.
+
+**One guard retired, named with its reason** — that a locked pair never welds again, retired because
+what it pinned is wrong rather than because it was inconvenient, replaced by the two narrower
+structural exclusions. **Verified to bite:** restoring the blanket exclusion fails the new driven
+test; restoring the hardcoded default fails three; restoring the wrong exemption sentence fails one.
+*And that limit was wrong twice over, which is the last correction in this entry.* It first read:
+"removing the leader ordering is caught by a **source assertion only** — the two-level chain it
+produces happens, at this field size, to place its grand-follower after its parent so nothing goes
+stale." Two errors. **The mechanism does not exist:** a grand-follower can never read a stale parent,
+because the coil loop is `for i; for j = i + 1` and the arrest writes `join.lockedTo = lead`, so the
+chain is parent-before-child in `drops` by construction rather than by luck — and with the ordering
+in place a follower may take a *lower* index, which is equally harmless because leaders are
+positioned in the motion loop, not in the follower sweep. Driven at four viewports, both ways:
+**0 non-rigid pairs, 0.0000 px of wander**, every time. **And the instrument was too small:** the
+real hazard is the extent loop, which sums DIRECT followers only, so a grand-follower hangs outside
+its body's clamp. That needs a wide enough vessel *and* a deep enough chain, and the harness's
+320×480 gives neither — the chain there never passes depth 1 even with the ordering removed, so the
+guard written at that size **could not fail and was decoration**. Measured to find the cheapest size
+that can: 390×844 reaches depth 2 and still crosses nothing over 2,664,000 lobe-frames; **520×900
+over 25,000 frames crosses 486 times at 15.1 px**; 720×1400 over an hour crosses **4,984 times at
+38.6 px, at chain depth 4**. The containment case is its own test at 520×900 now — the smallest that
+bites, ~7 s — and it carries a floor on the lobe-frame count so a silent zero cannot pass vacuously.
+**Verified to bite: removing the ordering fails it at 15.065 px over 1,299,948 lobe-frames.** The
+rigidity clause stays because it is the real physics, no longer claiming to guard the ordering.
+*The pattern is this release's own: a subset of the verification treated as the whole — 2.38's
+lesson, arriving through the size of the fixture instead of the set of gates.*
+
+`test/rheology.js` **61 → 77**; §6's total **1,008 → 1,024**. Rhyme **120 → 122**.
+
+**WHAT THIS DOES NOT CLOSE, AND IT IS THE OWNER'S CALL.** The coil still exhausts its neighbour set:
+16 welds instead of 10, and then quiet. The field can only coarsen, because it merges and never
+breaks, and its one refresh mechanism is gated behind a completion the substance never produces.
+Closing it needs one of three things, none of which is a tuning and each of which is a decision:
+**(a)** a mixing mechanism so a drop's neighbours change — the lane is fixed today and the period is
+shared, and the honest versions of this are either a per-drop period (which contradicts the
+constant-periodicity mode the cycle is sourced from) or lateral transport along the coil; **(b)**
+**pinch-off**, which this system already owns in `yield.js` and uses nowhere in the floor — a field
+that merges without ever breaking must coarsen, and detachment is as much a part of the lamp Gyüre &
+Jánosi describe as attachment is; or **(c)** respawning to a **body** count rather than a drop count,
+which refreshes lanes but grows lobes without bound unless (b) exists. **(b) is the one that closes
+the cycle rather than deferring it, and it is scope the ask did not name.**
+
+**2.40 — the field breaks as well as merges, and the criterion is granted because four derivations
+closed.** The owner's call after 2.39 measured the coarsening: *build pinch-off first.* A field that
+merges and never breaks can only coarsen, and 2.39 left the coil going quiet once its fixed
+neighbour set is consumed. This is the other half of the cycle.
+
+**FOUR ROUTES WERE TRIED AND ALL FOUR CLOSED, which is the substantive finding and the reason the
+threshold reuses a value instead of producing one.** The bridge arrested *because* the residual
+stress fell below τ₀, so the drive that made it cannot undo it, and a break needs a stress the model
+does not have. **Buoyancy** is 4.2–14× short. **The convection orbit's own extensional stress** —
+the bridge holding a lobe off the path it would ride alone — is **1.6 to 2.6 million times short**,
+because the cycle runs at 1.4 px/s and that acceleration is ~2×10⁻⁷ m/s². **The neck cannot drain
+itself**: γ/r_neck looks like it clears τ₀ at 26.65 Pa, but the arrested neck is γ/τ₀ / 2^(1/3) =
+5.673 px for *every* twin pair, so that reasoning would break every pair the instant it formed — the
+tell that it double-counts, and Kern, Sæter & Carlson close it, having the arrested profile as the
+END state with nothing left in it above τ₀. **And Rayleigh-Plateau does not apply**, because the
+arrest builds a star rather than a chain: measured on the shipped field, span over its own
+circumference is 0.48 at two lobes and only **0.86 at seven**. A clump is not a filament. *The
+thermal route was already refused at 2.39.*
+
+**SO SEVERING IS GRANTED, AND IT RIDES A GRANT ALREADY MADE.** L13's own text names what the
+substance will not do — "it does not spontaneously convect, **coalesce** or drift" — and the floor
+has convected and coalesced against τ₀ since 2.28, recorded as the owner's aesthetic judgment.
+Severing is the inverse of the coalescence in that same sentence. What L13 keeps closed is the
+material's *surface* deforming at rest; a discrete topology event at the coil is the category
+already permitted. SPINE.md's L13 says this explicitly now rather than leaving it to be inferred.
+
+**THE GRANT IS KEPT AS SMALL AS IT GOES.** Derived: **where** it breaks (the thinnest neck — each
+bond's arrest height is already computed by `arrestedBridge` and is recorded on the follower, so the
+weakest is a measurement); **what** the fragments are (volume conserved, this file's convention);
+**when** (the coil dwell, where every irreversible event already happens — no clock, no rate); **how
+it leaves** (the dwell's own geometry, below); and the **shape** of the retraction (the substance's
+cessation curve, timed by `yield.js`'s `RETRACT_MS`, read lazily and never copied — a second 260
+here would be L3's defect). **And the threshold adds no number:** a body sheds once it exceeds
+`R[1]` = 30 px, the biggest drop the field will spawn, authored at 2.25 and approved on the page
+then. It lands where Plateau would have put a filament at N ≥ 4 — corroboration, not derivation.
+
+**MY FIRST BUILD WAS A LIMIT CYCLE, AND THE WELD COUNT HID IT.** I set the fragment's phase to its
+parent's, reasoning that a shared phase keeps them in step so nothing jumps vertically. It does keep
+them in step — permanently: same phase is the same cycle position forever, so the fragment returned
+to the coil beside the body every pass and re-attached. Measured: **90 sheds, 83 of them re-welds,
+median 3.0 s free — 0.20% of a cycle — and 86.7% back to the SAME body.** The count read **1,066
+welds** and looked like a living field. That is 2.39's naive unlock at 3,502 in better costume, and
+it was caught only because the end-state population was *identical* to 2.39's — twelve times the
+activity and not one statistic moved. **The fix costs no constant**, because the coil is a DWELL and
+not an instant: `cyclePos` is exactly 0 across the whole bottom rest, so the fragment goes at the far
+end of it and departs at once while the parent sees out its own. They separate in **time** rather
+than space — no lateral teleport, no vertical jump — and departing is what a pinched fragment does.
+After: **0.0% return to the parent, median 91.14% of a cycle free.**
+
+**WHAT IT IS WORTH, both viewports, two hours of simulated time, against 2.39:**
+
+| | welds per 15 min | bodies | biggest | past the glass |
+|---|---|---|---|---|
+| phone 390×844, 2.39 | `[12, 4, 0, 0, 0, 0, 0, 0]` | 21 | 5 | 0 / 5,328,000 |
+| **phone, 2.40** | **`[12, 9, 2, 2, 3, 1, 1, 1]`** | **24** | **4** | 0 / 5,328,000 |
+| Rhyme col 720×1400, 2.39 | `[28, 21, 14, 0, 0, 0, 0, 0]` | 49 | 7 | 0 / 16,128,000 |
+| **Rhyme col, 2.40** | **`[28, 22, 22, 9, 9, 7, 9, 5]`** | **66** | **4** | 0 / 16,128,000 |
+
+**Neither field dies now**, and both are measurably less coarse. *Stated narrowly, because it is not
+a restored opening rate:* the rate still decays from its first bin and then **holds at a floor**
+instead of collapsing to zero. 2.39's lane-lock is why the opening rate is not sustained — pinch-off
+closes the coarsening, not the mixing, and those are different defects.
+
+*And I overclaimed the threshold in the first draft of its own guard.* "A dumbbell survives at every
+size in the band" is false: a twin pair's equivalent radius is r·2^(1/3), so it clears the ceiling
+above **R[1]/2^(1/3) = 23.811 px** — the top **29.5%** of the band by radius sheds. My own table had
+printed `2 lobes at r=30 → SHEDS` two steps earlier. The guard recomputes the figure from `R[1]` and
+`MERGE_POWER` rather than typing it.
+
+**And 2.39's accretion guard was reading the wrong size too, found because 2.40 made it fail.** It
+ran at the harness's 320×480, where the field holds **17 drops and never reaches three lobes at all**
+over a full run — too few pairs meet, and the ones that do are large enough that a third clears the
+new ceiling. So the accretion it asserts was not observable there. That is the same undersized-
+instrument error the containment clause in the *same test* was corrected for one release earlier,
+sitting beside it unnoticed. Both run at 520×900 now.
+
+`spine.test.js` **122 → 124**, and both new ones verified to bite: restoring the parent's phase fails
+the departure clause at **60.0%** returning to the parent, and removing the shed fails it at **0
+sheds**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

@@ -89,6 +89,19 @@
      is exactly how `fracture.js` captured a null `OCCVM_VEINS` and threw on every call in the browser
      while Node's `require` resolved it and every assertion passed. Sampled on first use, the ordering
      cannot silently degrade this to the straight-ramp fallback. */
+  /* 2.40 — the retraction after a pinch is timed by the part that owns that duration already:
+     yield.js's RETRACT_MS, authored and named there since 2.8 as "the duration at the reference".
+     Read lazily and never copied — a second 260 here would be L3's defect, and if yield.js is not
+     spliced the break still happens without the transient rather than inventing a number for it. */
+  var RETRACT_TRIED = false, RETRACT_MS = null;
+  function retractMs() {
+    if (!RETRACT_TRIED) {
+      RETRACT_TRIED = true;
+      try { RETRACT_MS = OCCVM_YIELD.RETRACT_MS; } catch (e) { RETRACT_MS = null; }
+    }
+    return RETRACT_MS;
+  }
+
   var EASE, EASE_TRIED = false;
   function ease(x) {
     if (!EASE_TRIED) {
@@ -261,6 +274,23 @@
         d.lane = lane;
         var room = Math.max(0, Math.min(lane - extL, (w - extR) - lane));
         d.x = lane + room * Math.sin(2 * Math.PI * u);
+        /* 2.40 — A LOBE THAT HAS JUST BEEN SHED RETRACTS FROM THE BREAK, on the substance's own
+           cessation curve rather than on an invented ease: `ease` runs 0 -> 1 and the offset is
+           1 - ease, so the lobe leaves the break at speed and arrives at rest in finite time, which
+           is the property L11 says distinguishes an irreversible event from every elastic one.
+           CLAMPED, because an unclamped transient is 2.38's containment bypass arriving through a
+           different door — the lane is inside the vessel and the offset could still carry a rim out. */
+        var rms = retractMs();
+        if (d.rt !== undefined && rms) {
+          d.rt += dt;
+          if (d.rt >= rms) { d.rt = undefined; d.rx = d.ry = 0; }
+          else {
+            var k = 1 - ease(d.rt / rms);
+            d.x += d.rx * k; d.y += d.ry * k;
+            d.x = Math.min(Math.max(d.x, d.r), Math.max(d.r, w - d.r));
+            d.y = Math.min(Math.max(d.y, d.r), Math.max(d.r, h - d.r));
+          }
+        }
       }
       /* the follower lobes, after every leader has moved: a frozen bridge holds its offset exactly */
       for (i = 0; i < drops.length; i++) {
@@ -288,6 +318,9 @@
                cycle. A frozen bridge does not stretch: the follower's position is the leader's plus the
                offset they froze at, and nothing else. */
             b.lockedTo = a; b.dx = b.x - a.x; b.dy = b.y - a.y;
+            /* 2.40 — the bond's own neck, kept because the shed below has to pick the THINNEST
+               one and that is a fact this branch already computed rather than a new estimate. */
+            b.neck = wd.target;
             welds.splice(i--, 1);
             continue;
           }
@@ -319,7 +352,42 @@
          can only begin a weld while both are resting there, which is when a real lamp's wax pools. */
       for (i = 0; i < drops.length; i++) for (j = i + 1; j < drops.length; j++) {
         var p = drops[i], q = drops[j];
-        if (p.merging || q.merging || p.locked || q.locked) continue;
+        if (p.merging || q.merging) continue;
+        /* 2.39 — A PEANUT MAY REJOIN AT THE COIL, AND THE RULE THAT SAID IT COULD NOT WAS TOO WIDE.
+           2.28 step 5 excluded every locked lobe with this reasoning: "a third arrival would need the
+           bridge to grow again against a yield stress that already stopped it". That is true of the
+           FROZEN BRIDGE and only of it. A third drop touching the body somewhere else starts a NEW
+           bridge with its own capillary drive γ/R for the new pair; nothing about the arrested bridge
+           resists it, and Kern et al. describe arrest as a property of one coalescence event, not a
+           permanent inertness of the drops in it. So the blanket exclusion was a conclusion drawn
+           wider than its premise, and it had a measured cost: driven for two hours the shipped coil
+           fires 10 welds on a phone and then NOTHING — [7,3,0,0,0,0,0,0] per 15 minutes — with 20 of
+           37 drops locked out permanently.
+           TWO EXCLUSIONS SURVIVE, AND BOTH ARE STRUCTURAL RATHER THAN CAUTIOUS. */
+        /* A FOLLOWER IS INTERIOR. It is a lobe inside a rigid body, not a free surface a drop can
+           land on, and welding to one would put a bridge inside an object. */
+        if (p.lockedTo || q.lockedTo) continue;
+        /* AND A BODY MAY ACCRETE A FREE DROP BUT NOT ANOTHER BODY. This is a limit of the
+           PLACEMENT, stated rather than dressed as physics: the extent loop above reads
+           `fo.lockedTo === d`, so it sums DIRECT followers only. In a chain g -> b -> a the clamp
+           sees b and not g, and g sits at b's position plus its own frozen offset — about a lobe
+           further out — so if b is at the wall, g is through it. That is 2.38's containment bypass
+           arriving through the topology instead of through the lane.
+           MEASURED, AND THE FIRST VERSION OF THIS COMMENT ASSERTED A SECOND MECHANISM THAT DOES NOT
+           EXIST. It claimed a grand-follower would also be "one frame stale in its position",
+           reasoning from the follower pass being a single sweep over `drops`. It cannot be: the coil
+           loop is `for i; for j = i + 1` and the arrest writes `join.lockedTo = lead`, so without the
+           ordering below a follower always takes the HIGHER index and the sweep places parent before
+           child deterministically — and WITH the ordering a follower may take a lower index, which is
+           equally harmless, because leaders are positioned in the motion loop above and not in this
+           sweep. Driven at four viewports: 0 non-rigid pairs, 0.0000 px of wander, every time.
+           The extent gap is the whole of it, and it is real: removing the ordering below and driving
+           720x1400 for an hour puts 4,984 of 8,064,000 lobe-frames past the glass, worst overhang
+           38.6 px, at chain depth 4. It needs a wide enough vessel AND a deep enough chain — the same
+           removal at 390x844 reaches depth 2 and crosses nothing over 2,664,000 lobe-frames, which is
+           why a phone-sized bite test first called this clause conservative and was wrong.
+           Body-to-body welding needs a tree walk in both loops and is not built. */
+        if (p.locked && q.locked) continue;
         if (!atCoil(p, period) || !atCoil(q, period)) continue;
         if (Math.hypot(p.x - q.x, p.y - q.y) > p.r + q.r) continue;
         /* the substance decides the outcome BEFORE the bridge starts growing, from the radii alone —
@@ -327,8 +395,66 @@
         var reg = OCCVM_GLOBULES.arrestRegime(p.r, q.r);
         var lobe = Math.min(p.r, q.r);
         p.merging = q.merging = true;
-        welds.push({ a: p, b: q, t: 0, rb: 0, arrests: reg !== "completes",
+        /* 2.39 — THE LEADER GOES IN `a`, AND WITHOUT THIS THE ACCRETION INVERTS. The arrest branch
+           writes `b.lockedTo = a`, so if the existing body arrived as `q` it would become a follower
+           of a free drop and its own followers would become grand-followers — the two-level chain the
+           exclusion above exists to prevent, reintroduced by argument order. The pair is ordered so
+           the body leads; `p.locked && q.locked` is already excluded, so at most one of them is one. */
+        var lead = q.locked ? q : p, join = q.locked ? p : q;
+        welds.push({ a: lead, b: join, t: 0, rb: 0, arrests: reg !== "completes",
                      target: lobe * OCCVM_GLOBULES.arrestedBridge(p.r, q.r) });
+      }
+
+      /* ---- 2.40: THE OTHER HALF OF THE CYCLE ------------------------------------------------
+         A field that merges and never breaks can only coarsen. 2.39 measured the consequence: the
+         coil consumes its fixed neighbour set and goes quiet, and every body that forms is
+         permanent. This is the break, and occvm/globules.js records why none of it is derived —
+         four routes closed, and it rides the grant L13 already makes for the coalescence named in
+         its own sentence. What IS derived: where it breaks, what the fragments are, and the shape
+         of the retraction.
+         AT THE COIL, like every other irreversible event here (step 4), so it needs no clock of its
+         own and no authored rate. */
+      for (i = 0; i < drops.length; i++) {
+        var ld = drops[i];
+        if (ld.lockedTo || !ld.locked || ld.merging) continue;      /* leaders of real bodies only */
+        if (!atCoil(ld, period)) continue;
+        var kids = [], kk;
+        for (kk = 0; kk < drops.length; kk++) if (drops[kk].lockedTo === ld) kids.push(drops[kk]);
+        if (!kids.length) { ld.locked = false; continue; }           /* a body of one is a drop */
+        var radii = [ld.r];
+        for (kk = 0; kk < kids.length; kk++) radii.push(kids[kk].r);
+        if (!OCCVM_GLOBULES.overCeiling(radii)) continue;
+        /* THE THINNEST NECK GOES. Each bond froze at a height the Bingham number set, recorded on
+           the follower at arrest, so the weakest bond is a measurement and not a choice. */
+        var weak = kids[0];
+        for (kk = 1; kk < kids.length; kk++)
+          if ((kids[kk].neck === undefined ? Infinity : kids[kk].neck) <
+              (weak.neck === undefined ? Infinity : weak.neck)) weak = kids[kk];
+        /* it leaves as its own drop, on its own lane, in step with the body it left so nothing
+           jumps vertically; the cycle carries them apart from there. */
+        weak.lockedTo = null; weak.locked = false; weak.neck = undefined;
+        /* THE FRAGMENT DEPARTS, AND THE FIRST VERSION OF THIS LINE IS WHY IT DID NOT. It read
+           `weak.phase = ld.phase`, on the reasoning that a shared phase keeps the two in step so
+           nothing jumps vertically. It does keep them in step — permanently. Same phase means the
+           same cycle position forever, so the fragment returned to the coil beside its parent every
+           cycle and re-welded. Measured: 90 sheds, 83 of them re-welds, median 3.0 s free (0.20% of
+           a cycle) and **86.7% straight back to the body they were cut from**. That is a limit
+           cycle wearing a big weld count, the same shape as 2.39's naive unlock at 3,502.
+           The fix needs no constant, because the coil is a DWELL and not an instant: cyclePos is
+           exactly 0 across the whole bottom rest, so any phase inside it gives the same height. Put
+           the fragment at u = 0 — the far end of that dwell, about to rise — and it leaves at once
+           while the parent sees out the rest of its own. They separate in TIME rather than in
+           space, so there is no lateral teleport and no vertical jump, and departing is what a
+           pinched fragment does. */
+        weak.phase = ((1 - (clock / period)) % 1 + 1) % 1;
+        weak.lane = Math.min(Math.max(weak.x, weak.r), Math.max(weak.r, w - weak.r));
+        /* AND IT RETRACTS FROM THE BREAK ON THE SUBSTANCE'S OWN CESSATION CURVE — the one curve this
+           system owns for coming irreversibly to rest (L11, yield.js, and the turn at each end of
+           this very cycle). A break that simply teleported the lobe free would be the same
+           irreversible action rendered in a second vocabulary, which 2.16 and 2.21 both refused.
+           The distance is the bond's own frozen offset; nothing is authored here. */
+        weak.rx = weak.x - ld.x; weak.ry = weak.y - ld.y; weak.rt = 0;
+        if (kids.length === 1) ld.locked = false;
       }
     }
 

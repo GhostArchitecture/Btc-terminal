@@ -95,8 +95,34 @@ var OCCVM_GLOBULES = (function () {
    *    liquid — which is what a lava lamp is, and what the plan's own §0 establishes — has
    *    √(γ/(Δρ·g)), and Δρ is the one quantity such a lamp designs toward zero, so the length diverges:
    *    7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at 0.005. Sizing a suspended globule with the
-   *    air-interface value is the 2.8/2.10/2.22 error class. Note that the ARREST lengths above are
-   *    unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones used here.
+   *    air-interface value is the 2.8/2.10/2.22 error class.
+   *
+   *    2.39 CORRECTS THE EXEMPTION THIS PARAGRAPH GAVE ITSELF. It read: "Note that the ARREST lengths
+   *    above are unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones
+   *    used here." The clause is true and the conclusion does not follow. γ/τ₀ carries no g and no ρ,
+   *    so it is immune to the DENSITY half of the two-phase correction — which is the only half the
+   *    sentence looked at. It is not immune to the TENSION half: γ is a property OF AN INTERFACE, and
+   *    the interface changes from wax/air to wax/carrier at the same moment ρ changes to Δρ. Both
+   *    arrest lengths are γ over a stress, so both scale with it directly. The paragraph exempted the
+   *    arrest lengths from a correction by checking the one substitution they survive and not the one
+   *    they do not — which is 2.26's global-worst-case error in a third coordinate: the right
+   *    arithmetic on the wrong pair.
+   *
+   *    WHAT THAT COSTS, MEASURED, AND THE DIRECTION IS AGAINST THE PICTURE ANYBODY WANTS. Both lengths
+   *    scale linearly in γ, so a lower interfacial tension SHORTENS them and the field arrests MORE:
+   *    at γ 0.020 the 9+9 pair still reads dumbbell, at 0.010 it reads BARELY JOINED, and the merged
+   *    radius that completes falls from 7.148 px to 1.787. Completion would need γ to RISE — 0.0635
+   *    N/m for a 9+9 twin-merge (1.59× the shipped value), 0.2115 for 30+30 (5.29×) — and a
+   *    liquid/liquid interface is the direction away from that, not toward it.
+   *
+   *    AND NO SUCH CONSTANT IS ADOPTABLE HERE, FOR A WORSE REASON THAN P-1's. rheology.js closes γ as
+   *    unclosable because ordinary tensiometry has no valid regime on a fluid that holds below τ₀.
+   *    A wax/carrier γ for THIS substance is not merely unmeasured, it is ill-posed: the substance is
+   *    an aqueous matrix and the lamp analogy's carrier is aqueous too, so the two are not immiscible
+   *    and there is no interface to have a tension. The two-phase framing is an analogy laid over a
+   *    proxy chosen on other grounds, and it does not survive being asked for this number. So the
+   *    shipped γ stays the air interface's, USED KNOWINGLY OUTSIDE ITS REGIME AND SAID SO, which is
+   *    the honest form of what the sentence above was claiming by exemption.
    *    Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling implies
    *    Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
    *    sources are secondary, the bracket is reported as a bracket, and no constant here comes from
@@ -123,6 +149,60 @@ var OCCVM_GLOBULES = (function () {
     var R2 = merged(r1, r2);
     return R2 < L.complete ? "completes" : R2 <= L.joined ? "dumbbell" : "joined";
   }
+  /* ---- 2.40: when a body sheds a lobe, and why nothing here derives it -------------------------
+   * The field MERGES and never BREAKS, so it can only coarsen: 2.39 measured the coil going quiet
+   * after its fixed neighbour set is consumed, and every body that forms is permanent. Closing that
+   * needs the other half of the cycle. FOUR DERIVATIONS WERE TRIED AND ALL FOUR CLOSED, which is why
+   * the criterion below reuses an authored value instead of producing one.
+   *
+   * 1. NOTHING CAN BREAK A FROZEN BRIDGE, because the bridge arrested precisely when the residual
+   *    stress fell below τ₀ — the drive that made it cannot undo it. Measured against τ₀ = 21.15 Pa:
+   *    buoyancy is 4.2–14× short (`buoyantStress`), and the convection orbit's own extensional
+   *    stress — the bridge holding a lobe off the path it would ride alone — is **1.6 to 2.6 MILLION
+   *    times short**, because the cycle runs at 1.4 px/s and that acceleration is ~2e-7 m/s².
+   *
+   * 2. THE NECK CANNOT DRAIN ITSELF. A neck is thinner than its lobes, so γ/r_neck is larger than
+   *    γ/r_lobe and appears to clear τ₀ — 26.65 Pa at every twin pair, since the arrested neck is
+   *    γ/τ₀ / 2^(1/3) = 5.673 px whatever the lobe size. That reasoning double-counts, and the tell
+   *    is that it would break EVERY pair the instant it formed. Kern, Sæter & Carlson have the
+   *    arrested profile as the END STATE: the material yielded until the residual fell below τ₀ and
+   *    stopped, so no curvature left in that shape is still above it. Closed by the source.
+   *
+   * 3. RAYLEIGH-PLATEAU DOES NOT APPLY, because these bodies are not filaments. A chain of N lobes
+   *    would be unstable past N > π, but the arrest builds a STAR — every follower hangs off one
+   *    leader — and the lobes overlap rather than extending. Measured on the shipped field: span
+   *    over its own circumference is 0.48 at two lobes and only **0.86 at seven**. Stable at every
+   *    size the field produces. A clump is not a filament and Plateau has nothing to say about it.
+   *
+   * 4. AND THE THERMAL ROUTE IS ALREADY REFUSED at 2.39: Koocheki's Table 3 gives the DYNAMIC
+   *    intercept against temperature and no series exists for the static stress.
+   *
+   * SO SHEDDING IS GRANTED, NOT DERIVED, and it is the same grant L13 already makes one clause over.
+   * That law's own text names what the substance will not do — "it does not spontaneously convect,
+   * COALESCE or drift" — and the floor convects and coalesces anyway, recorded as the owner's
+   * aesthetic judgment. Severing is the inverse of the coalescence sitting in that same sentence,
+   * so it rides the same grant rather than needing a new one. What L13 keeps closed is the
+   * material's surface deforming at rest; a discrete topology event at the coil is the category
+   * already permitted.
+   *
+   * WHAT IS STILL DERIVED, so the grant is as small as it can be: WHERE it breaks (the thinnest
+   * neck, which `arrestedBridge` already computes per bond), WHAT the fragments are (volume
+   * conserved, this file's own convention), and the SHAPE of the retraction (the substance's
+   * cessation curve, the one curve this system owns for coming irreversibly to rest).
+   *
+   * AND THE THRESHOLD ADDS NO NUMBER. A body sheds once it is bigger than the biggest drop the field
+   * will spawn — `R[1]`, authored at 2.25 and approved on the page then. Nothing inside the vessel
+   * should exceed the field's own ceiling. Measured, that keeps every DUMBBELL in the band, which is
+   * the outcome the substance actually gives (96.2% arrest) and must not be swept away, and sheds
+   * only the clump: four ordinary lobes (30.80 px equivalent) or two at the top of the band (37.80).
+   * It lands where Plateau would have put a filament, N ≥ 4 — corroboration, not derivation. */
+  function bodyRadius(radii) {
+    var s = 0;
+    for (var i = 0; i < radii.length; i++) s += Math.pow(radii[i], MERGE_POWER);
+    return Math.pow(s, 1 / MERGE_POWER);
+  }
+  function overCeiling(radii) { return bodyRadius(radii) > R[1]; }
+
   /* the Bingham number the source states the arrested shape by: τ_y·R/γ, i.e. R/ℓ */
   function bingham(r1, r2) {
     var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
@@ -166,7 +246,12 @@ var OCCVM_GLOBULES = (function () {
      drop like its radius, not motion, which is why it is the field's and the cycle it feeds is the live
      consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
      withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
-     and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
+     and moves nothing on its own.
+     2.39 — THIS SENTENCE USED TO END "`vx`/`vy` stay for the lateral wander a real lamp shows", and
+     2.38 retired both of them one screen above without correcting it here. A comment promising a
+     field two properties the field stopped writing is 2.14's class exactly, inside the file that
+     records 2.14's class. Found by reading the part end to end rather than by any guard: nothing
+     measures a comment. */
   function drop(rnd, w, h, r0, r1, atCoil) {
     var r = r0 + rnd() * (r1 - r0);
     /* THE LANE IS CLAMPED INTO THE VESSEL, and a torus is why nobody noticed it needed to be. Until
@@ -201,10 +286,21 @@ var OCCVM_GLOBULES = (function () {
    * limited and one viscosity-limited with CONSTANT PERIODICITY. Rise, dwell, sink, dwell, one period
    * for every drop with its own phase: that is what this field carries, and it is the shape rather than
    * the speed that came from the source. */
+  /* 2.39 — THE CONTRAST AND g BOTH HAD AN OWNER SOMEWHERE ELSE, AND THIS FUNCTION OWNED COPIES.
+     `0.0567` sat here as a DEFAULT ARGUMENT — the least visible place a constant can hide, since it is
+     neither a token the auditor scans nor a named constant a reader finds — while being the whole of
+     what "the liquid" contributes to this model. It is `OCCVM_RHEOLOGY.CARRIER.contrast` now, with its
+     provenance (inverted from the authored 30 px ceiling, not measured) recorded beside the value.
+     And `9.80665` was a second g: rheology.js has fixed the physical constants for this system since
+     the crystal port and uses 9.81, so the two disagreed in the fifth digit for no reason. Reading its
+     G moves the buoyant stress by 0.034% — 1.5094 -> 1.5099 Pa at r = 9, 5.0314 -> 5.0331 at r = 30 —
+     which changes no verdict anywhere (the shortfall against tau-0 is 14.0x and 4.20x either way) and
+     is recorded rather than absorbed, because a figure in this file's own prose moved. */
   function buoyantStress(rPx, dRhoOverRho) {
     var r = rheo(); if (!r) return null;
     var m = r.SUBSTANCE;
-    return m.density * 1000 * (dRhoOverRho === undefined ? 0.0567 : dRhoOverRho) * 9.80665 * (rPx * r.MM_PER_PX / 1000);
+    var d = dRhoOverRho === undefined ? r.CARRIER.contrast : dRhoOverRho;
+    return m.density * 1000 * d * r.G * (rPx * r.MM_PER_PX / 1000);
   }
   function risesAt(rPx, dRhoOverRho) {
     var r = rheo(), t = buoyantStress(rPx, dRhoOverRho);
@@ -294,7 +390,7 @@ var OCCVM_GLOBULES = (function () {
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
            PX_PER_DROP: PX_PER_DROP, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
-           arrestedBridge: arrestedBridge,
+           arrestedBridge: arrestedBridge, bodyRadius: bodyRadius, overCeiling: overCeiling,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
            GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();

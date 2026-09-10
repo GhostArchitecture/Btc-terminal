@@ -182,6 +182,54 @@ var OCCVM_RHEOLOGY = (function () {
     body: "#0e0d13"
   };
 
+  /* ---- THE CARRIER (2.39) ------------------------------------------------------------------------
+   * "We'll probably need a constant for the liquid." We do, and this is it — but only one of the three
+   * a second phase would supply is adoptable, and saying which is most of the value here.
+   *
+   * WHAT THE MODEL HAS CARRIED UNTIL NOW IS ONE PHASE. Everything in KETCHUP is the wax: its flow
+   * curve, its density, its surface tension against air. A lava lamp is two phases, and the build plan
+   * said so at step 3 — "not one substance getting restless, two immiscible phases in a heat-driven
+   * density race". The carrier was named in that sentence and never entered the code. What entered
+   * instead was `0.0567`, typed as a DEFAULT ARGUMENT inside globules.js `buoyantStress`, reachable by
+   * no other consumer and owned by nothing. That is L3's defect in the least visible place a number
+   * can sit: not a token the auditor scans, not a constant a reader finds, a fallback in a signature.
+   *
+   * THE ONE CONSTANT THAT IS ADOPTABLE IS THE DENSITY CONTRAST, and it is FREE rather than measured.
+   * It is inverted from the authored 30 px radius ceiling: the suspended capillary length
+   * √(γ/(Δρ·g)) equals 30 px exactly when Δρ/ρ = 0.0567. So the ceiling fixes the contrast, not the
+   * other way round, and that circularity is the reason this ships as the value it already had rather
+   * than as a new one. Secondary sources put a real lamp's contrast at roughly 0.022–0.056; 0.0567
+   * sits just above that bracket. Moving it into the bracket would change no rendered pixel — the
+   * buoyant stress it produces is 4.2–14x short of tau-0 at every radius in the field, and a SMALLER
+   * contrast is further short, not nearer — so it would trade a stated inversion for a secondary
+   * source's decimal, which is the trade this file already refused for gamma at 2.10 (0.040 -> 0.0405).
+   *
+   * WHAT IS NOT ADOPTABLE, AND THE REASON IS WORSE THAN P-1's. A second phase also changes the
+   * INTERFACE, so gamma should become the wax/carrier interfacial tension rather than the wax/air one.
+   * It cannot, here: P-1 closes gamma as unclosable because ordinary tensiometry has no valid regime
+   * on a fluid that holds below tau-0, and a wax/carrier gamma for THIS substance is not merely
+   * unmeasured but ill-posed — the substance is an aqueous matrix and the lamp analogy's carrier is
+   * aqueous, so the two are not immiscible and there is no interface to have a tension. globules.js
+   * carries the measured consequence: both arrest lengths are gamma over a stress, so a lower
+   * interfacial tension shortens them and the field arrests MORE. Every honest direction the carrier
+   * points is away from a more merged picture, which is a finding rather than a shortfall.
+   *
+   * AND THE VISCOSITY IS NOT HERE EITHER. A carrier viscosity would set the rise speed through
+   * Stokes/Hadamard and the merge rate through gamma/eta — but the rise speed is authored precisely
+   * BECAUSE the substance says it is zero (globules.js `risesAt` returns false at every radius in the
+   * field and up to r = 126 px), so a viscosity would be a derivation feeding a quantity nothing
+   * derives from it. P-4 already parks eta(gamma-dot) for the same reason: derived, unwired, no
+   * consumer. Adding a number with no consumer is D12.
+   *
+   * So the carrier is ONE value, named, with its provenance on it, replacing a default argument. */
+  var CARRIER = {
+    name: "carrier",
+    /* FREE, and inverted rather than measured — see above. Dimensionless (rho_wax - rho_carrier)/rho_wax. */
+    contrast: 0.0567,
+    /* derived from it and the wax's own density, so the two cannot drift: g/cm3 */
+    get density() { return KETCHUP.density * (1 - this.contrast); }
+  };
+
   /* The substance under its ROLE rather than its identity. The sundial reads this, not `KETCHUP`, so the
      light pipeline names what a thing does in the system instead of what it is made of — and a second
      substance swap costs one splice-list line rather than an edit to every consumer. The pivot from
@@ -458,7 +506,7 @@ var OCCVM_RHEOLOGY = (function () {
   }
 
   return {
-    KETCHUP: KETCHUP, SUBSTANCE: SUBSTANCE, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
+    KETCHUP: KETCHUP, CARRIER: CARRIER, SUBSTANCE: SUBSTANCE, G: G, CUT: CUT, RENDERED_SPREAD_HIGH: RENDERED_SPREAD_HIGH, DLCA_D: DLCA_D,
     fresnel: fresnel, faces: faces, substrate: substrate,
     renderedContrast: renderedContrast, faceRatios: faceRatios,
     shearRate: shearRate, stress: stress,
