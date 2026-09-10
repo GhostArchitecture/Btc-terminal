@@ -149,6 +149,60 @@ var OCCVM_GLOBULES = (function () {
     var R2 = merged(r1, r2);
     return R2 < L.complete ? "completes" : R2 <= L.joined ? "dumbbell" : "joined";
   }
+  /* ---- 2.40: when a body sheds a lobe, and why nothing here derives it -------------------------
+   * The field MERGES and never BREAKS, so it can only coarsen: 2.39 measured the coil going quiet
+   * after its fixed neighbour set is consumed, and every body that forms is permanent. Closing that
+   * needs the other half of the cycle. FOUR DERIVATIONS WERE TRIED AND ALL FOUR CLOSED, which is why
+   * the criterion below reuses an authored value instead of producing one.
+   *
+   * 1. NOTHING CAN BREAK A FROZEN BRIDGE, because the bridge arrested precisely when the residual
+   *    stress fell below τ₀ — the drive that made it cannot undo it. Measured against τ₀ = 21.15 Pa:
+   *    buoyancy is 4.2–14× short (`buoyantStress`), and the convection orbit's own extensional
+   *    stress — the bridge holding a lobe off the path it would ride alone — is **1.6 to 2.6 MILLION
+   *    times short**, because the cycle runs at 1.4 px/s and that acceleration is ~2e-7 m/s².
+   *
+   * 2. THE NECK CANNOT DRAIN ITSELF. A neck is thinner than its lobes, so γ/r_neck is larger than
+   *    γ/r_lobe and appears to clear τ₀ — 26.65 Pa at every twin pair, since the arrested neck is
+   *    γ/τ₀ / 2^(1/3) = 5.673 px whatever the lobe size. That reasoning double-counts, and the tell
+   *    is that it would break EVERY pair the instant it formed. Kern, Sæter & Carlson have the
+   *    arrested profile as the END STATE: the material yielded until the residual fell below τ₀ and
+   *    stopped, so no curvature left in that shape is still above it. Closed by the source.
+   *
+   * 3. RAYLEIGH-PLATEAU DOES NOT APPLY, because these bodies are not filaments. A chain of N lobes
+   *    would be unstable past N > π, but the arrest builds a STAR — every follower hangs off one
+   *    leader — and the lobes overlap rather than extending. Measured on the shipped field: span
+   *    over its own circumference is 0.48 at two lobes and only **0.86 at seven**. Stable at every
+   *    size the field produces. A clump is not a filament and Plateau has nothing to say about it.
+   *
+   * 4. AND THE THERMAL ROUTE IS ALREADY REFUSED at 2.39: Koocheki's Table 3 gives the DYNAMIC
+   *    intercept against temperature and no series exists for the static stress.
+   *
+   * SO SHEDDING IS GRANTED, NOT DERIVED, and it is the same grant L13 already makes one clause over.
+   * That law's own text names what the substance will not do — "it does not spontaneously convect,
+   * COALESCE or drift" — and the floor convects and coalesces anyway, recorded as the owner's
+   * aesthetic judgment. Severing is the inverse of the coalescence sitting in that same sentence,
+   * so it rides the same grant rather than needing a new one. What L13 keeps closed is the
+   * material's surface deforming at rest; a discrete topology event at the coil is the category
+   * already permitted.
+   *
+   * WHAT IS STILL DERIVED, so the grant is as small as it can be: WHERE it breaks (the thinnest
+   * neck, which `arrestedBridge` already computes per bond), WHAT the fragments are (volume
+   * conserved, this file's own convention), and the SHAPE of the retraction (the substance's
+   * cessation curve, the one curve this system owns for coming irreversibly to rest).
+   *
+   * AND THE THRESHOLD ADDS NO NUMBER. A body sheds once it is bigger than the biggest drop the field
+   * will spawn — `R[1]`, authored at 2.25 and approved on the page then. Nothing inside the vessel
+   * should exceed the field's own ceiling. Measured, that keeps every DUMBBELL in the band, which is
+   * the outcome the substance actually gives (96.2% arrest) and must not be swept away, and sheds
+   * only the clump: four ordinary lobes (30.80 px equivalent) or two at the top of the band (37.80).
+   * It lands where Plateau would have put a filament, N ≥ 4 — corroboration, not derivation. */
+  function bodyRadius(radii) {
+    var s = 0;
+    for (var i = 0; i < radii.length; i++) s += Math.pow(radii[i], MERGE_POWER);
+    return Math.pow(s, 1 / MERGE_POWER);
+  }
+  function overCeiling(radii) { return bodyRadius(radii) > R[1]; }
+
   /* the Bingham number the source states the arrested shape by: τ_y·R/γ, i.e. R/ℓ */
   function bingham(r1, r2) {
     var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
@@ -336,7 +390,7 @@ var OCCVM_GLOBULES = (function () {
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
            PX_PER_DROP: PX_PER_DROP, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
-           arrestedBridge: arrestedBridge,
+           arrestedBridge: arrestedBridge, bodyRadius: bodyRadius, overCeiling: overCeiling,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
            GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();

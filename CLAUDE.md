@@ -6,7 +6,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 
 Current build: `build-20260910222806` (not yet deployed — 2.39 is on the branch) — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.39** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.40** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
 a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
@@ -3404,6 +3404,86 @@ that merges without ever breaking must coarsen, and detachment is as much a part
 Jánosi describe as attachment is; or **(c)** respawning to a **body** count rather than a drop count,
 which refreshes lanes but grows lobes without bound unless (b) exists. **(b) is the one that closes
 the cycle rather than deferring it, and it is scope the ask did not name.**
+
+**2.40 — the field breaks as well as merges, and the criterion is granted because four derivations
+closed.** The owner's call after 2.39 measured the coarsening: *build pinch-off first.* A field that
+merges and never breaks can only coarsen, and 2.39 left the coil going quiet once its fixed
+neighbour set is consumed. This is the other half of the cycle.
+
+**FOUR ROUTES WERE TRIED AND ALL FOUR CLOSED, which is the substantive finding and the reason the
+threshold reuses a value instead of producing one.** The bridge arrested *because* the residual
+stress fell below τ₀, so the drive that made it cannot undo it, and a break needs a stress the model
+does not have. **Buoyancy** is 4.2–14× short. **The convection orbit's own extensional stress** —
+the bridge holding a lobe off the path it would ride alone — is **1.6 to 2.6 million times short**,
+because the cycle runs at 1.4 px/s and that acceleration is ~2×10⁻⁷ m/s². **The neck cannot drain
+itself**: γ/r_neck looks like it clears τ₀ at 26.65 Pa, but the arrested neck is γ/τ₀ / 2^(1/3) =
+5.673 px for *every* twin pair, so that reasoning would break every pair the instant it formed — the
+tell that it double-counts, and Kern, Sæter & Carlson close it, having the arrested profile as the
+END state with nothing left in it above τ₀. **And Rayleigh-Plateau does not apply**, because the
+arrest builds a star rather than a chain: measured on the shipped field, span over its own
+circumference is 0.48 at two lobes and only **0.86 at seven**. A clump is not a filament. *The
+thermal route was already refused at 2.39.*
+
+**SO SEVERING IS GRANTED, AND IT RIDES A GRANT ALREADY MADE.** L13's own text names what the
+substance will not do — "it does not spontaneously convect, **coalesce** or drift" — and the floor
+has convected and coalesced against τ₀ since 2.28, recorded as the owner's aesthetic judgment.
+Severing is the inverse of the coalescence in that same sentence. What L13 keeps closed is the
+material's *surface* deforming at rest; a discrete topology event at the coil is the category
+already permitted. SPINE.md's L13 says this explicitly now rather than leaving it to be inferred.
+
+**THE GRANT IS KEPT AS SMALL AS IT GOES.** Derived: **where** it breaks (the thinnest neck — each
+bond's arrest height is already computed by `arrestedBridge` and is recorded on the follower, so the
+weakest is a measurement); **what** the fragments are (volume conserved, this file's convention);
+**when** (the coil dwell, where every irreversible event already happens — no clock, no rate); **how
+it leaves** (the dwell's own geometry, below); and the **shape** of the retraction (the substance's
+cessation curve, timed by `yield.js`'s `RETRACT_MS`, read lazily and never copied — a second 260
+here would be L3's defect). **And the threshold adds no number:** a body sheds once it exceeds
+`R[1]` = 30 px, the biggest drop the field will spawn, authored at 2.25 and approved on the page
+then. It lands where Plateau would have put a filament at N ≥ 4 — corroboration, not derivation.
+
+**MY FIRST BUILD WAS A LIMIT CYCLE, AND THE WELD COUNT HID IT.** I set the fragment's phase to its
+parent's, reasoning that a shared phase keeps them in step so nothing jumps vertically. It does keep
+them in step — permanently: same phase is the same cycle position forever, so the fragment returned
+to the coil beside the body every pass and re-attached. Measured: **90 sheds, 83 of them re-welds,
+median 3.0 s free — 0.20% of a cycle — and 86.7% back to the SAME body.** The count read **1,066
+welds** and looked like a living field. That is 2.39's naive unlock at 3,502 in better costume, and
+it was caught only because the end-state population was *identical* to 2.39's — twelve times the
+activity and not one statistic moved. **The fix costs no constant**, because the coil is a DWELL and
+not an instant: `cyclePos` is exactly 0 across the whole bottom rest, so the fragment goes at the far
+end of it and departs at once while the parent sees out its own. They separate in **time** rather
+than space — no lateral teleport, no vertical jump — and departing is what a pinched fragment does.
+After: **0.0% return to the parent, median 91.14% of a cycle free.**
+
+**WHAT IT IS WORTH, both viewports, two hours of simulated time, against 2.39:**
+
+| | welds per 15 min | bodies | biggest | past the glass |
+|---|---|---|---|---|
+| phone 390×844, 2.39 | `[12, 4, 0, 0, 0, 0, 0, 0]` | 21 | 5 | 0 / 5,328,000 |
+| **phone, 2.40** | **`[12, 9, 2, 2, 3, 1, 1, 1]`** | **24** | **4** | 0 / 5,328,000 |
+| Rhyme col 720×1400, 2.39 | `[28, 21, 14, 0, 0, 0, 0, 0]` | 49 | 7 | 0 / 16,128,000 |
+| **Rhyme col, 2.40** | **`[28, 22, 22, 9, 9, 7, 9, 5]`** | **66** | **4** | 0 / 16,128,000 |
+
+**Neither field dies now**, and both are measurably less coarse. *Stated narrowly, because it is not
+a restored opening rate:* the rate still decays from its first bin and then **holds at a floor**
+instead of collapsing to zero. 2.39's lane-lock is why the opening rate is not sustained — pinch-off
+closes the coarsening, not the mixing, and those are different defects.
+
+*And I overclaimed the threshold in the first draft of its own guard.* "A dumbbell survives at every
+size in the band" is false: a twin pair's equivalent radius is r·2^(1/3), so it clears the ceiling
+above **R[1]/2^(1/3) = 23.811 px** — the top **29.5%** of the band by radius sheds. My own table had
+printed `2 lobes at r=30 → SHEDS` two steps earlier. The guard recomputes the figure from `R[1]` and
+`MERGE_POWER` rather than typing it.
+
+**And 2.39's accretion guard was reading the wrong size too, found because 2.40 made it fail.** It
+ran at the harness's 320×480, where the field holds **17 drops and never reaches three lobes at all**
+over a full run — too few pairs meet, and the ones that do are large enough that a third clears the
+new ceiling. So the accretion it asserts was not observable there. That is the same undersized-
+instrument error the containment clause in the *same test* was corrected for one release earlier,
+sitting beside it unnoticed. Both run at 520×900 now.
+
+`spine.test.js` **122 → 124**, and both new ones verified to bite: restoring the parent's phase fails
+the departure clause at **60.0%** returning to the parent, and removing the shed fails it at **0
+sheds**.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

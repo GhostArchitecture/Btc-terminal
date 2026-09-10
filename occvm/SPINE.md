@@ -1032,6 +1032,20 @@ does not deform, breathe, settle or shimmer at rest — that is the substance ly
 §5.3 stays dropped for exactly the reason it was dropped: below τ₀ it cannot happen. Decoration on the
 substance is permitted; the substance pretending to a behaviour it does not have is not.
 
+**What this grant already covers, made explicit at 2.40 rather than assumed.** The sentence above
+names what the substance will not do — it "does not spontaneously convect, **coalesce** or drift" —
+and the floor has convected and coalesced against τ₀ since 2.28. **Severing is the inverse of the
+coalescence in that same list**, so a body breaking apart at the coil rides this grant rather than
+needing a new one. The line that stays closed is unaffected: that is about the material's own
+*surface* deforming at rest, and a discrete topology event at the coil is the category already
+permitted, not the one refused. **Four derivations were tried before this was written down and all
+four closed** — buoyancy is 4.2–14× short of τ₀, the convection orbit's own extensional stress is
+1.6–2.6 **million**× short at 1.4 px/s, the neck cannot drain itself (Kern, Sæter & Carlson have the
+arrested profile as an end state, so nothing left in it is still above τ₀), and Rayleigh-Plateau does
+not apply because the bodies are clumps rather than filaments, measured at span/circumference 0.86 at
+seven lobes. `occvm/globules.js` carries each with its number. The threshold adds no constant: a body
+sheds once it exceeds `R[1]`, the largest drop the field will spawn.
+
 **L8 is untouched and this law reaffirms it.** Every motion respects `prefers-reduced-motion`. A floor
 under that setting degrades to a **static frame** — never to a slower floor, a subtler floor, or a
 different curve. `lockRelease` already models the pattern: no snapshot, no animation, the end state
