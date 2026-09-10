@@ -241,8 +241,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **774 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 424, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **783 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 433, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -1920,6 +1920,43 @@ not a spine constant.
 
 *Golden set re-recorded:* BTC's `--vein` becomes `--globules`, Rhyme's and the reference's token lists
 move with the retirement. `test/occvm.js` **419 → 424**; §6's total **769 → 774**. Rhyme **108 tests**.
+
+**2.26 — the open question from 2.25, closed by measurement instead of by a device.** 2.25 shipped with
+this line: *"if it reads as noise beside the tape, the number to move is `GLOBULE_ALPHA`."* That was a
+measurable question answered with a shrug, and the owner said so. It is measured now, and **nothing
+moves.**
+
+**The field IS overlaid on the sweep**, which is worth stating because it is easy to assume otherwise:
+`.tile::before` is `position:absolute`, and a positioned pseudo-element paints **above** its box's
+in-flow content — so the decoration sits on top of the canvas and every win/lose mark on it, screened.
+That is precisely the trade §7.6 forbids and the reason L13 withholds *motion* from this tool.
+
+**Driven in Chromium across five states** — ABOVE winning, ABOVE losing, BELOW winning, no-call, and the
+swing-activated inversion §5 designs to be most saturated — with the overlay toggled on a frozen page and
+the sweep driven through `renderSweep()` on synthetic state:
+
+- **The marks themselves never move**: ΔL\* ≤ **0.07**, Δhue ≤ **3°**, every class, every cell.
+- **Local contrast to the substrate beside them** loses **0.0% to 4.9%**, worst case gilt in one cell.
+- **Every mark keeps > 22 L\*** of local contrast; ruby in the swing view is the tightest at 22.9, and
+  unmoved.
+
+**Why, and it is structural rather than lucky.** `screen` is self-limiting on bright ink:
+`screen(a,b) = 1 − (1−a)(1−b)`, so the lift is `(1−a)·b` — it **falls as the mark brightens** and vanishes
+as `a → 1`. The field lands on the substrate and gets out of the way of the ink. Nine assertions pin that:
+the blend mode, the two weights the measurement was taken at, and the arithmetic itself at the four marks'
+own linear luminances, so the *reason* is in the suite and not only the number. Verified to bite —
+`screen` → `normal` fails two, a raised weight fails one.
+
+*A method correction, recorded because the first number was alarming and wrong.* The first pass paired the
+dimmest pixel of a mark against the brightest globule **anywhere in the frame** and reported ruby at
+**−18%**; those two pixels are nowhere near each other, and measured locally the same cell is **−0.0%**. A
+global worst case that describes no pixel pair that exists is not a measurement of legibility. The
+alarming number was mine, not the tool's.
+
+*And the guard block itself did nothing on its first run.* Appended past this file's closing
+`process.exit(done())`, it never executed and the suite reported **PASS** at an unchanged count — caught
+by watching the count rather than the verdict. `test/occvm.js` **424 → 433**; §6's total **774 → 783**.
+No code in this tool changes: the measurement's whole output is that the shipped values are right.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
