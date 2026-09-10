@@ -148,46 +148,64 @@ const LAWS = [
     claim: "the gilt ramp marks what decides and nothing else",
     measure: null, note: "whether a surface DECIDES is a judgment; no script can make it" },
 
-  { id: "L6", name: "the mineral set is frozen",
-    claim: "the set is closed and comes from occvm/minerals.js",
+  { id: "L6", name: "the palette is a choice of colour, never of meaning",
+    claim: "every palette value comes from occvm/pigments.js; a :root fallback carries the default palette's own value",
     measure(tool) {
-      /* A tool restating a mineral hex locally is the defect 1.4 closed — but the law's own exception
-         ledger grants BTC `--malachite`/`--ruby` as OUTCOME colours, which share hexes with the mineral
-         set while meaning something else entirely (win/lose, governed by CLAUDE.md section 5). A measure
-         that cannot tell those apart reports a false divergence, which is the same failure as the
-         hand-typed "violates: —" pointing the other way. Only the accent pair is the mineral set's. */
-      const accent = (tool.own.match(/--amethyst(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
-      const outcome = (tool.own.match(/--(malachite|ruby)(-lo)?:\s*#[0-9a-f]{6}/gi) || []).length;
-      /* 2.17 — THE MEASURE COULD ONLY SEE CSS DECLARATIONS, and a hex is a hex wherever it is typed. BTC
-         carries the malachite and ruby values a second time as JS literals in PAL, its canvas palette, and
-         this read them as absent: a restatement of a protected token in JavaScript was invisible to the one
-         instrument that exists to find restatements. Every mineral value is now counted wherever it appears
-         in a tool's own source, and each class is named rather than pooled:
+      /* 2.27 re-authored this around what a palette IS. Until then the measure asked whether a tool
+         restated one of three mineral ACCENTS, and granted BTC's malachite/ruby as outcome colours that
+         happened to share those hexes. Under palettes that distinction dissolves: the palette supplies the
+         outcome colours, so "is this hex an accent or an outcome" is no longer the question. The question
+         is whether the tool has a second source of truth.
 
-           accent declaration   --amethyst: #hex          DIVERGES — 1.4 closed this and it stays closed
-           accent bare literal  "#8d5cf0" in JS or CSS    DIVERGES — the same fact, a different syntax
-           accent fallback      --mineral: #hex at :root, overwritten by applyMineral on load — TOLERATED
-                                and counted, the same shape L12 already tolerates for the substrate
-           outcome, any syntax  malachite/ruby            the section 5 exception, counted not hidden
+         Two ways it could, and both are measured:
 
-         The outcome pair shares hexes with the mineral set while meaning something else entirely (win/lose,
-         CLAUDE.md section 5), and PAL is that same exception in a second file rather than a new violation —
-         which is the question OCCVM's own review left open and this answers by counting. */
-      const MIN = require(path.join(__dirname, "..", "minerals.js"));
-      const hexes = k => { const o = []; for (const f in MIN[k]) o.push(MIN[k][f]); return o; };
-      const bare = list => list.reduce((n, h) => n +
-        (tool.own.match(new RegExp("(?<!--[a-z-]{1,20}:\\s{0,4})" + h, "gi")) || []).length, 0);
-      const accentBare = bare(hexes("amethyst"));
-      const outcomeBare = bare(hexes("malachite").concat(hexes("ruby")));
-      const fallback = (tool.own.match(/--(mineral|mineral-lo|vein-hi|vein-lo):\s*#[0-9a-f]{6}/gi) || []).length;
-      const notes = [];
-      if (outcome || outcomeBare) notes.push(`${outcome + outcomeBare} outcome colour(s) are the granted exception`);
-      if (fallback) notes.push(`${fallback} :root mineral fallback(s), overwritten at load`);
-      if (accent || accentBare) return { state: "DIVERGES",
-        detail: `${accent + accentBare} mineral accent hex restated outside minerals.js` +
-                (notes.length ? ` (${notes.join("; ")}, not counted)` : "") };
+           (1) a palette hex typed into the tool that is NOT the default palette's — that is a non-default
+               palette leaking into a tool's own source, which is the restatement in its purest form;
+           (2) a :root fallback of a §2ad token whose value has DRIFTED from what the palette writes to it.
+               §2ad permits those fallbacks — a page must paint an outcome colour before the part runs, and
+               jsdom resolves no custom property at all — and it permits them on exactly one condition,
+               that they mirror the default palette. A fallback that has drifted is a second source of
+               truth wearing a safety net's clothes, and until this measure existed nothing checked it. */
+      const P = require(path.join(__dirname, "..", "pigments.js"));
+      const def = P.PIGMENTS[P.DEFAULT];
+      const defSet = new Set(Object.keys(P.TOKENS).map(k => def[k].toLowerCase()));
+      const allSet = new Map();   /* every hex in the whole set -> where it comes from */
+      for (const name in P.PIGMENTS) for (const k in P.TOKENS) {
+        const h = P.PIGMENTS[name][k].toLowerCase();
+        if (!allSet.has(h)) allSet.set(h, []);
+        allSet.get(h).push(name + "." + k);
+      }
+
+      /* (1) non-default palette hexes in the tool's own source */
+      const foreign = [];
+      for (const [hex, where] of allSet) {
+        if (defSet.has(hex)) continue;
+        if (new RegExp(hex, "i").test(tool.own)) foreign.push(`${hex} (${where[0]})`);
+      }
+
+      /* (2) each §2ad token's :root fallback against the default palette */
+      const drift = [], fallbacks = [];
+      for (const slot in P.TOKENS) {
+        const tok = P.TOKENS[slot];
+        const m = tool.own.match(new RegExp(tok + "\\s*:\\s*(#[0-9a-fA-F]{6})"));
+        if (!m) continue;
+        fallbacks.push(tok);
+        if (m[1].toLowerCase() !== def[slot].toLowerCase())
+          drift.push(`${tok} is ${m[1]} where ${P.DEFAULT} says ${def[slot]}`);
+      }
+
+      /* the default palette's own hexes ARE expected in a tool: they are the fallbacks above, and BTC's
+         PAL carries the same set a second time as JS literals for the same reason (jsdom). Counted and
+         named rather than hidden — 2.17's answer, kept, because the alternative is a measure that reports
+         a granted exception as a violation every run and is therefore never read. */
+      const mirrored = [...defSet].filter(h => new RegExp(h, "i").test(tool.own)).length;
+
+      if (foreign.length) return { state: "DIVERGES",
+        detail: `${foreign.length} non-default palette hex restated outside pigments.js: ${foreign.slice(0, 3).join(", ")}` };
+      if (drift.length) return { state: "DIVERGES",
+        detail: `${drift.length} :root fallback(s) drifted from the ${P.DEFAULT} palette — ${drift[0]}` };
       return { state: "CONFORMS",
-        detail: notes.length ? `no accent restated; ${notes.join("; ")}` : "no local mineral hex" };
+        detail: `${fallbacks.length} :root fallback(s) and ${mirrored} mirrored hex(es), all the ${P.DEFAULT} palette's own` };
     } },
 
   { id: "L7", name: "figure discipline",

@@ -52,7 +52,7 @@ const PARTS = IS_RHYME ? [
   /* 2.25 — the globule field replaces the DLCA veins as the substrate layer in both tools; veins.js is
      RETIRED (below) and stays in occvm/ unspliced, as the generator the L10 record cites. */
   { name: "globules.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
-  { name: "minerals.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
+  { name: "pigments.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
@@ -63,7 +63,7 @@ const PARTS = IS_RHYME ? [
   /* 2.5–2.8 — the rheological substance; see the Rhyme list above for the strangler's history */
   { name: "rheology.js",  target: "index.html", anchor: "<script>" },
   { name: "globules.js",  target: "index.html", anchor: "<script>" },
-  { name: "minerals.js",  target: "index.html", anchor: "<script>" },
+  { name: "pigments.js",  target: "index.html", anchor: "<script>" },
   { name: "yield.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: REF, anchor: "<style>" },
   { name: "mono.css",     target: REF, anchor: "<style>" },
@@ -71,7 +71,7 @@ const PARTS = IS_RHYME ? [
   { name: "sundial.js",   target: REF, anchor: "<script>" },
   { name: "rheology.js",  target: REF, anchor: "<script>" },
   { name: "globules.js",  target: REF, anchor: "<script>" },
-  { name: "minerals.js",  target: REF, anchor: "<script>" },
+  { name: "pigments.js",  target: REF, anchor: "<script>" },
   { name: "yield.js",     target: REF, anchor: "<script>" },
 ];
 
@@ -80,7 +80,11 @@ const PARTS = IS_RHYME ? [
    shipping, byte for byte, under a fence nobody regenerates. Added at 2.8, when material.js and
    fracture.js left with the crystal; until then the splicer could only add and update, never take away,
    and a part dropped from PARTS would simply have gone stale in place. */
-const RETIRED = ["material.js", "fracture.js", "veins.js"];
+/* 2.27 — minerals.js is RETIRED and replaced by pigments.js. Not a rename: the crystal-era set was
+   three closed minerals because under aragonite a colour had to be a mineral that exists with that
+   colour, and a dye carries no such constraint. It leaves occvm/ entirely — unlike veins.js, whose
+   generator the L10 record still cites, nothing cites a mineral. */
+const RETIRED = ["material.js", "fracture.js", "veins.js", "minerals.js"];
 const RETIRED_TARGETS = IS_RHYME ? [path.join("tome-src", "10_engine.js")] : ["index.html", REF];
 
 const sha = s => crypto.createHash("sha256").update(s).digest("hex").slice(0, 12);

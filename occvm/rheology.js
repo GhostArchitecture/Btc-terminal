@@ -128,7 +128,17 @@ var OCCVM_RHEOLOGY = (function () {
      * k and n come from — the two are different quantities and this file pairs them, which is recorded
      * here rather than resolved, because a static yield stress is the right one for a substance at rest
      * and the wrong one to sit in a flow-curve triple. */
-    tau0: 21.15,       /* Pa      — yield stress: below this the substance does not flow at all */
+    tau0: 21.15,       /* Pa      — STATIC yield stress: the stress required to START flow */
+    /* 2.28 — the DYNAMIC intercept, promoted from a comment to a constant. It has been named in this
+       file's own prose since 2.10 ("the DYNAMIC Herschel-Bulkley intercept (4.41 Pa) that k and n come
+       from") and has been unavailable to every consumer, so any consumer needing it had to retype it —
+       which is L3's defect exactly, a fact in two places, one of them prose. Its first consumer is the
+       coalescence arrest boundary in globules.js, where the static and dynamic stresses turn out to
+       bracket a hysteresis rather than to disagree: the bridge keeps flowing above the dynamic stress
+       and the arrested shape holds below the static one. Same row as k and n (Koocheki Table 3,
+       control, 25 °C); it is the intercept those two were fitted with, which is why pairing them with
+       the static value is recorded here as unresolved rather than papered over. */
+    tau0Dynamic: 4.41, /* Pa      — the Herschel-Bulkley intercept k and n were fitted against */
     k: 16.18,          /* Pa·sⁿ   — consistency index k′, Koocheki Table 3, control, 25 °C (was 4.6, 2.10) */
     n: 0.250,          /* —       — flow index n′, same row; n < 1 is shear-thinning (was 0.19, 2.10) */
     brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */

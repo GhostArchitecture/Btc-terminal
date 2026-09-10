@@ -20,9 +20,20 @@ const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "..", "..");
 const SIBLING = path.resolve(ROOT, "..", "Rhyme-Instrument");
 const OCCVM = path.join(ROOT, "occvm");
-const PARTS = ["spine.css", "mono.css", "sundial.js", "veins.js", "minerals.js"];
+/* 2.27 — the part list is READ FROM THE SPLICER rather than typed here. It had gone stale twice over:
+   it still named veins.js and minerals.js (both retired) and had never gained serif.css, reading.css,
+   rheology.js, globules.js or yield.js, so five spliced parts' tokens were being attributed to the tools
+   that carry them instead of to the spine. That is the 2.14 class — a hand-typed list inside the
+   instrument built to end hand-typed lists. */
+const PARTS = [...new Set(require("./splice-spine.js").PARTS.map(p => p.name))];
 
 const read = p => (fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "");
+/* the body of a named object literal, so a token in VALUE position can be attributed to the right class */
+function mapBody(text, name) {
+  const m = text.match(new RegExp(name + "\\s*=\\s*\\{"));   /* both tools' brace styles: `X = {` and `X={` */
+  if (!m) return "";
+  const j = text.indexOf("};", m.index); return j < 0 ? "" : text.slice(m.index, j);
+}
 const add = (set, text, re) => { for (const m of text.matchAll(re)) set.add(m[1]); };
 
 /* every way a token is CONSUMED */
@@ -32,6 +43,14 @@ function consumed(text) {
   add(U, text, /getPropertyValue\(\s*["'](--[a-zA-Z0-9-]+)/g);      /* read back in JS */
   add(U, text, /\bnum\(\s*["'](--[a-zA-Z0-9-]+)/g);                 /* a tool's own numeric reader */
   add(U, text, /\bstr\(\s*["'](--[a-zA-Z0-9-]+)/g);                 /* a tool's own string reader */
+  /* 2.27 — A TOKEN NAMED AS A MAP'S VALUE. `PAL_LIVE` is `{mal: "--malachite", ...}` and `palTick`
+     resolves every one of them through `getPropertyValue`, so thirteen tokens are consumed by a loop
+     the regexes above cannot see: the token is the map's VALUE, and the two existing object-literal
+     rules both match a token as a KEY. Reported --ruby-lo as dead weight on the run that introduced it,
+     which is this file's own opening paragraph happening again — the instrument's fault, not the code's.
+     Syntax alone cannot say whether a value-position token is read or written, so the maps are named
+     rather than sniffed, which is this file's stated rule for adding a way. */
+  add(U, mapBody(text, "PAL_LIVE"), /["'](--[a-zA-Z0-9-]+)["']/g);
   return U;
 }
 /* every way a token is WRITTEN at runtime */
@@ -39,6 +58,7 @@ function written(text) {
   const W = new Set();
   add(W, text, /setProperty\(\s*["'](--[a-zA-Z0-9-]+)/g);           /* imperative */
   add(W, text, /["'](--[a-zA-Z0-9-]+)["']\s*:/g);                   /* object literal / JSX inline style */
+  add(W, mapBody(text, "OCCVM_PIGMENT_TOKENS"), /["'](--[a-zA-Z0-9-]+)["']/g);  /* see consumed() */
   return W;
 }
 /* declared in CSS */

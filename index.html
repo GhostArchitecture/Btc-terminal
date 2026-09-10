@@ -388,10 +388,14 @@ table {
     --field:#09080d; --sub:#1b1a22; --sub-hi:#2c2a36; --sub-lo:#0e0d13; --edge:#0b0a10;
     --bone:#ece3d0; --bone-lo:#b7ad9c; --bone-dim:#8e8778;
     --gilt-a:#ffe9a3; --gilt-b:#d9a52c; --gilt-c:#7a5510;
-    --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f;
-    /* OCCVM-L6 — the mineral is the reader's chosen accent, distinct from malachite/ruby's fixed outcome
-       meaning above. Defaults resolve to amethyst (the default field) until applyMineral() runs; JS then
-       drives all four from occvm/minerals.js against S.cfg.mineral. Values match Rhyme's own defaults. */
+    --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f; --ruby-lo:#6b1a2e;
+    /* OCCVM-L6 — every declaration in this block is now a FALLBACK. applyPigment() overwrites all nine
+       outcome/authority tokens and the four decorative ones from occvm/pigments.js at load and on every
+       palette change; what stands here is the `obsidian` palette, which is why selecting obsidian is a
+       no-op. The palette chooses WHICH green and WHICH red — never which hue means which, so nothing a
+       reader picks can make a won window and a lost one read alike (section 5). `--ruby-lo` is new: PAL
+       carried that value as a bare literal with no token to resolve from, which is exactly the
+       restatement L6 exists to catch, in the one file the measure could not see until 2.17. */
     --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
     /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
     --lx:.35; --ly:-.85; --elev:.55; --night:0;
@@ -410,7 +414,11 @@ table {
       radial-gradient(120% 70% at calc(50% + var(--lx)*20%) -10%, rgba(120,90,200,calc(.10*var(--elev) + .05*var(--night))) 0%, transparent 60%),
       linear-gradient(180deg,#100e16,#09080d 40%);
     background-attachment:fixed}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:var(--globules,none);opacity:.55}
+  /* background-size pins the field to its own generated pixels (see globuleLayer): without it the SVG
+     stretches to the box and a globule stops being round. `auto` is the fallback for the state where
+     no field was written at all, where there is nothing to size. */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background:var(--globules,none);
+    background-size:var(--globules-size,auto);background-position:0 0;opacity:.55}
   .wrap{max-width:1180px;margin:0 auto;padding:14px 14px 40px;position:relative}
   .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-dim);font-family:var(--sans)}
   .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
@@ -430,7 +438,8 @@ table {
       inset calc(var(--lx)*-1.2px) calc(var(--ly)*-1.2px) 0 var(--shade),
       var(--occvm-cast-3), var(--occvm-cast-1);
     -webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}
-  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--globules,none);opacity:.16;mix-blend-mode:screen}
+  .tile::before{content:"";position:absolute;inset:0;pointer-events:none;background:var(--globules,none);
+    background-size:var(--globules-size,auto);background-position:0 0;opacity:.16;mix-blend-mode:screen}
   .tile::after{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,calc(.22*var(--elev)+.08)),transparent)}
   .tile > *{position:relative;z-index:1}
@@ -450,11 +459,24 @@ table {
   button:active{transform:translateY(1px)}
   button:focus-visible{outline:2px solid var(--gilt-a);outline-offset:2px}
   button[aria-pressed="true"],button.sel{background:linear-gradient(180deg,var(--verdigris) 0%,var(--verdigris-lo) 100%);color:var(--bone)}
-  /* OCCVM-L6 — the mineral picker wears the mineral it is offering, which is what makes --mineral and
-     --mineral-lo load-bearing here rather than write-only. It is a swatch on a button whose label names
-     the colour, in Settings; it is not an outcome, and it touches nothing section 5 governs. */
-  #mn_amethyst[aria-pressed="true"],#mn_malachite[aria-pressed="true"],#mn_ruby[aria-pressed="true"]{
-    background:linear-gradient(180deg,var(--mineral) 0%,var(--mineral-lo) 100%);color:var(--bone)}
+  /* OCCVM-L6 — the palette picker wears the palette it is offering, which is what makes --pigment and
+     --pigment-lo load-bearing here rather than write-only. Each button carries its own palette's accent
+     through --pg (set inline from occvm/pigments.js), so the row is five real swatches rather than five
+     labels; the SELECTED one drops --pg and reads the live tokens, so it shows what is actually applied
+     rather than what it would apply. It is in Settings; it is not an outcome. */
+  button.pgsw{--pg:var(--pigment);background:linear-gradient(180deg,var(--pg) 0%,color-mix(in srgb,var(--pg) 45%,black) 100%);
+    color:var(--bone);text-shadow:0 1px 2px rgba(0,0,0,.75)}
+  button.pgsw[aria-pressed="true"]{--pg:var(--pigment);
+    background:linear-gradient(180deg,var(--pigment) 0%,var(--pigment-lo) 100%);
+    box-shadow:var(--occvm-bevel),0 0 0 1px var(--gilt-b)}
+  /* BTC-REDUCTION-PLAN §4.1/§4.3 — the confidence chip. It sits BESIDE a reading and must never be
+     mistaken for one: no gilt (§5 reserves gilt for what decides, and confidence decides nothing), no
+     outcome colour, no fill, no border. It is lighter than the reading it qualifies, in the same line,
+     which is §4.3's "state the plain read and its own confidence in the same breath" — the alternative,
+     a clean headline with the caveat one click away, is how a summary starts looking like a signal. */
+  .confchip{font:400 10px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.85;
+    white-space:nowrap;padding-left:.15em}
+  .confchip[data-conf="thin"]{font-style:italic}
   button:disabled{opacity:.45;cursor:default;filter:none}
 
   /* binding: brushed raw bronze, verdigris in the seam */
@@ -823,10 +845,12 @@ table {
         <button id="sunLoc" type="button">use my location</button>
         <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">solar position computed here for Dayton by default; the coordinates stay in this browser</span>
       </div>
-      <div class="tgrp"><span class="lbl">Mineral</span>
-        <button id="mn_amethyst" type="button" aria-pressed="false">amethyst</button>
-        <button id="mn_malachite" type="button" aria-pressed="false">malachite</button>
-        <button id="mn_ruby" type="button" aria-pressed="false">ruby</button>
+      <div class="tgrp"><span class="lbl">Palette</span>
+        <button id="pg_obsidian" class="pgsw" type="button" aria-pressed="false">obsidian</button>
+        <button id="pg_astro" class="pgsw" type="button" aria-pressed="false">astro</button>
+        <button id="pg_deepwater" class="pgsw" type="button" aria-pressed="false">deepwater</button>
+        <button id="pg_acid" class="pgsw" type="button" aria-pressed="false">acid</button>
+        <button id="pg_sunset" class="pgsw" type="button" aria-pressed="false">sunset</button>
         <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">tints the background vein layer only — never the win/lose colours in §5</span>
       </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
@@ -977,8 +1001,152 @@ table {
 </div>
 
 <script>
+/* ==== OCCVM SPINE pigments.js — spliced from occvm/pigments.js. do not edit. ==== */
+/* sha256:b2a7b1e63daf */
+/* OCCVM 2.27 — the pigment palettes (OCCVM-L6). One implementation, shared by every conforming tool.
+ *
+ * GENERATED by occvm/tools/derive-pigments.js. Do not hand-edit: run the generator and commit its output.
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy either — the next splice reverts it silently.
+ *
+ * This replaces occvm/minerals.js, which was crystal-era vocabulary that outlived aragonite. The closed
+ * three-mineral set existed because under a crystal a colour had to be a mineral that exists with that
+ * colour. A dye is not discovered, it is chosen: a lamp manufacturer picks what they want and the wax
+ * does not constrain it, so the constraint that produced the closed set died with the crystal.
+ *
+ * THE EASEMENT, RECORDED RATHER THAN SLID IN. Some handles below are invented where no real pigment
+ * fits. Every other name in this system was chosen to be defensible — Fraunces replaced Cinzel because
+ * the incised-stone justification died; minerals.js was renamed because the category stopped meaning
+ * anything. This is not that. The decorative layer does not answer to the derivation standard the rest
+ * of the system does, and saying so here is cheaper than a later reader mistaking it for the naming
+ * discipline quietly eroding. Naming a dye after a compound it does not contain would be the dressed-up
+ * version; naming it plainly is the honest one.
+ *
+ * WHAT A PALETTE MAY NOT CHANGE. Semantics are fixed to HUE, never to a slot: green is positive, red is
+ * negative, gilt is authority, verdigris-adjacent is active — in every palette, always. A palette is not
+ * a remapping of meaning, it is a choice of WHICH green and WHICH red. Nothing a palette does can make
+ * confirmed and failed read alike. Measured rather than promised: the smallest positive/negative
+ * separation across the five is CIEDE2000 62.3, against the shipped build's own 73.1.
+ *
+ * WHAT IS AUTHORED AND WHAT IS NOT. Six values per palette are AUTHORED — the four fixed roles and the
+ * decorative accent and highlight. No hex among them is derived from a spectrum, a compound or a
+ * measurement, and they are labelled authored because a table of colours that looked derived would be
+ * the dishonest version. Seven per palette are DERIVED: each is its parent's hex moved by the offset
+ * (dL, chroma ratio, dh in CIE L*C*h) that the SHIPPED build already puts between that same pair. The
+ * generator's header carries the argument for why those two classes are drawn where they are.
+ *
+ * OBSIDIAN IS THE ANCHOR AND SELECTING IT IS A NO-OP — measured, not claimed. Its six authored values
+ * are this tool's current literals, and the derivation applied to them reproduces the other seven
+ * BYTE-IDENTICALLY. Both suites assert that; a change to the derivation that moved today's build would
+ * fail before it shipped.
+ *
+ * ONE MEASURED NEGATIVE, RECORDED RATHER THAN TUNED AWAY. PIGMENT-PALETTES pins `active` to
+ * verdigris-adjacent, and three palettes author it 4-16 degrees off that hue, closest to `positive` in
+ * `sunset` (1 degree, separated by lightness alone). The shipped build's own positive/active separation
+ * is CIEDE2000 14.8; `sunset` reads 11.7 and is the only palette below it. Rotating its `active` onto
+ * the verdigris hue was tried and reaches 13.6 — still short, because the limit is its low-chroma green
+ * `positive`, not the hue of its `active`. Clearing the floor would mean re-authoring a role hex by eye,
+ * which is what this system refuses everywhere else, so the value ships as the plan authors it and the
+ * number is on the record. The separation table is asserted per palette, so any change to it must be
+ * re-recorded rather than absorbed.
+ */
+var OCCVM_PIGMENTS = {
+  astro: {
+    label: "the original — the 1963 Astro, red-orange wax in clear liquid",
+    handles: { positive: "Verdigris Bloom", negative: "Ember", gilt: "Filament", active: "Patina", m: "Lava", hi: "Molten" },
+    /* authored */
+    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#ff6b35", hi: "#f7931e",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#9e3c17", lo: "#b8461d",
+  },
+  deepwater: {
+    label: "blue on clear — the cool counterpart, high contrast against the vessel",
+    handles: { positive: "Sea Glass", negative: "Coral Signal", gilt: "Brass Cap", active: "Shallow", m: "Cobalt Drift", hi: "Ice Column" },
+    /* authored */
+    positive: "#4ecdc4", negative: "#e0475f", gilt: "#ffd97d", active: "#45938a", m: "#2e6fd9", hi: "#8fc9ff",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#2d7873", negativeLo: "#6b1a2e", giltB: "#d89300", giltC: "#744700", activeLo: "#25514d", mlo: "#003677", lo: "#004492",
+  },
+  acid: {
+    label: "green on purple — unmistakably synthetic, unmistakably of its era",
+    handles: { positive: "Acid Bloom", negative: "Wine Fault", gilt: "Ultraviolet Gilt", active: "Reactor", m: "Blacklight", hi: "Ooze" },
+    /* authored */
+    positive: "#7fff4f", negative: "#d6336c", gilt: "#ffe66d", active: "#5cb85c", m: "#9d4edd", hi: "#b6ff3f",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#55a33d", negativeLo: "#600b31", giltB: "#d4a200", giltC: "#765200", activeLo: "#3b713c", mlo: "#541e7e", lo: "#662998",
+  },
+  sunset: {
+    label: "yellow into orange — the lamp that reads as lit even when it is not",
+    handles: { positive: "Palm Green", negative: "Rust", gilt: "Late Sun", active: "Frond", m: "Marigold", hi: "Peach Glass" },
+    /* authored */
+    positive: "#52b788", negative: "#c9432f", gilt: "#ffc857", active: "#40916c", m: "#ffb627", hi: "#ffd6a5",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#276449", negativeLo: "#5b1011", giltB: "#d28400", giltC: "#6b3b00", activeLo: "#204f3a", mlo: "#aa7918", lo: "#c18816",
+  },
+  obsidian: {
+    label: "the current build, preserved — selecting it is a no-op, and that is measured",
+    handles: { positive: "Malachite", negative: "Ruby", gilt: "Gilt", active: "Verdigris", m: "Amethyst", hi: "Amethyst Light" },
+    /* authored */
+    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#8d5cf0", hi: "#c9a6ff",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#4a2a8c", lo: "#5a36a8",
+  },
+};
+
+/* The default is the current build, so a reader who never opens the picker sees no change at all. */
+var OCCVM_PIGMENT_DEFAULT = "obsidian";
+
+/* The token each slot writes, in ONE place, so both tools write the same names to the same properties.
+   Before this the two tools each carried their own applyMineral() writing four properties by hand, which
+   is how a shared set acquires a local exception. */
+var OCCVM_PIGMENT_TOKENS = {
+  positive: "--malachite", positiveLo: "--malachite-lo",
+  negative: "--ruby", negativeLo: "--ruby-lo",
+  gilt: "--gilt-a", giltB: "--gilt-b", giltC: "--gilt-c",
+  active: "--verdigris", activeLo: "--verdigris-lo",
+  m: "--pigment", mlo: "--pigment-lo",
+  hi: "--vein-hi", lo: "--vein-lo",
+};
+
+/* The offsets the derivation used, kept beside their output so the table can be checked without running
+   the generator, and so a reader can see that the derived column is one rule rather than twenty choices. */
+var OCCVM_PIGMENT_OFFSETS = {
+  positiveLo: { of: "positive", dL: -29.7893, cr: 0.651910, dh: 1.2592 },
+  negativeLo: { of: "negative", dL: -29.2732, cr: 0.592598, dh: -6.0817 },
+  giltB: { of: "gilt", dL: -21.8910, cr: 1.780634, dh: -10.8977 },
+  giltC: { of: "gilt", dL: -53.6322, cr: 1.180793, dh: -15.6932 },
+  activeLo: { of: "active", dL: -24.5906, cr: 0.635887, dh: 1.0520 },
+  mlo: { of: "m", dL: -24.6417, cr: 0.731758, dh: 0.3303 },
+  lo: { of: "m", dL: -18.1717, cr: 0.823890, dh: -0.0124 },
+};
+
+/* Measured separation between the roles a reader must never confuse (CIEDE2000). Recorded, not computed
+   at runtime: a number in the source that the suite checks is a number somebody has to re-record when it
+   moves, which is the whole point. The shipped build's own posActive is 14.8 and is the floor. */
+var OCCVM_PIGMENT_SEPARATION = {
+  astro: { posNeg: 73.1, posActive: 14.8 },
+  deepwater: { posNeg: 64.4, posActive: 16.6 },
+  acid: { posNeg: 89.0, posActive: 18.1 },
+  sunset: { posNeg: 62.3, posActive: 11.7 },
+  obsidian: { posNeg: 73.1, posActive: 14.8 },
+};
+
+/* Writing a palette is one call in both tools. Returns the palette so a caller can read a slot it does
+   not write to a token — the canvas does exactly that. */
+function occvmApplyPigment(name, style) {
+  var p = OCCVM_PIGMENTS[name] || OCCVM_PIGMENTS[OCCVM_PIGMENT_DEFAULT];
+  for (var slot in OCCVM_PIGMENT_TOKENS) style.setProperty(OCCVM_PIGMENT_TOKENS[slot], p[slot]);
+  return p;
+}
+
+if (typeof module !== "undefined") module.exports = {
+  PIGMENTS: OCCVM_PIGMENTS, TOKENS: OCCVM_PIGMENT_TOKENS, DEFAULT: OCCVM_PIGMENT_DEFAULT,
+  OFFSETS: OCCVM_PIGMENT_OFFSETS, SEPARATION: OCCVM_PIGMENT_SEPARATION, apply: occvmApplyPigment,
+};
+/* ==== END OCCVM pigments.js ==== */
+
 /* ==== OCCVM SPINE globules.js — spliced from occvm/globules.js. do not edit. ==== */
-/* sha256:d55ed7fd9df4 */
+/* sha256:23b279ef03d8 */
 /* OCCVM — the globule field (2.25). The substrate decoration both tools share: a seeded field of
    droplets, one generator, two renderers. Rhyme paints it live on the draft face and as a still frame on
    every other slab (30_ui.jsx: ambientFloor); BTC writes a still frame to --globules as a data URI
@@ -1008,17 +1176,167 @@ var OCCVM_GLOBULES = (function () {
     };
   }
 
+  /* the substance, read LAZILY. The splicer inserts every part after one anchor, so parts land in
+     REVERSE list order and rheology.js may be assigned AFTER this file is evaluated — the 2.0 defect
+     that made cleave() throw on every call in the browser while Node resolved it through require and
+     every assertion passed. Same shape as yield.js's read, for the same reason. */
+  function rheo() {
+    return (typeof OCCVM_RHEOLOGY !== "undefined" && OCCVM_RHEOLOGY) ? OCCVM_RHEOLOGY
+         : (typeof require !== "undefined" ? require("./rheology.js") : null);
+  }
+
+  /* ---- the size scale, and what the substance says about merging (2.28) --------------------------
+   * Build-plan step 2 is "static globules at λc". Executing it turned up an identity, then a defect in
+   * how this system reads its own constant, then an answer that decides step 5 in advance. In order:
+   *
+   * 1. ℓ = γ/τ₀ IS λc, BY CONSTRUCTION RATHER THAN BY LUCK. Two drops of a yield-stress fluid begin
+   *    merging exactly as a Newtonian pair does — the bridge grows linearly in time — and then either
+   *    close or ARREST at a finite height, freezing a permanent non-spherical shape. The competition is
+   *    capillary stress γ/R against yield stress τ₀, so the boundary radius is γ/τ₀. Measured here:
+   *    γ/τ₀ = 7.1480 px, the capillary length √(γ/ρg) = 7.1479 px, and the puddle height τ₀/ρg =
+   *    7.1478 px are the SAME NUMBER. Not a coincidence — 2.10 fixed τ₀ by the puddle-height identity,
+   *    so γ/τ₀ = γ/(ρg·λc) = λc follows. The build plan asks whether the field landing on λc is "a
+   *    lucky coincidence or something to tune deliberately"; it is neither, and it cost nothing to
+   *    settle because both halves already shipped.
+   *
+   *    SOURCE, AND A CORRECTION TO THE PLAN. Kern, Sæter & Carlson, "Viscoplastic sessile drop
+   *    coalescence" (arXiv:2203.15617) — bridge height evolves as h₀ ∼ t "before arresting at long time
+   *    prior to minimizing its liquid/gas interfacial energy", with the arrested profile set by the
+   *    **Bingham number τ_y·h_drop/σ** modified by the drop's aspect ratio. That group is exactly R/ℓ
+   *    inverted, so the criterion's form is the source's rather than mine. The plan lists "Kern et al."
+   *    and "arXiv:2203.15617" as two corroborating sources; they are the same paper, and two citations
+   *    of one result is one result.
+   *
+   * 2. THE TWO YIELD STRESSES GIVE OPPOSITE ANSWERS, AND THEY ARE NOT COMPETING — THEY BRACKET.
+   *    rheology.js has carried an unresolved pairing since 2.10: τ₀ static 21.15 Pa (stress-ramp and
+   *    creep, the right one for a substance at rest) beside the dynamic Herschel-Bulkley intercept
+   *    4.41 Pa that k and n come from. That file records the pairing as unresolved "rather than
+   *    resolved". Arrest is its first consumer that forces the question, because γ/21.15 = 7.148 px
+   *    says every globule here arrests and γ/4.41 = 34.281 px says every one completes.
+   *
+   *    Read as a hysteresis, both are right and each governs its own moment. The bridge KEEPS FLOWING
+   *    while the driving capillary stress exceeds the DYNAMIC yield stress — the stress a material
+   *    already in motion resists at. The arrested shape STAYS PUT if the residual stress is below the
+   *    STATIC one — the stress required to restart it. Two lengths, three regimes, and no third
+   *    constant:
+   *
+   *        R < 7.148 px          nothing can hold the shape — the merge COMPLETES, one round globule
+   *        7.148 ≤ R ≤ 34.281    the bridge grows and then locks — a DUMBBELL with a real bridge
+   *        R > 34.281 px         the drive is under even the dynamic stress — BARELY JOINED
+   *
+   * 3. WHAT THE SHIPPED FIELD ACTUALLY PRODUCES, measured over 400,000 uniform pairs from the band:
+   *    **0.00% complete, 96.2% dumbbell, 3.8% barely joined.** The plan warns that "a system that
+   *    always completes merges is simpler and wrong". This substance, at this pixel scale, says the
+   *    opposite and says it decisively — the frozen dumbbell is not the rare case, it is the case.
+   *
+   *    THE BAND DOES NOT MOVE, AND THAT IS THE DISCIPLINED ANSWER. Completion needs BOTH drops under
+   *    7.148 px, since a merged radius is never smaller than its larger parent. Dropping the floor from
+   *    9 px buys 0.00% at 5.673 (the largest floor whose own twin-merge could complete), 0.69% at 4 px
+   *    and 2.68% at 2 px — while changing a look measured and approved on the page at 2.25. Moving a
+   *    measured value to manufacture an outcome the substance does not give is what P1, 2.1/P4 and 2.16
+   *    each refused, and this is the same refusal. The model expresses all three regimes as real
+   *    functions of the radii; the substance selects among them. That is the difference between a model
+   *    that CAN express both outcomes — which is what the plan asks for — and a picture arranged to
+   *    show both.
+   *
+   * 4. A CONSTANT USED OUTSIDE ITS REGIME, recorded because the plan's step 2 would have walked into it.
+   *    The shipped λc is the AIR interface's, √(γ/ρg). A globule suspended in a near-density-matched
+   *    liquid — which is what a lava lamp is, and what the plan's own §0 establishes — has
+   *    √(γ/(Δρ·g)), and Δρ is the one quantity such a lamp designs toward zero, so the length diverges:
+   *    7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at 0.005. Sizing a suspended globule with the
+   *    air-interface value is the 2.8/2.10/2.22 error class. Note that the ARREST lengths above are
+   *    unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones used here.
+   *    Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling implies
+   *    Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
+   *    sources are secondary, the bracket is reported as a bracket, and no constant here comes from
+   *    them — the check is only that the authored ceiling is physically ordinary, and it is.
+   *
+   * MERGE CONSERVATION: r³ = r₁³ + r₂³. Decided here and recorded, because the plan leaves it open and
+   * every number above depends on it. Volume rather than area: the drops render as spheres in
+   * projection, and the 3-D convention is the one drop-coalescence simulation uses. Under the 2-D
+   * alternative r² = r₁² + r₂² the same 400,000 pairs read 0.00% / 98.9% / 1.1% — the same verdict. */
+  var R = [9, 30];             /* authored, unchanged since 2.25 and measured on the page then */
+  var MERGE_POWER = 3;         /* volume conservation on merge — see above */
+
+  function arrestLengths() {   /* the two boundary radii, in CSS px; null with no substance spliced */
+    var r = rheo(); if (!r) return null;
+    var m = r.SUBSTANCE, px = function (pa) { return (m.gamma / pa) * 1000 / r.MM_PER_PX; };
+    return { complete: px(m.tau0), joined: px(m.tau0Dynamic) };
+  }
+  function merged(r1, r2) {
+    return Math.pow(Math.pow(r1, MERGE_POWER) + Math.pow(r2, MERGE_POWER), 1 / MERGE_POWER);
+  }
+  /* the only question the build plan's §2 asks, answered per pair rather than per system */
+  function arrestRegime(r1, r2) {
+    var L = arrestLengths(); if (!L) return "unknown";
+    var R2 = merged(r1, r2);
+    return R2 < L.complete ? "completes" : R2 <= L.joined ? "dumbbell" : "joined";
+  }
+  /* the Bingham number the source states the arrested shape by: τ_y·R/γ, i.e. R/ℓ */
+  function bingham(r1, r2) {
+    var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
+  }
+
+  /* HOW FAR THE BRIDGE GETS BEFORE IT FREEZES, as a fraction of the smaller lobe (2.28, step 5).
+   * Kern, Sæter & Carlson state the arrested profile by the Bingham number — the arrested shape "depends
+   * on the fluid's yield stress τ_y and coalescence angle α, represented by the Bingham number
+   * τ_y·h_drop/σ modified by the drop's height-width aspect ratio". They give the group, not a closed
+   * form for the height, and the aspect-ratio modification is a sessile-drop geometry this floor does
+   * not have — so what is taken is the group and its DIRECTION, and the shape of the falloff is named
+   * as authored rather than dressed as theirs. 1/Bi is the simplest falloff with the right two limits:
+   * it reaches 1 exactly where Bi reaches 1, which is the completion boundary the same group defines,
+   * so the three regimes meet without a seam and without a fourth constant.
+   * Measured across the shipped band: 0.63 at r=9+9, 0.38 at 15+15, 0.19 at 30+30 — a pair of small
+   * globules freezes with a thick waist, a pair of large ones barely touches. */
+  function arrestedBridge(r1, r2) {
+    var Bi = bingham(r1, r2);
+    return Bi === null ? 1 : Math.min(1, 1 / Bi);
+  }
+
   var PX_PER_DROP = 9000;      /* authored: one droplet per ~95×95 px */
-  var R = [9, 30];             /* authored: the radius band, px */
   var DRIFT_PX_S = 1.4;        /* authored: the live consumer's drift, carried on each drop so the field is one field */
 
   function count(w, h, pxPerDrop) { return Math.max(3, Math.round(w * h / (pxPerDrop || PX_PER_DROP))); }
 
-  /* one droplet, from the field's own PRNG */
+  /* one droplet, from the field's own PRNG.
+     `phase` is where this drop sits in the buoyancy cycle (2.28, step 3) — a STATIC property of the
+     drop like its radius, not motion, which is why it is the field's and the cycle it feeds is the live
+     consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
+     withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
+     and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
   function drop(rnd, w, h, r0, r1, edge) {
     var r = r0 + rnd() * (r1 - r0), a = rnd() * Math.PI * 2;
-    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r,
+    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r, phase: rnd(),
              vx: Math.cos(a) * DRIFT_PX_S / 1000, vy: Math.sin(a) * DRIFT_PX_S / 1000 };
+  }
+
+  /* ---- what the substance says about drift (2.28, step 3) ---------------------------------------
+   * L13 already records the floor's cost in a sentence: "a yield-stress fluid below τ₀ does not
+   * spontaneously convect or drift, so the floor contradicts the substance's defining behaviour". The
+   * buoyancy model gives that sentence a number, so it can be checked rather than believed.
+   *
+   * A globule rises when the buoyant stress Δρ·g·R exceeds τ₀. At the density contrast the authored
+   * 30 px ceiling implies (Δρ/ρ = 0.0567), that stress is 1.509 Pa at r = 9 px and 5.031 Pa at r = 30 —
+   * against a static yield stress of 21.15 Pa. **The substance is 14× short at the smallest globule in
+   * the field and 4.2× short at the largest**, and the radius at which buoyancy could move anything at
+   * all is 33.4 mm — **126 px**, four times the ceiling and larger than most surfaces the floor paints
+   * on. Nothing in this field can rise, by its own physics, at any speed.
+   *
+   * So the drift's MAGNITUDE is authored and there is no derivation to reach for; what is adopted from
+   * the literature is the cycle's SHAPE. Gyüre & Jánosi, "Basics of lava-lamp convection", Phys. Rev. E
+   * 80, 046307 (2009) — a real two-fluid lab analog — report the process as warm blobs rising from the
+   * bottom, ATTACHING at the top surface, then sinking again, and identify two modes, one heat-transport
+   * limited and one viscosity-limited with CONSTANT PERIODICITY. Rise, dwell, sink, dwell, one period
+   * for every drop with its own phase: that is what this field carries, and it is the shape rather than
+   * the speed that came from the source. */
+  function buoyantStress(rPx, dRhoOverRho) {
+    var r = rheo(); if (!r) return null;
+    var m = r.SUBSTANCE;
+    return m.density * 1000 * (dRhoOverRho === undefined ? 0.0567 : dRhoOverRho) * 9.80665 * (rPx * r.MM_PER_PX / 1000);
+  }
+  function risesAt(rPx, dRhoOverRho) {
+    var r = rheo(), t = buoyantStress(rPx, dRhoOverRho);
+    return r && t !== null ? t > r.SUBSTANCE.tau0 : null;
   }
 
   /* the field: deterministic in (seed, w, h). Returns the drops and the PRNG positioned after them, so a
@@ -1030,22 +1348,83 @@ var OCCVM_GLOBULES = (function () {
     return { drops: drops, rnd: rnd, spawn: function (edge) { return drop(rnd, w, h, r0, r1, edge); }, count: function () { return n; } };
   }
 
-  /* the still frame, as an SVG: one radial gradient per drop, hi at the core, lo at the rim. Colours
-     come in from the caller's resolved tokens — this file carries no literal (L6). */
+  /* ---- metaball rendering (2.28) -----------------------------------------------------------------
+   * BLUR + THRESHOLD, which is the build plan's own first recommendation and the cheapest of the three
+   * real paths. Blinn, "A Generalization of Algebraic Surface Drawing", ACM TOG 1(3):235-256 (1982) is
+   * the foundational form: sum a density field, draw the isosurface at a threshold. A Gaussian blur of
+   * overlapping filled circles IS a summed density field, and a hard cut on its alpha IS the
+   * isosurface, so the effect is one SVG filter rather than a field evaluation.
+   *
+   * WHY IT MATTERS BEYOND THE SILHOUETTE. Because the fields simply add, two approaching drops MERGE
+   * VISUALLY WITH NO MERGE CODE. That is what makes arrest expressible at all: an arrested pair is
+   * rendered by stopping the approach, never by special-casing the geometry, so the same renderer
+   * draws both outcomes and neither is a branch.
+   *
+   * THE BLUR RADIUS IS THE MENISCUS, NOT A NEW NUMBER. The scale over which surface tension smooths a
+   * shape is the same length L2 already uses for a wet edge, `--occvm-meniscus` = λc = 7.148 px, which
+   * §2.28 above shows is also ℓp. One length, one owner (L3). A blur authored beside it would be a
+   * second copy of a fact this system already carries.
+   *
+   * THE ISO-LEVEL IS BLINN'S HALF-DENSITY SURFACE, 0.5, and the alpha matrix's offset is therefore
+   * exactly `gain × 0.5` rather than the 18/-7 pair copied around the web (which is an iso-level of
+   * 0.389, a number nobody chose). GAIN is authored and named: it sets how hard the cut is, i.e. how
+   * many pixels the surface takes to go from transparent to opaque, and no derivation fixes it.
+   *
+   * THE CAVEAT IS REAL AND IS THIS TOOL'S PROBLEM. Blur+threshold "requires an opaque background to
+   * read correctly", and BTC paints this SVG as a background-image on a TRANSPARENT pseudo-element,
+   * screened over the substrate. Whether the threshold survives that is measured on the page, not
+   * assumed here; `goo:false` renders the plain gradient field exactly as 2.25 did, so the change is
+   * always the caller's and never the default sneaking in. That is 2.24's `fine:0` lesson: a flag the
+   * generator can silently ignore is worse than no flag. */
+  var GOO_GAIN = 24;           /* authored: the hardness of the isosurface cut, in alpha units */
+  var ISO = 0.5;               /* Blinn's half-density isosurface — derived from the method, not chosen */
+
+  function blurPx() { var L = arrestLengths(); return L === null ? 7.148 : L.complete; }
+
+  /* THE FILTER ITSELF, defined once and used by both renderers. BTC embeds it in the still SVG it
+     writes to --globules; Rhyme puts the same markup in a hidden <svg> and hands its id to the canvas
+     as `ctx.filter = url(#...)`, so the live floor and every still frame threshold identically. Two
+     copies of one filter would be L3's defect in a place nobody would think to look for it.
+     alpha' = gain·alpha − gain·ISO, clamped by the filter pipeline: opaque above the iso-level, gone
+     below. The widely-copied 18/-7 pair is an iso-level of 0.389, which is nobody's decision; this is
+     Blinn's 0.5 with the offset following from it. */
+  function gooFilter(o) {
+    var id = o && o.id || "occvm-goo";
+    var blur = (o && o.blur !== undefined) ? o.blur : blurPx();
+    var gain = (o && o.gain !== undefined) ? o.gain : GOO_GAIN;
+    return "<filter id='" + id + "' x='-20%' y='-20%' width='140%' height='140%'" +
+      " color-interpolation-filters='sRGB'>" +
+      "<feGaussianBlur in='SourceGraphic' stdDeviation='" + (+blur).toFixed(3) + "' result='b'/>" +
+      "<feColorMatrix in='b' type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 " +
+      (+gain).toFixed(3) + " " + (-gain * ISO).toFixed(3) + "'/></filter>";
+  }
+
+  /* the still frame, as an SVG. One radial gradient per drop, hi at the core, lo at the rim; colours
+     come in from the caller's resolved tokens, so this file carries no literal (L6). With `goo` the
+     whole field passes through the metaball filter above. */
   function svg(f, o) {
     var w = o.viewW || f.w || 1200, h = o.viewH || f.h || 800, alpha = o.alpha === undefined ? 0.24 : o.alpha;
     var sx = w / (o.w || w), sy = h / (o.h || h);
+    var goo = o.goo === undefined ? true : !!o.goo;
+    var gain = o.gooGain === undefined ? GOO_GAIN : o.gooGain;
+    var sd = (o.blur === undefined ? blurPx() : o.blur) * Math.min(sx, sy);
     var defs = "", body = "";
     for (var i = 0; i < f.drops.length; i++) {
       var d = f.drops[i], id = "g" + i;
       defs += "<radialGradient id='" + id + "'><stop offset='0' stop-color='" + o.hi + "'/><stop offset='1' stop-color='" + o.lo + "'/></radialGradient>";
       body += "<circle cx='" + (d.x * sx).toFixed(1) + "' cy='" + (d.y * sy).toFixed(1) + "' r='" + (d.r * Math.min(sx, sy)).toFixed(1) + "' fill='url(#" + id + ")'/>";
     }
+    if (goo) { defs += gooFilter({ id: "goo", blur: sd, gain: gain }); body = "<g filter='url(#goo)'>" + body + "</g>"; }
     return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + w + " " + h + "' preserveAspectRatio='none'>" +
       "<defs>" + defs + "</defs><g opacity='" + alpha + "'>" + body + "</g></svg>";
   }
 
-  return { mulberry32: mulberry32, field: field, svg: svg, count: count, PX_PER_DROP: PX_PER_DROP, R: R, DRIFT_PX_S: DRIFT_PX_S };
+  return { mulberry32: mulberry32, field: field, svg: svg, count: count,
+           PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
+           arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
+           arrestedBridge: arrestedBridge,
+           gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
+           GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_GLOBULES;
 /* ==== END OCCVM globules.js ==== */
@@ -1224,7 +1603,7 @@ if (typeof module !== "undefined") module.exports = OCCVM_YIELD;
 /* ==== END OCCVM yield.js ==== */
 
 /* ==== OCCVM SPINE rheology.js — spliced from occvm/rheology.js. do not edit. ==== */
-/* sha256:8073bf642da0 */
+/* sha256:89b1af14672c */
 /* OCCVM 2.5 — the rheological substance (OCCVM-L12, second basis).
  *
  * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
@@ -1355,7 +1734,17 @@ var OCCVM_RHEOLOGY = (function () {
      * k and n come from — the two are different quantities and this file pairs them, which is recorded
      * here rather than resolved, because a static yield stress is the right one for a substance at rest
      * and the wrong one to sit in a flow-curve triple. */
-    tau0: 21.15,       /* Pa      — yield stress: below this the substance does not flow at all */
+    tau0: 21.15,       /* Pa      — STATIC yield stress: the stress required to START flow */
+    /* 2.28 — the DYNAMIC intercept, promoted from a comment to a constant. It has been named in this
+       file's own prose since 2.10 ("the DYNAMIC Herschel-Bulkley intercept (4.41 Pa) that k and n come
+       from") and has been unavailable to every consumer, so any consumer needing it had to retype it —
+       which is L3's defect exactly, a fact in two places, one of them prose. Its first consumer is the
+       coalescence arrest boundary in globules.js, where the static and dynamic stresses turn out to
+       bracket a hysteresis rather than to disagree: the bridge keeps flowing above the dynamic stress
+       and the arrested shape holds below the static one. Same row as k and n (Koocheki Table 3,
+       control, 25 °C); it is the intercept those two were fitted with, which is why pairing them with
+       the static value is recorded here as unresolved rather than papered over. */
+    tau0Dynamic: 4.41, /* Pa      — the Herschel-Bulkley intercept k and n were fitted against */
     k: 16.18,          /* Pa·sⁿ   — consistency index k′, Koocheki Table 3, control, 25 °C (was 4.6, 2.10) */
     n: 0.250,          /* —       — flow index n′, same row; n < 1 is shear-thinning (was 0.19, 2.10) */
     brix: 30,          /* °Bx     — soluble solids, the grade ketchup is sold by */
@@ -1689,31 +2078,6 @@ var OCCVM_RHEOLOGY = (function () {
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_RHEOLOGY;
 /* ==== END OCCVM rheology.js ==== */
-
-/* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
-/* sha256:6ab675b82831 */
-/* OCCVM 1.4 — the mineral set (OCCVM-L6). One implementation, shared by every conforming tool.
- *
- * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
- * spliced copy — the next splice reverts it silently.
- *
- * The set is closed and the meanings are fixed: amethyst is the default field, malachite is affirmed/
- * won/positive, ruby is negated/lost/failed. `m`/`mlo` (accent/deep) are the law-pinned pair — SPINE.md's
- * L6 table states them exactly. `hi`/`lo` are the vein generator's own highlight/shadow tint, derived by
- * eye rather than by a formula (the existing amethyst/malachite pair wasn't built from one either), and
- * are cosmetic: changing them is a design call, not a re-registration.
- *
- * Before this file, each tool that had a mineral concept declared its own copy. Rhyme's carried only two
- * of the three — it had never needed a negative mineral, so ruby was never added — which is exactly the
- * "no local exceptions" gap L6 exists to close (OCCVM-D6's other half: BTC had no mineral system at all).
- */
-var OCCVM_MINERALS = {
-  amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c", hi: "#c9a6ff", lo: "#5a36a8" },
-  malachite: { m: "#3fbf7e", mlo: "#1c6a45", hi: "#9ff0c5", lo: "#1f7a50" },
-  ruby:      { m: "#e0475f", mlo: "#6b1a2e", hi: "#f5a3b3", lo: "#8f2740" },
-};
-if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
-/* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
 /* sha256:53ee71c1edf1 */
@@ -2436,17 +2800,26 @@ function computeSignals(now){
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
 }
 /* ---------------------------------------------------------------- interact: config + inverse normal */
-const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,mineral:"amethyst"};
-function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); } }
+const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,palette:OCCVM_PIGMENT_DEFAULT};
+function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); }
+  /* 2.27 — a reader who chose a mineral before the palettes existed keeps a choice. amethyst was the
+     default and maps to obsidian, the palette that preserves that build; malachite and ruby were the
+     two accents this tool never wired to anything but the field tint, and neither is a palette, so
+     both also land on obsidian. Recorded rather than silently dropped: the old key is READ and then
+     deleted, so the migration runs once and cannot re-fire on a later write. */
+  if(S.cfg.mineral!==undefined){ if(!OCCVM_PIGMENTS[S.cfg.palette]) S.cfg.palette=OCCVM_PIGMENT_DEFAULT;
+    S.cfg.migratedFrom={mineral:S.cfg.mineral}; delete S.cfg.mineral; saveCfg(); }
+  if(!OCCVM_PIGMENTS[S.cfg.palette]) S.cfg.palette=OCCVM_PIGMENT_DEFAULT; }
 function saveCfg(){ try{ localStorage.setItem("btc.cfg",JSON.stringify(S.cfg)); }catch(e){} }
-/* OCCVM-L6 — the mineral is a decorative accent (vein tint), never an outcome colour. Deliberately narrower
-   than Rhyme's: this tool's malachite/ruby already carry a fixed win/lose meaning everywhere (§5), so the
-   mineral choice is kept off every surface that could be mistaken for that signal. */
-function applyMineral(){
-  const m=OCCVM_MINERALS[S.cfg.mineral]||OCCVM_MINERALS.amethyst, rs=document.documentElement.style;
-  rs.setProperty("--mineral",m.m); rs.setProperty("--mineral-lo",m.mlo);
-  rs.setProperty("--vein-hi",m.hi); rs.setProperty("--vein-lo",m.lo);
-}
+/* OCCVM-L6 — the palette. 1.4 kept the mineral off every surface §5 governs, because a decorative accent
+   sitting beside a win/lose colour is §7.6's trade. A PALETTE is the other thing: it supplies the outcome
+   colours themselves, and it is safe where the accent was not for one reason only — the hue-to-meaning
+   relationship is not the reader's to change. Green is positive in every palette. Red is negative in
+   every palette. What moves is which green and which red, and the smallest positive/negative separation
+   across the five is CIEDE2000 62.3 against this build's own 73.1, so no palette brings them near
+   confusion. Both figures are recorded in occvm/pigments.js and asserted in test/occvm.js.
+   The write itself lives in the shared part, so both tools write the same names to the same tokens. */
+function applyPigment(){ return occvmApplyPigment(S.cfg.palette, document.documentElement.style); }
 function invNorm(p){
   p=Math.min(0.999999,Math.max(0.000001,p));
   let lo=-8,hi=8;
@@ -3069,22 +3442,39 @@ const SESSION=(()=>{ const fresh=()=>String((Date.now()^(Math.random()*1e9))>>>0
    target and stays in occvm/ unspliced as the generator the record cites.
 
    Still by law, not by choice of the moment: L13 withholds ambient motion from this tool, so the field is
-   written once per mineral change as a data URI and never animated. The seed is the injected session seed,
-   as the veins' was, so the golden set can diff it. Colour comes through the tokens applyMineral() wrote.
+   written once per palette change as a data URI and never animated. The seed is the injected session seed,
+   as the veins' was, so the golden set can diff it. Colour comes through the tokens applyPigment() wrote.
    The WEIGHT is this tool's own and was measured on this tool's own ground — see GLOBULE_ALPHA. */
 function globuleLayer(){
-  const seed=SESSION>>>0, mineral=(S.cfg&&S.cfg.mineral)||"amethyst";
-  const m=OCCVM_MINERALS[mineral]||OCCVM_MINERALS.amethyst;
+  const seed=SESSION>>>0, pal=(S.cfg&&S.cfg.palette)||OCCVM_PIGMENT_DEFAULT;
+  const m=OCCVM_PIGMENTS[pal]||OCCVM_PIGMENTS[OCCVM_PIGMENT_DEFAULT];
   const cs=getComputedStyle(document.documentElement);
   const str=(k,d)=>{ const v=(cs.getPropertyValue(k)||"").trim(); return v||d; };
+  /* 2.28 — THE FIELD IS SIZED TO THE VIEWPORT AND PAINTED 1:1, and until now it was neither.
+     `background:var(--globules)` with no background-size resolves to `auto`, and an SVG data URI with a
+     viewBox and no intrinsic width has no auto size, so it STRETCHED to fill whatever box it landed in.
+     Measured on a 1100x1400 page: the 1200x800 field stretched 0.917 in x and 1.75 in y, so every
+     globule rendered as a 1.9:1 vertical oval — and a DIFFERENT oval on each `.tile::before`, since
+     each tile has its own aspect. A drop's shape was a property of the element it happened to land on.
+     That is not a small thing here: step 2 of the build plan is the SIZE SCALE, and a radius stretched
+     by an unknown per-element factor is not a length at all — the arrest boundary ℓp = 7.148 px cannot
+     mean anything on a surface where 7 px in the field is 12 px on screen in one direction and 6 in the
+     other. Found by cropping the render and looking, not by reading the CSS.
+     The field is now generated at the viewport's own size and pinned to it with `--globules-size`, so a
+     circle is a circle and a px is a px. A tile shows the top-left of that field at 1:1 rather than a
+     squashed copy of the whole of it. Resizing crops rather than stretches, which is why nothing here
+     listens for resize: cropping is correct and costs no work, and a regenerating background would be
+     motion this tool is withheld from (L13). */
+  const gw=Math.max(1200, Math.ceil((window.innerWidth||1200))), gh=Math.max(800, Math.ceil((window.innerHeight||800)));
   let svg="";
   try{
-    const f=OCCVM_GLOBULES.field({seed, w:1200, h:800});
-    svg=encodeURIComponent(OCCVM_GLOBULES.svg(f,{w:1200,h:800,viewW:1200,viewH:800,
+    const f=OCCVM_GLOBULES.field({seed, w:gw, h:gh});
+    svg=encodeURIComponent(OCCVM_GLOBULES.svg(f,{w:gw,h:gh,viewW:gw,viewH:gh,
       hi:str("--vein-hi",m.hi), lo:str("--vein-lo",m.lo), alpha:GLOBULE_ALPHA}));
   }catch(e){ S.globuleFallback=String(e&&e.message||e); }
   /* no drawn fallback: an unspliced generator paints nothing rather than an invented layer (L6, L10) */
   document.documentElement.style.setProperty("--globules", svg ? "url(\"data:image/svg+xml;utf8,"+svg+"\")" : "none");
+  document.documentElement.style.setProperty("--globules-size", svg ? gw+"px "+gh+"px" : "auto");
 }
 /* ---------------------------------------------------------------- swing watch (touch-35c estimator, ledger, journal) */
 const SWING={target:0.36,payout:0.35,cheapMax:0.15,paths:600};
@@ -3374,7 +3764,16 @@ function renderSwing(){
   if(ts) ts.innerHTML=st.n?('<tr><td class="num">'+st.n+'</td><td class="num">'+pc(st.hitRate)+'</td><td class="num model">'+st.brierModel.toFixed(3)+'</td><td class="num">'+st.brierBase.toFixed(3)+'</td><td class="num" style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>=0?"+":"")+st.delta.toFixed(3)+'</td>'
     +'<td class="num">'+(st.flowWith?pc(st.flowWith.hit)+' (n'+st.flowWith.n+')':"\u2014")+'</td><td class="num">'+(st.flowAgainst?pc(st.flowAgainst.hit)+' (n'+st.flowAgainst.n+')':"\u2014")+'</td></tr>'):'<tr><td colspan="7" style="color:var(--bone-dim)">no graded window-sides yet \u2014 grading begins at the first gate after a cheap side is watched</td></tr>';
   const rnS=repairNote();
-  if(note) note.textContent=(st.n?(st.verified?"verified \u2014 highlights on":"unverified \u2014 "+st.n+" of 30 graded reads"):"collecting")+(rnS?(" \u00b7 "+rnS):"");
+  /* §4.2 — the same three words the other panels use. "verified/unverified" was this panel's private
+     dialect for the identical question, and the highlight gate is unchanged: highlights follow
+     st.verified exactly as before, and the chip only says out loud what that gate already knew. */
+  const swConf=confidence({n:st.n||0,nMin:30,spans:!(st.n>=30&&st.delta>0),
+    why:st.n>=30?(st.delta>0?"model beats the base rate over "+st.n+" graded reads":"model does not beat the base rate"):undefined});
+  if(note) note.innerHTML=(st.n
+      ? ('model \u2212 base '+((st.delta>=0?"+":"")+st.delta.toFixed(3))+' \u00b7 '
+         +'<span style="color:var(--'+(st.delta>0?"up":"down")+')">'+(st.delta>0?"beats the base rate":"does not beat the base rate")+'</span> '
+         +confChip(swConf)+(st.verified?' \u00b7 highlights on':' \u00b7 highlights off'))
+      : ('0 graded reads \u00b7 \u2014 '+confChip(swConf)))+(rnS?(" \u00b7 "+rnS):"");
 }
 function renderJournal(){
   const ta=$("jarms")&&$("jarms").querySelector("tbody"), tb=$("jtbl")&&$("jtbl").querySelector("tbody"), note=$("jnote"); if(!ta||!tb) return;
@@ -3452,17 +3851,99 @@ function viaRows(){
 function renderViability(){
   const strip=$("vstrip"), tb=$("viatbl")&&$("viatbl").querySelector("tbody"), note=$("vianote");
   const rows=viaRows(); const f2=v=>v===null?"\u2014":((v>=0?"+":"")+v.toFixed(2)+"\u00a2");
-  const verdict=r=>r.n<30?"insufficient (n"+r.n+")":(r.net>0?"positive":"negative");
+  /* §4.1 — the READING and its CONFIDENCE are separate fields now. "insufficient (n7)" folded them
+     into one word; a row with no fills and a row with five hundred losing fills both read as a colour
+     and a noun, and only one of those is a finding (§9). */
+  const viaConf=r=>confidence({n:r.n,nMin:30,rule:true});
+  const verdict=r=>r.net===null?"\u2014":(r.net>0?"positive":"negative");
   if(tb) tb.innerHTML=rows.map(r=>'<tr'+(r.sub?' style="color:var(--bone-lo)"':'')+'><td>'+r.label+'</td><td class="num">'+r.n+(r.posts!==undefined?'<span class="sub">of '+r.posts+' posts</span>':'')+'</td>'
     +'<td class="num">'+(r.spread===null?"\u2014":r.spread.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.adv===null?"\u2014":r.adv.toFixed(2)+"\u00a2")+'</td><td class="num">'+(r.fee===null?"\u2014":r.fee.toFixed(2)+"\u00a2")+'</td>'
-    +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td><td class="num" style="color:var(--'+(r.n>=30&&r.net>0?"up":"down")+')">'+(r.spread===null?"no fills yet":verdict(r))+'</td></tr>').join("");
+    +'<td class="num" style="color:var(--'+(r.net===null?"faint":(r.net>0?"up":"down"))+')">'+f2(r.net)+'</td>'
+    +'<td class="num" style="color:var(--'+(r.net===null?"bone-dim":(r.net>0?"up":"down"))+')">'+(r.spread===null?"no fills yet":verdict(r))
+    +(r.sub?"":' '+confChip(viaConf(r)))+'</td></tr>').join("");
   const live15=rows.find(r=>r.label==="15m \u00b7 live"), liveH=rows.find(r=>r.label==="hourly \u00b7 live");
   const h15=rows.find(r=>r.label==="15m \u00b7 history"), hH=rows.find(r=>r.label==="hourly \u00b7 history");
-  const txt=(k,h,l)=>'<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)+' <span style="color:var(--bone-dim)">n'+l.n+'</span>'):' \u00b7 live \u2014 no fills yet')
-    +' \u00b7 <span style="color:var(--'+((l&&l.n>=30&&l.net>0)?"up":"down")+')">'+((l&&l.n>=30&&l.net>0)?"POSITIVE":"NEGATIVE")+'</span>';
+  /* Three fixed positions (§4.1): what happened (the cents), what it means (the word), how much to
+     trust it (the chip). The first draft of this made the WORD conditional on live n and showed
+     "\u2014" with no fills — and the page-load guard refused it, correctly. §9 says these panels read
+     negative and that this honesty is preserved above all else, and it is right: the history row is a
+     real backtested finding (\u22121.63¢ over the spine's fills), not an absence. Withholding the word
+     until a LIVE series matures would hide a measurement the tool has, which is the opposite failure
+     to the one §4.2 is fixing.
+     So the reading comes from the best evidence available and the chip names WHICH — live once it
+     clears the registered rule, history until then. Both are on the line; only the basis moves. */
+  /* THE CHIP MUST DESCRIBE THE BASIS OF THE READING SHOWN, and the first version of this did not:
+     the reading fell back to history while the chip kept counting the LIVE series, so the strip read
+     "NEGATIVE · not enough data yet" — a decisive backtested finding and a statement that nothing has
+     been measured, in the same breath. That is §4.1's conflation reintroduced one level along, caught
+     by rendering the line and reading it rather than by the assertions, which all passed. */
+  const txt=(k,h,l)=>{ const liveOK=!!(l&&l.n>=30&&l.net!==null);
+    const src=liveOK?l:h;
+    const from=liveOK?("live fills, n"+l.n):("the backtested history, n"+(h.n||0)+" \u2014 no live series yet");
+    const c=confidence({n:(liveOK?l.n:(h.n||0)),nMin:30,rule:true,why:from});
+    const read=src.net===null?"\u2014":(src.net>0?"POSITIVE":"NEGATIVE");
+    const col=src.net===null?"bone-dim":(src.net>0?"up":"down");
+    return '<b>'+k+'</b> history '+f2(h.net)+(l&&l.net!==null?(' \u00b7 live '+f2(l.net)):' \u00b7 live \u2014 no fills yet')
+      +' \u00b7 <span style="color:var(--'+col+')">'+read+'</span> '+confChip(c); };
   if(strip) strip.innerHTML='<span class="lbl">viability \u00b7 maker round trip \u00b7 spread \u2212 adverse \u2212 fees</span> '+txt("15m",h15,live15)+' \u00b7 '+txt("hour",hH,liveH);
-  if(note) note.textContent="reads positive only on net > 0 over \u2265 30 live fills";
+  if(note) note.textContent="the reading is the sign of net; the confidence is whether \u2265 30 live fills back it";
 }
+/* ---------------------------------------------------------------- legibility: one confidence vocabulary
+ * BTC-REDUCTION-PLAN §4.2. Five subsystems already say "how much to trust this number" and they say it
+ * in five dialects: the verdict panel counts criteria, viability says "insufficient (n7)", swing says
+ * "unverified — 7 of 30 graded reads", the H-protocol rows carry identifiability codes, and the regime
+ * registry carries percentile flags. All five do one job. A reader learns it five times.
+ *
+ * §4.1 IS THE REASON THIS IS THREE FIELDS AND NOT ONE STRING. Today a panel blurs three different
+ * things into one line — what happened, what it means, and how much to trust it — and the reader parses
+ * grammar to find out which part is the fact and which is the hedge. They are separated here into fixed
+ * positions, and nothing about any measurement changes.
+ *
+ * THE CONFLATION THIS FIXES IS REAL AND IT IS NOT COSMETIC. `NEGATIVE` renders in ruby whether the live
+ * viability series holds zero fills or five hundred. Those are opposite epistemic states — "we measured
+ * this and it loses money" against "we have not measured it" — and §9 says the first is the output this
+ * instrument exists for while the second is nothing at all. One of them is a finding. The display could
+ * not tell them apart.
+ *
+ * THE THREE LEVELS ARE ABOUT EVIDENCE, NEVER ABOUT DIRECTION. A clear NEGATIVE is a clear reading; §9 is
+ * explicit that "those are findings, not failures". Direction is the reading's own field and it is
+ * rendered beside this one, never folded into it.
+ *
+ *   thin        below the registered minimum n — not enough data yet
+ *   borderline  enough data, and the reading sits inside its own uncertainty
+ *   clear       enough data, and the reading is outside it — in EITHER direction
+ *
+ * AND "CLEAR" HAS TO BE EARNED. A panel with no interval and no pre-registered rule cannot reach it: the
+ * default at sufficient n is `borderline`, not `clear`, because "we have thirty of something" is not by
+ * itself a statement that the reading is outside the noise. A panel whose standard IS a registered rule
+ * (viability's "net > 0 over >= 30 live fills", §9) passes `rule:true` and clears on that rule, because
+ * there the rule is the standard and meeting it is the finding. Nothing may claim clarity by default. */
+const CONF_ORDER = ["thin", "borderline", "clear"];
+function confidence(o){
+  o = o || {};
+  const n = Number(o.n) || 0, nMin = Number(o.nMin) || 0;
+  const mk = (level, why) => ({ level: level, label: CONF_LABEL[level], why: why, n: n, nMin: nMin });
+  if (n < nMin) return mk("thin", n + " of " + nMin + " needed");
+  if (o.spans !== undefined) return o.spans
+    ? mk("borderline", o.why || "the interval includes the bar")
+    : mk("clear", o.why || ("n" + n + ", interval clear of the bar"));
+  if (o.rule) return mk("clear", o.why || ("n" + n + ", the registered rule is met"));
+  return mk("borderline", o.why || ("n" + n + ", no interval computed"));
+}
+const CONF_LABEL = { thin: "not enough data yet", borderline: "borderline", clear: "clear" };
+/* One chip, one place. Gilt is reserved for what decides (§5) and confidence decides nothing, so the
+   chip is never gilt and never an outcome colour — it must not be mistakable for the reading beside it. */
+function confChip(c){
+  if (!c) return "";
+  const col = c.level === "thin" ? "--bone-dim" : c.level === "borderline" ? "--bone-lo" : "--bone";
+  /* the `why` is generated here from numbers, never from anything a market or a user typed, so it
+     carries no quoting hazard — but it lands in an attribute, so the two characters that could close
+     one are stripped rather than trusted. */
+  const why = String(c.why || "").replace(/["<>]/g, "");
+  return '<span class="confchip" data-conf="' + c.level + '" style="color:var(' + col + ')" title="' +
+    why + '">' + c.label + '</span>';
+}
+
 /* ---------------------------------------------------------------- verdict (pre-registered decision rule) */
 const VERDICT_RULE={minWindows:200,brierCI:0.90,bandMinN:30,bandMargin:3,pnlMinN:100,pnlDays:2};
 function bootstrapCI(vals,fn,level,B){
@@ -3509,7 +3990,14 @@ function computeVerdict(){
 function renderVerdict(){
   const el=$("verdictbox"), tb=$("vcrit")&&$("vcrit").querySelector("tbody"); if(!el||!tb) return;
   const V=computeVerdict();
-  el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '+V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria';
+  /* §4.1 — READY is the reading; the criteria count is what happened; the chip is how much to trust
+     it. The three were one line and the reader had to know that "2/4 criteria" is a fact while READY
+     is a verdict. The n that gates confidence here is the graded-window count the rule itself names. */
+  const nW=(V.crit.find(c=>/window/i.test(c.name))||{}).n;
+  const vConf=confidence({n:Number(nW)||V.n||0,nMin:VERDICT_RULE.minWindows,
+    spans:!V.ready, why:V.ready?"every pre-registered criterion is met":"at least one criterion is not met"});
+  el.innerHTML='<span style="color:'+(V.ready?"var(--up)":"var(--down)")+';font-weight:600">'+(V.ready?"READY":"NOT READY")+'</span> \u00b7 '
+    +V.crit.filter(c=>c.pass).length+'/'+V.crit.length+' criteria \u00b7 '+confChip(vConf);
   tb.innerHTML=V.crit.map(c=>'<tr><td class="num" style="color:'+(c.pass?"var(--up)":"var(--down)")+'">'+(c.pass?"\u2713":"\u2717")+'</td>'
     +'<td style="white-space:normal;min-width:11em">'+c.name+'<span class="sub">'+c.need+'</span></td><td class="num" style="color:var(--bone-lo)">'+c.have+'</td></tr>').join("");
 }
@@ -4054,15 +4542,45 @@ const FONT=()=>getComputedStyle(document.body).fontFamily;
 
    The literals stay as the fallback, and they are load-bearing: jsdom resolves no custom properties, and a
    palette that silently became empty strings would paint nothing while every assertion passed. */
+/* OCCVM 2.17/2.27 — the canvas palette. THESE LITERALS ARE A FALLBACK, not the source of truth.
+ *
+ * 2.17 found that renderSweep contained zero references to the light: the largest visual element in the
+ * tool drew identically at 3am and at noon, because PAL was thirteen hex literals evaluated once at load
+ * and the sundial wrote only to CSS. Two of the thirteen were wired to the resolved spine then — the two
+ * the sundial moves — and the other eleven were left, which was correct while nothing else moved them.
+ *
+ * 2.27 is what makes the rest of them move: a palette writes nine outcome/authority tokens, so a PAL that
+ * reads two of thirteen would paint the OLD palette's marks on the NEW palette's ground. Every key now
+ * names its token and resolves from the page, on `sunTick`'s once-a-minute beat — resolving custom
+ * properties at ~30fps is the wrong price for values that change once a minute or once a click, and
+ * `setPalette` calls this directly so a click does not wait for the minute.
+ *
+ * THE LITERALS STAY AND ARE LOAD-BEARING. jsdom resolves no custom property, so a palette that silently
+ * became empty strings would paint nothing while every assertion passed. They are `obsidian`'s values
+ * exactly, and test/occvm.js asserts that set identity — a fallback that has drifted from the palette it
+ * mirrors is a second source of truth, which is the defect this whole layer exists to remove. */
 const PAL={field:"#09080d",bone:"#ece3d0",boneLo:"#b7ad9c",boneDim:"#8e8778",gilt:"#ffe9a3",giltB:"#d9a52c",giltC:"#7a5510",
   mal:"#3fbf7e",malLo:"#1c6a45",ruby:"#e0475f",rubyLo:"#6b1a2e",verd:"#3f9a86",bronze:"#d9a866"};
-const PAL_LIVE={bone:"--bone",boneLo:"--bone-lo"};   /* the sundial-written tokens this palette carries */
+/* A key is LIVE only if something actually writes its token — the sundial each minute, or the palette on
+   a change. `field`, `boneDim` and `bronze` are not here and that is the guard's doing, not an oversight:
+   all three are fixed `:root` declarations that nothing moves, so resolving them once a minute would be a
+   no-op pretending to be a light, which is precisely what 2.17's rule forbids. The first draft of this
+   line listed all thirteen; the harness refused three of them, which is the boundary working. They stay
+   literals until something moves them. */
+const PAL_LIVE={bone:"--bone",boneLo:"--bone-lo",
+  gilt:"--gilt-a",giltB:"--gilt-b",giltC:"--gilt-c",mal:"--malachite",malLo:"--malachite-lo",
+  ruby:"--ruby",rubyLo:"--ruby-lo",verd:"--verdigris"};
 function palTick(){
   try{ const cs=getComputedStyle(document.documentElement);
     for(const k in PAL_LIVE){ const v=(cs.getPropertyValue(PAL_LIVE[k])||"").trim();
       if(/^#[0-9a-f]{6}$/i.test(v)) PAL[k]=v; } }catch(e){}
+  UPC=PAL.mal; DNC=PAL.ruby;
 }
-const UPC=PAL.mal, DNC=PAL.ruby;
+/* `let`, not `const`, and that is the 2.27 fix rather than a style preference: these were snapshots taken
+   at load, so every call-keyed colour on the sweep — the one place §5 says a wrong colour is the most
+   dangerous bug this tool can have — would have kept painting the palette that was active when the file
+   parsed. Nothing about the call sites changes; the two names are refreshed wherever PAL is. */
+let UPC=PAL.mal, DNC=PAL.ruby;
 function niceTicks(lo,hi,anchor){
   const span=Math.max(hi-lo,1e-6);
   const steps=[0.5,1,2,5,10,20,25,50,100,200,250,500,1000,2500,5000,10000];
@@ -7777,21 +8295,29 @@ function cfgFmt(k,v){
   if(k==="minEdge") return v+"pt";
   return (+v).toFixed(k==="contract"?3:2);
 }
-function syncMineralUI(){
-  for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.setAttribute("aria-pressed",String(m===S.cfg.mineral)); }
+function syncPaletteUI(){
+  for(const k of Object.keys(OCCVM_PIGMENTS)){ const el=$("pg_"+k); if(!el) continue;
+    el.setAttribute("aria-pressed",String(k===S.cfg.palette));
+    /* the unselected swatches wear their OWN accent, inline; the selected one drops it and reads the
+       live tokens, so the row shows four offers and one applied state rather than five offers */
+    if(k===S.cfg.palette) el.style.removeProperty("--pg"); else el.style.setProperty("--pg",OCCVM_PIGMENTS[k].m); }
 }
-function setMineral(m){ if(!OCCVM_MINERALS[m]) return; S.cfg.mineral=m; saveCfg(); applyMineral(); globuleLayer(); syncMineralUI(); }
-for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.addEventListener("click",()=>setMineral(m)); }
+function setPalette(k){ if(!OCCVM_PIGMENTS[k]) return; S.cfg.palette=k; saveCfg();
+  applyPigment(); palTick(); globuleLayer(); syncPaletteUI();
+  /* palTick BEFORE the canvas is asked to redraw: PAL resolves from the tokens applyPigment just wrote,
+     and a sweep drawn between the two would paint the outgoing palette's marks on the incoming ground. */
+  try{ renderSweep(); }catch(e){} }
+for(const k of Object.keys(OCCVM_PIGMENTS)){ const el=$("pg_"+k); if(el) el.addEventListener("click",()=>setPalette(k)); }
 function syncCfgUI(){
   if($("c_kproxy")) $("c_kproxy").value=S.cfg.kproxy||"";
   for(const k of CFG_KEYS){ const el=$("c_"+k), vv=$("v_"+k); if(!el) continue;
     el.value=String(S.cfg[k]); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); }
-  syncMineralUI();
+  syncPaletteUI();
 }
 for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
   el.addEventListener("input",()=>{ S.cfg[k]=+el.value; S.cfg.touched=S.cfg.touched||{}; S.cfg.touched[k]=1; const vv=$("v_"+k); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); saveCfg(); });
 }
-$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy, mn=S.cfg.mineral; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.mineral=mn; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
+$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy, pl=S.cfg.palette; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.palette=pl; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
@@ -7983,7 +8509,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909232758";
+const BUILD_STAMP="build-20260910065029";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7992,7 +8518,7 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
   loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); shockLoad(); regimeLoad();
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
   kProbeSameOrigin(); initSections();
-  try{ applyMineral(); globuleLayer(); sunTick(); }catch(e){}
+  try{ applyPigment(); globuleLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderRegimeLedger(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
@@ -8000,5 +8526,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909232758 -->
+<!-- build-20260910065029 -->
 </html>

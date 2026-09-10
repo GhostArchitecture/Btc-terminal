@@ -7,12 +7,15 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
+2.25 (§12). **On the branch and not deployed: `build-20260910065029`** — §11's closure, the `reversal`
+citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
+writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
+*Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
 Rhyme's GitHub Pages read `build-20260909232257`. Earlier lines: `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **8,093 lines, 630 KB, 294 top-level functions**, zero dependencies, zero build
-step. *These four figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
-counted, not quoted, at 2.14.* **§10 (audit addendum) corrects and extends
+the deployment hold covered.* One file, **8,181 lines, 640 KB, 299 top-level functions**, zero dependencies, zero build
+step. *These figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
+counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -35,8 +38,9 @@ GhostArchitecture/Btc-terminal   (main)
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
-│   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,minerals.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
+│   ├─ tools/derive-pigments.js  generates pigments.js: authored roles in, derived ramps out, checks printed
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
 │   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
 │   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
@@ -193,10 +197,13 @@ trades.
 Obsidian substrate `#1b1a22 / #2c2a36 / #0e0d13` on `#09080d`; bone inscription `#ece3d0`; gilt ramp
 `#7a5510 → #d9a52c → #ffe9a3` reserved for what decides; malachite `#3fbf7e/#1c6a45` and ruby `#e0475f/#6b1a2e`;
 brushed bronze binding `#d9a866/#8f6a35/#4f3a1c` with verdigris `#3f9a86` in seams. Per-session vein layer
-(3 displaced beziers, seeded PRNG). **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
+(3 displaced beziers, seeded PRNG) — retired at 2.25 for the globule field. **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
 `--lx --ly --elev --night` once a minute; every bevel, sheen, cabochon highlight and cast shadow reads those four
-custom properties. Canvas colours come from `PAL`, whose two ink weights refresh from the resolved spine on
-`sunTick`'s beat since 2.17 — the canvas reads the sun, at the sun's own cadence. Serif for section heads, mono
+custom properties. Canvas colours come from `PAL`, which resolves **ten of its thirteen keys from the page** on
+`sunTick`'s beat — two ink weights since 2.17, the eight outcome and authority colours since 2.27, so the
+canvas reads both the sun and the chosen palette at the cadence each moves on. The other three name tokens
+nothing writes and stay literals. **Those hexes are the `obsidian` palette and one of five**; a palette is
+a choice of which green and which red, never of which hue means what (OCCVM-L6, §12's 2.27 entry). Serif for section heads, mono
 for numbers.
 
 ---
@@ -241,8 +248,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **783 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 433, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **875 assertions across 7 harnesses** (invariants 80, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 508, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -517,7 +524,62 @@ and the owner opened the deployed build and reported it running cleanly.
 
 ---
 
-## 11. The shock programme — pre-registered evidence standard (2026-09-06)
+## 11. The shock programme — CLOSED 2026-09-10. Pre-registered evidence standard (2026-09-06)
+
+> ## CLOSED — 2026-09-10, by owner decision, before any observation
+>
+> **Cause: a structural mismatch between this programme's unit of observation and the tool's actual use.**
+> §11 is denominated throughout in scheduled US macro releases — the ~100–150/year planning premise
+> (§11.1), the phase-1/phase-2 split (§11.5), the calendar cost table, and the 24-month deadline (§11.7
+> clause 5) all descend from that one assumption. **The operator does not trade scheduled releases.** The
+> tool is used continuously against 15-minute windows, of which there are ~35,040 a year. Every
+> feasibility number in this section is computed against an activity that is not happening.
+>
+> **This is not a threshold judged too demanding.** `dBrierFloor`, `k`, `maxMonths` and the required-n
+> arithmetic are internally consistent and were derived from real properties of this instrument. They
+> describe a different programme than the one the tool is used for. Nothing below is relaxed, and nothing
+> below may be quoted as relaxed.
+>
+> **No result motivated this closure, and there is no result that could have.** No shock window has been
+> scored; `reversal` was never spliced; H1's shock-size percentile is still `[TBD]`, uninvented; no scorer
+> exists for `regime`; the operator has not examined the tool's recorded data. **§11.7 clause 6 governs
+> thresholds moved *after seeing results*. No result exists to have moved them, and none of the six
+> falsification clauses fired** — this closure is outside them, which is why it is recorded here in full
+> rather than as a clause number. A closure that dodged a clause would look exactly like one that fired
+> one, so the distinction is stated instead of left to be inferred.
+>
+> **Provenance, because it is the part that matters.** The programme was authored to a framing the owner
+> did not set and did not review while it accumulated across sessions, and it continued on its own
+> momentum. **The structural mismatch above is the cause; owner authority is the mechanism, not the
+> justification.**
+>
+> **Sizing note, for anyone tempted to rescue it by tuning.** The arm count is the weakest lever in the
+> formula — multiplicity enters under a square root. Recomputed here against the shipped
+> `shockRequiredHoldN`, not quoted:
+>
+> | k | CI level | required holdout n (sd = 0.05, power 0.5) | at 80% |
+> |---|---|---|---|
+> | 20 | 0.9950 | 197 | 333 |
+> | 10 | 0.9900 | 166 | 292 |
+> | 5 | 0.9800 | 136 | 251 |
+> | 1 | 0.9000 | 68 | 155 |
+>
+> Giving up **every** exploratory arm buys a **65.5%** reduction and still leaves **68** scheduled
+> releases. The real driver is `sd` — squared, and unknowable before data by construction
+> (`shockRequiredHoldN` returns `null` rather than defaulting). The programme's feasibility was genuinely
+> undecidable in advance. That is not a flaw in this document; it is an accurate reflection of reality,
+> and it is a second, independent reason the framing does not fit an operator working alone.
+>
+> **The ledgers are kept**, per §11.7's own instruction. `btc.shock`, `btc.regime` and every H-protocol
+> column keep recording; recording was never the thing gated (§11.5). `SHOCK_RULE` stays in the code and
+> `test/prereg.js` keeps checking it against this document, so a closed programme cannot silently drift
+> either.
+>
+> **Superseded by: nothing.** **Any successor must state its own unit of observation before its first
+> number.**
+>
+> *Everything below this line is the standard as it stood, unaltered. It is a record, not a rule in
+> force.*
 
 Written before the first shock-conditioned observation exists. No number in this section was chosen with knowledge
 of a result. `SHOCK_RULE` in `index.html` is the machine-readable copy of these thresholds and `test/prereg.js`
@@ -1957,6 +2019,470 @@ alarming number was mine, not the tool's.
 `process.exit(done())`, it never executed and the suite reported **PASS** at an unchanged count — caught
 by watching the count rather than the verdict. `test/occvm.js` **424 → 433**; §6's total **774 → 783**.
 No code in this tool changes: the measurement's whole output is that the shipped values are right.
+
+**2.27 — the palettes, and `PAL` finally reads the page.** From `PIGMENT-PALETTES.md`, executed in its
+own stated order; `GLOBULE-BUILD-PLAN.md` §7 makes the canvas fix step 1 and the palette document §5 says
+plainly that **palettes and that fix are the same piece of work**. They are, and neither half works alone:
+a palette that writes CSS custom properties reaches nothing on a canvas whose colours were thirteen
+literals evaluated once at load.
+
+**The closed set died with the crystal, nineteen releases ago.** L6 read *"the mineral set is frozen"* and
+named three — amethyst, malachite, ruby. That set was closed **because under aragonite a colour had to be
+a mineral that exists with that colour.** The crystal left at 2.8 and the vocabulary did not notice. A dye
+is not discovered, it is chosen. `occvm/minerals.js` is retired by the splicer's own mechanism and leaves
+`occvm/` outright — unlike `veins.js`, whose generator L10's record still cites, nothing cites a mineral.
+
+**What is frozen now is the relation, not the hex.** Green is positive, red is negative, gilt is
+authority, verdigris-adjacent is active — in every palette. A palette is a choice of *which* green and
+*which* red. That is what makes it safe where 1.4's decorative accent was not: 1.4 kept the mineral off
+every surface §5 governs because an accent beside a win/lose colour is §7.6's trade, and a palette
+supplies the win/lose colours themselves. **The evidence is a measurement, not the sentence above:** the
+smallest positive/negative separation across the five is **CIEDE2000 62.3** (`sunset`) against this
+build's own **73.1**. `OCCVM_PIGMENT_SEPARATION` records the table and the suite asserts it per palette,
+so narrowing that gap means re-recording the number rather than absorbing it.
+
+**Six values per palette authored, seven derived, and the anchor makes "no-op" a measurement.** The four
+fixed roles and the decorative accent and highlight are authored — no hex among them comes from a
+spectrum or a measurement, and they are labelled authored for the same reason `LOCK_RELAX_MS = 360` is.
+The seven ramp members are derived by `occvm/tools/derive-pigments.js`: each is its authored parent moved
+by the offset (ΔL, chroma ratio, Δh in CIE L\*C\*h) **the shipped build already puts between that same
+pair**. `--malachite-lo` under a teal positive is not a design choice, it is this system's own ramp
+re-hung under a new hue; authoring twenty more hexes by eye would have been inventing colour the plan
+never specified. `obsidian` **is** the anchor, so the derivation applied to its six authored values
+reproduces all seven derived ones **byte-identically** — asserted, which is what makes selecting obsidian
+a no-op rather than a claim. Two independent checks came free: the palette document authors a *third*
+decorative value for three of the five and the derivation never saw it, yet agrees to **ΔL ≤ 3.6, Δh ≤
+6.3°**; and its decorative tables are **not** ordered by lightness, so which of its three becomes accent
+and which becomes highlight is decided by measured L\* and the ladder is asserted monotone in all five.
+
+**One measured negative, on the record rather than tuned away.** `active` is pinned verdigris-adjacent and
+three palettes author it 4–16° off that hue — closest to `positive` in `sunset`, **1° apart**, separated
+by lightness alone. This build's own positive/active separation is **CIEDE2000 14.8**; `sunset` reads
+**11.7** and is the only palette below it. Rotating its `active` onto the verdigris hue was tried and
+reaches **13.6** — still short, because the limit is its low-chroma green `positive`, not the hue of its
+`active`. Clearing the floor would mean re-authoring a role hex by eye, which this system refuses
+everywhere else, so it ships as authored and the number is in the source and pinned as the only one.
+
+*And my first alarm about it was measuring the wrong axis.* I read the hue angles, saw 1–7°, and called it
+a legibility risk. In CIEDE2000 the shipped build itself sits at 14.8 with 20° of hue — lightness was
+carrying most of that separation all along. The hue reading described no pair a reader could confuse; it
+was 2.26's global-worst-case error in a different coordinate.
+
+**`PAL`, and the defect inside it that had nothing to do with palettes.** 2.17 wired two of thirteen keys
+to the resolved page because those two were all the sundial moved. A palette moves eight more, so ten now
+resolve on `sunTick`'s beat and on every palette change. **`UPC` and `DNC` were `const` snapshots taken at
+parse** — every call-keyed colour on the sweep, the one place §5 calls a wrong colour the most dangerous
+bug this tool can have, would have gone on painting whatever palette was active when the file loaded.
+They are `let`, reassigned in `palTick`, and the suite pins both directions so a revert to `const` fails.
+
+*The 2.17 guard refused three keys and was right.* My first `PAL_LIVE` listed all thirteen; the harness
+failed on `--field`, `--bone-dim` and `--bronze-a`, which are fixed `:root` declarations nothing writes.
+Resolving those once a minute is a no-op pretending to be a light, which is exactly what 2.17's rule
+forbids. They stay literals, and that is now asserted as a negative rather than left to drift back.
+
+**Four guards retired deliberately, each with its reason, none quietly.** Retiring a guard is the move
+this project distrusts most, so every one is named. (1) **1.9's `--ruby-lo` pin** — deleted at 1.9 as dead
+weight, declared and referenced nowhere. It is not dead now: `PAL` carried `rubyLo:"#6b1a2e"` as a bare
+literal with *no token to resolve from*, which is the restatement L6 exists to catch sitting in the one
+file the measure could not see until 2.17. Only that clause goes; `--glass-hi` and `--warn` stay pinned,
+and `--ruby-lo` is held to the stronger property instead — written by the palette **and** read by `PAL`,
+so it cannot go dead a second time. (2)–(3) **2.17's two `PAL_LIVE` assertions** — *every live key is a
+token the sundial writes*, and *the outcome colours are not among them*. The first would refuse a correct
+wiring; the second pins the exact behaviour this release changes. Replaced by: a live key must be written
+by **something**, and the providers are enumerated from `sundial.js` and `OCCVM_PIGMENT_TOKENS` rather
+than typed — plus the sharper half, that an outcome colour is live because the *palette* moves it and
+never because the sundial does, since a sundial-written outcome colour would mean the light had acquired
+an opinion about win/lose. (4) **the D6 mineral block**, whose load-bearing negative was that a mineral
+switch never touches `--malachite`/`--ruby`/`--up`/`--down`. A palette does, by design, so porting it
+would have failed on correct code — the 2.15 and 2.21 class. What replaces it is the property that made
+the widening admissible in the first place, measured per palette.
+
+**The L6 measure re-authored, and the §2ad condition finally checked.** The old measure asked whether a
+tool restated one of three mineral *accents*, granting malachite and ruby as outcome colours that happened
+to share those hexes. Under palettes that distinction dissolves. It now asks the only question left —
+whether a tool carries a second source of truth — in two ways: a **non-default palette's** hex typed into
+a tool diverges (and the detail names which palette it leaked from), and a `:root` fallback of a
+palette-written token that has **drifted** from the default palette diverges. §2ad permits those fallbacks
+on exactly that condition, because a page must paint an outcome colour before the part runs and jsdom
+resolves no custom property at all — and **nothing checked the condition until this line existed.**
+
+**`SPINE.md` gains §2ad, a fourth row in the 2.13 boundary, and it is a real gap the boundary did not
+have.** Until now exactly one spliced part wrote tokens, so "written by the sundial" and "written by the
+spine" were the same sentence. `pigments.js` breaks that: thirteen tokens written at load and on change,
+each keeping a `:root` fallback that genuinely renders until the part runs — so neither §2ab (defined by
+having no surviving default) nor §2a (fixed values). `--pigment`, `--pigment-lo` and BTC's tool-local
+`--pg` are registered in §6b; the census refused the change until they were, which is the boundary working
+rather than describing.
+
+**The token auditor had L6's 2.17 blind spot one level along.** `PAL_LIVE` is `{mal: "--malachite", …}`
+and `palTick` resolves every value through `getPropertyValue`, so ten tokens are consumed by a loop no
+regex could see — the token is the map's **value**, and both existing object-literal rules match a token
+as a **key**. It reported `--ruby-lo` as dead weight on the very run that introduced it, which is that
+file's own opening paragraph happening again. Syntax cannot say whether a value-position token is read or
+written, so the two maps are named rather than sniffed, per that file's stated rule for adding a way.
+*And its `PARTS` list had gone stale twice over* — still naming `veins.js` and `minerals.js`, never having
+gained `serif.css`, `reading.css`, `rheology.js`, `globules.js` or `yield.js`, so five spliced parts'
+tokens were being attributed to the tools carrying them. It reads the splicer's own list now.
+
+**The reference surface caught the one thing the harnesses could not.** Its L6 specimen still called
+`OCCVM_MINERALS`, and the page threw on load — the golden recorder refused to record a dead page, which
+is the failure mode it exists for. The specimen is now five palettes, each printing its four fixed roles
+over its decorative ladder with its own measured positive/negative ΔE beside it, because that number is
+the whole safety argument and printing it beats promising it. Its token-provenance table reads the palette's
+own list rather than the four names typed there at 1.4. `golden` **540 values, verified**.
+
+**What actually renders, measured rather than argued.** Chromium, rAF and the 1 Hz loop frozen so nothing
+but the palette can move a pixel, each palette diffed against `obsidian` over the full 1100×1400 frame:
+
+| palette | pixels moved | mean ΔL\* | p99 | max |
+|---|---|---|---|---|
+| astro | 11.58% | 0.34 | 1.83 | 2.41 |
+| deepwater | 13.91% | 0.39 | 5.83 | 6.35 |
+| acid | 12.73% | 1.06 | 18.98 | 20.93 |
+| sunset | 15.60% | 1.55 | 5.78 | 6.93 |
+
+**`astro` moves least and that is the plan's authoring, faithfully executed rather than corrected.** Its
+four fixed roles are `#3fbf7e / #e0475f / #ffe9a3 / #3f9a86` — obsidian's, verbatim — so astro and
+obsidian differ **only** in the decorative layer, and a reader choosing "the original, red-orange wax in
+clear liquid" gets a change of about a third of an L\*. Recorded rather than repaired: the four roles are
+§2's fixed set and re-authoring one by eye is the thing this release refused for `sunset`.
+
+*Selection is a real preference in both tools, persisted, and a pre-2.27 stored `mineral` migrates once —
+to `obsidian`, the palette that preserves what that reader was looking at — with what it migrated from
+kept beside it and the old key deleted so it cannot re-fire.* BTC's picker is five swatches in
+Settings → Advanced, each unselected one wearing its own palette's accent through `--pg` while the
+selected one drops it and reads the live tokens, so the row shows four offers and one applied state.
+Rhyme's is the same five in prefs. The choice cannot travel between the tools — `localStorage` is
+per-origin and they are served from different ones, which L6 has recorded since 1.4.
+
+`test/occvm.js` **433 → 484**; §6's total **783 → 834**. Rhyme **108 tests**. `13 laws: 9 in force, 0
+diverged, 0 unadopted, 4 unmeasured.`
+
+**2.28 — the metaball field, and the substance answers a question the plan left open.**
+`GLOBULE-BUILD-PLAN.md` build order step 2: *"static globules at λc, metaball-rendered. Proves the
+rendering path and the size scale before anything moves."* Executing it turned up an identity, two real
+rendering defects, and an answer that settles step 5 before step 5 is built.
+
+**γ/τ₀ IS λc, by construction rather than by luck.** Two drops of a yield-stress fluid begin merging
+exactly as a Newtonian pair does — the bridge grows linearly in time — and then either close or **arrest
+at a finite height**, freezing a permanent non-spherical shape. The competition is capillary stress γ/R
+against yield stress τ₀, so the boundary radius is γ/τ₀. Measured: **γ/τ₀ = 7.1480 px, √(γ/ρg) =
+7.1479 px, τ₀/ρg = 7.1478 px — the same number.** Not a coincidence: 2.10 fixed τ₀ by the puddle-height
+identity, so γ/τ₀ = γ/(ρg·λc) = λc follows. The plan asks whether the field landing on λc is *"a lucky
+coincidence or something to tune deliberately"*; it is neither, and it cost nothing to settle because
+both halves already shipped. Asserted from the three formulas rather than the digits, so it survives a
+change to γ or ρ and fails the day τ₀ stops being what that identity produces.
+
+*Source, and a correction to the plan.* Kern, Sæter & Carlson, "Viscoplastic sessile drop coalescence"
+(arXiv:2203.15617): the bridge height evolves as `h₀ ∼ t` "before arresting at long time prior to
+minimizing its liquid/gas interfacial energy", with the arrested profile set by the **Bingham number
+`τ_y·h_drop/σ`** modified by the drop's aspect ratio — which is R/ℓ inverted, so the criterion's form is
+the source's rather than mine. The plan lists "Kern et al." and "arXiv:2203.15617" as two corroborating
+sources. **They are the same paper**, and two citations of one result is one result.
+
+**The two yield stresses give opposite answers, and they are not competing — they bracket.**
+`rheology.js` has carried an unresolved pairing since 2.10: τ₀ static 21.15 Pa beside the dynamic
+Herschel-Bulkley intercept 4.41 Pa that `k` and `n` were fitted with, recorded there as unresolved
+"rather than resolved". Arrest is the first consumer that forces it, because γ/21.15 = 7.148 px says
+every globule here arrests and γ/4.41 = 34.281 px says every one completes. Read as a hysteresis both
+are right and each governs its own moment — the bridge **keeps flowing** while the drive exceeds the
+**dynamic** stress; the arrested shape **stays put** while the residual is below the **static** one.
+Two lengths, three regimes, no third constant:
+
+| merged radius | what happens |
+|---|---|
+| < 7.148 px | nothing can hold the shape — the merge **completes**, one round globule |
+| 7.148 – 34.281 px | the bridge grows and then locks — a **dumbbell** with a real bridge |
+| > 34.281 px | the drive is under even the dynamic stress — **barely joined** |
+
+*And 4.41 was a number in a comment.* It has been named in `rheology.js`'s own prose since 2.10 and was
+unavailable to code, so any consumer needing it had to retype it — L3's defect, in prose. It is
+`SUBSTANCE.tau0Dynamic` now.
+
+**What the shipped field actually produces, and the band does not move.** Over 40,000 pairs drawn from
+`R = [9, 30]`: **0.00% complete, 96.2% dumbbell, 3.8% barely joined.** The plan warns that "a system
+that always completes merges is simpler and wrong". This substance at this pixel scale says the
+opposite and says it decisively — the frozen dumbbell is not the rare case, it is the case. Completion
+needs **both** drops under 7.148 px, since a merged radius never beats its larger parent; dropping the
+floor from 9 px buys 0.00% at 5.673 (the largest floor whose own twin-merge could complete), 0.69% at
+4 px and 2.68% at 2 px, while changing a look measured and approved on the page at 2.25. **Moving a
+measured value to manufacture an outcome the substance does not give is what P1, 2.1/P4 and 2.16 each
+refused, and this is the same refusal.** The model expresses all three regimes as real functions of the
+radii; the substance selects among them. That is the difference between a model that *can* express both
+outcomes — which is what the plan asks for — and a picture arranged to show both.
+
+*A constant used outside its regime, recorded because step 2 walks straight into it.* The shipped λc is
+the **air** interface's, √(γ/ρg). A globule suspended in a near-density-matched liquid — what a lava
+lamp is, and what the plan's own §0 establishes — has √(γ/(Δρ·g)), and Δρ is the one quantity such a
+lamp designs toward zero, so the length diverges: 7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at
+0.005. Sizing a suspended globule with the air-interface value would be the 2.8/2.10/2.22 error class.
+The **arrest** lengths are unaffected — γ/τ₀ carries no g and no density at all, which is why they are
+the ones used. Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling
+implies Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
+sources are secondary, the bracket is reported as a bracket, and **no constant here comes from them.**
+
+**Merge conservation: `r³ = r₁³ + r₂³`, decided and recorded.** The plan leaves it open and every number
+above depends on it. Volume rather than area: the drops render as spheres in projection, and the 3-D
+convention is what drop-coalescence simulation uses. Under the 2-D alternative the same pairs read
+0.00% / 98.9% / 1.1% — the same verdict. Rhyme's floor had shipped the area convention locally; it reads
+`OCCVM_GLOBULES.merged` now, because two conventions would put the renderer and the physics on
+different drops.
+
+**The rendering: blur + threshold, the plan's own first recommendation.** Blinn, "A Generalization of
+Algebraic Surface Drawing", *ACM TOG* 1(3):235–256 (1982) — sum a density field, draw the isosurface at
+a threshold. A Gaussian blur of overlapping filled circles **is** a summed density field and a hard cut
+on its alpha **is** the isosurface, so it is one SVG filter rather than a field evaluation. What it buys
+is not the silhouette: because fields add, **two approaching drops join with no merge code**, and an
+arrested pair is rendered by stopping the approach rather than by a second special case. Rhyme's
+hand-drawn bridge quad is deleted — it was geometry standing in for physics, and it could only ever draw
+a merge that completes.
+
+*The blur is the substance's own length* (`--occvm-meniscus` = λc = ℓp), not a constant authored beside
+it. *The iso-level is Blinn's 0.5*, so the alpha matrix offset is `gain × 0.5` rather than the 18/−7 pair
+copied around the web, which is an iso-level of 0.389 that nobody chose. `GOO_GAIN = 24` is authored and
+named: it sets how many pixels the surface takes to go from transparent to opaque, and no derivation
+fixes it. One `gooFilter()` definition serves BTC's still data-URI SVG and Rhyme's live canvas through
+`ctx.filter = url(#…)`, so the live floor and every still frame cut at the same level.
+
+**Two rendering defects, both found by looking at pixels rather than at code.**
+
+*The field was stretching to its box, and had been since 2.25.* `background:var(--globules)` with no
+`background-size` resolves to `auto`, and an SVG data URI with a viewBox and no intrinsic width has no
+auto size — so the 1200×800 field stretched to fill whatever box it landed in. Measured on a 1100×1400
+page: 0.917 in x, 1.75 in y, so **every globule rendered as a 1.9:1 vertical oval**, and a *different*
+oval on each `.tile::before`. A drop's shape was a property of the element it happened to land on. That
+is not cosmetic here: step 2 is the **size scale**, and a radius stretched by an unknown per-element
+factor is not a length — ℓp = 7.148 px cannot mean anything on a surface where 7 px in the field is
+12 px on screen one way and 6 the other. The field is generated at the viewport's own size now and
+pinned to it with `--globules-size`, so a circle is a circle and a px is a px; a tile shows the top-left
+of that field at 1:1. Resizing crops rather than stretches, which is why nothing listens for resize —
+cropping is correct, costs nothing, and a regenerating background would be motion L13 withholds here.
+
+*And the first metaball commit erased Rhyme's floor completely.* The isosurface cuts at 0.5, so drawing
+the field **at** the display weight of 0.24 puts all of it under the cut. Measured in Chromium on a
+25 px disc: filtered at α 0.24 gives **max alpha 0 over 0 non-zero pixels**, against 255 over 1,804 at
+α 1. **The screenshot did not show it** — on the slab it was taken from, the floor sits behind opaque
+controls, so "looks the same" and "is gone" were the same picture. Caught by probing pixels. The weight
+must composite **outside** the filtered buffer, which is the shape BTC's `<g opacity>` already had and
+Rhyme's canvas did not; both halves are now pinned, and the guard was verified to fail when the erasure
+is put back.
+
+**Measured on the page, rAF and the 1 Hz loop frozen, full 1100×1400 frame against no field at all:**
+gradient field 12.76% of pixels at mean 2.98 L\*; metaball field **11.24% at mean 3.16** — slightly
+tighter coverage at slightly greater weight, which is what a threshold does. On Rhyme's live floor
+canvas, where the threshold acts: **10.31% coverage, peak alpha 61, mean alpha 59.2** — 97% of peak,
+which is the signature of a thresholded field rather than a gradient one. Several frozen dumbbells are
+visible in the render, produced with no merge code, which is the arrested end state §2 asked for.
+
+`--globules-size` registered in §6b; the census refused the change until it was. `test/occvm.js`
+**484 → 508**; §6's total **834 → 858**. Rhyme **108 → 110 tests**, both new ones verified to bite.
+
+**2.28 step 3 — buoyancy, and L13's recorded cost becomes a number.** Not this tool's code; the shared
+part and the law are, and the finding travels. The build plan's reframing: **a lava lamp is not one
+substance getting restless, it is two immiscible phases in a heat-driven density race** — the wax sits
+slightly denser at rest, heat expands it more than the carrier, past a crossover it becomes buoyant,
+rises, cools and sinks. *The motion is buoyancy; rheology governs shape and merging, not drive.* Which
+makes the drift Rhyme shipped at 2.22 — a random constant direction per drop — the wrong model rather
+than a coarse one: it had no bottom, no top and no turnaround.
+
+**The shape is sourced; the speed is authored; the substance says the speed is zero.** Gyüre & Jánosi,
+"Basics of lava-lamp convection", *Phys. Rev. E* **80**, 046307 (2009), a real two-fluid lab analog:
+blobs rise from the bottom, **attach** at the top surface, then sink — rise, dwell, sink, dwell — with
+two modes, one heat-transport limited and one **viscosity-limited with constant periodicity**. The
+constant-period mode is taken, so every drop shares one period and differs only in the phase the seeded
+field already gives it.
+
+**L13 has recorded since 2.15 that "a yield-stress fluid below τ₀ does not spontaneously convect or
+drift". That is now measured.** A globule rises when the buoyant stress `Δρ·g·R` exceeds τ₀. At the
+contrast the authored 30 px ceiling implies, that stress is **1.509 Pa at r = 9 px and 5.031 Pa at
+r = 30**, against **τ₀ = 21.15** — **14× short at the smallest globule in the field, 4.2× at the
+largest** — and the radius at which buoyancy could move anything at all is 33.4 mm, **126 px**, four
+times the ceiling and larger than most surfaces the floor paints on. Nothing in this field can rise, by
+its own physics, at any speed. That is not a reason to drop the floor (L13 grants it and records the
+cost); it is the reason there is no derivation to reach for, so the pace is authored at the magnitude it
+already had — `FLOOR_RISE_PX_S = 1.4`, `DRIFT_PX_S`'s number, now vertical and cyclic instead of random.
+
+**One authored number, not three.** The period **follows** from that speed and the surface's own height
+rather than sitting beside it, so a tall face cycles slowly and a short one quickly — 523 s on a 300 px
+face — which is what a taller vessel does. And the turn at each end rides the substance's **own**
+cessation curve (`OCCVM_RHEOLOGY.easing`, derived at 2.8 with its hard stop) rather than an invented
+ease: a blob arriving at the top decelerates to rest, and this system owns exactly one curve for coming
+irreversibly to rest. *Recorded as one-sided:* it owns no curve for setting off, so the departure
+inherits the arrival's rather than a time-reversal being invented, which would be a shape nobody
+derived. The curve is sampled **once** — `easing` integrates 4,000 steps, and it is a property of the
+substance, not of the frame.
+
+Driven in Chromium on the shipped functions: starts at 0, rises monotonically, holds exactly 1 through
+the dwell, sinks monotonically, holds 0. `phase` joins the shared field as a **static** property of a
+drop like its radius — a number saying where in the cycle it starts moves nothing on its own, so it is
+carried by both tools alike while the cycle that reads it stays in the tool L13 grants motion to.
+
+Rhyme **110 → 111 tests**; three of the new assertions verified to fail against an authored period, an
+invented ease, and the old drift restored beside the cycle.
+
+**2.28 steps 4 and 5 — the coil decides where, τ₀ decides what.** One piece of work, because that is the
+build plan's own sentence for them. Not this tool's code; the shared part and the arrest model are.
+
+**Recombination happens at a fixed point.** A real lava lamp carries a metallic wire coil at the base
+acting as a surface-tension breaker, recombining cooled wax after it descends; free-floating pairwise
+merging anywhere on screen is the easier build and is not what the object does. **And the coil needs no
+geometry and no authored height**, because step 3 already put one at the bottom: a drop is at the coil
+exactly when it is in the bottom dwell of its cycle, which is also when a real lamp's wax pools. Two
+drops can only begin a weld while both are resting there. `cyclePos` returns exactly 0 only in that
+dwell, so the position function *is* the coil predicate — one function, two jobs, no third constant.
+
+**How far the bridge gets before it freezes is the Bingham number's.** Kern, Sæter & Carlson give the
+group — the arrested profile "depends on the fluid's yield stress τ_y and coalescence angle α,
+represented by the Bingham number τ_y·h_drop/σ" — not a closed form for the height, and their
+aspect-ratio modification is a sessile-drop geometry this floor does not have. So what is taken is the
+group and its **direction**, and the falloff `1/Bi` is named as authored. It has the one property that
+matters: it reaches a full lobe exactly where Bi reaches 1, which is the completion boundary the *same
+group* defines, so the three regimes meet with **no seam and no fourth constant** — asserted by
+approaching Bi = 1 from both sides. Measured across the band: a 9+9 pair freezes at **63%** of the
+smaller lobe, 15+15 at **38%**, 30+30 at **19%**. A pair of small globules keeps a thick waist; a pair
+of large ones barely touches.
+
+**The arrested pair is one stuck object, and that answers the plan's open accumulation question without
+inventing a rule.** The plan asks what a frozen dumbbell does — drift off as one object, or pile up at
+the recombination point and eventually clog the floor. It drifts off, because that is simply what a
+frozen dumbbell *is*: the bridge locked, so the two lobes are bonded and travel together. It is also
+self-limiting with nothing added — **a pair that has arrested is done**, since a third arrival would need
+the bridge to grow again against a yield stress that already stopped it, so a locked pair never welds
+again and the size distribution cannot run away. No cap, no splitting rule, no invented threshold.
+
+**And the first version of that was wrong in a way the render hid.** The follower lobe was given the
+leader's phase and left to compute its own height — but a drop's height depends on **its own radius**
+(`(h − r) − pos·(h − 2r)`), so two lobes of different size drifted apart over the cycle and the frozen
+bridge silently stretched. A frozen bridge does not stretch. The follower is placed from the leader plus
+the offset it froze at, every frame: one rigid body. **Found by driving the shipped floor and counting,
+not by looking** — the driven run reported **0 frozen pairs** where the arrest branch was firing all
+along, because the detector looks for a constant separation and the pairs did not have one. With the
+rigid body in place the same run reports **4 locked pairs, and all 4 of the touching pairs are locked**,
+which is what a 96%-arrest substance should produce.
+
+*The driven measurement is the guard, not a note about it.* `loadFloor` pumps the shipped `ambientFloor`
+through **40,000 frames — an hour of simulated time, 4.3 full cycles** — and then reads the arrest off
+the canvas: every drop is one `arc`, and a pair that has arrested holds a constant separation frame
+after frame while both move, which two drops that merely passed near each other cannot fake. Guards
+verified to bite against merging anywhere instead of at the coil, and against a follower left to drift.
+
+*And the harness caught the stale-artifact hole again.* `spine.test.js` reads the **repo-root**
+`index.html`, so the driven test ran against the previous release's floor and reported zero arrests from
+correct code. That is 2.22's ordering defect showing up as a confusing measurement rather than as a
+green build, which is the better failure mode and the reason that guard exists.
+
+*One more curve moved to module scope:* `cyclePos` and the sampled cessation curve are functions of a
+number, not of a canvas, so they sit beside their constants where a harness can drive them rather than
+inside a closure it has to infer. `atCoil` stays inside — it reads that instance's own clock.
+
+Rhyme **111 → 113 tests**.
+
+**2.28 step 6 — `--heat` modulates, and two of my own guards were stricter than the law.** The last item
+in the build order, last because it is the only piece that touches another tool's live data. Not this
+tool's code; the law is, and the guard retirement is the part worth reading.
+
+**L13 named this case before the floor existed.** Its text, unchanged since 2.15: *"a real value may
+scale a floor's intensity (Rhyme's `--heat`, read-only, is the obvious first one), but the floor is
+lawful at zero modulation, which is precisely why this is a grant and not a case of the gated-motion
+rule."* Modulation was never forbidden. A **gate** was. So nothing in the law moves here.
+
+**What was forbidden was in my guards, and they were the wrong shape.** Two clauses written at 2.22 are
+retired: one listed `--heat` among strings the floor's source may not contain, the other pinned the
+floor's inputs to exactly two — *"the only inputs are the canvas and a stillness that is never a
+measured value."* Both assert the **absence of a string**, which is a proxy for "ungated" and not the
+property. What replaces them is driven: **the cycle period at heat 0 must equal the period the floor ran
+before heat existed — exactly, not closely** — because that identity is the whole of L13's distinction
+between a grant and the gated-motion case. Measured: **836,237 ms either way, identical**; full heat
+runs the cycle **1.60× faster** and no more; and the guard was verified to fail against a version where
+heat *gates* rather than modulates. The rest of the forbidden list stays — no tempo, no pacing, no bpm.
+
+*And that guard had a second defect the change exposed:* it tested the floor's source **including its
+comments**, so a block explaining at length what the floor may and may not read failed for saying the
+word. The L6 colour guard three tests above already strips comments for exactly this reason; this one
+now does too. A vocabulary check that counts its own prose is a guard that punishes documentation.
+
+**What heat modulates is the convection rate, which is the model's own variable rather than a parameter
+picked to have something to attach.** A lamp's bulb is its heat source and the cycle rate follows it, so
+heat reaching the period is the same mechanism step 3 already built. The value is the draft's own drone
+depth — how far past the pop line the worst vowel run has gone, 0 when nothing is — which is the same
+quantity `.bar` already carries per bar as `--heat`, read for exactly what it means. The floor never
+writes it, never decides what it means, and still runs when it is 0.
+
+*One implementation note that is a real property, not a detail.* Heat reaches the running floor through
+a setter rather than the effect's dependency list, because re-running the effect tears the canvas down
+and reseeds the field — **a floor that reshuffles as you type is not a floor.** The field's identity
+survives the writing changing under it.
+
+Rhyme **113 tests**, holding. Two guard retirements, each with its reason in the suite beside the
+assertion that replaced it, and the replacement verified to bite.
+
+**The `GLOBULE-BUILD-PLAN` build order is complete: 1 through 6.**
+
+**2.29 — one confidence vocabulary, and a conflation the display could not see.** From
+`BTC-REDUCTION-PLAN.md` §4.1–4.3, whose §4.4 (the regime ledger view) already shipped at 11.9.
+**None of this changes a measurement.** The stated problem is that the data page needs a PhD to read,
+and it is a consequence of something good: every panel that could show a clean number shows a hedge
+instead, because a clean number would claim more certainty than the math has. The rigor is honest. It
+lived entirely in the grammar.
+
+**§4.2 — five dialects for one question.** The verdict panel counted criteria, viability said
+`insufficient (n7)`, swing said `unverified — 7 of 30 graded reads`, the H-protocol rows carry
+identifiability codes and the regime registry carries percentile flags. All five answer *how much should
+I trust this*, and a reader learns it five times. There is one scale now — **`thin` / `borderline` /
+`clear`** — with one `confidence()` and one `confChip()`.
+
+**§4.1 — and the split is the point, not the wording.** A panel line blurred *what happened*, *what it
+means* and *how much to trust it* into one string, so the reader parsed grammar to find out which part
+was the fact and which was the hedge. Fixed positions now. **The conflation that fixes is not
+cosmetic:** `NEGATIVE` rendered in ruby whether the live viability series held zero fills or five
+hundred. Those are opposite epistemic states — *we measured this and it loses money* against *we have
+not measured it* — and §9 says the first is the output this instrument exists for while the second is
+nothing at all. One is a finding. The display could not tell them apart.
+
+**The three levels are about evidence, never about direction, and that is what makes them compatible
+with §9.** A decisive loss is a **clear** reading, not a weak one. Direction is the reading's own field
+and renders beside the chip, never folded into it.
+
+**Clarity has to be earned and cannot be defaulted.** A panel with enough rows and no interval and no
+pre-registered rule reads `borderline`, not `clear` — *"we have forty of something"* is not a statement
+that the reading sits outside the noise, and a scale that defaulted to `clear` would launder exactly
+that. A panel whose standard **is** a registered rule (viability's "net > 0 over ≥ 30 live fills", §9)
+clears on that rule, because there the rule is the standard. Verified to bite: defaulting to `clear`
+fails three assertions.
+
+**§4.3 — the plain read and its confidence in the same breath**, which is the honest form of tiered
+disclosure rather than a clean headline with the caveat a click away. A summary line that reads too
+clean starts *looking* like a signal, which is the one thing every `NOTES.md` here refuses. The chip is
+10px mono, lower-case, no fill, no border, **never gilt and never an outcome colour** — §5 reserves gilt
+for what decides and confidence decides nothing, so it must not be mistakable for the reading it sits
+beside. The full `why` is on the element's title, which is the only thing kept a click away.
+
+**Two defects of my own, both caught by rendering the line and reading it while every assertion
+passed.**
+
+*The first draft made the viability word conditional on live n*, so with no fills the strip read `—`
+instead of `NEGATIVE`. **The page-load guard refused it and was right.** §9 says these panels read
+negative and that this honesty is preserved above all else — and the history row is a real backtested
+finding (−1.63¢ over the spine's fills), not an absence. Withholding the word until a *live* series
+matured would have hidden a measurement the tool has, which is the opposite failure to the one §4.2 is
+fixing. The reading now comes from the best evidence available and the chip names which.
+
+*The second was worse and no guard saw it.* Having made the reading fall back to history, I left the
+chip counting the **live** series — so the strip read **"NEGATIVE  not enough data yet"**: a decisive
+backtested finding and a claim that nothing had been measured, in one breath. That is §4.1's own
+conflation reintroduced one level along, inside the change meant to end it. Found by driving the page
+in Chromium and reading the sentence. The chip counts the reading's own series now, pinned as arithmetic
+on the shipped branch rather than as a string, and verified to bite.
+
+*And the dialect guard hit the comment-counting trap for the second time in two releases* — the blocks
+quote the old wording to explain what replaced it, so a substring check that reads its own comments
+fails a correct panel for naming the thing it removed. Stripped, exactly as Rhyme's floor guard was.
+
+Measured on the live page: `NOT READY · 0/4 criteria · not enough data yet` · `15m history −1.63¢ ·
+live — no fills yet · NEGATIVE clear` · `0 graded reads · — not enough data yet`.
+`test/invariants.js` **63 → 80**; §6's total **858 → 875**.
+
+*§4 is complete: 4.1, 4.2 and 4.3 here, 4.4 at 11.9.*
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
