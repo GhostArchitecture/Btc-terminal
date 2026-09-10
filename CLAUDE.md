@@ -297,8 +297,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **985 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
-occvm 561, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **989 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
+occvm 565, rheology 61, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
@@ -556,8 +556,13 @@ Counts are surfaced in the swing and journal panel notes, so an excluded row is 
   scoring-critical — a missed `viaSample` beat is a missed maker-economics sample, not a wrong one — so this is a
   freshness nit, not a correctness bug. Left as-is; a last-fired-timestamp rewrite of the whole loop is a
   larger, higher-blast-radius change than its payoff justifies right now.
-- **iOS standalone: header sits under the status bar (no `env(safe-area-inset-top)`).** CSS-only, but needs an
-  actual device to verify — untestable in this environment. `viewport-fit=cover` is already set.
+- ~~**iOS standalone: header sits under the status bar (no `env(safe-area-inset-top)`).** CSS-only, but needs an
+  actual device to verify — untestable in this environment.~~ **Closed at 2.36, and the note was wrong twice.**
+  It was not only the header: with `viewport-fit=cover` and a translucent status bar and *no* inset
+  anywhere, whatever scrolled to the top went under the bar, and a recording from the owner's phone
+  caught the **price readout** cut in half by the Dynamic Island. And "untestable" is what kept it
+  unmeasured for eleven releases: `env()` cannot be set from a harness, but a token read from it can,
+  which is the whole of the fix (§12's 2.36).
 - **Manifest `id: "/"` resolves to the origin root on the GitHub Pages fallback**, whose scope is `/Btc-terminal/`.
   Cosmetic (affects install identity on the fallback host only, which §1 already says to avoid).
 - **Cosmetic/copy nits, not corrected:** the idle sweep header reads "SWEEP ±30m" while the span is −30/+15; the
@@ -2920,6 +2925,83 @@ panels instead of stopping at their edges — the tiles are 38% of their own sub
 frosted at the fluid's capillary length. The sweep is the one panel that does not take it, by the
 law. And the globules that used to sit **on top of** the chart, over the tape and the strikes and the
 settled pips, are gone: that layer was retired, not dimmed.
+
+**2.36 — the field report, and the defect that hid behind the word "untestable".** Two screen
+recordings from the owner's phone, scrubbed frame by frame. Ordered by what obscures a number first.
+
+**The severe one is not new code.** BTC declared `viewport-fit=cover` and a translucent status bar and
+then carried **no `env(safe-area-inset-*)` anywhere in the file**, so the content column began 14 px
+from the top of a screen whose top 59 px belong to the system. At rest the wordmark rendered through
+the iOS clock as `b11:15rmin`. Scrolled, the **price readout** was cut in half by the Dynamic Island.
+§10.5 had this filed as "header sits under the status bar … untestable in this environment", and both
+halves were wrong: it was never only the header, and *untestable* is what kept it unmeasured for
+eleven releases.
+
+**`env()` cannot be driven; a token read from it can.** That is the whole fix and the whole lesson.
+`--safe-top` and `--safe-bottom` are read from `env()` once, every consumer reads the property, and a
+harness sets the property and measures the layout. Driven in Chromium: at an inset of 0 the header
+sits at 14 px and the band is 0 tall, which is the pre-2.36 page exactly; at 59 px the header sits at
+59 and the band is 59. The guard that keeps it that way is a count — **`env()` may appear exactly
+twice, once per edge, and only in the token declaration** — so an inline inset nobody can drive cannot
+come back. Verified to bite in both tools.
+
+**Padding alone only fixes the page at rest**, so an opaque band exactly the inset tall sits above
+everything and the page's own ground colour shows there instead of the clock. `--field-hi` is that
+colour, promoted out of a literal so the band and the page cannot drift (L3). *It costs the floor the
+top strip of the surface L13 grants it, opaque, about 7% of a phone screen. Taken deliberately: a
+decorative ground is worth less than a legible price.*
+
+**Rhyme had the same defect one level in.** Its sticky binding carried the inset inline and nothing
+else did, so a panel header scrolled to the top collided identically. Same token, same band.
+
+**The header was a fifth of the screen, and the controls could not be shrunk.** Measured at 393 px it
+stood **166.5 px**: the wordmark and tagline took one row and `.hright` wrapped its five children over
+two more, leaving PAUSE alone on the last. L8 fixes controls at 44 px and that floor is not
+negotiable, so what changed is the *order* — `display:contents` dissolves `.hright` at narrow width so
+the header lays out all six children itself, identity and the two actions on the first row, readouts
+on the second. **166.5 → 99.4 px.** This file had no width query at all before this. The tagline
+elides rather than wrapping, which is a truncation of a decorative subtitle and is named as one.
+
+**And one finding was mine, from 2.35.** The sweep's tile kept its substrate at full strength while
+its neighbours went to 38%, and on the phone that read as a seam. The law forbids that tile
+*transmitting* the floor; it does not ask it to be a different colour. Mixing the same `--tile-fill`
+against `--field-hi` instead of against transparency gives the resolved colour of a frosted tile over
+plain ground, with no new authored number and nothing let through.
+
+*The first measurement of that seam was confounded and the correction is the entry.* Sampling a band
+at a fixed offset compares different parts of the tile's own top sheen, because the tiles differ in
+height. Re-measured at the same fraction of each tile's height:
+
+| | vs the spot tile | vs the arm bar |
+|---|---|---|
+| full substrate, what 2.35 shipped | 2.24 L\* | 3.38 |
+| the fill against the ground, now | **0.99** | 2.13 |
+
+The text tiles already vary **1.14 L\*** among themselves, so the sweep went from outside that spread
+to inside it. The device reading of 2.16 survived the instrument being corrected, which is luck worth
+naming rather than a vindication of the method.
+
+*Two guards of mine were proxies rather than properties, and both were caught by their own bite test.*
+The L13 bound read "the sweep's tile must not mention `--tile-fill`", which refused this correct
+change — the property is that it must not mix toward transparency, and it says that now. The pattern
+written for it then could not match at all, because `[^)]*` cannot cross the parenthesis inside
+`var(--sub-hi)`, so it read IN FORCE on a tile that transmitted. A guard that cannot fail is
+decoration; both were re-authored and re-verified.
+
+**Recorded from the recordings, not fixed here.** The DATA view collides at phone width: EXPORT CSV
+overlaps the head beside it, and section heads wrap to three lines against their status chip. The
+sweep prints its strike twice. Rhyme's globules read as large discrete blobs on the draft face and one
+sits under the `+ bar` control. And the two tools disagree about what "selected" means — Rhyme paints
+it with the decorative accent `--pigment`, BTC with the active family — which is a decision for the
+owner and not a defect, since the law does not currently measure it.
+
+**What the recordings confirm is working**, since a clean launch is worth recording too: cellular with
+no relay, the tape moving from "unverified, no fresh peers" to "peer-verified · index" as constituents
+arrive, Kalshi loaded with both windows, the verdict reading NOT READY on 0 of 4, the field visible
+through the frosted tiles with the serif legible over it, and **not one globule over the chart**.
+
+`test/occvm.js` **561 → 565**; §6's total **985 → 989**. Rhyme **117 → 118**. Golden **546 → 561**, the
+delta being exactly the three new tokens at three instants and no existing value moved.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

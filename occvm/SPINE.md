@@ -1417,6 +1417,25 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*`--safe-top` and `--safe-bottom` join the tool-local row at 2.36, in BOTH tools, and the reason they
+are tokens rather than inline `env()` is the defect that produced them.* A screen recording from the
+owner's phone showed the price readout cut in half by the Dynamic Island: BTC declared
+`viewport-fit=cover` and a translucent status bar, and then carried **no `env(safe-area-inset-*)`
+anywhere**, so the content column began 14 px from the top of a screen whose top 59 px belong to the
+system. Rhyme had the inset on its sticky binding and nowhere else, so a panel header that reached the
+top collided the same way. **An inset written inline into each rule is an inset nobody can test** —
+`env()` cannot be set from a harness and no engine here emulates a notch, which is exactly why this
+was listed as "untestable in this environment" and shipped unmeasured. Read once into a custom
+property, every consumer becomes `var(--safe-top)` and a test drives the property and measures the
+layout move: at 0 the page is byte-identical to before, at 59 px the header moves down 45 px and the
+band below appears at 59 px tall.
+
+*BTC's `--field-hi` joins with them* — the top colour of the page's own ground gradient, promoted out
+of a literal so the status-bar band and the page cannot drift: one value, two readers, which is L3
+applied to a colour that was already written twice in effect. It also does the work of matching the
+sweep's opaque tile to its frosted neighbours (2.36), since compositing the fill against the ground
+rather than against transparency needs the ground to have a name.
+
 *BTC's `--tile-fill` joins the tool-local row at 2.35* — how much of a tile's own substrate survives,
 the rest being the page ground behind it seen through the frost. It exists because 2.35 retired the
 per-tile copy of the globule field: there is one field in that tool now, on the substrate, and a tile

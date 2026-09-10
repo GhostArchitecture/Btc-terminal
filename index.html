@@ -396,6 +396,16 @@ table {
        reader picks can make a won window and a lost one read alike (section 5). `--ruby-lo` is new: PAL
        carried that value as a bare literal with no token to resolve from, which is exactly the
        restatement L6 exists to catch, in the one file the measure could not see until 2.17. */
+    /* 2.36 — THE SAFE AREA, READ ONCE INTO A TOKEN SO IT CAN BE DRIVEN. env() cannot be set from a
+       harness and no engine here emulates a notch, so an inset written inline into each rule is an
+       inset nobody can test — which is how this shipped with NO top inset at all and reached a phone
+       where the price readout ran under the Dynamic Island. Reading env() into a property once means
+       every consumer is `var(--safe-top)`, and a test sets that property and measures the layout move.
+       --field-hi is the top of the page's own ground gradient, promoted out of a literal in the rule
+       below so the status-bar band and the page cannot drift apart: one value, two readers (L3). */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --field-hi:#100e16;
     /* 2.35, tool-local, AUTHORED and named as such — but the criterion that fixes it is not. A serif
        set on a tile must read no worse than the same serif set on the bare ground beside it; measured
        over six seeds at the sundial's night instant, the two cross at 38% (36.78 L* worst core pixel
@@ -418,7 +428,7 @@ table {
   body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;
     background:
       radial-gradient(120% 70% at calc(50% + var(--lx)*20%) -10%, rgba(120,90,200,calc(.10*var(--elev) + .05*var(--night))) 0%, transparent 60%),
-      linear-gradient(180deg,#100e16,#09080d 40%);
+      linear-gradient(180deg,var(--field-hi),var(--field) 40%);
     background-attachment:fixed}
   /* background-size pins the field to its own generated pixels (see globuleLayer): without it the SVG
      stretches to the box and a globule stops being round. `auto` is the fallback for the state where
@@ -438,11 +448,22 @@ table {
      sweep. The bound is the DOM position and the fixed layer, and law-audit.js reads both out of this
      tool's own source; test/page-load.js drives what a stylesheet cannot say. */
   #occvm-floor{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none;display:block}
+  /* THE PADDING ABOVE ONLY FIXES THE PAGE AT REST. viewport-fit=cover plus a translucent status bar
+     means the page keeps its full-bleed ground and content SCROLLS under the bar, which is where the
+     field report caught the price readout cut in half by the Dynamic Island. This band is opaque, is
+     exactly the inset tall, and sits above everything, so whatever scrolls up there is hidden behind
+     the page's own ground colour instead of appearing next to the clock. At an inset of 0 it has zero
+     height and paints nothing, so no other target changes.
+     It costs the floor the top strip of the surface L13 grants it — ~7% of a phone screen, opaque —
+     and that trade is taken deliberately: a decorative ground is worth less than a legible price. */
+  body::after{content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-top);
+    background:var(--field-hi);z-index:60;pointer-events:none}
   /* The still frame stays the ground's layer until the floor has actually taken the surface — the
      class is written by the island only when the part reports `.ok`, so all three of its refusals
      leave the page with the layer it already had rather than blank. */
   html.floorlive body::before{display:none}
-  .wrap{max-width:1180px;margin:0 auto;padding:14px 14px 40px;position:relative}
+  .wrap{max-width:1180px;margin:0 auto;position:relative;
+    padding:max(14px, var(--safe-top)) 14px max(40px, var(--safe-bottom))}
   .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--bone-dim);font-family:var(--sans)}
   .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
   .amber{color:var(--gilt-b)}
@@ -509,11 +530,21 @@ table {
         color-mix(in srgb, var(--sub)    var(--tile-fill), transparent) 45%,
         color-mix(in srgb, var(--sub-lo) var(--tile-fill), transparent) 100%)}
     /* and the sweep's tile is restated inside the same block, because the rule above would otherwise
-       win on source order and take the granted ground through the canvas — L13's bound (2.35) */
+       win on source order and take the granted ground through the canvas — L13's bound (2.35).
+       2.36 — IT TAKES THE SAME FILL, COMPOSITED AGAINST THE GROUND INSTEAD OF TRANSMITTING IT. Shipped
+       at 2.35 it kept the substrate at full strength, and on a real phone that read as a seam: median
+       L* 8.47 against 6.31 for the frosted tiles either side of it, a 2.16 step where a large flat
+       field needs about 1 to be seen. The law forbids this tile TRANSMITTING the floor; it does not
+       ask it to be a different colour from its neighbours. Mixing the same --tile-fill against
+       --field-hi rather than against transparent gives the resolved colour of a frosted tile over
+       plain ground, with no new authored number and nothing let through. */
     #chartbox{background:
       radial-gradient(70% 45% at calc(50% + var(--lx)*35%) calc(25% - var(--ly)*25%), var(--lit) 0%, transparent 70%),
       radial-gradient(120% 90% at 100% 110%, rgba(63,191,126,.06) 0%, transparent 60%),
-      linear-gradient(160deg,var(--sub-hi) 0%,var(--sub) 45%,var(--sub-lo) 100%)} }
+      linear-gradient(160deg,
+        color-mix(in srgb, var(--sub-hi) var(--tile-fill), var(--field-hi)) 0%,
+        color-mix(in srgb, var(--sub)    var(--tile-fill), var(--field-hi)) 45%,
+        color-mix(in srgb, var(--sub-lo) var(--tile-fill), var(--field-hi)) 100%)} }
 
   /* cast bronze controls; the active one carries the patina */
   /* OCCVM-L8 (1.5) — the interaction floor. Every control is at least 44px square; inline-flex so the
@@ -565,6 +596,23 @@ table {
     background:rgba(0,0,0,.28);color:#e7dcc2;--well-a:.6;box-shadow:var(--occvm-well), var(--lit-x) var(--lit-y) 0 rgba(255,236,190,.15)}
   .pill.live{color:var(--malachite)} .pill.warn{color:var(--gilt-a)} .pill.dead{color:var(--ruby)}
   #sunpill{font-family:var(--serif);text-transform:none;letter-spacing:.02em;font-size:12px}
+
+  /* 2.36 — THE HEADER AT PHONE WIDTH. Measured at 393px it stood 166.5px tall, a fifth of the screen,
+     because nothing in this file had a width query: the wordmark and its tagline took one row, then
+     .hright wrapped its five children over two more, leaving PAUSE alone on the last. The controls
+     cannot be shrunk to fix that — L8 fixes them at 44px and that floor is not negotiable — so what
+     changes is the ORDER. `display:contents` dissolves .hright at narrow width so the header lays out
+     all six children itself: identity and the two actions share the first row, the readouts take the
+     second. Nothing is hidden; the tagline moves under the wordmark rather than beside it. */
+  @media (max-width:560px){
+    header.tile{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:10px 12px}
+    .hright{display:contents}
+    .mark{flex:1 1 0;min-width:118px;order:1;font-size:17px;white-space:nowrap}
+    .mark small{display:block;margin:2px 0 0;font-size:8.5px;letter-spacing:.12em;
+      overflow:hidden;text-overflow:ellipsis}
+    header.tile #viewBtn{order:2} header.tile #pauseBtn{order:3}
+    header.tile #sunpill{order:4} header.tile #clock{order:5} header.tile #status{order:6}
+  }
 
   /* spot */
   #spot{padding:16px 18px;margin-bottom:14px}
@@ -9552,7 +9600,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260910144317";
+const BUILD_STAMP="build-20260910174353";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -9574,5 +9622,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260910144317 -->
+<!-- build-20260910174353 -->
 </html>
