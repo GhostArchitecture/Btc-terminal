@@ -1340,6 +1340,15 @@ named for retired at 2.25 and the tint did not, and renaming a token whose meani
 put a second migration in a release that already has one). Thirteen in all, and the count is what
 `occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
 
+*BTC's `--globules-size` joins the tool-local row at 2.28* — the pixel dimensions the globule field was
+generated at, written beside `--globules` by the same call and read by `body::before` and every
+`.tile::before` as their `background-size`. It exists because of a defect it makes impossible to
+reintroduce: an SVG data URI carrying a viewBox and no intrinsic width has no `auto` background size, so
+the field had been STRETCHING to fill whatever box it landed in — a 1.9:1 vertical oval on a tall
+viewport, a different oval on every tile. A globule's shape was a property of the element rather than of
+the fluid, and no length in the field meant anything on screen. Tool-local for the same reason
+`--globules` is.
+
 *BTC's `--pg` joins the tool-local row at 2.27* — the palette picker's own swatch colour, set inline on
 each unselected button from that palette's accent so the row is five real swatches rather than five
 labels. The selected button *removes* it and reads the live tokens, which is the whole reason it is a

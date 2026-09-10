@@ -947,6 +947,108 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     /UPC=PAL\.mal; DNC=PAL\.ruby;/.test(html6));
 }
 
+/* ── 2.28 — the metaball field, the arrest model, and the size scale ─────────────────────────────
+ * Build-plan step 2. Every number here is computed from the substance rather than typed, and the two
+ * assertions that would have caught the two real defects of this release are marked.
+ */
+{
+  const G28 = require("../occvm/globules.js");
+  const R28 = require("../occvm/rheology.js");
+  const html28 = require("fs").readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+  const px = pa => (R28.SUBSTANCE.gamma / pa) * 1000 / R28.MM_PER_PX;
+
+  /* THE IDENTITY. γ/τ₀, √(γ/ρg) and τ₀/ρg are one number, because 2.10 fixed τ₀ by the puddle-height
+     identity. Asserted from the three formulas rather than from the digits, so it survives a change to
+     γ or ρ and fails the day τ₀ stops being the value that identity produces. */
+  const L28 = G28.arrestLengths();
+  T("the arrest length, the capillary length and the puddle height are the same number",
+    Math.abs(L28.complete - R28.radiusPx(R28.SUBSTANCE)) < 0.01 &&
+    Math.abs(L28.complete - R28.puddleHeight(R28.SUBSTANCE) * 1000 / R28.MM_PER_PX) < 0.01,
+    `${L28.complete.toFixed(4)} / ${R28.radiusPx(R28.SUBSTANCE).toFixed(4)}`);
+  T("and it is γ/τ₀ exactly — the plastocapillary length, not a fourth constant",
+    Math.abs(L28.complete - px(R28.SUBSTANCE.tau0)) < 1e-9);
+
+  /* THE DYNAMIC INTERCEPT IS A CONSTANT NOW, not a number in a comment. Its absence is what forced
+     every consumer to retype it; L3's defect, in prose. */
+  T("the dynamic Herschel-Bulkley intercept is exported, not left in a comment",
+    R28.SUBSTANCE.tau0Dynamic === 4.41);
+  T("the two yield stresses bracket rather than compete: dynamic gives the wider length",
+    L28.joined > L28.complete && Math.abs(L28.joined - px(R28.SUBSTANCE.tau0Dynamic)) < 1e-9,
+    `${L28.complete.toFixed(3)} .. ${L28.joined.toFixed(3)} px`);
+
+  /* THE THREE REGIMES, driven on radii rather than read */
+  T("a pair well under the static length COMPLETES", G28.arrestRegime(2, 2) === "completes");
+  T("a pair between the two lengths freezes as a DUMBBELL", G28.arrestRegime(9, 9) === "dumbbell");
+  T("a pair past the dynamic length is BARELY JOINED", G28.arrestRegime(30, 30) === "joined");
+  T("the Bingham number the source states the arrested shape by is R/ℓ",
+    Math.abs(G28.bingham(9, 9) - G28.merged(9, 9) / L28.complete) < 1e-12);
+
+  /* THE MEASURED VERDICT, recomputed here rather than quoted from the entry. The shipped band produces
+     no completed merges at all, and that is the substance's answer, not a design choice. */
+  {
+    const rnd = G28.mulberry32(20260910);
+    const lo = G28.R[0], hi = G28.R[1];
+    let c = 0, d = 0, j = 0, N = 40000;
+    for (let i = 0; i < N; i++) {
+      const reg = G28.arrestRegime(lo + rnd() * (hi - lo), lo + rnd() * (hi - lo));
+      if (reg === "completes") c++; else if (reg === "dumbbell") d++; else j++;
+    }
+    T("no pair drawn from the shipped band can complete — a merged radius never beats its larger parent",
+      c === 0, `${c} of ${N}`);
+    T("the dumbbell is the case rather than the exception, at the measured ~96%",
+      d / N > 0.94 && d / N < 0.98, (100 * d / N).toFixed(1) + "%");
+    T("and the band was NOT moved to manufacture a completion it does not produce",
+      G28.R[0] === 9 && G28.R[1] === 30, JSON.stringify(G28.R));
+  }
+
+  /* THE RENDERER. One filter definition, Blinn's iso-level, the blur owned by the substance. */
+  const filt = G28.gooFilter({ id: "x" });
+  T("the iso-level is Blinn's half-density surface, not the copied 18/-7 pair", G28.ISO === 0.5);
+  T("and the matrix offset follows from it rather than being authored beside it",
+    filt.includes((-G28.GOO_GAIN * G28.ISO).toFixed(3)) && !/ -7(\.|\b)/.test(filt), filt.slice(-90));
+  T("the blur is the substance's own length, not a second copy of it",
+    Math.abs(G28.blurPx() - L28.complete) < 1e-9);
+  T("the filter is defined once and the still SVG uses that definition",
+    G28.svg({ drops: [{ x: 1, y: 1, r: 5 }] }, { w: 100, h: 100, viewW: 100, viewH: 100, hi: "#111111", lo: "#222222" })
+      .includes(G28.gooFilter({ id: "goo", blur: G28.blurPx(), gain: G28.GOO_GAIN })));
+  T("and the blur scales with the field when the view does, so it is one length in view units",
+    G28.svg({ drops: [] }, { w: 100, h: 100, viewW: 200, viewH: 200, hi: "#111111", lo: "#222222" })
+      .includes((G28.blurPx() * 2).toFixed(3)));
+
+  /* THE BUG THIS RELEASE ACTUALLY SHIPPED AND CAUGHT, pinned so it cannot come back. The isosurface
+     cuts at 0.5, so a field drawn AT the display weight is entirely below the cut and the filter
+     deletes it — measured at max alpha 0 in Chromium. The weight has to sit OUTSIDE the filtered
+     group, which is what BTC's <g opacity> already did and what Rhyme's canvas did not. */
+  {
+    const one = G28.svg({ drops: [{ x: 50, y: 50, r: 20 }] }, { w: 100, h: 100, hi: "#111111", lo: "#222222", alpha: 0.36 });
+    const gi = one.indexOf("<g opacity="), fi = one.indexOf("filter='url(#goo)'");
+    T("the weight wraps the FILTERED group, never the drops inside it", gi >= 0 && fi > gi,
+      "an alpha applied before the threshold puts the whole field under the iso-level");
+  }
+
+  /* 2.24's LESSON: a flag the generator can silently ignore is worse than no flag. */
+  T("goo:false renders the 2.25 gradient field, so the change is always the caller's",
+    !G28.svg({ drops: [{ x: 1, y: 1, r: 5 }] }, { w: 10, h: 10, hi: "#111111", lo: "#222222", goo: false }).includes("feGaussianBlur"));
+  T("and the default is the metaball field, so nothing has to ask for it",
+    G28.svg({ drops: [{ x: 1, y: 1, r: 5 }] }, { w: 10, h: 10, hi: "#111111", lo: "#222222" }).includes("feGaussianBlur"));
+
+  /* THE OTHER DEFECT: the field was stretching to its box, so a globule's shape was a property of the
+     element. Pinned from both sides — the writer emits the size, the readers consume it. */
+  T("globuleLayer writes the field's own pixel size beside the field",
+    /setProperty\("--globules-size"/.test(html28));
+  T("and every surface that paints the field sizes it from that, never from `auto` alone",
+    (html28.match(/background:var\(--globules,none\)/g) || []).length ===
+    (html28.match(/background-size:var\(--globules-size,auto\)/g) || []).length,
+    "a painter without the size stretches the field and the globules stop being round");
+  T("the field is generated at the viewport rather than at a fixed 1200x800",
+    /window\.innerWidth/.test(html28) && /OCCVM_GLOBULES\.field\(\{seed, w:gw, h:gh\}\)/.test(html28));
+
+  /* merge conservation has ONE owner, and it is the shared part */
+  T("merge conservation is volume, decided in the shared part and recorded there", G28.MERGE_POWER === 3);
+  T("merged() is that convention rather than a second copy of it",
+    Math.abs(G28.merged(3, 4) - Math.cbrt(27 + 64)) < 1e-12);
+}
+
 /* ── 2.8 — the crystal leaves (OCCVM-L12, second basis) ───────────────────────────────────────
  * From 2.0 to 2.7 this block asserted aragonite: the lattice's single owner, the twin angle's one value
  * across three consumers, the crystal's optics, P1's stiffness-derived durations and P4's cell-derived

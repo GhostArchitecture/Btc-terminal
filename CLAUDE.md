@@ -7,7 +7,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910054623`** — §11's closure, the `reversal`
+2.25 (§12). **On the branch and not deployed: `build-20260910061147`** — §11's closure, the `reversal`
 citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
 writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
 *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
@@ -248,8 +248,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **834 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 484, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **858 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 508, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -2157,6 +2157,125 @@ per-origin and they are served from different ones, which L6 has recorded since 
 
 `test/occvm.js` **433 → 484**; §6's total **783 → 834**. Rhyme **108 tests**. `13 laws: 9 in force, 0
 diverged, 0 unadopted, 4 unmeasured.`
+
+**2.28 — the metaball field, and the substance answers a question the plan left open.**
+`GLOBULE-BUILD-PLAN.md` build order step 2: *"static globules at λc, metaball-rendered. Proves the
+rendering path and the size scale before anything moves."* Executing it turned up an identity, two real
+rendering defects, and an answer that settles step 5 before step 5 is built.
+
+**γ/τ₀ IS λc, by construction rather than by luck.** Two drops of a yield-stress fluid begin merging
+exactly as a Newtonian pair does — the bridge grows linearly in time — and then either close or **arrest
+at a finite height**, freezing a permanent non-spherical shape. The competition is capillary stress γ/R
+against yield stress τ₀, so the boundary radius is γ/τ₀. Measured: **γ/τ₀ = 7.1480 px, √(γ/ρg) =
+7.1479 px, τ₀/ρg = 7.1478 px — the same number.** Not a coincidence: 2.10 fixed τ₀ by the puddle-height
+identity, so γ/τ₀ = γ/(ρg·λc) = λc follows. The plan asks whether the field landing on λc is *"a lucky
+coincidence or something to tune deliberately"*; it is neither, and it cost nothing to settle because
+both halves already shipped. Asserted from the three formulas rather than the digits, so it survives a
+change to γ or ρ and fails the day τ₀ stops being what that identity produces.
+
+*Source, and a correction to the plan.* Kern, Sæter & Carlson, "Viscoplastic sessile drop coalescence"
+(arXiv:2203.15617): the bridge height evolves as `h₀ ∼ t` "before arresting at long time prior to
+minimizing its liquid/gas interfacial energy", with the arrested profile set by the **Bingham number
+`τ_y·h_drop/σ`** modified by the drop's aspect ratio — which is R/ℓ inverted, so the criterion's form is
+the source's rather than mine. The plan lists "Kern et al." and "arXiv:2203.15617" as two corroborating
+sources. **They are the same paper**, and two citations of one result is one result.
+
+**The two yield stresses give opposite answers, and they are not competing — they bracket.**
+`rheology.js` has carried an unresolved pairing since 2.10: τ₀ static 21.15 Pa beside the dynamic
+Herschel-Bulkley intercept 4.41 Pa that `k` and `n` were fitted with, recorded there as unresolved
+"rather than resolved". Arrest is the first consumer that forces it, because γ/21.15 = 7.148 px says
+every globule here arrests and γ/4.41 = 34.281 px says every one completes. Read as a hysteresis both
+are right and each governs its own moment — the bridge **keeps flowing** while the drive exceeds the
+**dynamic** stress; the arrested shape **stays put** while the residual is below the **static** one.
+Two lengths, three regimes, no third constant:
+
+| merged radius | what happens |
+|---|---|
+| < 7.148 px | nothing can hold the shape — the merge **completes**, one round globule |
+| 7.148 – 34.281 px | the bridge grows and then locks — a **dumbbell** with a real bridge |
+| > 34.281 px | the drive is under even the dynamic stress — **barely joined** |
+
+*And 4.41 was a number in a comment.* It has been named in `rheology.js`'s own prose since 2.10 and was
+unavailable to code, so any consumer needing it had to retype it — L3's defect, in prose. It is
+`SUBSTANCE.tau0Dynamic` now.
+
+**What the shipped field actually produces, and the band does not move.** Over 40,000 pairs drawn from
+`R = [9, 30]`: **0.00% complete, 96.2% dumbbell, 3.8% barely joined.** The plan warns that "a system
+that always completes merges is simpler and wrong". This substance at this pixel scale says the
+opposite and says it decisively — the frozen dumbbell is not the rare case, it is the case. Completion
+needs **both** drops under 7.148 px, since a merged radius never beats its larger parent; dropping the
+floor from 9 px buys 0.00% at 5.673 (the largest floor whose own twin-merge could complete), 0.69% at
+4 px and 2.68% at 2 px, while changing a look measured and approved on the page at 2.25. **Moving a
+measured value to manufacture an outcome the substance does not give is what P1, 2.1/P4 and 2.16 each
+refused, and this is the same refusal.** The model expresses all three regimes as real functions of the
+radii; the substance selects among them. That is the difference between a model that *can* express both
+outcomes — which is what the plan asks for — and a picture arranged to show both.
+
+*A constant used outside its regime, recorded because step 2 walks straight into it.* The shipped λc is
+the **air** interface's, √(γ/ρg). A globule suspended in a near-density-matched liquid — what a lava
+lamp is, and what the plan's own §0 establishes — has √(γ/(Δρ·g)), and Δρ is the one quantity such a
+lamp designs toward zero, so the length diverges: 7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at
+0.005. Sizing a suspended globule with the air-interface value would be the 2.8/2.10/2.22 error class.
+The **arrest** lengths are unaffected — γ/τ₀ carries no g and no density at all, which is why they are
+the ones used. Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling
+implies Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
+sources are secondary, the bracket is reported as a bracket, and **no constant here comes from them.**
+
+**Merge conservation: `r³ = r₁³ + r₂³`, decided and recorded.** The plan leaves it open and every number
+above depends on it. Volume rather than area: the drops render as spheres in projection, and the 3-D
+convention is what drop-coalescence simulation uses. Under the 2-D alternative the same pairs read
+0.00% / 98.9% / 1.1% — the same verdict. Rhyme's floor had shipped the area convention locally; it reads
+`OCCVM_GLOBULES.merged` now, because two conventions would put the renderer and the physics on
+different drops.
+
+**The rendering: blur + threshold, the plan's own first recommendation.** Blinn, "A Generalization of
+Algebraic Surface Drawing", *ACM TOG* 1(3):235–256 (1982) — sum a density field, draw the isosurface at
+a threshold. A Gaussian blur of overlapping filled circles **is** a summed density field and a hard cut
+on its alpha **is** the isosurface, so it is one SVG filter rather than a field evaluation. What it buys
+is not the silhouette: because fields add, **two approaching drops join with no merge code**, and an
+arrested pair is rendered by stopping the approach rather than by a second special case. Rhyme's
+hand-drawn bridge quad is deleted — it was geometry standing in for physics, and it could only ever draw
+a merge that completes.
+
+*The blur is the substance's own length* (`--occvm-meniscus` = λc = ℓp), not a constant authored beside
+it. *The iso-level is Blinn's 0.5*, so the alpha matrix offset is `gain × 0.5` rather than the 18/−7 pair
+copied around the web, which is an iso-level of 0.389 that nobody chose. `GOO_GAIN = 24` is authored and
+named: it sets how many pixels the surface takes to go from transparent to opaque, and no derivation
+fixes it. One `gooFilter()` definition serves BTC's still data-URI SVG and Rhyme's live canvas through
+`ctx.filter = url(#…)`, so the live floor and every still frame cut at the same level.
+
+**Two rendering defects, both found by looking at pixels rather than at code.**
+
+*The field was stretching to its box, and had been since 2.25.* `background:var(--globules)` with no
+`background-size` resolves to `auto`, and an SVG data URI with a viewBox and no intrinsic width has no
+auto size — so the 1200×800 field stretched to fill whatever box it landed in. Measured on a 1100×1400
+page: 0.917 in x, 1.75 in y, so **every globule rendered as a 1.9:1 vertical oval**, and a *different*
+oval on each `.tile::before`. A drop's shape was a property of the element it happened to land on. That
+is not cosmetic here: step 2 is the **size scale**, and a radius stretched by an unknown per-element
+factor is not a length — ℓp = 7.148 px cannot mean anything on a surface where 7 px in the field is
+12 px on screen one way and 6 the other. The field is generated at the viewport's own size now and
+pinned to it with `--globules-size`, so a circle is a circle and a px is a px; a tile shows the top-left
+of that field at 1:1. Resizing crops rather than stretches, which is why nothing listens for resize —
+cropping is correct, costs nothing, and a regenerating background would be motion L13 withholds here.
+
+*And the first metaball commit erased Rhyme's floor completely.* The isosurface cuts at 0.5, so drawing
+the field **at** the display weight of 0.24 puts all of it under the cut. Measured in Chromium on a
+25 px disc: filtered at α 0.24 gives **max alpha 0 over 0 non-zero pixels**, against 255 over 1,804 at
+α 1. **The screenshot did not show it** — on the slab it was taken from, the floor sits behind opaque
+controls, so "looks the same" and "is gone" were the same picture. Caught by probing pixels. The weight
+must composite **outside** the filtered buffer, which is the shape BTC's `<g opacity>` already had and
+Rhyme's canvas did not; both halves are now pinned, and the guard was verified to fail when the erasure
+is put back.
+
+**Measured on the page, rAF and the 1 Hz loop frozen, full 1100×1400 frame against no field at all:**
+gradient field 12.76% of pixels at mean 2.98 L\*; metaball field **11.24% at mean 3.16** — slightly
+tighter coverage at slightly greater weight, which is what a threshold does. On Rhyme's live floor
+canvas, where the threshold acts: **10.31% coverage, peak alpha 61, mean alpha 59.2** — 97% of peak,
+which is the signature of a thresholded field rather than a gradient one. Several frozen dumbbells are
+visible in the render, produced with no merge code, which is the arrested end state §2 asked for.
+
+`--globules-size` registered in §6b; the census refused the change until it was. `test/occvm.js`
+**484 → 508**; §6's total **834 → 858**. Rhyme **108 → 110 tests**, both new ones verified to bite.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

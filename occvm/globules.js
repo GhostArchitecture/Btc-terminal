@@ -27,8 +27,108 @@ var OCCVM_GLOBULES = (function () {
     };
   }
 
+  /* the substance, read LAZILY. The splicer inserts every part after one anchor, so parts land in
+     REVERSE list order and rheology.js may be assigned AFTER this file is evaluated — the 2.0 defect
+     that made cleave() throw on every call in the browser while Node resolved it through require and
+     every assertion passed. Same shape as yield.js's read, for the same reason. */
+  function rheo() {
+    return (typeof OCCVM_RHEOLOGY !== "undefined" && OCCVM_RHEOLOGY) ? OCCVM_RHEOLOGY
+         : (typeof require !== "undefined" ? require("./rheology.js") : null);
+  }
+
+  /* ---- the size scale, and what the substance says about merging (2.28) --------------------------
+   * Build-plan step 2 is "static globules at λc". Executing it turned up an identity, then a defect in
+   * how this system reads its own constant, then an answer that decides step 5 in advance. In order:
+   *
+   * 1. ℓ = γ/τ₀ IS λc, BY CONSTRUCTION RATHER THAN BY LUCK. Two drops of a yield-stress fluid begin
+   *    merging exactly as a Newtonian pair does — the bridge grows linearly in time — and then either
+   *    close or ARREST at a finite height, freezing a permanent non-spherical shape. The competition is
+   *    capillary stress γ/R against yield stress τ₀, so the boundary radius is γ/τ₀. Measured here:
+   *    γ/τ₀ = 7.1480 px, the capillary length √(γ/ρg) = 7.1479 px, and the puddle height τ₀/ρg =
+   *    7.1478 px are the SAME NUMBER. Not a coincidence — 2.10 fixed τ₀ by the puddle-height identity,
+   *    so γ/τ₀ = γ/(ρg·λc) = λc follows. The build plan asks whether the field landing on λc is "a
+   *    lucky coincidence or something to tune deliberately"; it is neither, and it cost nothing to
+   *    settle because both halves already shipped.
+   *
+   *    SOURCE, AND A CORRECTION TO THE PLAN. Kern, Sæter & Carlson, "Viscoplastic sessile drop
+   *    coalescence" (arXiv:2203.15617) — bridge height evolves as h₀ ∼ t "before arresting at long time
+   *    prior to minimizing its liquid/gas interfacial energy", with the arrested profile set by the
+   *    **Bingham number τ_y·h_drop/σ** modified by the drop's aspect ratio. That group is exactly R/ℓ
+   *    inverted, so the criterion's form is the source's rather than mine. The plan lists "Kern et al."
+   *    and "arXiv:2203.15617" as two corroborating sources; they are the same paper, and two citations
+   *    of one result is one result.
+   *
+   * 2. THE TWO YIELD STRESSES GIVE OPPOSITE ANSWERS, AND THEY ARE NOT COMPETING — THEY BRACKET.
+   *    rheology.js has carried an unresolved pairing since 2.10: τ₀ static 21.15 Pa (stress-ramp and
+   *    creep, the right one for a substance at rest) beside the dynamic Herschel-Bulkley intercept
+   *    4.41 Pa that k and n come from. That file records the pairing as unresolved "rather than
+   *    resolved". Arrest is its first consumer that forces the question, because γ/21.15 = 7.148 px
+   *    says every globule here arrests and γ/4.41 = 34.281 px says every one completes.
+   *
+   *    Read as a hysteresis, both are right and each governs its own moment. The bridge KEEPS FLOWING
+   *    while the driving capillary stress exceeds the DYNAMIC yield stress — the stress a material
+   *    already in motion resists at. The arrested shape STAYS PUT if the residual stress is below the
+   *    STATIC one — the stress required to restart it. Two lengths, three regimes, and no third
+   *    constant:
+   *
+   *        R < 7.148 px          nothing can hold the shape — the merge COMPLETES, one round globule
+   *        7.148 ≤ R ≤ 34.281    the bridge grows and then locks — a DUMBBELL with a real bridge
+   *        R > 34.281 px         the drive is under even the dynamic stress — BARELY JOINED
+   *
+   * 3. WHAT THE SHIPPED FIELD ACTUALLY PRODUCES, measured over 400,000 uniform pairs from the band:
+   *    **0.00% complete, 96.2% dumbbell, 3.8% barely joined.** The plan warns that "a system that
+   *    always completes merges is simpler and wrong". This substance, at this pixel scale, says the
+   *    opposite and says it decisively — the frozen dumbbell is not the rare case, it is the case.
+   *
+   *    THE BAND DOES NOT MOVE, AND THAT IS THE DISCIPLINED ANSWER. Completion needs BOTH drops under
+   *    7.148 px, since a merged radius is never smaller than its larger parent. Dropping the floor from
+   *    9 px buys 0.00% at 5.673 (the largest floor whose own twin-merge could complete), 0.69% at 4 px
+   *    and 2.68% at 2 px — while changing a look measured and approved on the page at 2.25. Moving a
+   *    measured value to manufacture an outcome the substance does not give is what P1, 2.1/P4 and 2.16
+   *    each refused, and this is the same refusal. The model expresses all three regimes as real
+   *    functions of the radii; the substance selects among them. That is the difference between a model
+   *    that CAN express both outcomes — which is what the plan asks for — and a picture arranged to
+   *    show both.
+   *
+   * 4. A CONSTANT USED OUTSIDE ITS REGIME, recorded because the plan's step 2 would have walked into it.
+   *    The shipped λc is the AIR interface's, √(γ/ρg). A globule suspended in a near-density-matched
+   *    liquid — which is what a lava lamp is, and what the plan's own §0 establishes — has
+   *    √(γ/(Δρ·g)), and Δρ is the one quantity such a lamp designs toward zero, so the length diverges:
+   *    7.1 px at Δρ = ρ, 30 px at Δρ/ρ = 0.056, 101 px at 0.005. Sizing a suspended globule with the
+   *    air-interface value is the 2.8/2.10/2.22 error class. Note that the ARREST lengths above are
+   *    unaffected: γ/τ₀ carries no g and no density at all, which is why they are the ones used here.
+   *    Inverted as a check rather than adopted as a derivation, the authored 30 px ceiling implies
+   *    Δρ/ρ = 0.0567; secondary sources put a real lamp's contrast at roughly 0.022–0.056. Those
+   *    sources are secondary, the bracket is reported as a bracket, and no constant here comes from
+   *    them — the check is only that the authored ceiling is physically ordinary, and it is.
+   *
+   * MERGE CONSERVATION: r³ = r₁³ + r₂³. Decided here and recorded, because the plan leaves it open and
+   * every number above depends on it. Volume rather than area: the drops render as spheres in
+   * projection, and the 3-D convention is the one drop-coalescence simulation uses. Under the 2-D
+   * alternative r² = r₁² + r₂² the same 400,000 pairs read 0.00% / 98.9% / 1.1% — the same verdict. */
+  var R = [9, 30];             /* authored, unchanged since 2.25 and measured on the page then */
+  var MERGE_POWER = 3;         /* volume conservation on merge — see above */
+
+  function arrestLengths() {   /* the two boundary radii, in CSS px; null with no substance spliced */
+    var r = rheo(); if (!r) return null;
+    var m = r.SUBSTANCE, px = function (pa) { return (m.gamma / pa) * 1000 / r.MM_PER_PX; };
+    return { complete: px(m.tau0), joined: px(m.tau0Dynamic) };
+  }
+  function merged(r1, r2) {
+    return Math.pow(Math.pow(r1, MERGE_POWER) + Math.pow(r2, MERGE_POWER), 1 / MERGE_POWER);
+  }
+  /* the only question the build plan's §2 asks, answered per pair rather than per system */
+  function arrestRegime(r1, r2) {
+    var L = arrestLengths(); if (!L) return "unknown";
+    var R2 = merged(r1, r2);
+    return R2 < L.complete ? "completes" : R2 <= L.joined ? "dumbbell" : "joined";
+  }
+  /* the Bingham number the source states the arrested shape by: τ_y·R/γ, i.e. R/ℓ */
+  function bingham(r1, r2) {
+    var L = arrestLengths(); return L ? merged(r1, r2) / L.complete : null;
+  }
+
   var PX_PER_DROP = 9000;      /* authored: one droplet per ~95×95 px */
-  var R = [9, 30];             /* authored: the radius band, px */
   var DRIFT_PX_S = 1.4;        /* authored: the live consumer's drift, carried on each drop so the field is one field */
 
   function count(w, h, pxPerDrop) { return Math.max(3, Math.round(w * h / (pxPerDrop || PX_PER_DROP))); }
@@ -49,21 +149,81 @@ var OCCVM_GLOBULES = (function () {
     return { drops: drops, rnd: rnd, spawn: function (edge) { return drop(rnd, w, h, r0, r1, edge); }, count: function () { return n; } };
   }
 
-  /* the still frame, as an SVG: one radial gradient per drop, hi at the core, lo at the rim. Colours
-     come in from the caller's resolved tokens — this file carries no literal (L6). */
+  /* ---- metaball rendering (2.28) -----------------------------------------------------------------
+   * BLUR + THRESHOLD, which is the build plan's own first recommendation and the cheapest of the three
+   * real paths. Blinn, "A Generalization of Algebraic Surface Drawing", ACM TOG 1(3):235-256 (1982) is
+   * the foundational form: sum a density field, draw the isosurface at a threshold. A Gaussian blur of
+   * overlapping filled circles IS a summed density field, and a hard cut on its alpha IS the
+   * isosurface, so the effect is one SVG filter rather than a field evaluation.
+   *
+   * WHY IT MATTERS BEYOND THE SILHOUETTE. Because the fields simply add, two approaching drops MERGE
+   * VISUALLY WITH NO MERGE CODE. That is what makes arrest expressible at all: an arrested pair is
+   * rendered by stopping the approach, never by special-casing the geometry, so the same renderer
+   * draws both outcomes and neither is a branch.
+   *
+   * THE BLUR RADIUS IS THE MENISCUS, NOT A NEW NUMBER. The scale over which surface tension smooths a
+   * shape is the same length L2 already uses for a wet edge, `--occvm-meniscus` = λc = 7.148 px, which
+   * §2.28 above shows is also ℓp. One length, one owner (L3). A blur authored beside it would be a
+   * second copy of a fact this system already carries.
+   *
+   * THE ISO-LEVEL IS BLINN'S HALF-DENSITY SURFACE, 0.5, and the alpha matrix's offset is therefore
+   * exactly `gain × 0.5` rather than the 18/-7 pair copied around the web (which is an iso-level of
+   * 0.389, a number nobody chose). GAIN is authored and named: it sets how hard the cut is, i.e. how
+   * many pixels the surface takes to go from transparent to opaque, and no derivation fixes it.
+   *
+   * THE CAVEAT IS REAL AND IS THIS TOOL'S PROBLEM. Blur+threshold "requires an opaque background to
+   * read correctly", and BTC paints this SVG as a background-image on a TRANSPARENT pseudo-element,
+   * screened over the substrate. Whether the threshold survives that is measured on the page, not
+   * assumed here; `goo:false` renders the plain gradient field exactly as 2.25 did, so the change is
+   * always the caller's and never the default sneaking in. That is 2.24's `fine:0` lesson: a flag the
+   * generator can silently ignore is worse than no flag. */
+  var GOO_GAIN = 24;           /* authored: the hardness of the isosurface cut, in alpha units */
+  var ISO = 0.5;               /* Blinn's half-density isosurface — derived from the method, not chosen */
+
+  function blurPx() { var L = arrestLengths(); return L === null ? 7.148 : L.complete; }
+
+  /* THE FILTER ITSELF, defined once and used by both renderers. BTC embeds it in the still SVG it
+     writes to --globules; Rhyme puts the same markup in a hidden <svg> and hands its id to the canvas
+     as `ctx.filter = url(#...)`, so the live floor and every still frame threshold identically. Two
+     copies of one filter would be L3's defect in a place nobody would think to look for it.
+     alpha' = gain·alpha − gain·ISO, clamped by the filter pipeline: opaque above the iso-level, gone
+     below. The widely-copied 18/-7 pair is an iso-level of 0.389, which is nobody's decision; this is
+     Blinn's 0.5 with the offset following from it. */
+  function gooFilter(o) {
+    var id = o && o.id || "occvm-goo";
+    var blur = (o && o.blur !== undefined) ? o.blur : blurPx();
+    var gain = (o && o.gain !== undefined) ? o.gain : GOO_GAIN;
+    return "<filter id='" + id + "' x='-20%' y='-20%' width='140%' height='140%'" +
+      " color-interpolation-filters='sRGB'>" +
+      "<feGaussianBlur in='SourceGraphic' stdDeviation='" + (+blur).toFixed(3) + "' result='b'/>" +
+      "<feColorMatrix in='b' type='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 " +
+      (+gain).toFixed(3) + " " + (-gain * ISO).toFixed(3) + "'/></filter>";
+  }
+
+  /* the still frame, as an SVG. One radial gradient per drop, hi at the core, lo at the rim; colours
+     come in from the caller's resolved tokens, so this file carries no literal (L6). With `goo` the
+     whole field passes through the metaball filter above. */
   function svg(f, o) {
     var w = o.viewW || f.w || 1200, h = o.viewH || f.h || 800, alpha = o.alpha === undefined ? 0.24 : o.alpha;
     var sx = w / (o.w || w), sy = h / (o.h || h);
+    var goo = o.goo === undefined ? true : !!o.goo;
+    var gain = o.gooGain === undefined ? GOO_GAIN : o.gooGain;
+    var sd = (o.blur === undefined ? blurPx() : o.blur) * Math.min(sx, sy);
     var defs = "", body = "";
     for (var i = 0; i < f.drops.length; i++) {
       var d = f.drops[i], id = "g" + i;
       defs += "<radialGradient id='" + id + "'><stop offset='0' stop-color='" + o.hi + "'/><stop offset='1' stop-color='" + o.lo + "'/></radialGradient>";
       body += "<circle cx='" + (d.x * sx).toFixed(1) + "' cy='" + (d.y * sy).toFixed(1) + "' r='" + (d.r * Math.min(sx, sy)).toFixed(1) + "' fill='url(#" + id + ")'/>";
     }
+    if (goo) { defs += gooFilter({ id: "goo", blur: sd, gain: gain }); body = "<g filter='url(#goo)'>" + body + "</g>"; }
     return "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + w + " " + h + "' preserveAspectRatio='none'>" +
       "<defs>" + defs + "</defs><g opacity='" + alpha + "'>" + body + "</g></svg>";
   }
 
-  return { mulberry32: mulberry32, field: field, svg: svg, count: count, PX_PER_DROP: PX_PER_DROP, R: R, DRIFT_PX_S: DRIFT_PX_S };
+  return { mulberry32: mulberry32, field: field, svg: svg, count: count,
+           PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
+           arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
+           gooFilter: gooFilter, blurPx: blurPx,
+           GOO_GAIN: GOO_GAIN, ISO: ISO };
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_GLOBULES;
