@@ -1009,6 +1009,18 @@ measured value. And **modulation is not what makes it legal**: a real value may 
 (Rhyme's `--heat`, read-only, is the obvious first one), but the floor is lawful at zero modulation, which
 is precisely why this is a grant and not a case of the gated-motion rule.
 
+*That clause has its first consumer at 2.28.* Rhyme's floor reads the draft's own drone depth — the same
+quantity `.bar` already carries per bar as `--heat` — and it scales the **convection rate**, which is the
+one variable the buoyancy model already has a heat-driven mechanism for: a lamp's bulb is its heat source
+and the cycle rate follows it, so the value lands on the model's own term rather than on a parameter
+chosen to have something to attach. At heat 0 the period is **byte-identical** to the unmodulated one,
+driven and asserted rather than described, and full heat runs the cycle **1.60×** faster and no more.
+**Two guards written at 2.22 were retired to allow it, and neither retirement is a loosening of this
+law — both were stricter than it.** They forbade the string `--heat` anywhere in the floor and pinned the
+floor's inputs to exactly two, which is a proxy for "ungated" rather than the property; the property is
+now driven. Recorded here because a guard removed without its reason on the record is how a rule stops
+being a rule.
+
 **Gated motion is a different question and is not this law.** Motion conditional on a real, actively
 created state — a lock held, a tempo set — was never prohibited and needs nothing from here. One clause
 belongs beside it and is stated here because this is where motion is now written down: **the gate is the

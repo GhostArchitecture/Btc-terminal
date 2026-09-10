@@ -7,7 +7,7 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). **On the branch and not deployed: `build-20260910063229`** — §11's closure, the `reversal`
+2.25 (§12). **On the branch and not deployed: `build-20260910063828`** — §11's closure, the `reversal`
 citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
 writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
 *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
@@ -2376,6 +2376,47 @@ number, not of a canvas, so they sit beside their constants where a harness can 
 inside a closure it has to infer. `atCoil` stays inside — it reads that instance's own clock.
 
 Rhyme **111 → 113 tests**.
+
+**2.28 step 6 — `--heat` modulates, and two of my own guards were stricter than the law.** The last item
+in the build order, last because it is the only piece that touches another tool's live data. Not this
+tool's code; the law is, and the guard retirement is the part worth reading.
+
+**L13 named this case before the floor existed.** Its text, unchanged since 2.15: *"a real value may
+scale a floor's intensity (Rhyme's `--heat`, read-only, is the obvious first one), but the floor is
+lawful at zero modulation, which is precisely why this is a grant and not a case of the gated-motion
+rule."* Modulation was never forbidden. A **gate** was. So nothing in the law moves here.
+
+**What was forbidden was in my guards, and they were the wrong shape.** Two clauses written at 2.22 are
+retired: one listed `--heat` among strings the floor's source may not contain, the other pinned the
+floor's inputs to exactly two — *"the only inputs are the canvas and a stillness that is never a
+measured value."* Both assert the **absence of a string**, which is a proxy for "ungated" and not the
+property. What replaces them is driven: **the cycle period at heat 0 must equal the period the floor ran
+before heat existed — exactly, not closely** — because that identity is the whole of L13's distinction
+between a grant and the gated-motion case. Measured: **836,237 ms either way, identical**; full heat
+runs the cycle **1.60× faster** and no more; and the guard was verified to fail against a version where
+heat *gates* rather than modulates. The rest of the forbidden list stays — no tempo, no pacing, no bpm.
+
+*And that guard had a second defect the change exposed:* it tested the floor's source **including its
+comments**, so a block explaining at length what the floor may and may not read failed for saying the
+word. The L6 colour guard three tests above already strips comments for exactly this reason; this one
+now does too. A vocabulary check that counts its own prose is a guard that punishes documentation.
+
+**What heat modulates is the convection rate, which is the model's own variable rather than a parameter
+picked to have something to attach.** A lamp's bulb is its heat source and the cycle rate follows it, so
+heat reaching the period is the same mechanism step 3 already built. The value is the draft's own drone
+depth — how far past the pop line the worst vowel run has gone, 0 when nothing is — which is the same
+quantity `.bar` already carries per bar as `--heat`, read for exactly what it means. The floor never
+writes it, never decides what it means, and still runs when it is 0.
+
+*One implementation note that is a real property, not a detail.* Heat reaches the running floor through
+a setter rather than the effect's dependency list, because re-running the effect tears the canvas down
+and reseeds the field — **a floor that reshuffles as you type is not a floor.** The field's identity
+survives the writing changing under it.
+
+Rhyme **113 tests**, holding. Two guard retirements, each with its reason in the suite beside the
+assertion that replaced it, and the replacement verified to bite.
+
+**The `GLOBULE-BUILD-PLAN` build order is complete: 1 through 6.**
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
