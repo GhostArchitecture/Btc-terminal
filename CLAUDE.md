@@ -7,12 +7,15 @@ exists anywhere in this tool and none should be added.** Everything it does is m
 Current deploy: `build-20260909232758` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11): H1–H5 recording, the enumerated release calendar, the identifiability and
 plausibility gates, the **structural-break registry** (§11.9) and its rendered ledger, and OCCVM through
-2.25 (§12). *Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
+2.25 (§12). **On the branch and not deployed: `build-20260910054623`** — §11's closure, the `reversal`
+citation correction, and OCCVM 2.27. That line stays "not deployed" until a stamp is read off both hosts;
+writing a stamp into this field before it has been verified is the §7.3 failure with a different subject.
+*Verified on both hosts by stamp at 2026-09-09 23:36 UTC, all three hosts within 40 s;
 Rhyme's GitHub Pages read `build-20260909232257`. Earlier lines: `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **8,093 lines, 630 KB, 294 top-level functions**, zero dependencies, zero build
-step. *These four figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
-counted, not quoted, at 2.14.* **§10 (audit addendum) corrects and extends
+the deployment hold covered.* One file, **8,181 lines, 640 KB, 299 top-level functions**, zero dependencies, zero build
+step. *These figures were 6,331 / ~428 KB / 286 for three releases after they stopped being true;
+counted, not quoted, at 2.14 and re-counted at every release since.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
 
 ---
@@ -35,8 +38,9 @@ GhostArchitecture/Btc-terminal   (main)
 │   └─ tools/resplice.js         splices a unit into index.html between its markers, with assertions
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
-│   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,minerals.js,yield.js}   the shared parts, spliced into both tools
+│   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
+│   ├─ tools/derive-pigments.js  generates pigments.js: authored roles in, derived ramps out, checks printed
 │   ├─ mono.css, fonts/          the owned numeric face (L7) — ships only where mono is rendered
 │   ├─ reference/index.html      the reference surface (1.8): one live specimen per law, no values of its own
 │   ├─ golden/                   the recorded baseline: record.js, verify.js, three surfaces × three instants
@@ -193,10 +197,13 @@ trades.
 Obsidian substrate `#1b1a22 / #2c2a36 / #0e0d13` on `#09080d`; bone inscription `#ece3d0`; gilt ramp
 `#7a5510 → #d9a52c → #ffe9a3` reserved for what decides; malachite `#3fbf7e/#1c6a45` and ruby `#e0475f/#6b1a2e`;
 brushed bronze binding `#d9a866/#8f6a35/#4f3a1c` with verdigris `#3f9a86` in seams. Per-session vein layer
-(3 displaced beziers, seeded PRNG). **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
+(3 displaced beziers, seeded PRNG) — retired at 2.25 for the globule field. **NOAA sundial** (`solarPosition`, Dayton default, opt-in geolocation) sets
 `--lx --ly --elev --night` once a minute; every bevel, sheen, cabochon highlight and cast shadow reads those four
-custom properties. Canvas colours come from `PAL`, whose two ink weights refresh from the resolved spine on
-`sunTick`'s beat since 2.17 — the canvas reads the sun, at the sun's own cadence. Serif for section heads, mono
+custom properties. Canvas colours come from `PAL`, which resolves **ten of its thirteen keys from the page** on
+`sunTick`'s beat — two ink weights since 2.17, the eight outcome and authority colours since 2.27, so the
+canvas reads both the sun and the chosen palette at the cadence each moves on. The other three name tokens
+nothing writes and stay literals. **Those hexes are the `obsidian` palette and one of five**; a palette is
+a choice of which green and which red, never of which hue means what (OCCVM-L6, §12's 2.27 entry). Serif for section heads, mono
 for numbers.
 
 ---
@@ -241,8 +248,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **783 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
-occvm 433, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
+currently **834 assertions across 7 harnesses** (invariants 63, sweep 33, page-load 20, h-protocol 89, prereg 84,
+occvm 484, rheology 61) — the figure here read 231 across 5, then 715, long after both had grown, which is the
 same class of stale claim §7.3 warns about, caught by counting rather than by quoting this line.
 
 `npm run test:units` runs the six H-protocol unit suites under `units/` (~1,850 assertions); `npm run test:all`
@@ -2012,6 +2019,144 @@ alarming number was mine, not the tool's.
 `process.exit(done())`, it never executed and the suite reported **PASS** at an unchanged count — caught
 by watching the count rather than the verdict. `test/occvm.js` **424 → 433**; §6's total **774 → 783**.
 No code in this tool changes: the measurement's whole output is that the shipped values are right.
+
+**2.27 — the palettes, and `PAL` finally reads the page.** From `PIGMENT-PALETTES.md`, executed in its
+own stated order; `GLOBULE-BUILD-PLAN.md` §7 makes the canvas fix step 1 and the palette document §5 says
+plainly that **palettes and that fix are the same piece of work**. They are, and neither half works alone:
+a palette that writes CSS custom properties reaches nothing on a canvas whose colours were thirteen
+literals evaluated once at load.
+
+**The closed set died with the crystal, nineteen releases ago.** L6 read *"the mineral set is frozen"* and
+named three — amethyst, malachite, ruby. That set was closed **because under aragonite a colour had to be
+a mineral that exists with that colour.** The crystal left at 2.8 and the vocabulary did not notice. A dye
+is not discovered, it is chosen. `occvm/minerals.js` is retired by the splicer's own mechanism and leaves
+`occvm/` outright — unlike `veins.js`, whose generator L10's record still cites, nothing cites a mineral.
+
+**What is frozen now is the relation, not the hex.** Green is positive, red is negative, gilt is
+authority, verdigris-adjacent is active — in every palette. A palette is a choice of *which* green and
+*which* red. That is what makes it safe where 1.4's decorative accent was not: 1.4 kept the mineral off
+every surface §5 governs because an accent beside a win/lose colour is §7.6's trade, and a palette
+supplies the win/lose colours themselves. **The evidence is a measurement, not the sentence above:** the
+smallest positive/negative separation across the five is **CIEDE2000 62.3** (`sunset`) against this
+build's own **73.1**. `OCCVM_PIGMENT_SEPARATION` records the table and the suite asserts it per palette,
+so narrowing that gap means re-recording the number rather than absorbing it.
+
+**Six values per palette authored, seven derived, and the anchor makes "no-op" a measurement.** The four
+fixed roles and the decorative accent and highlight are authored — no hex among them comes from a
+spectrum or a measurement, and they are labelled authored for the same reason `LOCK_RELAX_MS = 360` is.
+The seven ramp members are derived by `occvm/tools/derive-pigments.js`: each is its authored parent moved
+by the offset (ΔL, chroma ratio, Δh in CIE L\*C\*h) **the shipped build already puts between that same
+pair**. `--malachite-lo` under a teal positive is not a design choice, it is this system's own ramp
+re-hung under a new hue; authoring twenty more hexes by eye would have been inventing colour the plan
+never specified. `obsidian` **is** the anchor, so the derivation applied to its six authored values
+reproduces all seven derived ones **byte-identically** — asserted, which is what makes selecting obsidian
+a no-op rather than a claim. Two independent checks came free: the palette document authors a *third*
+decorative value for three of the five and the derivation never saw it, yet agrees to **ΔL ≤ 3.6, Δh ≤
+6.3°**; and its decorative tables are **not** ordered by lightness, so which of its three becomes accent
+and which becomes highlight is decided by measured L\* and the ladder is asserted monotone in all five.
+
+**One measured negative, on the record rather than tuned away.** `active` is pinned verdigris-adjacent and
+three palettes author it 4–16° off that hue — closest to `positive` in `sunset`, **1° apart**, separated
+by lightness alone. This build's own positive/active separation is **CIEDE2000 14.8**; `sunset` reads
+**11.7** and is the only palette below it. Rotating its `active` onto the verdigris hue was tried and
+reaches **13.6** — still short, because the limit is its low-chroma green `positive`, not the hue of its
+`active`. Clearing the floor would mean re-authoring a role hex by eye, which this system refuses
+everywhere else, so it ships as authored and the number is in the source and pinned as the only one.
+
+*And my first alarm about it was measuring the wrong axis.* I read the hue angles, saw 1–7°, and called it
+a legibility risk. In CIEDE2000 the shipped build itself sits at 14.8 with 20° of hue — lightness was
+carrying most of that separation all along. The hue reading described no pair a reader could confuse; it
+was 2.26's global-worst-case error in a different coordinate.
+
+**`PAL`, and the defect inside it that had nothing to do with palettes.** 2.17 wired two of thirteen keys
+to the resolved page because those two were all the sundial moved. A palette moves eight more, so ten now
+resolve on `sunTick`'s beat and on every palette change. **`UPC` and `DNC` were `const` snapshots taken at
+parse** — every call-keyed colour on the sweep, the one place §5 calls a wrong colour the most dangerous
+bug this tool can have, would have gone on painting whatever palette was active when the file loaded.
+They are `let`, reassigned in `palTick`, and the suite pins both directions so a revert to `const` fails.
+
+*The 2.17 guard refused three keys and was right.* My first `PAL_LIVE` listed all thirteen; the harness
+failed on `--field`, `--bone-dim` and `--bronze-a`, which are fixed `:root` declarations nothing writes.
+Resolving those once a minute is a no-op pretending to be a light, which is exactly what 2.17's rule
+forbids. They stay literals, and that is now asserted as a negative rather than left to drift back.
+
+**Four guards retired deliberately, each with its reason, none quietly.** Retiring a guard is the move
+this project distrusts most, so every one is named. (1) **1.9's `--ruby-lo` pin** — deleted at 1.9 as dead
+weight, declared and referenced nowhere. It is not dead now: `PAL` carried `rubyLo:"#6b1a2e"` as a bare
+literal with *no token to resolve from*, which is the restatement L6 exists to catch sitting in the one
+file the measure could not see until 2.17. Only that clause goes; `--glass-hi` and `--warn` stay pinned,
+and `--ruby-lo` is held to the stronger property instead — written by the palette **and** read by `PAL`,
+so it cannot go dead a second time. (2)–(3) **2.17's two `PAL_LIVE` assertions** — *every live key is a
+token the sundial writes*, and *the outcome colours are not among them*. The first would refuse a correct
+wiring; the second pins the exact behaviour this release changes. Replaced by: a live key must be written
+by **something**, and the providers are enumerated from `sundial.js` and `OCCVM_PIGMENT_TOKENS` rather
+than typed — plus the sharper half, that an outcome colour is live because the *palette* moves it and
+never because the sundial does, since a sundial-written outcome colour would mean the light had acquired
+an opinion about win/lose. (4) **the D6 mineral block**, whose load-bearing negative was that a mineral
+switch never touches `--malachite`/`--ruby`/`--up`/`--down`. A palette does, by design, so porting it
+would have failed on correct code — the 2.15 and 2.21 class. What replaces it is the property that made
+the widening admissible in the first place, measured per palette.
+
+**The L6 measure re-authored, and the §2ad condition finally checked.** The old measure asked whether a
+tool restated one of three mineral *accents*, granting malachite and ruby as outcome colours that happened
+to share those hexes. Under palettes that distinction dissolves. It now asks the only question left —
+whether a tool carries a second source of truth — in two ways: a **non-default palette's** hex typed into
+a tool diverges (and the detail names which palette it leaked from), and a `:root` fallback of a
+palette-written token that has **drifted** from the default palette diverges. §2ad permits those fallbacks
+on exactly that condition, because a page must paint an outcome colour before the part runs and jsdom
+resolves no custom property at all — and **nothing checked the condition until this line existed.**
+
+**`SPINE.md` gains §2ad, a fourth row in the 2.13 boundary, and it is a real gap the boundary did not
+have.** Until now exactly one spliced part wrote tokens, so "written by the sundial" and "written by the
+spine" were the same sentence. `pigments.js` breaks that: thirteen tokens written at load and on change,
+each keeping a `:root` fallback that genuinely renders until the part runs — so neither §2ab (defined by
+having no surviving default) nor §2a (fixed values). `--pigment`, `--pigment-lo` and BTC's tool-local
+`--pg` are registered in §6b; the census refused the change until they were, which is the boundary working
+rather than describing.
+
+**The token auditor had L6's 2.17 blind spot one level along.** `PAL_LIVE` is `{mal: "--malachite", …}`
+and `palTick` resolves every value through `getPropertyValue`, so ten tokens are consumed by a loop no
+regex could see — the token is the map's **value**, and both existing object-literal rules match a token
+as a **key**. It reported `--ruby-lo` as dead weight on the very run that introduced it, which is that
+file's own opening paragraph happening again. Syntax cannot say whether a value-position token is read or
+written, so the two maps are named rather than sniffed, per that file's stated rule for adding a way.
+*And its `PARTS` list had gone stale twice over* — still naming `veins.js` and `minerals.js`, never having
+gained `serif.css`, `reading.css`, `rheology.js`, `globules.js` or `yield.js`, so five spliced parts'
+tokens were being attributed to the tools carrying them. It reads the splicer's own list now.
+
+**The reference surface caught the one thing the harnesses could not.** Its L6 specimen still called
+`OCCVM_MINERALS`, and the page threw on load — the golden recorder refused to record a dead page, which
+is the failure mode it exists for. The specimen is now five palettes, each printing its four fixed roles
+over its decorative ladder with its own measured positive/negative ΔE beside it, because that number is
+the whole safety argument and printing it beats promising it. Its token-provenance table reads the palette's
+own list rather than the four names typed there at 1.4. `golden` **540 values, verified**.
+
+**What actually renders, measured rather than argued.** Chromium, rAF and the 1 Hz loop frozen so nothing
+but the palette can move a pixel, each palette diffed against `obsidian` over the full 1100×1400 frame:
+
+| palette | pixels moved | mean ΔL\* | p99 | max |
+|---|---|---|---|---|
+| astro | 11.58% | 0.34 | 1.83 | 2.41 |
+| deepwater | 13.91% | 0.39 | 5.83 | 6.35 |
+| acid | 12.73% | 1.06 | 18.98 | 20.93 |
+| sunset | 15.60% | 1.55 | 5.78 | 6.93 |
+
+**`astro` moves least and that is the plan's authoring, faithfully executed rather than corrected.** Its
+four fixed roles are `#3fbf7e / #e0475f / #ffe9a3 / #3f9a86` — obsidian's, verbatim — so astro and
+obsidian differ **only** in the decorative layer, and a reader choosing "the original, red-orange wax in
+clear liquid" gets a change of about a third of an L\*. Recorded rather than repaired: the four roles are
+§2's fixed set and re-authoring one by eye is the thing this release refused for `sunset`.
+
+*Selection is a real preference in both tools, persisted, and a pre-2.27 stored `mineral` migrates once —
+to `obsidian`, the palette that preserves what that reader was looking at — with what it migrated from
+kept beside it and the old key deleted so it cannot re-fire.* BTC's picker is five swatches in
+Settings → Advanced, each unselected one wearing its own palette's accent through `--pg` while the
+selected one drops it and reads the live tokens, so the row shows four offers and one applied state.
+Rhyme's is the same five in prefs. The choice cannot travel between the tools — `localStorage` is
+per-origin and they are served from different ones, which L6 has recorded since 1.4.
+
+`test/occvm.js` **433 → 484**; §6's total **783 → 834**. Rhyme **108 tests**. `13 laws: 9 in force, 0
+diverged, 0 unadopted, 4 unmeasured.`
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in

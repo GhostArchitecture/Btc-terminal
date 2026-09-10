@@ -166,8 +166,21 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
   /* what 1.9 removed stays removed */
   const html9 = fs9.readFileSync(path9.join(ROOT9, "index.html"), "utf8");
-  for (const t of ["--glass-hi", "--ruby-lo", "--warn"])
+  /* 2.27 RETIRES the --ruby-lo clause of this guard, deliberately, and only that clause.
+     1.9 deleted three tokens as dead weight: declared, referenced nowhere. Two of them still are.
+     --ruby-lo is not: PAL carried `rubyLo:"#6b1a2e"` as a bare literal with NO token to resolve from,
+     which is the restatement L6 exists to catch, sitting in the one file the measure could not see
+     until 2.17. Giving it a token is the fix, and pinning it deleted would now refuse that fix.
+     It is not simply unpinned — it is held to the stronger property instead, below: it must be written
+     by the palette AND read by PAL, so it cannot go dead a second time. */
+  for (const t of ["--glass-hi", "--warn"])
     T(`${t} stays removed`, !html9.includes(t + ":") && !html9.includes("var(" + t + ")"), t);
+  {
+    const P9 = require("../occvm/pigments.js");
+    T("--ruby-lo returns with a consumer, which is why 1.9's pin on it is retired",
+      Object.values(P9.TOKENS).includes("--ruby-lo") && /rubyLo\s*:\s*"--ruby-lo"/.test(html9),
+      "written by the palette and read by PAL");
+  }
 
   /* the migration table has to actually cover the surface, or it is a summary pretending to be a table */
   T("the migration table exists", doc9.includes("## 6b. The 2.0 migration table"));
@@ -798,55 +811,140 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("--ink2 survives — a distinct token, not part of the alias block", html4.includes("var(--ink2)"));
 }
 
-/* --- OCCVM-D6: the mineral is a real, chosen preference — and stays off outcome colour ------------
- * L6 freezes three minerals with fixed accent/deep hex; this pins the frozen table, that the choice
- * persists and drives the vein layer, and — the load-bearing negative — that malachite/ruby's fixed
- * win/lose meaning (CLAUDE.md section 5: "the most dangerous possible bug in this tool") is never
- * touched by a mineral switch.
+/* --- OCCVM-L6 / 2.27: the palette is a real, chosen preference — and cannot change what a colour MEANS
+ * Replaces the D6 mineral block. That block pinned three frozen minerals and, as its load-bearing
+ * negative, that a mineral switch never touched --malachite/--ruby/--up/--down. A palette DOES supply
+ * those, so that negative could not simply be ported — it would fail on correct code, which is the
+ * 2.15/2.21 class. What replaces it is the property that made the widening safe in the first place:
+ * the hue-to-meaning relation is not the reader's to change, and no palette brings positive and
+ * negative near confusion. That is asserted as a measured separation, not as a promise.
  */
 {
-  const L6 = {
-    amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c" },
-    malachite: { m: "#3fbf7e", mlo: "#1c6a45" },
-    ruby:      { m: "#e0475f", mlo: "#6b1a2e" },
-  };
-  const OCCVM_MINERALS = require("../occvm/minerals.js");
-  for (const k of Object.keys(L6)) {
-    T(`occvm/minerals.js ${k} matches SPINE.md L6`,
-      OCCVM_MINERALS[k] && OCCVM_MINERALS[k].m === L6[k].m && OCCVM_MINERALS[k].mlo === L6[k].mlo, k);
+  const fs6 = require("fs"), path6 = require("path"), ROOT6 = path6.resolve(__dirname, "..");
+  const P6 = require("../occvm/pigments.js");
+  const gen6 = require("../occvm/tools/derive-pigments.js");
+
+  /* the anchor round-trips: obsidian's derived values ARE this tool's shipped literals, byte for byte.
+     This is what makes "selecting obsidian is a no-op" a measurement. A change to the derivation that
+     moved today's build fails here before it can ship. */
+  for (const [child] of gen6.DERIVED)
+    T(`obsidian's derived ${child} reproduces the shipped literal byte-identically`,
+      P6.PIGMENTS.obsidian[child].toLowerCase() === gen6.ANCHOR[child].toLowerCase(),
+      `${P6.PIGMENTS.obsidian[child]} vs ${gen6.ANCHOR[child]}`);
+
+  /* the decorative ladder is monotone in L* in every palette — mlo < lo < m < hi. Authored `m` and `hi`
+     plus a derived pair can only be checked this way; PIGMENT-PALETTES' own table is NOT ordered by
+     lightness, which is why the ladder is derived here rather than taken from it. */
+  for (const k of Object.keys(P6.PIGMENTS)) {
+    const p = P6.PIGMENTS[k], L = h => gen6.toLch(h).L;
+    T(`${k}'s decorative ladder is monotone in lightness`,
+      L(p.mlo) < L(p.lo) && L(p.lo) < L(p.m) && L(p.m) < L(p.hi),
+      `${L(p.mlo).toFixed(1)} ${L(p.lo).toFixed(1)} ${L(p.m).toFixed(1)} ${L(p.hi).toFixed(1)}`);
+  }
+
+  /* THE ONE THAT MATTERS. Section 5 calls inverting win/lose the most dangerous possible bug in this
+     tool; a palette layer is only allowed near those colours because it cannot bring them together.
+     Measured per palette in CIEDE2000 against the recorded table, so a palette edit that narrowed the
+     gap has to re-record the number rather than absorb it. */
+  for (const k of Object.keys(P6.PIGMENTS)) {
+    const p = P6.PIGMENTS[k], rec = P6.SEPARATION[k];
+    T(`${k}'s positive/negative separation matches the recorded ${rec.posNeg}`,
+      Math.abs(gen6.de00(p.positive, p.negative) - rec.posNeg) < 0.05,
+      gen6.de00(p.positive, p.negative).toFixed(2));
+    T(`${k} keeps positive and negative unmistakable (CIEDE2000 >= 60)`, rec.posNeg >= 60, String(rec.posNeg));
+    T(`${k}'s positive/active separation matches the recorded ${rec.posActive}`,
+      Math.abs(gen6.de00(p.positive, p.active) - rec.posActive) < 0.05,
+      gen6.de00(p.positive, p.active).toFixed(2));
+  }
+  /* and the one measured negative is pinned as a negative rather than left to be rediscovered: sunset
+     is BELOW this build's own positive/active separation and is the only palette that is. If a later
+     edit fixes it, this fails and the record gets updated — which is the point. */
+  T("sunset is the only palette below this build's own positive/active separation, and it is recorded",
+    P6.SEPARATION.sunset.posActive < P6.SEPARATION.obsidian.posActive &&
+    Object.keys(P6.PIGMENTS).filter(k => P6.SEPARATION[k].posActive < P6.SEPARATION.obsidian.posActive).length === 1,
+    JSON.stringify(P6.SEPARATION));
+
+  /* the :root fallbacks are the default palette's own values, as a SET IDENTITY. §2ad permits a
+     surviving fallback on exactly this condition; nothing checked it before this line existed. */
+  const html6 = fs6.readFileSync(path6.join(ROOT6, "index.html"), "utf8");
+  const root6 = html6.slice(html6.indexOf(":root{"), html6.indexOf("}", html6.indexOf(":root{")));
+  for (const slot in P6.TOKENS) {
+    const m = root6.match(new RegExp(P6.TOKENS[slot] + "\\s*:\\s*(#[0-9a-fA-F]{6})"));
+    if (!m) continue;
+    T(`:root's ${P6.TOKENS[slot]} fallback is the ${P6.DEFAULT} palette's own value`,
+      m[1].toLowerCase() === P6.PIGMENTS[P6.DEFAULT][slot].toLowerCase(),
+      `${m[1]} vs ${P6.PIGMENTS[P6.DEFAULT][slot]}`);
   }
 
   const h5 = load({ storage: { "btc.seed": "555" } });
   h5.R("loadCfg()");
-  T("mineral defaults to amethyst", h5.R("S.cfg.mineral") === "amethyst");
+  T("the palette defaults to obsidian, so a reader who never opens the picker sees no change",
+    h5.R("S.cfg.palette") === "obsidian");
 
-  h5.R("applyMineral()");
+  h5.R("applyPigment()");
   const rs5 = h5.ctx.document.documentElement.style;
-  T("--mineral resolves to the chosen mineral's accent", rs5.getPropertyValue("--mineral") === "#8d5cf0");
-  T("--mineral-lo resolves to its deep", rs5.getPropertyValue("--mineral-lo") === "#4a2a8c");
+  T("--pigment resolves to the palette's decorative accent", rs5.getPropertyValue("--pigment") === "#8d5cf0");
+  T("--pigment-lo resolves to its deep", rs5.getPropertyValue("--pigment-lo") === "#4a2a8c");
+  T("--ruby-lo now has a token to resolve from — 1.9 deleted it as dead weight and PAL kept the literal",
+    rs5.getPropertyValue("--ruby-lo") === "#6b1a2e");
 
-  const veinAmethyst = vein(h5);
-  h5.R("setMineral('ruby')");
-  T("setMineral persists the choice", h5.R("S.cfg.mineral") === "ruby");
-  T("setMineral saves to btc.cfg", JSON.parse(h5.store["btc.cfg"]).mineral === "ruby");
-  T("--mineral follows the switch to ruby", rs5.getPropertyValue("--mineral") === "#e0475f");
-  const veinRuby = h5.ctx.document.documentElement.style["--globules"];
-  T("the vein layer's colour changes with the mineral, same seed", veinAmethyst !== veinRuby);
+  const fieldObsidian = vein(h5);
+  h5.R("setPalette('astro')");
+  T("setPalette persists the choice", h5.R("S.cfg.palette") === "astro");
+  T("setPalette saves to btc.cfg", JSON.parse(h5.store["btc.cfg"]).palette === "astro");
+  T("the outcome colours follow the palette — this is the 2.27 widening, asserted rather than assumed",
+    rs5.getPropertyValue("--malachite") === P6.PIGMENTS.astro.positive &&
+    rs5.getPropertyValue("--ruby") === P6.PIGMENTS.astro.negative);
+  T("--pigment follows the switch to astro's accent", rs5.getPropertyValue("--pigment") === "#ff6b35");
+  const fieldAstro = h5.ctx.document.documentElement.style["--globules"];
+  T("the globule field's colour changes with the palette, same seed", fieldObsidian !== fieldAstro);
 
-  /* this harness's getComputedStyle is stubbed empty (test/lib/load.js) — it cannot see a plain :root{}
-     CSS declaration, only an inline override. So "untouched" here means never inline-set at all, which
-     is exactly the invariant: applyMineral()/setMineral() must never call .style.setProperty on these. */
-  T("switching mineral does not inline-set --malachite", rs5.getPropertyValue("--malachite") === "");
-  T("switching mineral does not inline-set --ruby", rs5.getPropertyValue("--ruby") === "");
-  T("switching mineral does not inline-set --up (outcome colour)", rs5.getPropertyValue("--up") === "");
-  T("switching mineral does not inline-set --down (outcome colour)", rs5.getPropertyValue("--down") === "");
+  const astro5 = decodeURIComponent(fieldAstro || "");
+  T("the field carries astro's own tint, not the default's",
+    astro5.includes(P6.PIGMENTS.astro.hi.slice(1)) && astro5.includes(P6.PIGMENTS.astro.lo.slice(1)));
+  T("and no obsidian tint reaches it", !astro5.includes("c9a6ff") && !astro5.includes("5a36a8"));
 
-  /* 2.25: the legacy fallback is gone; the field itself carries the mineral's tint. This harness stubs
-     getComputedStyle empty, so the tint arrives through the mineral map's own values — the same values
-     applyMineral() writes to --vein-hi/--vein-lo in a browser. */
-  const ruby5 = decodeURIComponent(veinRuby || "");
-  T("the field carries ruby's own tint, not a fixed malachite", ruby5.includes("8f2740") && ruby5.includes("f5a3b3"));
-  T("and no malachite hex reaches it", !ruby5.includes("1c6a45") && !ruby5.includes("3fbf7e"));
+  /* a stored pre-2.27 mineral resolves once, is recorded, and does not re-fire */
+  const h6 = load({ storage: { "btc.cfg": JSON.stringify({ mineral: "ruby", pad: 1.18 }) } });
+  h6.R("loadCfg()");
+  T("a stored mineral migrates to a palette rather than falling through silently",
+    h6.R("S.cfg.palette") === "obsidian" && h6.R("S.cfg.mineral") === undefined);
+  T("and what it migrated from is kept on the record",
+    h6.R("S.cfg.migratedFrom && S.cfg.migratedFrom.mineral") === "ruby");
+  T("the migration is written back, so it runs once", !("mineral" in JSON.parse(h6.store["btc.cfg"])));
+
+  /* PAL is the same set a third time, for the jsdom reason 2.17 recorded. Set identity, same rule. */
+  const palLit = h5.R("JSON.stringify(PAL)"), palLive = h5.R("JSON.stringify(PAL_LIVE)");
+  const PALo = JSON.parse(palLit), PALL = JSON.parse(palLive);
+  const slotOfEarly = {}; for (const sl in P6.TOKENS) slotOfEarly[P6.TOKENS[sl]] = sl;
+  /* 2.17 wired two of thirteen; 2.27 wires the ten that something writes. The remaining three are
+     static :root declarations and are asserted NOT live in the 2.17 block — a key that resolves a value
+     nothing ever moves is a per-minute no-op wearing a light's clothes. What is asserted here is the
+     property that actually matters: every key the PALETTE writes a token for is resolved from it. */
+  T("every palette-written token PAL carries is resolved from the page, not from its own literal",
+    Object.keys(PALo).filter(k => PALL[k] && slotOfEarly[PALL[k]]).length === 8,
+    Object.keys(PALo).filter(k => PALL[k]).join(" "));
+  T("and the keys with no live token are exactly the three nothing writes",
+    Object.keys(PALo).filter(k => !PALL[k]).sort().join(" ") === "boneDim bronze field",
+    Object.keys(PALo).filter(k => !PALL[k]).join(" "));
+  const slotOf = slotOfEarly;
+  for (const k in PALo) {
+    const slot = slotOf[PALL[k]]; if (!slot) continue;
+    T(`PAL.${k}'s literal is the ${P6.DEFAULT} palette's own value`,
+      PALo[k].toLowerCase() === P6.PIGMENTS[P6.DEFAULT][slot].toLowerCase(),
+      `${PALo[k]} vs ${P6.PIGMENTS[P6.DEFAULT][slot]}`);
+  }
+  /* UPC/DNC were `const` snapshots taken at load until 2.27, so every call-keyed colour on the sweep
+     would have kept painting the palette that was active when the file parsed. Driven, not read. */
+  /* UPC/DNC were `const` snapshots taken at load until 2.27, so every call-keyed colour on the sweep —
+     the one place section 5 says a wrong colour is the most dangerous bug this tool can have — would have
+     kept painting whatever palette was active when the file parsed. This harness stubs getComputedStyle
+     empty (test/lib/load.js), so palTick has nothing to resolve and the behaviour cannot be driven here;
+     the binding is asserted at the source instead, in BOTH directions, so a revert to `const` fails. */
+  T("UPC and DNC are rebindable, not frozen at parse", /\blet UPC=PAL\.mal, DNC=PAL\.ruby;/.test(html6) &&
+    !/\bconst UPC=PAL\.mal/.test(html6));
+  T("and palTick reassigns them, so a palette change reaches the canvas",
+    /UPC=PAL\.mal; DNC=PAL\.ruby;/.test(html6));
 }
 
 /* ── 2.8 — the crystal leaves (OCCVM-L12, second basis) ───────────────────────────────────────
@@ -1334,30 +1432,63 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const map = JSON.parse(live);
     T("the canvas refreshes on the sundial's beat, not per frame",
       /palTick\(\);/.test(src29) && !/palTick\(\)[\s\S]{0,200}requestAnimationFrame/.test(src29));
-    T("every live palette key is a token the sundial actually writes",
-      Object.values(map).every(tok => written.has(tok)), Object.values(map).join(","));
-    T("and the outcome colours are not among them — the sundial never moves them, so nothing to read",
-      !Object.keys(map).some(k => ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC"].includes(k)));
+    /* 2.27 RETIRES 2.17's version of these two, deliberately and with the reason on the record.
+       They read: every live key is a token THE SUNDIAL writes, and the outcome colours are not among
+       them. Both were right in 2.17's world, where the sundial was the only thing that moved a token
+       and PAL's other eleven values genuinely had nothing to read. A palette moves nine of those eleven,
+       so the first assertion would now refuse a correct wiring and the second asserts the exact
+       behaviour 2.27 exists to change — a guard that fails on correct code, which is the 2.15/2.21
+       class, and a guard pinning behaviour the release replaces, which is 1.2's.
+       What replaces them keeps the property that mattered: a live key may not be a per-minute no-op
+       pretending to be a light. It must be written by SOMETHING — the sundial or the palette — and the
+       two providers are enumerated from their own sources rather than typed here. */
+    const P17 = require("../occvm/pigments.js");
+    const byPalette = new Set(Object.values(P17.TOKENS));
+    T("every live palette key is a token something actually writes — the sundial or the palette",
+      Object.values(map).every(tok => written.has(tok) || byPalette.has(tok)),
+      Object.values(map).filter(tok => !written.has(tok) && !byPalette.has(tok)).join(","));
+    T("the outcome colours are live because the PALETTE moves them, never because the sundial does",
+      ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC", "verd"]
+        .every(k => map[k] && byPalette.has(map[k]) && !written.has(map[k])),
+      "a sundial-written outcome colour would mean the light had acquired an opinion about win/lose");
+    T("all eight palette-written tokens the canvas paints with are live — none left behind as a literal",
+      ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC", "verd"].every(k => map[k]),
+      Object.keys(map).join(","));
+    T("and the three keys nothing moves are NOT live — a static token read per minute is a no-op",
+      !map.field && !map.boneDim && !map.bronze,
+      "field/boneDim/bronze are fixed :root declarations; they stay literals until something writes them");
     T("the literals survive as the fallback — jsdom resolves no custom property and must still paint",
       /^#[0-9a-f]{6}$/i.test(R29("PAL.bone")) && /^#[0-9a-f]{6}$/i.test(R29("PAL.boneLo")));
     T("a junk resolved value never reaches the palette",
       R29(`(function(){ const b=PAL.bone; const g=getComputedStyle; getComputedStyle=()=>({getPropertyValue:()=>"not a colour"}); palTick(); const after=PAL.bone; getComputedStyle=g; return after===b; })()`));
   }
 
-  /* ── 2.17: L6 could only see CSS declarations, and PAL is the same exception in JavaScript ──────── */
+  /* ── 2.17 / 2.27: the L6 measure, driven on synthetic sources so its verdicts are the tested thing
+     2.17 taught this measure to see a hex wherever it is typed, because PAL restated malachite and ruby
+     as JS literals and a CSS-only measure could not see them. 2.27 keeps that reach and changes what it
+     is looking FOR: under palettes there is no "accent versus outcome" distinction left to draw — the
+     palette supplies both — so the question is whether a tool carries a second source of truth. The
+     three cases below are the ones the old block asserted, re-aimed at the new verdicts rather than
+     ported, because two of them (an accent literal diverging, an accent declaration diverging) name
+     tokens that no longer exist. */
   {
     const L6 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L6");
+    const P6b = require("../occvm/pigments.js");
     const m6 = own => L6.measure({ name: "BTC Terminal", own });
-    T("an accent hex typed as a bare JS literal now diverges, wherever it sits",
-      m6('const P={mineral:"#8d5cf0"};').state === "DIVERGES");
-    T("an outcome hex in JS is the same granted exception it is in CSS, counted not hidden",
-      m6('const P={mal:"#3fbf7e"};').state === "CONFORMS" &&
-      /granted exception/.test(m6('const P={mal:"#3fbf7e"};').detail));
-    T("a :root mineral fallback overwritten at load is tolerated and named, as L12 already tolerates one",
-      m6("--mineral: #8d5cf0;").state === "CONFORMS" &&
-      /fallback/.test(m6("--mineral: #8d5cf0;").detail));
-    T("and a declaration of the accent token itself still diverges — 1.4 stays closed",
-      m6("--amethyst: #8d5cf0;").state === "DIVERGES");
+    T("a NON-DEFAULT palette's hex typed into a tool diverges — that is a second source of truth",
+      m6('const P={accent:"' + P6b.PIGMENTS.astro.m + '"};').state === "DIVERGES");
+    T("and the measure names which palette it leaked from, so the finding is actionable",
+      /astro/.test(m6('const P={accent:"' + P6b.PIGMENTS.astro.m + '"};').detail));
+    T("the default palette's own hexes are the granted fallback — PAL and :root both carry them",
+      m6('const PAL={mal:"' + P6b.PIGMENTS.obsidian.positive + '"};').state === "CONFORMS");
+    T("a :root fallback carrying the default palette's value is tolerated and counted, not hidden",
+      m6("--pigment: " + P6b.PIGMENTS.obsidian.m + ";").state === "CONFORMS" &&
+      /fallback/.test(m6("--pigment: " + P6b.PIGMENTS.obsidian.m + ";").detail));
+    T("a :root fallback that has DRIFTED from the default palette diverges — the §2ad condition, measured",
+      m6("--pigment: #123456;").state === "DIVERGES" &&
+      /drift/.test(m6("--pigment: #123456;").detail));
+    T("verified to bite in the direction that matters: swapping malachite for ruby in the fallback fails",
+      m6("--malachite: " + P6b.PIGMENTS.obsidian.negative + ";").state === "DIVERGES");
   }
 
   /* ── 2.16: the release velocity is REAL, and the ceiling is below the regime crossover ──────────

@@ -123,7 +123,9 @@ async function record(tool, outDir) {
   const TOKENS = tokenNames(cfg.root);
   if (!TOKENS || !TOKENS.length) throw new Error(`${tool}: no tokens found — refusing to record an empty manifest`);
   const { srv, port } = await serve(cfg.root);
-  const browser = await chromium.launch();
+  /* the environment's browser, when one is pinned there. CI installs its own and this resolves to
+     undefined, so launch() falls back to playwright's managed download exactly as before. */
+  const browser = await chromium.launch({ executablePath: process.env.OCCVM_CHROMIUM || undefined });
   const out = { tool, recorded_by: "occvm/golden/record.js", seed: SEED, timezone: TZ,
                 viewport: VIEW, tokens: TOKENS.length, token_names: TOKENS, cases: {} };
   try {

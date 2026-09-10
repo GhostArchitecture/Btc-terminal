@@ -388,10 +388,14 @@ table {
     --field:#09080d; --sub:#1b1a22; --sub-hi:#2c2a36; --sub-lo:#0e0d13; --edge:#0b0a10;
     --bone:#ece3d0; --bone-lo:#b7ad9c; --bone-dim:#8e8778;
     --gilt-a:#ffe9a3; --gilt-b:#d9a52c; --gilt-c:#7a5510;
-    --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f;
-    /* OCCVM-L6 — the mineral is the reader's chosen accent, distinct from malachite/ruby's fixed outcome
-       meaning above. Defaults resolve to amethyst (the default field) until applyMineral() runs; JS then
-       drives all four from occvm/minerals.js against S.cfg.mineral. Values match Rhyme's own defaults. */
+    --malachite:#3fbf7e; --malachite-lo:#1c6a45; --ruby:#e0475f; --ruby-lo:#6b1a2e;
+    /* OCCVM-L6 — every declaration in this block is now a FALLBACK. applyPigment() overwrites all nine
+       outcome/authority tokens and the four decorative ones from occvm/pigments.js at load and on every
+       palette change; what stands here is the `obsidian` palette, which is why selecting obsidian is a
+       no-op. The palette chooses WHICH green and WHICH red — never which hue means which, so nothing a
+       reader picks can make a won window and a lost one read alike (section 5). `--ruby-lo` is new: PAL
+       carried that value as a bare literal with no token to resolve from, which is exactly the
+       restatement L6 exists to catch, in the one file the measure could not see until 2.17. */
     --bronze-a:#d9a866; --bronze-b:#8f6a35; --bronze-c:#4f3a1c; --verdigris:#3f9a86; --verdigris-lo:#23574c;
     /* sundial: light vector in screen space (north up), elevation 0..1, night 0/1 — set by the sun each minute */
     --lx:.35; --ly:-.85; --elev:.55; --night:0;
@@ -450,11 +454,16 @@ table {
   button:active{transform:translateY(1px)}
   button:focus-visible{outline:2px solid var(--gilt-a);outline-offset:2px}
   button[aria-pressed="true"],button.sel{background:linear-gradient(180deg,var(--verdigris) 0%,var(--verdigris-lo) 100%);color:var(--bone)}
-  /* OCCVM-L6 — the mineral picker wears the mineral it is offering, which is what makes --mineral and
-     --mineral-lo load-bearing here rather than write-only. It is a swatch on a button whose label names
-     the colour, in Settings; it is not an outcome, and it touches nothing section 5 governs. */
-  #mn_amethyst[aria-pressed="true"],#mn_malachite[aria-pressed="true"],#mn_ruby[aria-pressed="true"]{
-    background:linear-gradient(180deg,var(--mineral) 0%,var(--mineral-lo) 100%);color:var(--bone)}
+  /* OCCVM-L6 — the palette picker wears the palette it is offering, which is what makes --pigment and
+     --pigment-lo load-bearing here rather than write-only. Each button carries its own palette's accent
+     through --pg (set inline from occvm/pigments.js), so the row is five real swatches rather than five
+     labels; the SELECTED one drops --pg and reads the live tokens, so it shows what is actually applied
+     rather than what it would apply. It is in Settings; it is not an outcome. */
+  button.pgsw{--pg:var(--pigment);background:linear-gradient(180deg,var(--pg) 0%,color-mix(in srgb,var(--pg) 45%,black) 100%);
+    color:var(--bone);text-shadow:0 1px 2px rgba(0,0,0,.75)}
+  button.pgsw[aria-pressed="true"]{--pg:var(--pigment);
+    background:linear-gradient(180deg,var(--pigment) 0%,var(--pigment-lo) 100%);
+    box-shadow:var(--occvm-bevel),0 0 0 1px var(--gilt-b)}
   button:disabled{opacity:.45;cursor:default;filter:none}
 
   /* binding: brushed raw bronze, verdigris in the seam */
@@ -823,10 +832,12 @@ table {
         <button id="sunLoc" type="button">use my location</button>
         <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">solar position computed here for Dayton by default; the coordinates stay in this browser</span>
       </div>
-      <div class="tgrp"><span class="lbl">Mineral</span>
-        <button id="mn_amethyst" type="button" aria-pressed="false">amethyst</button>
-        <button id="mn_malachite" type="button" aria-pressed="false">malachite</button>
-        <button id="mn_ruby" type="button" aria-pressed="false">ruby</button>
+      <div class="tgrp"><span class="lbl">Palette</span>
+        <button id="pg_obsidian" class="pgsw" type="button" aria-pressed="false">obsidian</button>
+        <button id="pg_astro" class="pgsw" type="button" aria-pressed="false">astro</button>
+        <button id="pg_deepwater" class="pgsw" type="button" aria-pressed="false">deepwater</button>
+        <button id="pg_acid" class="pgsw" type="button" aria-pressed="false">acid</button>
+        <button id="pg_sunset" class="pgsw" type="button" aria-pressed="false">sunset</button>
         <span class="lbl" style="width:auto;text-transform:none;letter-spacing:.04em">tints the background vein layer only — never the win/lose colours in §5</span>
       </div>
       <div class="tgrp"><span class="lbl">Kalshi</span>
@@ -977,6 +988,150 @@ table {
 </div>
 
 <script>
+/* ==== OCCVM SPINE pigments.js — spliced from occvm/pigments.js. do not edit. ==== */
+/* sha256:b2a7b1e63daf */
+/* OCCVM 2.27 — the pigment palettes (OCCVM-L6). One implementation, shared by every conforming tool.
+ *
+ * GENERATED by occvm/tools/derive-pigments.js. Do not hand-edit: run the generator and commit its output.
+ * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
+ * spliced copy either — the next splice reverts it silently.
+ *
+ * This replaces occvm/minerals.js, which was crystal-era vocabulary that outlived aragonite. The closed
+ * three-mineral set existed because under a crystal a colour had to be a mineral that exists with that
+ * colour. A dye is not discovered, it is chosen: a lamp manufacturer picks what they want and the wax
+ * does not constrain it, so the constraint that produced the closed set died with the crystal.
+ *
+ * THE EASEMENT, RECORDED RATHER THAN SLID IN. Some handles below are invented where no real pigment
+ * fits. Every other name in this system was chosen to be defensible — Fraunces replaced Cinzel because
+ * the incised-stone justification died; minerals.js was renamed because the category stopped meaning
+ * anything. This is not that. The decorative layer does not answer to the derivation standard the rest
+ * of the system does, and saying so here is cheaper than a later reader mistaking it for the naming
+ * discipline quietly eroding. Naming a dye after a compound it does not contain would be the dressed-up
+ * version; naming it plainly is the honest one.
+ *
+ * WHAT A PALETTE MAY NOT CHANGE. Semantics are fixed to HUE, never to a slot: green is positive, red is
+ * negative, gilt is authority, verdigris-adjacent is active — in every palette, always. A palette is not
+ * a remapping of meaning, it is a choice of WHICH green and WHICH red. Nothing a palette does can make
+ * confirmed and failed read alike. Measured rather than promised: the smallest positive/negative
+ * separation across the five is CIEDE2000 62.3, against the shipped build's own 73.1.
+ *
+ * WHAT IS AUTHORED AND WHAT IS NOT. Six values per palette are AUTHORED — the four fixed roles and the
+ * decorative accent and highlight. No hex among them is derived from a spectrum, a compound or a
+ * measurement, and they are labelled authored because a table of colours that looked derived would be
+ * the dishonest version. Seven per palette are DERIVED: each is its parent's hex moved by the offset
+ * (dL, chroma ratio, dh in CIE L*C*h) that the SHIPPED build already puts between that same pair. The
+ * generator's header carries the argument for why those two classes are drawn where they are.
+ *
+ * OBSIDIAN IS THE ANCHOR AND SELECTING IT IS A NO-OP — measured, not claimed. Its six authored values
+ * are this tool's current literals, and the derivation applied to them reproduces the other seven
+ * BYTE-IDENTICALLY. Both suites assert that; a change to the derivation that moved today's build would
+ * fail before it shipped.
+ *
+ * ONE MEASURED NEGATIVE, RECORDED RATHER THAN TUNED AWAY. PIGMENT-PALETTES pins `active` to
+ * verdigris-adjacent, and three palettes author it 4-16 degrees off that hue, closest to `positive` in
+ * `sunset` (1 degree, separated by lightness alone). The shipped build's own positive/active separation
+ * is CIEDE2000 14.8; `sunset` reads 11.7 and is the only palette below it. Rotating its `active` onto
+ * the verdigris hue was tried and reaches 13.6 — still short, because the limit is its low-chroma green
+ * `positive`, not the hue of its `active`. Clearing the floor would mean re-authoring a role hex by eye,
+ * which is what this system refuses everywhere else, so the value ships as the plan authors it and the
+ * number is on the record. The separation table is asserted per palette, so any change to it must be
+ * re-recorded rather than absorbed.
+ */
+var OCCVM_PIGMENTS = {
+  astro: {
+    label: "the original — the 1963 Astro, red-orange wax in clear liquid",
+    handles: { positive: "Verdigris Bloom", negative: "Ember", gilt: "Filament", active: "Patina", m: "Lava", hi: "Molten" },
+    /* authored */
+    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#ff6b35", hi: "#f7931e",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#9e3c17", lo: "#b8461d",
+  },
+  deepwater: {
+    label: "blue on clear — the cool counterpart, high contrast against the vessel",
+    handles: { positive: "Sea Glass", negative: "Coral Signal", gilt: "Brass Cap", active: "Shallow", m: "Cobalt Drift", hi: "Ice Column" },
+    /* authored */
+    positive: "#4ecdc4", negative: "#e0475f", gilt: "#ffd97d", active: "#45938a", m: "#2e6fd9", hi: "#8fc9ff",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#2d7873", negativeLo: "#6b1a2e", giltB: "#d89300", giltC: "#744700", activeLo: "#25514d", mlo: "#003677", lo: "#004492",
+  },
+  acid: {
+    label: "green on purple — unmistakably synthetic, unmistakably of its era",
+    handles: { positive: "Acid Bloom", negative: "Wine Fault", gilt: "Ultraviolet Gilt", active: "Reactor", m: "Blacklight", hi: "Ooze" },
+    /* authored */
+    positive: "#7fff4f", negative: "#d6336c", gilt: "#ffe66d", active: "#5cb85c", m: "#9d4edd", hi: "#b6ff3f",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#55a33d", negativeLo: "#600b31", giltB: "#d4a200", giltC: "#765200", activeLo: "#3b713c", mlo: "#541e7e", lo: "#662998",
+  },
+  sunset: {
+    label: "yellow into orange — the lamp that reads as lit even when it is not",
+    handles: { positive: "Palm Green", negative: "Rust", gilt: "Late Sun", active: "Frond", m: "Marigold", hi: "Peach Glass" },
+    /* authored */
+    positive: "#52b788", negative: "#c9432f", gilt: "#ffc857", active: "#40916c", m: "#ffb627", hi: "#ffd6a5",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#276449", negativeLo: "#5b1011", giltB: "#d28400", giltC: "#6b3b00", activeLo: "#204f3a", mlo: "#aa7918", lo: "#c18816",
+  },
+  obsidian: {
+    label: "the current build, preserved — selecting it is a no-op, and that is measured",
+    handles: { positive: "Malachite", negative: "Ruby", gilt: "Gilt", active: "Verdigris", m: "Amethyst", hi: "Amethyst Light" },
+    /* authored */
+    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#8d5cf0", hi: "#c9a6ff",
+    /* derived from the authored parent by the shipped build's own L*C*h offset */
+    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#4a2a8c", lo: "#5a36a8",
+  },
+};
+
+/* The default is the current build, so a reader who never opens the picker sees no change at all. */
+var OCCVM_PIGMENT_DEFAULT = "obsidian";
+
+/* The token each slot writes, in ONE place, so both tools write the same names to the same properties.
+   Before this the two tools each carried their own applyMineral() writing four properties by hand, which
+   is how a shared set acquires a local exception. */
+var OCCVM_PIGMENT_TOKENS = {
+  positive: "--malachite", positiveLo: "--malachite-lo",
+  negative: "--ruby", negativeLo: "--ruby-lo",
+  gilt: "--gilt-a", giltB: "--gilt-b", giltC: "--gilt-c",
+  active: "--verdigris", activeLo: "--verdigris-lo",
+  m: "--pigment", mlo: "--pigment-lo",
+  hi: "--vein-hi", lo: "--vein-lo",
+};
+
+/* The offsets the derivation used, kept beside their output so the table can be checked without running
+   the generator, and so a reader can see that the derived column is one rule rather than twenty choices. */
+var OCCVM_PIGMENT_OFFSETS = {
+  positiveLo: { of: "positive", dL: -29.7893, cr: 0.651910, dh: 1.2592 },
+  negativeLo: { of: "negative", dL: -29.2732, cr: 0.592598, dh: -6.0817 },
+  giltB: { of: "gilt", dL: -21.8910, cr: 1.780634, dh: -10.8977 },
+  giltC: { of: "gilt", dL: -53.6322, cr: 1.180793, dh: -15.6932 },
+  activeLo: { of: "active", dL: -24.5906, cr: 0.635887, dh: 1.0520 },
+  mlo: { of: "m", dL: -24.6417, cr: 0.731758, dh: 0.3303 },
+  lo: { of: "m", dL: -18.1717, cr: 0.823890, dh: -0.0124 },
+};
+
+/* Measured separation between the roles a reader must never confuse (CIEDE2000). Recorded, not computed
+   at runtime: a number in the source that the suite checks is a number somebody has to re-record when it
+   moves, which is the whole point. The shipped build's own posActive is 14.8 and is the floor. */
+var OCCVM_PIGMENT_SEPARATION = {
+  astro: { posNeg: 73.1, posActive: 14.8 },
+  deepwater: { posNeg: 64.4, posActive: 16.6 },
+  acid: { posNeg: 89.0, posActive: 18.1 },
+  sunset: { posNeg: 62.3, posActive: 11.7 },
+  obsidian: { posNeg: 73.1, posActive: 14.8 },
+};
+
+/* Writing a palette is one call in both tools. Returns the palette so a caller can read a slot it does
+   not write to a token — the canvas does exactly that. */
+function occvmApplyPigment(name, style) {
+  var p = OCCVM_PIGMENTS[name] || OCCVM_PIGMENTS[OCCVM_PIGMENT_DEFAULT];
+  for (var slot in OCCVM_PIGMENT_TOKENS) style.setProperty(OCCVM_PIGMENT_TOKENS[slot], p[slot]);
+  return p;
+}
+
+if (typeof module !== "undefined") module.exports = {
+  PIGMENTS: OCCVM_PIGMENTS, TOKENS: OCCVM_PIGMENT_TOKENS, DEFAULT: OCCVM_PIGMENT_DEFAULT,
+  OFFSETS: OCCVM_PIGMENT_OFFSETS, SEPARATION: OCCVM_PIGMENT_SEPARATION, apply: occvmApplyPigment,
+};
+/* ==== END OCCVM pigments.js ==== */
+
 /* ==== OCCVM SPINE globules.js — spliced from occvm/globules.js. do not edit. ==== */
 /* sha256:d55ed7fd9df4 */
 /* OCCVM — the globule field (2.25). The substrate decoration both tools share: a seeded field of
@@ -1689,31 +1844,6 @@ var OCCVM_RHEOLOGY = (function () {
 })();
 if (typeof module !== "undefined") module.exports = OCCVM_RHEOLOGY;
 /* ==== END OCCVM rheology.js ==== */
-
-/* ==== OCCVM SPINE minerals.js — spliced from occvm/minerals.js. do not edit. ==== */
-/* sha256:6ab675b82831 */
-/* OCCVM 1.4 — the mineral set (OCCVM-L6). One implementation, shared by every conforming tool.
- *
- * Authored in occvm/SPINE.md; spliced into a tool by occvm/tools/splice-spine.js. Do not hand-edit the
- * spliced copy — the next splice reverts it silently.
- *
- * The set is closed and the meanings are fixed: amethyst is the default field, malachite is affirmed/
- * won/positive, ruby is negated/lost/failed. `m`/`mlo` (accent/deep) are the law-pinned pair — SPINE.md's
- * L6 table states them exactly. `hi`/`lo` are the vein generator's own highlight/shadow tint, derived by
- * eye rather than by a formula (the existing amethyst/malachite pair wasn't built from one either), and
- * are cosmetic: changing them is a design call, not a re-registration.
- *
- * Before this file, each tool that had a mineral concept declared its own copy. Rhyme's carried only two
- * of the three — it had never needed a negative mineral, so ruby was never added — which is exactly the
- * "no local exceptions" gap L6 exists to close (OCCVM-D6's other half: BTC had no mineral system at all).
- */
-var OCCVM_MINERALS = {
-  amethyst:  { m: "#8d5cf0", mlo: "#4a2a8c", hi: "#c9a6ff", lo: "#5a36a8" },
-  malachite: { m: "#3fbf7e", mlo: "#1c6a45", hi: "#9ff0c5", lo: "#1f7a50" },
-  ruby:      { m: "#e0475f", mlo: "#6b1a2e", hi: "#f5a3b3", lo: "#8f2740" },
-};
-if (typeof module !== "undefined") module.exports = OCCVM_MINERALS;
-/* ==== END OCCVM minerals.js ==== */
 
 /* ==== OCCVM SPINE sundial.js — spliced from occvm/sundial.js. do not edit. ==== */
 /* sha256:53ee71c1edf1 */
@@ -2436,17 +2566,26 @@ function computeSignals(now){
   return {t:now,v60,v300,accel,phi,ofi60,ofi300,disl,levels:levels.slice(0,4),dir,score,weight};
 }
 /* ---------------------------------------------------------------- interact: config + inverse normal */
-const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,mineral:"amethyst"};
-function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); } }
+const CFG_DEF={pad:1.18,dilate:0.5,contract:0.045,closeStart:6,closeStr:1.0,lookback:5,conf:0.90,adh:1.0,kproxy:"",minEdge:3,palette:OCCVM_PIGMENT_DEFAULT};
+function loadCfg(){ try{ const j=JSON.parse(localStorage.getItem("btc.cfg")||"{}"); Object.assign(S.cfg,CFG_DEF,j); }catch(e){ Object.assign(S.cfg,CFG_DEF); }
+  /* 2.27 — a reader who chose a mineral before the palettes existed keeps a choice. amethyst was the
+     default and maps to obsidian, the palette that preserves that build; malachite and ruby were the
+     two accents this tool never wired to anything but the field tint, and neither is a palette, so
+     both also land on obsidian. Recorded rather than silently dropped: the old key is READ and then
+     deleted, so the migration runs once and cannot re-fire on a later write. */
+  if(S.cfg.mineral!==undefined){ if(!OCCVM_PIGMENTS[S.cfg.palette]) S.cfg.palette=OCCVM_PIGMENT_DEFAULT;
+    S.cfg.migratedFrom={mineral:S.cfg.mineral}; delete S.cfg.mineral; saveCfg(); }
+  if(!OCCVM_PIGMENTS[S.cfg.palette]) S.cfg.palette=OCCVM_PIGMENT_DEFAULT; }
 function saveCfg(){ try{ localStorage.setItem("btc.cfg",JSON.stringify(S.cfg)); }catch(e){} }
-/* OCCVM-L6 — the mineral is a decorative accent (vein tint), never an outcome colour. Deliberately narrower
-   than Rhyme's: this tool's malachite/ruby already carry a fixed win/lose meaning everywhere (§5), so the
-   mineral choice is kept off every surface that could be mistaken for that signal. */
-function applyMineral(){
-  const m=OCCVM_MINERALS[S.cfg.mineral]||OCCVM_MINERALS.amethyst, rs=document.documentElement.style;
-  rs.setProperty("--mineral",m.m); rs.setProperty("--mineral-lo",m.mlo);
-  rs.setProperty("--vein-hi",m.hi); rs.setProperty("--vein-lo",m.lo);
-}
+/* OCCVM-L6 — the palette. 1.4 kept the mineral off every surface §5 governs, because a decorative accent
+   sitting beside a win/lose colour is §7.6's trade. A PALETTE is the other thing: it supplies the outcome
+   colours themselves, and it is safe where the accent was not for one reason only — the hue-to-meaning
+   relationship is not the reader's to change. Green is positive in every palette. Red is negative in
+   every palette. What moves is which green and which red, and the smallest positive/negative separation
+   across the five is CIEDE2000 62.3 against this build's own 73.1, so no palette brings them near
+   confusion. Both figures are recorded in occvm/pigments.js and asserted in test/occvm.js.
+   The write itself lives in the shared part, so both tools write the same names to the same tokens. */
+function applyPigment(){ return occvmApplyPigment(S.cfg.palette, document.documentElement.style); }
 function invNorm(p){
   p=Math.min(0.999999,Math.max(0.000001,p));
   let lo=-8,hi=8;
@@ -3069,12 +3208,12 @@ const SESSION=(()=>{ const fresh=()=>String((Date.now()^(Math.random()*1e9))>>>0
    target and stays in occvm/ unspliced as the generator the record cites.
 
    Still by law, not by choice of the moment: L13 withholds ambient motion from this tool, so the field is
-   written once per mineral change as a data URI and never animated. The seed is the injected session seed,
-   as the veins' was, so the golden set can diff it. Colour comes through the tokens applyMineral() wrote.
+   written once per palette change as a data URI and never animated. The seed is the injected session seed,
+   as the veins' was, so the golden set can diff it. Colour comes through the tokens applyPigment() wrote.
    The WEIGHT is this tool's own and was measured on this tool's own ground — see GLOBULE_ALPHA. */
 function globuleLayer(){
-  const seed=SESSION>>>0, mineral=(S.cfg&&S.cfg.mineral)||"amethyst";
-  const m=OCCVM_MINERALS[mineral]||OCCVM_MINERALS.amethyst;
+  const seed=SESSION>>>0, pal=(S.cfg&&S.cfg.palette)||OCCVM_PIGMENT_DEFAULT;
+  const m=OCCVM_PIGMENTS[pal]||OCCVM_PIGMENTS[OCCVM_PIGMENT_DEFAULT];
   const cs=getComputedStyle(document.documentElement);
   const str=(k,d)=>{ const v=(cs.getPropertyValue(k)||"").trim(); return v||d; };
   let svg="";
@@ -4054,15 +4193,45 @@ const FONT=()=>getComputedStyle(document.body).fontFamily;
 
    The literals stay as the fallback, and they are load-bearing: jsdom resolves no custom properties, and a
    palette that silently became empty strings would paint nothing while every assertion passed. */
+/* OCCVM 2.17/2.27 — the canvas palette. THESE LITERALS ARE A FALLBACK, not the source of truth.
+ *
+ * 2.17 found that renderSweep contained zero references to the light: the largest visual element in the
+ * tool drew identically at 3am and at noon, because PAL was thirteen hex literals evaluated once at load
+ * and the sundial wrote only to CSS. Two of the thirteen were wired to the resolved spine then — the two
+ * the sundial moves — and the other eleven were left, which was correct while nothing else moved them.
+ *
+ * 2.27 is what makes the rest of them move: a palette writes nine outcome/authority tokens, so a PAL that
+ * reads two of thirteen would paint the OLD palette's marks on the NEW palette's ground. Every key now
+ * names its token and resolves from the page, on `sunTick`'s once-a-minute beat — resolving custom
+ * properties at ~30fps is the wrong price for values that change once a minute or once a click, and
+ * `setPalette` calls this directly so a click does not wait for the minute.
+ *
+ * THE LITERALS STAY AND ARE LOAD-BEARING. jsdom resolves no custom property, so a palette that silently
+ * became empty strings would paint nothing while every assertion passed. They are `obsidian`'s values
+ * exactly, and test/occvm.js asserts that set identity — a fallback that has drifted from the palette it
+ * mirrors is a second source of truth, which is the defect this whole layer exists to remove. */
 const PAL={field:"#09080d",bone:"#ece3d0",boneLo:"#b7ad9c",boneDim:"#8e8778",gilt:"#ffe9a3",giltB:"#d9a52c",giltC:"#7a5510",
   mal:"#3fbf7e",malLo:"#1c6a45",ruby:"#e0475f",rubyLo:"#6b1a2e",verd:"#3f9a86",bronze:"#d9a866"};
-const PAL_LIVE={bone:"--bone",boneLo:"--bone-lo"};   /* the sundial-written tokens this palette carries */
+/* A key is LIVE only if something actually writes its token — the sundial each minute, or the palette on
+   a change. `field`, `boneDim` and `bronze` are not here and that is the guard's doing, not an oversight:
+   all three are fixed `:root` declarations that nothing moves, so resolving them once a minute would be a
+   no-op pretending to be a light, which is precisely what 2.17's rule forbids. The first draft of this
+   line listed all thirteen; the harness refused three of them, which is the boundary working. They stay
+   literals until something moves them. */
+const PAL_LIVE={bone:"--bone",boneLo:"--bone-lo",
+  gilt:"--gilt-a",giltB:"--gilt-b",giltC:"--gilt-c",mal:"--malachite",malLo:"--malachite-lo",
+  ruby:"--ruby",rubyLo:"--ruby-lo",verd:"--verdigris"};
 function palTick(){
   try{ const cs=getComputedStyle(document.documentElement);
     for(const k in PAL_LIVE){ const v=(cs.getPropertyValue(PAL_LIVE[k])||"").trim();
       if(/^#[0-9a-f]{6}$/i.test(v)) PAL[k]=v; } }catch(e){}
+  UPC=PAL.mal; DNC=PAL.ruby;
 }
-const UPC=PAL.mal, DNC=PAL.ruby;
+/* `let`, not `const`, and that is the 2.27 fix rather than a style preference: these were snapshots taken
+   at load, so every call-keyed colour on the sweep — the one place §5 says a wrong colour is the most
+   dangerous bug this tool can have — would have kept painting the palette that was active when the file
+   parsed. Nothing about the call sites changes; the two names are refreshed wherever PAL is. */
+let UPC=PAL.mal, DNC=PAL.ruby;
 function niceTicks(lo,hi,anchor){
   const span=Math.max(hi-lo,1e-6);
   const steps=[0.5,1,2,5,10,20,25,50,100,200,250,500,1000,2500,5000,10000];
@@ -7777,21 +7946,29 @@ function cfgFmt(k,v){
   if(k==="minEdge") return v+"pt";
   return (+v).toFixed(k==="contract"?3:2);
 }
-function syncMineralUI(){
-  for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.setAttribute("aria-pressed",String(m===S.cfg.mineral)); }
+function syncPaletteUI(){
+  for(const k of Object.keys(OCCVM_PIGMENTS)){ const el=$("pg_"+k); if(!el) continue;
+    el.setAttribute("aria-pressed",String(k===S.cfg.palette));
+    /* the unselected swatches wear their OWN accent, inline; the selected one drops it and reads the
+       live tokens, so the row shows four offers and one applied state rather than five offers */
+    if(k===S.cfg.palette) el.style.removeProperty("--pg"); else el.style.setProperty("--pg",OCCVM_PIGMENTS[k].m); }
 }
-function setMineral(m){ if(!OCCVM_MINERALS[m]) return; S.cfg.mineral=m; saveCfg(); applyMineral(); globuleLayer(); syncMineralUI(); }
-for(const m of Object.keys(OCCVM_MINERALS)){ const el=$("mn_"+m); if(el) el.addEventListener("click",()=>setMineral(m)); }
+function setPalette(k){ if(!OCCVM_PIGMENTS[k]) return; S.cfg.palette=k; saveCfg();
+  applyPigment(); palTick(); globuleLayer(); syncPaletteUI();
+  /* palTick BEFORE the canvas is asked to redraw: PAL resolves from the tokens applyPigment just wrote,
+     and a sweep drawn between the two would paint the outgoing palette's marks on the incoming ground. */
+  try{ renderSweep(); }catch(e){} }
+for(const k of Object.keys(OCCVM_PIGMENTS)){ const el=$("pg_"+k); if(el) el.addEventListener("click",()=>setPalette(k)); }
 function syncCfgUI(){
   if($("c_kproxy")) $("c_kproxy").value=S.cfg.kproxy||"";
   for(const k of CFG_KEYS){ const el=$("c_"+k), vv=$("v_"+k); if(!el) continue;
     el.value=String(S.cfg[k]); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); }
-  syncMineralUI();
+  syncPaletteUI();
 }
 for(const k of CFG_KEYS){ const el=$("c_"+k); if(!el) continue;
   el.addEventListener("input",()=>{ S.cfg[k]=+el.value; S.cfg.touched=S.cfg.touched||{}; S.cfg.touched[k]=1; const vv=$("v_"+k); if(vv) vv.textContent=cfgFmt(k,S.cfg[k]); saveCfg(); });
 }
-$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy, mn=S.cfg.mineral; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.mineral=mn; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
+$("cfgReset").addEventListener("click",()=>{ const kp=S.cfg.kproxy, pl=S.cfg.palette; Object.assign(S.cfg,CFG_DEF); S.cfg.kproxy=kp; S.cfg.palette=pl; S.cfg.touched={}; saveCfg(); syncCfgUI(); });
 $("c_kproxy").addEventListener("change",()=>{ S.cfg.kproxy=$("c_kproxy").value.trim(); saveCfg(); S.k.cur=null; S.k.err=null; renderKalshi(); });
 $("ktestBtn").addEventListener("click",()=>kTest($("c_kproxy").value));
 $("csvBtn").addEventListener("click",exportCSV);
@@ -7983,7 +8160,7 @@ requestAnimationFrame(loop);
    Kept inside this one script block deliberately: CLAUDE.md section 2 records a single style block and a
    single script as an architectural property, and test/lib/load.js reads the block by first-open to
    last-close. A second tag breaks every harness. */
-const BUILD_STAMP="build-20260909232758";
+const BUILD_STAMP="build-20260910054623";
 if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventListener==="function"){
   addEventListener("load",()=>{ navigator.serviceWorker.register("./sw.js?v="+BUILD_STAMP).catch(()=>{}); });
 }
@@ -7992,7 +8169,7 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
   loadCfg(); syncCfgUI(); ledgerLoad(); roundLoad(); viaLoad(); swingLoad(); jLoad(); shockLoad(); regimeLoad();
   try{ repairLedgers(); }catch(e){ S.repairErr=String(e&&e.message||e); }   /* one-time, versioned: mark the rows the K1 defect wrote */
   kProbeSameOrigin(); initSections();
-  try{ applyMineral(); globuleLayer(); sunTick(); }catch(e){}
+  try{ applyPigment(); globuleLayer(); sunTick(); }catch(e){}
   renderSources(); renderArmBar(); renderRounds(); renderIntervals(); renderSignals(); renderRegimeLedger(); renderXTData(); renderKalshi(); renderEdge(); renderVerdict(); renderViability(); renderSwing(); renderJournal();
   await seed();
   startPolling();
@@ -8000,5 +8177,5 @@ if(typeof navigator!=="undefined" && navigator.serviceWorker && typeof addEventL
 })();
 </script>
 </body>
-<!-- build-20260909232758 -->
+<!-- build-20260910054623 -->
 </html>

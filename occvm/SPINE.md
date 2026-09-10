@@ -134,7 +134,7 @@ today: `OCCVM-D10`.
 ### OCCVM-L2 — cut geometry
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px — worn at 8 site(s): 6 raised, 2 recessed
+> - BTC Terminal: **CONFORMS** — vessel 16 radii 2-22px + 9 pills; meniscus: bevel band 7.148px against lc 7.15px — worn at 9 site(s): 7 raised, 2 recessed
 > - Rhyme Instrument: **CONFORMS** — vessel 34 radii 1-9px; meniscus: bevel band 7.148px against lc 7.15px — worn at 14 site(s): 7 raised, 7 recessed
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
@@ -279,7 +279,7 @@ golden set a delta it cannot attribute.
 ### OCCVM-L4 — cast shadow
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — 15 casts, all light-derived or inset
+> - BTC Terminal: **CONFORMS** — 16 casts, all light-derived or inset
 > - Rhyme Instrument: **CONFORMS** — 25 casts, all light-derived or inset
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
@@ -310,51 +310,104 @@ else. Malachite and ruby carry outcome; verdigris carries seams and age; bronze 
 
 A surface that is merely important is not gilt. A number that settles something is.
 
-### OCCVM-L6 — the mineral set is frozen, with fixed meanings
+### OCCVM-L6 — the palette is a choice of colour, never of meaning
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — no accent restated; 7 outcome colour(s) are the granted exception
-> - Rhyme Instrument: **CONFORMS** — no accent restated; 4 :root mineral fallback(s), overwritten at load
+> - BTC Terminal: **CONFORMS** — 9 :root fallback(s) and 9 mirrored hex(es), all the obsidian palette's own
+> - Rhyme Instrument: **CONFORMS** — 9 :root fallback(s) and 9 mirrored hex(es), all the obsidian palette's own
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
-The mineral is the reader's choice of accent, and the set is closed:
+**The hue-to-meaning relation is what is frozen. The hexes are not.**
 
-| mineral | meaning | accent | deep |
-|---|---|---|---|
-| `amethyst` | the default field | `#8d5cf0` | `#4a2a8c` |
-| `malachite` | affirmed, won, positive | `#3fbf7e` | `#1c6a45` |
-| `ruby` | negated, lost, failed | `#e0475f` | `#6b1a2e` |
+| role | meaning | fixed to |
+|---|---|---|
+| positive | rising, confirmed, won | always green |
+| negative | falling, failed, lost | always red |
+| gilt | human authority, override | always gilt |
+| active | live state | always verdigris-adjacent |
 
-Both tools implement the same set with the same meanings and **no local exceptions**. Each tool stores its
-own choice.
+A palette is not a remapping of meaning; it is a choice of *which* green and *which* red. Nothing a
+reader can select makes a won window and a lost one read alike, and that is measured rather than
+promised: the smallest positive/negative separation across the shipped five is **CIEDE2000 62.3**
+(`sunset`), against this system's own **73.1**. `OCCVM_PIGMENT_SEPARATION` carries the table and both
+suites assert it, so a palette edit that narrowed the gap would have to re-record the number.
 
-**Cross-tool preference sharing is not attainable and is not required by this law.** `localStorage` is
-per-origin; the tools are served from `btc-terminal.pages.dev` and `ghostarchitecture.github.io`, and no
-common origin exists. The roadmap's 1.4 exit criterion — *"a mineral chosen in one tool is honored by the
-other"* — is therefore replaced by conformance: one set, one meaning, one behaviour, stored twice. This is
-the only place this spine departs from a stated roadmap exit, and it departs because the criterion is
-physically unreachable, not because it is inconvenient.
+**Everything else is open** — the decorative accent and its ladder, the globule field's tint, ambient
+surface wash. Nothing depends on those, so nothing breaks when they change.
 
-Mineral **properties** — hardness, cleavage, refractive index — are 2.0's substance and are explicitly not in
-this law. Completed at **1.4**, closing `OCCVM-D6`.
+#### What replaced the mineral set, and why the closed set died with the crystal
 
-**One implementation, `occvm/minerals.js`, spliced into both tools** — the same treatment as `sundial.js`
-and `veins.js`, and the correct fix for what D6 actually was: not just that BTC had no mineral system, but
-that Rhyme's own two-entry copy (no `ruby` — it had never needed a negative mineral) was a *local*
-implementation of a law that says "no local exceptions." Rhyme's `MINERALS` is now `OCCVM_MINERALS` under
-its old name, unchanged at every other call site; ruby exists there for the first time.
+Until 2.27 this law read *"the mineral set is frozen"* and named three: `amethyst` the default field,
+`malachite` affirmed, `ruby` negated. That set was closed **because under aragonite a colour had to be a
+mineral that exists with that colour.** The crystal left at 2.8. A dye is not discovered, it is chosen —
+a lamp manufacturer picks what they want and the wax does not constrain it — so the constraint that
+produced a closed three-colour set had been gone for nineteen releases and the vocabulary had not
+noticed. `occvm/minerals.js` is retired; `occvm/pigments.js` replaces it, and unlike `veins.js` it leaves
+`occvm/` outright, because nothing cites a mineral the way L10's record cites the vein generator.
 
-**BTC's use is deliberately narrower than Rhyme's, and that is not a partial close.** Rhyme spends the
-mineral pervasively — page wash, slab edges, focus rings, rhyme-match highlighting, picker borders —
-because none of that surface carries any other meaning. BTC's malachite and ruby already carry a fixed
-meaning everywhere (§5 of CLAUDE.md: "the most dangerous possible bug in this tool" is inverting it), so
-widening the mineral onto BTC's chrome risks a reader mistaking a decorative accent for the outcome
-signal. The mineral is wired to the one surface that was already load-bearing for this tool and carries no
-outcome meaning: the vein layer (`veinLayer`/`veinLayerLegacy`), plus a picker in Settings → Advanced. The
-roadmap's 1.4 exit criterion is met — BTC has a working, chosen, persisted mineral preference — without
-touching `--malachite`, `--ruby`, `--up`, `--down`, or any surface §5 governs. `test/occvm.js` pins both
-halves: the mineral drives the vein layer, and switching it never inline-sets an outcome token.
+**The easement is recorded rather than slid in.** Every other name in this system was chosen to be
+defensible: Fraunces replaced Cinzel because the incised-stone justification died, `--amb` became
+`--fill` because it was never sky illumination. Those were corrections *toward* accuracy. This is not
+that — some palette handles are invented where no real pigment fits. **The decorative layer does not
+answer to the derivation standard the rest of this law does**, and saying so here is cheaper than a later
+reader mistaking it for the naming discipline quietly eroding. It is the same line L13 already draws:
+decoration sitting *on* the substance is permitted, the substance lying about itself is not. Naming a dye
+after a compound it does not contain would be the dressed-up version; naming it plainly is the honest one.
+
+*Direction of travel, stated as a principle and bounded.* The aesthetic has been **deriving** the design —
+the crystal gave sharp corners, the yield-stress fluid gave a dead band and a meniscus. **For the
+decorative layer this inverts: the aesthetic serves the design rather than constraining it.** That applies
+to colour and naming in the decorative layer only. It does not touch material physics (L12), motion law
+(L13), or the four fixed roles above.
+
+#### Authored, derived, and the anchor that makes "no-op" a measurement
+
+Six values per palette are **authored**: the four fixed roles, the decorative accent, the decorative
+highlight. No hex among them comes from a spectrum, a compound or a measurement, and they are labelled
+authored for the same reason `LOCK_RELAX_MS = 360` is — a table of colours that looked derived would be
+the dishonest version.
+
+Seven per palette are **derived**, by `occvm/tools/derive-pigments.js`: each is its authored parent moved
+by the offset (ΔL, chroma ratio, Δh in CIE L\*C\*h) that **the shipped build already puts between that
+same pair**. `--malachite-lo` under a teal `positive` is not a design choice; it is the ramp this system
+already has, re-hung under a new hue. Chroma travels as a ratio rather than a difference because a hue
+with less chroma available cannot absorb an absolute step, and an out-of-gamut result is clipped by
+reducing chroma at fixed L and h — the two axes a ramp member must not move.
+
+`obsidian` **is** that anchor, so selecting it is a no-op and the no-op is measured, not claimed: the
+derivation applied to its six authored values reproduces all seven derived ones **byte-identically**, and
+both suites assert it. Independently, the palette document authors a *third* decorative value for three
+of the five palettes and the derivation was built without reference to it; where both exist they agree to
+**ΔL ≤ 3.6 and Δh ≤ 6.3°**, which is reported rather than assumed.
+
+#### One measured negative, on the record rather than tuned away
+
+`active` is pinned verdigris-adjacent above, and three palettes author it 4–16° off that hue — closest to
+`positive` in `sunset`, **1° apart**, separated by lightness alone. This system's own positive/active
+separation is **CIEDE2000 14.8**; `sunset` reads **11.7** and is the only palette below it. Rotating its
+`active` onto the verdigris hue was tried and reaches 13.6 — still short, because the limit is its
+low-chroma green `positive`, not the hue of its `active`. Clearing the floor would mean re-authoring a
+role hex by eye, which is the thing this system refuses everywhere else, so the value ships as authored
+and the number is in the source.
+
+#### Both tools, one write
+
+`occvmApplyPigment(name, style)` writes all thirteen tokens (§2ad). Before 2.27 each tool carried its own
+`applyMineral()` setting four properties by hand, which is how a shared set acquires a local exception —
+and Rhyme's pre-1.4 two-entry copy, missing `ruby` entirely, was exactly that. **Selection is a real user
+preference, not a build constant**: user-facing and persisted in both tools, per-origin, and the tools are
+served from different origins so a choice cannot travel between them. That is `localStorage`, not a gap
+in this law; the 1.4-era exit criterion asking for a shared choice was physically unreachable and is
+replaced by conformance — one set, one meaning, one behaviour, stored twice.
+
+**BTC's scope widened at 2.27 and that is the substantive change.** 1.4 kept the mineral off every surface
+§5 of CLAUDE.md governs, because a decorative accent beside a win/lose colour is §7.6's noise-as-signal
+trade. A palette is the other thing: it supplies the outcome colours themselves. That is safe where the
+accent was not for exactly one reason — the hue-to-meaning relation is not the reader's to change — and
+the separation table above is the evidence rather than the assurance. `test/occvm.js` pins both halves:
+every palette clears the recorded separation, and the `:root` fallbacks are the default palette's values
+as a set identity.
 
 ### OCCVM-L7 — figure discipline
 
@@ -1056,6 +1109,7 @@ until 2.13 it existed only in the guards, so the only way to learn it was to be 
 |---|---|---|
 | **declared by `spine.css`** at `:root`, one fixed value | **§2a** | is it a literal in the stylesheet? |
 | **written by `sundial.js`** every tick, no CSS default that survives | **§2ab** | does the sundial `setProperty` it? |
+| **written by another spliced part** — `pigments.js` since 2.27 — over a `:root` fallback that does survive until it runs | **§2ad** | does a spine part other than the sundial write it? |
 | **a surface input** read through `var(--x, fallback)` and supplied per consumer | **neither** — it is not spine-governed | does the spine only ever *read* it? |
 | anything above, once it exists | **§6b's migration table**, always | the census scans `spine.css` and requires every `--name` it finds |
 
@@ -1063,6 +1117,17 @@ until 2.13 it existed only in the guards, so the only way to learn it was to be 
 them, so a surface chooses its own amplitude without the law having an opinion. Putting one in §2a fails
 "the spine declares every token §2a lists"; putting one in §2ab fails the census; **omitting it from §6b
 fails whatever else you did**, because that table is fed by scanning the stylesheet rather than by hand.
+
+**The fourth row is new at 2.27 and the boundary did not have it.** Until then exactly one spliced part
+wrote tokens, so "written by the sundial" and "written by the spine" were the same sentence and nothing
+had to tell them apart. `pigments.js` breaks that: it writes thirteen tokens at load and on every palette
+change, and they are unlike the sundial's in the one way that matters here — **each keeps a `:root`
+fallback that is genuinely what renders until the part runs**, because a page that painted no outcome
+colour for one frame would be worse than one that painted the default palette's. So they are neither
+§2ab (which is defined by having no surviving default) nor §2a (whose values are fixed). §2ad is that
+class, and the rule for it is the one the fallbacks make necessary: **a §2ad token's `:root` declaration
+must be its default palette's value exactly, and the suite asserts the set identity** — a fallback that
+has drifted from what the part writes is a second source of truth wearing a safety net's clothes.
 
 ### 2ab. Governed since 1.2 — written by the sundial
 
@@ -1077,17 +1142,48 @@ carries (which of day/civil/nautical/astronomical/night the instant falls in) ha
 entries and `--phosphor` arrived at 1.7: the moon is a second light reaching ink alone (see L9), and it
 is measured in the same shared implementation rather than a second sky.
 
+### 2ad. Governed since 2.27 — written by the palette, over a surviving fallback
+
+`--malachite --malachite-lo --ruby --ruby-lo --gilt-a --gilt-b --gilt-c --verdigris --verdigris-lo
+--pigment --pigment-lo --vein-hi --vein-lo`
+
+Thirteen, all written by `occvm/pigments.js` through `occvmApplyPigment` — at load and on every palette
+change, never on a tick. The list is `OCCVM_PIGMENT_TOKENS` and not a sentence here; a count typed into a
+document is the 2.14 defect and this document has made it twice.
+
+**What separates this class from §2ab is the fallback, and the fallback is load-bearing.** A sundial token
+has no CSS default that survives its first write, by design: a light vector's placeholder is meaningless.
+An outcome colour's is not. A page that painted no malachite for one frame — or worse, painted nothing
+where a won window should be green — would be a worse failure than one that painted the default palette,
+so every token here keeps a `:root` declaration and that declaration is what renders until the part runs.
+It is also what renders in jsdom, which resolves no custom property at all: a palette that silently became
+empty strings would paint nothing while every assertion passed, and the suite would report green.
+
+**The rule that makes a surviving fallback safe rather than a second source of truth:** each `:root`
+declaration must carry the DEFAULT PALETTE's value exactly, and the suite asserts that as a set identity
+in both tools. A fallback allowed to drift from the palette it mirrors is precisely the restatement L6
+exists to catch, dressed as a safety net. The same rule binds `PAL`, BTC's canvas palette, whose thirteen
+JS literals are the same set for the same reason.
+
 ### 2b. Registered, not yet spine — promoted at the release named
 
 Declared by one tool or by both with divergent derivations. Each is spine at the release that unifies it;
 until then the tools' own declarations stand and the gap is a defect.
 
 *Empty as of 1.4.* `--mineral --mineral-lo --vein-hi --vein-lo` were the last entries here: Rhyme declared
-them alone, and BTC had no `ruby` mineral to declare at all. Both are now driven from the single shared
-`occvm/minerals.js` (§ OCCVM-L6), so the gap this table exists to track is closed. `--ruby --ruby-lo`
-remain BTC-only as *raw* CSS custom properties — that pair names BTC's fixed win/lose colour, §2c's kind of
-tool-local token, not the mineral naming scheme — but the concept the row was tracking, Rhyme having no
-negative mineral, closed with the shared map.
+them alone, and BTC had no `ruby` mineral to declare at all. Both were then driven from the single shared
+`occvm/minerals.js`, so the gap this table exists to track closed.
+
+*2.27 moves that whole group again and the row stays empty.* `minerals.js` is retired and
+`occvm/pigments.js` replaces it; `--mineral --mineral-lo` are renamed `--pigment --pigment-lo`, and the
+palette now also writes the four fixed roles and their ramps. Every one of those is **§2ad** — written by
+a spliced part, over a `:root` fallback — so none of them is a *registered-not-yet-spine* gap. `--ruby-lo`
+returns here after 1.9 deleted it as dead weight: it has a consumer now (`PAL`, BTC's canvas palette, read
+it as a bare literal `#6b1a2e` with no token to resolve from, which is the restatement L6 exists to catch
+sitting in the one file the measure could not see until 2.17), and the 1.9 guard that pinned it deleted is
+retired **in name only** — the two tokens beside it, `--glass-hi` and `--warn`, stay pinned, and
+`--ruby-lo` is now held to the stronger property instead: it must be written by the palette *and* read by
+`PAL`, so it cannot go dead a second time.
 
 ### 2c. Tool-local — not spine, not promised
 
@@ -1234,6 +1330,22 @@ every time it runs; it is not a list kept by hand, and CI runs it with `--check`
 **Census at 1.9: 81 distinct tokens.** 27 written by the sundial each minute, 22 declared by the spine's
 CSS, 32 tool-local (17 BTC, 11 Rhyme, 4 in both since 1.4).
 
+*`--pigment` and `--pigment-lo` replace `--mineral` and `--mineral-lo` at 2.27, and change class doing
+it.* The old pair was tool-local: each tool's own `applyMineral()` wrote four properties by hand, which is
+how a shared set acquires a local exception. The new pair is written by `occvm/pigments.js` — one part,
+one call, both tools — so it is **§2ad**, and so are the nine role tokens the palette now drives
+(`--malachite --malachite-lo --ruby --ruby-lo --gilt-a --gilt-b --gilt-c --verdigris --verdigris-lo`) and
+the two field tints it inherited (`--vein-hi --vein-lo`, which keep their names: the generator they were
+named for retired at 2.25 and the tint did not, and renaming a token whose meaning did not change would
+put a second migration in a release that already has one). Thirteen in all, and the count is what
+`occvmApplyPigment` writes rather than a number typed here — `OCCVM_PIGMENT_TOKENS` is the list.
+
+*BTC's `--pg` joins the tool-local row at 2.27* — the palette picker's own swatch colour, set inline on
+each unselected button from that palette's accent so the row is five real swatches rather than five
+labels. The selected button *removes* it and reads the live tokens, which is the whole reason it is a
+token and not a background: the offer and the applied state have to be able to disagree. Tool-local for
+the same reason `--pulse` and `--slide` are — neither spine-declared nor spine-written.
+
 *BTC's `--globules` joins the tool-local row at 2.25* — the still frame of the globule field, written by
 `globuleLayer()` once per mineral change and read by `body::before` and `.tile::before`, where `--vein`
 was. Tool-local for the same reason `--pulse` and `--slide` are.
@@ -1336,7 +1448,7 @@ law are generated from that run.
 | **L3** | one light | IN FORCE | CONFORMS | CONFORMS |
 | **L4** | cast shadow | IN FORCE | CONFORMS | CONFORMS |
 | **L5** | gilt is reserved | UNMEASURED | UNMEASURED | UNMEASURED |
-| **L6** | the mineral set is frozen | IN FORCE | CONFORMS | CONFORMS |
+| **L6** | the palette is a choice of colour, never of meaning | IN FORCE | CONFORMS | CONFORMS |
 | **L7** | figure discipline | IN FORCE | CONFORMS | CONFORMS |
 | **L8** | the interaction floor | IN FORCE | CONFORMS | CONFORMS |
 | **L9** | night | UNMEASURED | UNMEASURED | UNMEASURED |
