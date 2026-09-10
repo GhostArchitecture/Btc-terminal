@@ -4,29 +4,32 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current build: `build-20260910222806` (not yet deployed — 2.39 is on the branch) — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current build: `build-20260910232759` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
 correction, and OCCVM through **2.40** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
 a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
-screen edge, and the Fresnel rim on the column's walls. *Verified by stamp, every reading a bracket
-because the preceding miss is recorded: Cloudflare missed at 21:34:54 and hit at **21:35:05**; Rhyme
-missed at 21:35:06 and hit `build-20260910210243` at **21:35:17**; GitHub Pages for BTC took four
-misses and hit at **21:35:37**, the slowest of the three by half a minute. Rhyme's service worker on
-the wire names `tome-build-20260910210243`, the same stamp, and its artifact really changed, so that
-poll answers the question it was asked. Corroborated as this release rather than a cached stamp,
-which is corroboration and not the verification (§7.3): both BTC hosts serve the spliced `glass.js`
-fence, `RIM_GAIN = 0.25` and `max-width:var(--column)`; Rhyme serves the column token.* Earlier
-lines: `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+screen edge, the Fresnel rim on the column's walls, and **the coil measured and then closed on one
+side** — a peanut may rejoin at the coil, and above `R[1]` a body sheds its thinnest bond rather than
+coarsening forever. *Verified by stamp, and NOT every reading is a bracket this time, which is the
+distinction worth keeping: both BTC hosts were already serving `build-20260910232759` at the **first**
+poll, 23:42:23 UTC, so those are upper BOUNDS with no preceding miss recorded and I cannot say when
+they landed. Rhyme is a real bracket — missed three times and at **23:42:40**, hit
+`build-20260910232610` at **23:42:46**. Its service worker on the wire names
+`tome-build-20260910232610`, the same stamp, and its artifact really changed, so that poll answers the
+question it was asked. Corroborated as this release rather than a cached stamp, which is corroboration
+and not the verification (§7.3): both BTC hosts serve `overCeiling`, `CARRIER` and the lazy
+`retractMs` reader; Rhyme's page serves the shed criterion.* Earlier
+lines: `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **10,078 lines, 888 KB, 303 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **10,229 lines, 900 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
 inside the sentence promising it would not recur. Counted again at every release since, this one
-included, and the count excludes the spliced dependency. *At 2.39 the function figure read **302** against a measured **303**, counted by the header's own stated method — 312 line-start declarations less the nine inside React's vendor fences, enumerated from the fences rather than from the list of names. A drift of one is the 2.14 class at its smallest, and it is corrected here rather than quietly overwritten, because the sentence above promises this is counted every release.* The island is **156,947 bytes** as spliced,
+included, and the count excludes the spliced dependency. *At 2.39 the function figure read **302** against a measured **303**, counted by the header's own stated method — 312 line-start declarations less the nine inside React's vendor fences, enumerated from the fences rather than from the list of names. A drift of one is the 2.14 class at its smallest, and it is corrected here rather than quietly overwritten, because the sentence above promises this is counted every release. At 2.40 the line and byte figures moved with the splice — 10,078 / 888 KB against a measured **10,229 / 900 KB** — and the function count did not, holding at 303 by the same method. The island's byte figure is deliberately NOT restated: `react/` and `vendor/` have not moved since 2.34, and my re-measurement disagreed with the recorded 156,947 by five bytes on a span boundary I could not reproduce, so restating it would report an instrument as a change — 2.26's error in a different coordinate.* The island is **156,947 bytes** as spliced,
 of which the vendor payload is **142,586** and the three components 13,499 — the rest is fence
 comments. *Two measurement corrections live in that sentence, and neither is a change to the file.
 It read 156,881 one release ago because that count was taken over CHARACTERS and this one is taken
@@ -3484,6 +3487,41 @@ sitting beside it unnoticed. Both run at 520×900 now.
 `spine.test.js` **122 → 124**, and both new ones verified to bite: restoring the parent's phase fails
 the departure clause at **60.0%** returning to the parent, and removing the shed fails it at **0
 sheds**.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`5dcfe32` here,
+`db010f0` in Rhyme), CI green on both branch heads through the API before either merged — **BTC run
+137 and Rhyme run 93, read job by job and step by step rather than off the rollup**, because Rhyme's
+whole run finishes in about a minute and a rollup cannot tell a fast suite from a skipped one. Its
+engine step ran 50 seconds, which is the driven floor harness actually pumping its 25,000-frame
+simulations, and step 8 — *"Regenerate from tome-src and check nothing drifted"* — ran and passed.
+BTC's two jobs cover the harnesses, all three splicers, the token audit, the law conformance, the
+unit suites, the duplicate-definition check, the splice-reproducibility check and both golden
+surfaces on Chromium.
+
+**And two of the three stamp readings are bounds rather than brackets, which is stated rather than
+smoothed over.** Both BTC hosts already served `build-20260910232759` at the first poll, 23:42:23
+UTC — no miss precedes them, so all they establish is that the deploy had landed by then. Only Rhyme
+is bracketed: three misses and one at 23:42:40 reading the previous `build-20260910210243`, then
+`build-20260910232610` at 23:42:46. Every release since 2.35 has called its readings brackets, and
+here two of them are not; the record says which.
+
+*What a reader sees change.* The field stops going inert. Before this the coil welded ten times on a
+phone over two hours of running and then never again — the neighbour set is decided at spawn and it
+gets consumed — and every arrest locked two more drops out permanently, so what the ground carried
+after half an hour was a still life. Now a drop can rejoin a body it meets at the coil, and a body
+that grows past the biggest drop the field spawns breaks its thinnest bond and lets the fragment go.
+Over the same two hours the phone's field runs `[12,9,2,2,3,1,1,1]` welds per fifteen minutes against
+`[12,4,0,0,0,0,0,0]`, and Rhyme's column `[28,22,22,9,9,7,9,5]` against `[28,21,14,0,0,0,0,0]`. The
+biggest body is smaller in both — 5 → 4 and 7 → 4 — so the picture is less coarse, not busier.
+
+*What this deploy does not close, stated because the record should not round up.* **The opening weld
+rate is floored, not restored.** Pinch-off closes the coarsening; 2.39's lane-lock is a separate
+defect and the rate still decays from its first bin before it settles. Mixing is Task #29 and it is
+the owner's call between a per-drop period — which contradicts the constant-periodicity mode the
+cycle is sourced from — and lateral transport along the coil. Carried unchanged: Rhyme's open-face
+serif parity misses by 3.49 L\* (SPINE.md §6b), the "no declaration computes to its initial value"
+property is guarded only for the one class that shipped, desktop frame cost is still ~13 fps from
+`backdrop-filter` across 21 tiles, and the chart island (§13.5) is deferred with its cost measured.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
