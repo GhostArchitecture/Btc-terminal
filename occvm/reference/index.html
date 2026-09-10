@@ -832,7 +832,7 @@ footer { margin-top: 34px; }
 
 <script>
 /* ==== OCCVM SPINE floor.js — spliced from occvm/floor.js. do not edit. ==== */
-/* sha256:f4386ca082b5 */
+/* sha256:f4ae6f68bed6 */
 /* occvm/floor.js — the ambient floor (OCCVM-L13). One implementation, shared by every tool the law
  * grants it to.
  *
@@ -897,8 +897,10 @@ footer { margin-top: 34px; }
    * it at all. That is not a reason to abandon the floor; L13 grants it and records the cost. It is a
    * reason to state the number rather than to reach for a derivation that returns zero.
    *
-   * RISE_PX_S is therefore 1.4 — the same magnitude `OCCVM_GLOBULES.DRIFT_PX_S` has carried since 2.22,
-   * now vertical and cyclic instead of random. The period FOLLOWS from it and the surface's own height
+   * RISE_PX_S is therefore 1.4. It carried that value alongside `OCCVM_GLOBULES.DRIFT_PX_S` from 2.22
+   * to 2.37, the two of them the same number written twice; 2.38 retires the drift with the lateral
+   * wander it fed, so this is now the ONE place 1.4 lives, which is what L3 wanted of it all along.
+   * The period FOLLOWS from it and the surface's own height
    * rather than being a second authored number: a drop crosses the face at that speed, so a tall face
    * cycles slowly and a short one quickly, which is what a taller vessel does. */
   var RISE_PX_S = 1.4;    /* authored: see above — the substance's own answer here is zero */
@@ -1020,7 +1022,12 @@ footer { margin-top: 34px; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!drops.length) { fld = OCCVM_GLOBULES.field({ seed: seed, w: w, h: h }); drops = fld.drops.slice(); }
       else if (pw && ph && (pw !== w || ph !== h))
-        for (var j = 0; j < drops.length; j++) { drops[j].x *= w / pw; drops[j].y *= h / ph; }
+        for (var j = 0; j < drops.length; j++) {
+          drops[j].x *= w / pw; drops[j].y *= h / ph;
+          /* 2.38: the lane is a position too. Rescaling x and leaving the lane behind clamps
+             the next frame against a vessel that is no longer there. */
+          if (drops[j].lane !== undefined) drops[j].lane *= w / pw;
+        }
       pw = w; ph = h;
     }
 
@@ -1050,12 +1057,45 @@ footer { margin-top: 34px; }
       clock += dt;
       for (i = 0; i < drops.length; i++) {
         var d = drops[i];
-        d.x += d.vx * dt;                                        /* the lateral wander a real lamp shows */
-        if (d.x < -d.r * 2) d.x = w + d.r; else if (d.x > w + d.r * 2) d.x = -d.r;
         if (d.merging) continue;                                 /* a welding pair is driven by the weld */
         if (d.lockedTo) continue;                                /* a follower lobe is placed below */
         var u = ((clock / period) + (d.phase === undefined ? 0 : d.phase)) % 1;
         d.y = (h - d.r) - cyclePos(u) * (h - 2 * d.r);
+        /* 2.38 — THE VESSEL CONSTRAINS, AND IT NEEDS NO COLLISION RULE. What was here was
+           `d.x += d.vx * dt` with a WRAP: a drop leaving the left edge reappeared on the right. That
+           is a torus, and a vessel is the opposite of one. Neither obvious wall fixes it — measured
+           over an hour, absorbing pins 36/37 drops against the edges and reflecting is an elastic
+           bounce this material cannot claim (2.21). The constant drift was the defect, not the wall.
+           Gyure & Janosi's lamp, already the source for the cycle, is a CONVECTION ROLL: up the
+           interior, down by the wall. A true roll cannot be had here — it has no dwells and cyclePos
+           does, by derivation (2.28 step 3) — so what is taken is the roll's SHAPE traversed once per
+           cycle, on the one cycle parameter the vertical motion already uses. At the coil and at the
+           top the drop is on its lane; it swings one way through the rise and the other through the
+           descent. Bolting a streamfunction's horizontal component onto a prescribed vertical instead
+           was tried first and does not close: 6.8M wall crossings and every drop pinned.
+           The amplitude is the room the drop's own lane has, so crossing the wall is IMPOSSIBLE BY
+           CONSTRUCTION rather than prevented by a check — measured at 0 crossings over an hour at
+           both viewports, with a median excursion of 160px of 390 on a phone and 455 of 1100. */
+        /* 2.38 — THE BODY IS WHAT HAS TO FIT, NOT THE LOBE, and the first version of this got it
+           wrong in a way only the driven guard could see. A leader carrying a frozen follower is one
+           rigid object (2.28 steps 4+5): the follower is placed at the leader's position plus the
+           offset it froze at, so clamping the LOBE lets the pair's far side through the glass, and
+           clamping the FOLLOWER instead would stretch a bridge that by definition cannot stretch.
+           My own simulation said zero crossings and the shipped floor said 731 of 3383 samples —
+           the simulation modelled neither the merge growth nor the follower, which is 2.22's
+           "verified against a fixture instead of the call path" with me on the wrong side of it.
+           So the half-extents below are the BODY's, and a lobe's own radius is only the base case. */
+        var extL = d.r, extR = d.r, fo;
+        for (var q = 0; q < drops.length; q++) {
+          fo = drops[q];
+          if (fo.lockedTo !== d) continue;
+          extL = Math.max(extL, fo.r - fo.dx);
+          extR = Math.max(extR, fo.r + fo.dx);
+        }
+        var lane = Math.min(Math.max(d.lane === undefined ? d.x : d.lane, extL), Math.max(extL, w - extR));
+        d.lane = lane;
+        var room = Math.max(0, Math.min(lane - extL, (w - extR) - lane));
+        d.x = lane + room * Math.sin(2 * Math.PI * u);
       }
       /* the follower lobes, after every leader has moved: a frozen bridge holds its offset exactly */
       for (i = 0; i < drops.length; i++) {
@@ -1094,8 +1134,13 @@ footer { margin-top: 34px; }
           var wa = Math.pow(a.r, P), wb = Math.pow(b.r, P), m = wa + wb;
           a.x = (a.x * wa + b.x * wb) / m; a.y = (a.y * wa + b.y * wb) / m;
           a.r = OCCVM_GLOBULES.merged(a.r, b.r); a.merging = false; b.gone = true;
+          /* 2.38: the survivor is BIGGER than either parent, so the lane it inherited may no
+             longer have room for it. Re-clamped here, at the one place a radius ever grows. */
+          a.lane = Math.min(Math.max(a.x, a.r), Math.max(a.r, w - a.r));
           welds.splice(i--, 1);
           drops = drops.filter(function (x) { return !x.gone; });
+          /* 2.38: `spawn(true)` used to mean "enter from off-screen"; inside a vessel there is no
+             off-screen, so it means "born at the coil" — the same bottom dwell this merge happens in. */
           while (drops.length < count()) drops.push(spawn(true));
         }
       }
@@ -1571,7 +1616,7 @@ if (typeof module !== "undefined") module.exports = {
 /* ==== END OCCVM pigments.js ==== */
 
 /* ==== OCCVM SPINE globules.js — spliced from occvm/globules.js. do not edit. ==== */
-/* sha256:23b279ef03d8 */
+/* sha256:09639c84b16e */
 /* OCCVM — the globule field (2.25). The substrate decoration both tools share: a seeded field of
    droplets, one generator, two renderers. Rhyme paints it live on the draft face and as a still frame on
    every other slab (30_ui.jsx: ambientFloor); BTC writes a still frame to --globules as a data URI
@@ -1719,7 +1764,19 @@ var OCCVM_GLOBULES = (function () {
   }
 
   var PX_PER_DROP = 9000;      /* authored: one droplet per ~95×95 px */
-  var DRIFT_PX_S = 1.4;        /* authored: the live consumer's drift, carried on each drop so the field is one field */
+  /* 2.38 — DRIFT_PX_S IS RETIRED, and with it `vx`/`vy`. It was a 2.22 leftover: step 3 replaced the
+     vertical drift with the buoyancy cycle and never replaced the lateral one, so a constant random
+     heading survived sideways under a comment calling it "the lateral wander a real lamp shows".
+     The vessel is what forced the question. A wall and a constant lateral drive cannot coexist —
+     driven on this field over an hour of simulated time, an absorbing wall pins 36 of 37 drops on the
+     phone and 162 of 171 on the desktop, emptying the middle into two stripes at the edges, because
+     peeling a drop off a wall needs the same buoyant stress that is 4.2-14x short of tau-0 (below).
+     A reflecting wall survives (0 pinned) and is refused for a different reason: an elastic bounce is
+     the material claiming an elasticity it does not have, which is the recoil 2.21 already refused.
+     The lateral motion is now a closed orbit sharing the vertical cycle's own parameter, and it lives
+     in the live consumer (occvm/floor.js) with the rest of the motion. `vy` was the sharper half of
+     the find: it was written onto every drop and READ BY NOTHING, D12 one level down, invisible
+     because a value on an object is not a token the auditor scans. */
 
   function count(w, h, pxPerDrop) { return Math.max(3, Math.round(w * h / (pxPerDrop || PX_PER_DROP))); }
 
@@ -1729,10 +1786,19 @@ var OCCVM_GLOBULES = (function () {
      consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
      withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
      and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
-  function drop(rnd, w, h, r0, r1, edge) {
-    var r = r0 + rnd() * (r1 - r0), a = rnd() * Math.PI * 2;
-    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r, phase: rnd(),
-             vx: Math.cos(a) * DRIFT_PX_S / 1000, vy: Math.sin(a) * DRIFT_PX_S / 1000 };
+  function drop(rnd, w, h, r0, r1, atCoil) {
+    var r = r0 + rnd() * (r1 - r0);
+    /* THE LANE IS CLAMPED INTO THE VESSEL, and a torus is why nobody noticed it needed to be. Until
+       2.38 a centre was drawn anywhere in [0, w], so a drop within r of an edge hung over it — which
+       is invisible while the consumer WRAPS (the drop reappears on the far side) and is a drop half
+       inside the glass the moment a wall exists. Clamping here rather than in the consumer keeps the
+       field one field: both tools draw the same drops. */
+    var lane = Math.min(Math.max(rnd() * w, r), Math.max(r, w - r));
+    /* a replacement drop is born AT THE COIL rather than sliding in from off-screen. There is no
+       off-screen inside a vessel, and the coil is where a real lamp's wax pools and re-forms — the
+       same bottom dwell the merge already happens in (2.28 steps 4+5), so this costs no new geometry
+       and no new constant. */
+    return { x: lane, y: atCoil ? Math.max(r, h - r) : rnd() * h, r: r, phase: atCoil ? 0 : rnd() };
   }
 
   /* ---- what the substance says about drift (2.28, step 3) ---------------------------------------
@@ -1770,7 +1836,7 @@ var OCCVM_GLOBULES = (function () {
     var w = o.w, h = o.h, rnd = mulberry32(o.seed >>> 0);
     var r0 = (o.r || R)[0], r1 = (o.r || R)[1], n = count(w, h, o.pxPerDrop), drops = [];
     for (var i = 0; i < n; i++) drops.push(drop(rnd, w, h, r0, r1, false));
-    return { drops: drops, rnd: rnd, spawn: function (edge) { return drop(rnd, w, h, r0, r1, edge); }, count: function () { return n; } };
+    return { drops: drops, rnd: rnd, spawn: function (atCoil) { return drop(rnd, w, h, r0, r1, atCoil); }, count: function () { return n; } };
   }
 
   /* ---- metaball rendering (2.28) -----------------------------------------------------------------
@@ -1845,7 +1911,7 @@ var OCCVM_GLOBULES = (function () {
   }
 
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
-           PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
+           PX_PER_DROP: PX_PER_DROP, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
            arrestedBridge: arrestedBridge,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,

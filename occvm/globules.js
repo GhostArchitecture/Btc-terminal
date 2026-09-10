@@ -145,7 +145,19 @@ var OCCVM_GLOBULES = (function () {
   }
 
   var PX_PER_DROP = 9000;      /* authored: one droplet per ~95×95 px */
-  var DRIFT_PX_S = 1.4;        /* authored: the live consumer's drift, carried on each drop so the field is one field */
+  /* 2.38 — DRIFT_PX_S IS RETIRED, and with it `vx`/`vy`. It was a 2.22 leftover: step 3 replaced the
+     vertical drift with the buoyancy cycle and never replaced the lateral one, so a constant random
+     heading survived sideways under a comment calling it "the lateral wander a real lamp shows".
+     The vessel is what forced the question. A wall and a constant lateral drive cannot coexist —
+     driven on this field over an hour of simulated time, an absorbing wall pins 36 of 37 drops on the
+     phone and 162 of 171 on the desktop, emptying the middle into two stripes at the edges, because
+     peeling a drop off a wall needs the same buoyant stress that is 4.2-14x short of tau-0 (below).
+     A reflecting wall survives (0 pinned) and is refused for a different reason: an elastic bounce is
+     the material claiming an elasticity it does not have, which is the recoil 2.21 already refused.
+     The lateral motion is now a closed orbit sharing the vertical cycle's own parameter, and it lives
+     in the live consumer (occvm/floor.js) with the rest of the motion. `vy` was the sharper half of
+     the find: it was written onto every drop and READ BY NOTHING, D12 one level down, invisible
+     because a value on an object is not a token the auditor scans. */
 
   function count(w, h, pxPerDrop) { return Math.max(3, Math.round(w * h / (pxPerDrop || PX_PER_DROP))); }
 
@@ -155,10 +167,19 @@ var OCCVM_GLOBULES = (function () {
      consumer's. L13 grants motion to one tool only and a shared part must not carry what one tool is
      withheld; a number saying "this drop starts 0.37 of the way round" is carried by both tools alike
      and moves nothing on its own. `vx`/`vy` stay for the lateral wander a real lamp shows. */
-  function drop(rnd, w, h, r0, r1, edge) {
-    var r = r0 + rnd() * (r1 - r0), a = rnd() * Math.PI * 2;
-    return { x: edge ? (rnd() < 0.5 ? -r : w + r) : rnd() * w, y: rnd() * h, r: r, phase: rnd(),
-             vx: Math.cos(a) * DRIFT_PX_S / 1000, vy: Math.sin(a) * DRIFT_PX_S / 1000 };
+  function drop(rnd, w, h, r0, r1, atCoil) {
+    var r = r0 + rnd() * (r1 - r0);
+    /* THE LANE IS CLAMPED INTO THE VESSEL, and a torus is why nobody noticed it needed to be. Until
+       2.38 a centre was drawn anywhere in [0, w], so a drop within r of an edge hung over it — which
+       is invisible while the consumer WRAPS (the drop reappears on the far side) and is a drop half
+       inside the glass the moment a wall exists. Clamping here rather than in the consumer keeps the
+       field one field: both tools draw the same drops. */
+    var lane = Math.min(Math.max(rnd() * w, r), Math.max(r, w - r));
+    /* a replacement drop is born AT THE COIL rather than sliding in from off-screen. There is no
+       off-screen inside a vessel, and the coil is where a real lamp's wax pools and re-forms — the
+       same bottom dwell the merge already happens in (2.28 steps 4+5), so this costs no new geometry
+       and no new constant. */
+    return { x: lane, y: atCoil ? Math.max(r, h - r) : rnd() * h, r: r, phase: atCoil ? 0 : rnd() };
   }
 
   /* ---- what the substance says about drift (2.28, step 3) ---------------------------------------
@@ -196,7 +217,7 @@ var OCCVM_GLOBULES = (function () {
     var w = o.w, h = o.h, rnd = mulberry32(o.seed >>> 0);
     var r0 = (o.r || R)[0], r1 = (o.r || R)[1], n = count(w, h, o.pxPerDrop), drops = [];
     for (var i = 0; i < n; i++) drops.push(drop(rnd, w, h, r0, r1, false));
-    return { drops: drops, rnd: rnd, spawn: function (edge) { return drop(rnd, w, h, r0, r1, edge); }, count: function () { return n; } };
+    return { drops: drops, rnd: rnd, spawn: function (atCoil) { return drop(rnd, w, h, r0, r1, atCoil); }, count: function () { return n; } };
   }
 
   /* ---- metaball rendering (2.28) -----------------------------------------------------------------
@@ -271,7 +292,7 @@ var OCCVM_GLOBULES = (function () {
   }
 
   return { mulberry32: mulberry32, field: field, svg: svg, count: count,
-           PX_PER_DROP: PX_PER_DROP, DRIFT_PX_S: DRIFT_PX_S, R: R, MERGE_POWER: MERGE_POWER,
+           PX_PER_DROP: PX_PER_DROP, R: R, MERGE_POWER: MERGE_POWER,
            arrestLengths: arrestLengths, merged: merged, arrestRegime: arrestRegime, bingham: bingham,
            arrestedBridge: arrestedBridge,
            gooFilter: gooFilter, blurPx: blurPx, buoyantStress: buoyantStress, risesAt: risesAt,
