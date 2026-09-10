@@ -334,14 +334,26 @@
         /* A FOLLOWER IS INTERIOR. It is a lobe inside a rigid body, not a free surface a drop can
            land on, and welding to one would put a bridge inside an object. */
         if (p.lockedTo || q.lockedTo) continue;
-        /* AND A BODY MAY ACCRETE A FREE DROP BUT NOT ANOTHER BODY. This is a limit of the placement,
-           stated rather than dressed as physics: the rigid body here is ONE LEVEL DEEP by
-           construction — the extent loop above reads `fo.lockedTo === d`, and the follower pass makes
-           a single sweep over `drops` — so a two-level chain would leave a grand-follower outside its
-           leader's extent (through the glass, which is 2.38's bypass again) and one frame stale in
-           its position. Body-to-body welding needs a tree walk in both loops and is not built.
-           Measured cost of the looser rule that allows it: it produces chains, which those two loops
-           cannot place. */
+        /* AND A BODY MAY ACCRETE A FREE DROP BUT NOT ANOTHER BODY. This is a limit of the
+           PLACEMENT, stated rather than dressed as physics: the extent loop above reads
+           `fo.lockedTo === d`, so it sums DIRECT followers only. In a chain g -> b -> a the clamp
+           sees b and not g, and g sits at b's position plus its own frozen offset — about a lobe
+           further out — so if b is at the wall, g is through it. That is 2.38's containment bypass
+           arriving through the topology instead of through the lane.
+           MEASURED, AND THE FIRST VERSION OF THIS COMMENT ASSERTED A SECOND MECHANISM THAT DOES NOT
+           EXIST. It claimed a grand-follower would also be "one frame stale in its position",
+           reasoning from the follower pass being a single sweep over `drops`. It cannot be: the coil
+           loop is `for i; for j = i + 1` and the arrest writes `join.lockedTo = lead`, so without the
+           ordering below a follower always takes the HIGHER index and the sweep places parent before
+           child deterministically — and WITH the ordering a follower may take a lower index, which is
+           equally harmless, because leaders are positioned in the motion loop above and not in this
+           sweep. Driven at four viewports: 0 non-rigid pairs, 0.0000 px of wander, every time.
+           The extent gap is the whole of it, and it is real: removing the ordering below and driving
+           720x1400 for an hour puts 4,984 of 8,064,000 lobe-frames past the glass, worst overhang
+           38.6 px, at chain depth 4. It needs a wide enough vessel AND a deep enough chain — the same
+           removal at 390x844 reaches depth 2 and crosses nothing over 2,664,000 lobe-frames, which is
+           why a phone-sized bite test first called this clause conservative and was wrong.
+           Body-to-body welding needs a tree walk in both loops and is not built. */
         if (p.locked && q.locked) continue;
         if (!atCoil(p, period) || !atCoil(q, period)) continue;
         if (Math.hypot(p.x - q.x, p.y - q.y) > p.r + q.r) continue;

@@ -3368,12 +3368,29 @@ property instead of the string.
 what it pinned is wrong rather than because it was inconvenient, replaced by the two narrower
 structural exclusions. **Verified to bite:** restoring the blanket exclusion fails the new driven
 test; restoring the hardcoded default fails three; restoring the wrong exemption sentence fails one.
-*One stated limit:* removing the leader ordering is caught by a **source assertion only** — the
-two-level chain it produces happens, at this field size, to place its grand-follower after its parent
-so nothing goes stale. The rigidity property is asserted anyway because it is the real physics, and
-its reach is recorded rather than assumed.
+*And that limit was wrong twice over, which is the last correction in this entry.* It first read:
+"removing the leader ordering is caught by a **source assertion only** — the two-level chain it
+produces happens, at this field size, to place its grand-follower after its parent so nothing goes
+stale." Two errors. **The mechanism does not exist:** a grand-follower can never read a stale parent,
+because the coil loop is `for i; for j = i + 1` and the arrest writes `join.lockedTo = lead`, so the
+chain is parent-before-child in `drops` by construction rather than by luck — and with the ordering
+in place a follower may take a *lower* index, which is equally harmless because leaders are
+positioned in the motion loop, not in the follower sweep. Driven at four viewports, both ways:
+**0 non-rigid pairs, 0.0000 px of wander**, every time. **And the instrument was too small:** the
+real hazard is the extent loop, which sums DIRECT followers only, so a grand-follower hangs outside
+its body's clamp. That needs a wide enough vessel *and* a deep enough chain, and the harness's
+320×480 gives neither — the chain there never passes depth 1 even with the ordering removed, so the
+guard written at that size **could not fail and was decoration**. Measured to find the cheapest size
+that can: 390×844 reaches depth 2 and still crosses nothing over 2,664,000 lobe-frames; **520×900
+over 25,000 frames crosses 486 times at 15.1 px**; 720×1400 over an hour crosses **4,984 times at
+38.6 px, at chain depth 4**. The containment case is its own test at 520×900 now — the smallest that
+bites, ~7 s — and it carries a floor on the lobe-frame count so a silent zero cannot pass vacuously.
+**Verified to bite: removing the ordering fails it at 15.065 px over 1,299,948 lobe-frames.** The
+rigidity clause stays because it is the real physics, no longer claiming to guard the ordering.
+*The pattern is this release's own: a subset of the verification treated as the whole — 2.38's
+lesson, arriving through the size of the fixture instead of the set of gates.*
 
-`test/rheology.js` **61 → 77**; §6's total **1,008 → 1,024**. Rhyme **120 → 121**.
+`test/rheology.js` **61 → 77**; §6's total **1,008 → 1,024**. Rhyme **120 → 122**.
 
 **WHAT THIS DOES NOT CLOSE, AND IT IS THE OWNER'S CALL.** The coil still exhausts its neighbour set:
 16 welds instead of 10, and then quiet. The field can only coarsen, because it merges and never
