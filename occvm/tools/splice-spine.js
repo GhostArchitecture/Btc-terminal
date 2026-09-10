@@ -66,10 +66,10 @@ const PARTS = IS_RHYME ? [
   { name: "pigments.js",  target: path.join("tome-src", "10_engine.js"), anchor: null },
   { name: "yield.js",     target: path.join("tome-src", "10_engine.js"), anchor: null },
 ] : [
-  /* floor.js is NOT in this list yet, and that is the state rather than an oversight. The part is
-     shared and it is committed here — occvm/ is mirrored between the repositories — but L13 still
-     withholds the floor from this tool, so splicing it in would put a generator in BTC's artifact that
-     nothing may call. It joins this list in the commit that amends the law and mounts the island. */
+  /* 2.34 — floor.js joins the list here, because L13 now grants this tool a floor on its page ground.
+     The grant is surface-bounded and law-audit.js measures the boundary; the part itself is the same
+     part Rhyme runs. */
+  { name: "floor.js",     target: "index.html", anchor: "<script>" },
   { name: "spine.css",    target: "index.html", anchor: "<style>" },
   /* the numeric face ships only where mono is rendered; Rhyme resolves zero mono elements */
   { name: "mono.css",     target: "index.html", anchor: "<style>" },
@@ -91,6 +91,7 @@ const PARTS = IS_RHYME ? [
   /* 2.32 — the vessel is prototyped on the reference surface first, exactly where the meniscus was at
      2.10 before both tools wore it at 2.11. It is spliced into no tool yet. */
   { name: "glass.js",     target: REF, anchor: "<script>" },
+  { name: "floor.js",     target: REF, anchor: "<script>" },
 ];
 
 /* A RETIRED part is one the spine no longer carries. Its fenced block is REMOVED from every target it was

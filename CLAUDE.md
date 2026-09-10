@@ -36,6 +36,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ vendor/                       React 18.3.1 + ReactDOM, pinned; byte-identical to Rhyme's copy (§13)
 ├─ react/                        the React islands — components, and the splicer that puts them in
 │   ├─ Cast.js                   the one control every island renders — one a11y contract, no skin
+│   ├─ Floor.js                  the ambient floor on the page ground (L13, granted at 2.34)
 │   ├─ LockBar.js                the lockbar: the first island and the S.lock bridge
 │   ├─ tools/resplice.js         splices vendor/ and react/ into index.html under fences, with --check
 │   └─ plans/                    REACT-MAP.md and PATCH.md as supplied; PATCH.md under a SUPERSEDED
@@ -54,8 +55,7 @@ GhostArchitecture/Btc-terminal   (main)
 ├─ occvm/                        the shared visual system (§12) — the law, its parts, its instruments
 │   ├─ SPINE.md                  the law; committed byte-identical to Rhyme-Instrument
 │   ├─ {spine.css,serif.css,sundial.js,rheology.js,globules.js,pigments.js,yield.js}   the shared parts, spliced into both tools
-│   ├─ floor.js                  the ambient floor (L13) — shared, spliced into Rhyme, NOT into this
-│                                tool: L13 still withholds the floor here (§12's 2.31 entry)
+│   ├─ floor.js                  the ambient floor (L13) — shared, spliced into both tools since 2.34
 │   ├─ glass.js                  the vessel (L2's other half) — borosilicate, spliced into the
 │                                reference surface only, worn by no tool (§12's 2.32 entry)
 │   ├─ veins.js                  RETIRED at 2.25 — spliced nowhere; kept as the generator the L10 record cites
@@ -278,8 +278,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **968 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 28, h-protocol 89, prereg 84,
-occvm 550, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
+currently **983 assertions across 8 harnesses** (invariants 80, sweep 33, page-load 34, h-protocol 89, prereg 84,
+occvm 559, rheology 61, react 43) — the figure here read 231 across 5, then 715, then 875, long after each had
 grown, which is the same class of stale claim §7.3 warns about, caught by counting rather than by quoting this
 line.
 
@@ -2685,6 +2685,72 @@ assertions are counts off the driven op streams: the buffer carries no filter, t
 carries exactly one, and the weight is set on the display after it. Verified to bite: putting the
 filter back on the buffer fails 3.
 
+**2.34 — L13 amended: this tool is granted the floor on its page ground, and nowhere else.** The
+owner's call, and the third step of the glass sequence. What was withheld from 2.15 to 2.33 is now
+granted to **one surface**: the fixed layer under the content column, which is the layer `body::before`
+has occupied since 2.25. Everything L13 said about why is unchanged and is the reason the grant is
+bounded rather than tool-wide — every moving mark on the sweep means something, and a drifting mass
+beside marks that carry win/lose is §7.6's trade. The ground carries no mark, no number, no outcome
+colour.
+
+**The boundary is measured in three places, not promised in one.** `law-audit.js` requires that the
+tool's own source name the granted surface and hold **exactly one** floor call site (one grant, one
+surface — a proximity check was tried first and is a property nobody can rely on: it would pass a
+second floor mounted anywhere); that `#occvm-floor` is declared `position:fixed`; and that
+`#floor-mount` sits **ahead of `.wrap`** in the markup. Each case is driven with a condition dropped in
+turn, because a three-part boundary only ever tested all-present is a boundary nobody has measured.
+What a static check cannot say — that no §5 surface's own pixels moved — is `test/page-load.js`'s, on a
+real DOM: the canvas is not inside `.wrap`, and no `.tile` contains it or is contained by it.
+
+**What the owner is getting, measured, because a grant should not oversell itself.** Tiles cover
+**87.6% of a 390×844 viewport and 93.5% of 1100×1400**, so the live ground is **6.5–12.4% of the
+screen**. The other nine tenths carries the *same field frozen*, through `.tile::before`, which exists
+only because the tiles are opaque. Today's picture is a moving frame around a still one. That is a real
+limitation of this grant and not a defect in it: how much page ground a reader sees is a question about
+the **vessel** — L2's other half, derived at 2.32 and worn by no tool — and `GLASS-VESSEL-PLAN.md` §0 is
+right that retiring `.tile::before` is glass's job and not the floor's. **The two layers were never
+alternatives; they are a dependency, and that is what settled the question.**
+
+**The ground's weight is 0.20**, re-swept against the *merging* field after 2.33 (the first sweep
+measured a field that never merged, so it did not count). Full frame, clock and session seed pinned,
+same state shot twice as a control (0.00% moved), each state against no field at all:
+
+| state | pixels moved | mean ΔL\* | max |
+|---|---|---|---|
+| today, the still frame | 2.91% | 3.011 | 11.08 |
+| canvas α 0.14 | 2.62% | 1.967 | 8.31 |
+| canvas α 0.17 | 2.66% | 2.391 | 9.91 |
+| **canvas α 0.20** | **2.71%** | **2.906** | **12.13** |
+| canvas α 0.24 | 2.74% | 3.489 | 14.14 |
+| canvas α 0.30 | 2.79% | 4.438 | 18.31 |
+
+Within 3.5% of today's mean, so the ground does not change weight when it starts moving. **Frame cost
+on the shipped page: 59.5 fps live against 60.1 hidden** — free, after 2.33; before it, the same floor
+ran the page at 5.0.
+
+*Heat is a literal 0 and guarded as literal.* L13's modulation clause names Rhyme's `--heat` as the
+first real value and says the floor is lawful at zero modulation. This tool has no drone depth and no
+equivalent, and REACT-MAP is explicit that it "should not invent one to fill the slot".
+
+*The still frame is retired only when the part reports it took the surface.* `.ok` is absent on all
+three of the part's refusals — no canvas, no field generator, no resolved palette — and in each of
+those `body::before` keeps the layer it already had rather than the ground going blank because a
+decoration declined.
+
+**And 2.31 had quietly cost Rhyme a law.** Moving the floor into a shared part took its only
+`OCCVM_GLOBULES.field` call out of its own source, so **L10 read UNADOPTED for the tool whose whole
+draft face is that field** — and nothing surfaced, because the rollup does not count a per-tool
+UNADOPTED. Found two releases later while reading an unrelated run. The measure now counts consumption
+through a mounted part, because the alternative reading is that moving code into the spine un-adopts
+every law it satisfied, which would make every future part a silent regression.
+
+*Two fixture defects on this same law, and the second is the second time.* L13's synthetic guards
+passed `{name, own}` while `readTool` produces `{name, raw, own}` — so the moment the measure read
+`raw`, which it must because BTC's boundary lives in markup and CSS, every case threw. That is 2.22's
+"verified against its fixture instead of its call path" on the identical law. The fixtures build the
+runner's shape through one helper now, and one case measures the **shipped tool through `readTool`
+itself** rather than a fixture at all.
+
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
 advance, and 1.8 builds the conformance instrument the roadmap named but never specified.
@@ -2898,7 +2964,9 @@ undone and named here rather than quietly dropped.
 2. **`Cast`** — done, §13.4.
 3. **Chart island** — the scheduling half is done and the ownership half is deferred with its cost
    measured, §13.5. `renderSweep` is untouched, as the plan asks.
-4. **Ambient floor — blocked by the law, and REACT-MAP does not mention it.** The map calls this *"MAPS
+4. **Ambient floor — done at 2.34**, and REACT-MAP never mentioned the thing that actually blocked it.
+   Kept below as written, because the block was real and the record of it is the point.
+   ~~**Blocked by the law.**~~ The map calls this *"MAPS
    DIRECTLY, highest value"* and gives a port shape: splice `ambientFloor()`, add a `<canvas class="floor">`
    where `body::before` paints the still frame. Two things are true and only the first is in the map.
    *The prerequisite it does name is already met* — 2.27 wired ten of `PAL`'s thirteen keys to the

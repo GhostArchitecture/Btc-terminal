@@ -36,6 +36,7 @@ const PARTS = [
      anywhere else, so every later component depends on this one being defined first. */
   { name: "Cast.js",                     from: path.join("react", "Cast.js") },
   { name: "LockBar.js",                  from: path.join("react", "LockBar.js") },
+  { name: "Floor.js",                    from: path.join("react", "Floor.js") },
 ];
 /* A part removed from PARTS above goes here, so its block leaves index.html rather than shipping
    forever under a fence nobody regenerates. Empty is the honest state today. */

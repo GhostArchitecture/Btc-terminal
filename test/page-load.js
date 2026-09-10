@@ -109,6 +109,31 @@ const g = expr => w.eval(expr);                          /* top-level const/let 
       { lock: g("S.lock"), note: w.document.getElementById("locknote").textContent });
   }
 
+  /* OCCVM-L13 at 2.34 — the floor on this tool's page ground, and the half a stylesheet cannot say.
+     law-audit.js can check that the mount names the granted surface, that the surface is fixed, and
+     that it sits outside the content column. It cannot check that no §5 surface moved, so that is
+     here, driven on the real DOM: the floor's canvas must not be inside .wrap, and every .tile must
+     be a later sibling subtree than it, which is what puts the ground under them. */
+  {
+    const floor = w.document.getElementById("occvm-floor");
+    T("the floor mounted on the page ground", !!floor && floor.tagName === "CANVAS", floor && floor.id);
+    T("and the island reported no error", g("S.uiErr") === undefined, g("S.uiErr"));
+    if (floor) {
+      T("it is not inside the content column — the subtree every §5 surface lives in",
+        !floor.closest(".wrap"), floor.parentElement && floor.parentElement.id);
+      T("its own surface is the one the law names, fixed and pointer-transparent",
+        w.getComputedStyle(floor).position === "fixed" && w.getComputedStyle(floor).pointerEvents === "none",
+        w.getComputedStyle(floor).position);
+      /* the still frame is retired only when the part reports it took the surface */
+      T("the still ground is retired only because the floor took it",
+        w.document.documentElement.classList.contains("floorlive"));
+      /* and no .tile is an ancestor OR a descendant of it: the floor touches no §5 surface's subtree */
+      const tiles = [...w.document.querySelectorAll(".tile")];
+      T("no §5 surface contains the floor and the floor contains none",
+        tiles.length > 0 && tiles.every(t => !t.contains(floor) && !floor.contains(t)), tiles.length);
+    }
+  }
+
   /* §10.3 SEC1: EXPAND/COLLAPSE ALL must not be discarded by the very next single-section toggle (shared SEC_STATE, not two stale closures) */
   g("setAllSections(true)");
   const afterAll = JSON.parse(w.localStorage.getItem("btc.sections.v2"));

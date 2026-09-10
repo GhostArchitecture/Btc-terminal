@@ -1416,12 +1416,23 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
        mark on the sweep carries win/lose. A scope that lives only in the law's prose is the "violates: --"
        failure waiting to recur, so the measure is driven here on synthetic tools rather than waiting for
        a floor to exist. These four cases ARE the law's table. */
-    const L13 = require("../occvm/tools/law-audit.js").LAWS.find(l => l.id === "L13");
-    const m13 = (name, own) => L13.measure({ name, own }).state;
-    T("L13: neither tool has a floor yet, and absence reads UNADOPTED",
+    const LA13 = require("../occvm/tools/law-audit.js");
+    const L13 = LA13.LAWS.find(l => l.id === "L13");
+    /* 2.34 — THE FIXTURE BUILDS THE SHAPE THE RUNNER BUILDS, and it did not until this release. These
+       cases passed `{name, own}` while `readTool` produces `{name, raw, own}`, and the moment the
+       measure read `raw` — which it must, because BTC's grant is bounded by markup and CSS that
+       `own` strips comments out of — every one of them threw. That is 2.22's defect exactly, where
+       L13's guards drove a shape the runner never produced, and it is the second time on this same
+       law. `mk` is the only way a case is built here now. */
+    const mk = (name, own, raw) => ({ name, raw: raw === undefined ? own : raw, own });
+    const m13 = (name, own, raw) => L13.measure(mk(name, own, raw)).state;
+    /* BTC's grant is surface-bounded, so a conforming BTC needs all three conditions present. This is
+       the shipped shape, reduced to its load-bearing lines. */
+    const BTC_OK_RAW = '#occvm-floor{position:fixed;inset:0;z-index:0}\n<div id="floor-mount"></div>\n<div class="wrap">';
+    const BTC_OK_OWN = 'e("canvas",{id:"occvm-floor"});OCCVM_FLOOR.ambientFloor(el, reducedMotion(), 0, {alpha:A, seed:S});';
+
+    T("L13: neither tool has a floor, and absence reads UNADOPTED",
       m13("BTC Terminal", "") === "UNADOPTED" && m13("Rhyme Instrument", "") === "UNADOPTED");
-    T("L13: a floor in BTC's own source diverges — the withholding is enforced, not asked for",
-      m13("BTC Terminal", "if(!RM) ambientFloor(cx);") === "DIVERGES");
     T("L13: Rhyme is granted the floor, and only reduced-motion guarded",
       m13("Rhyme Instrument", "if (!reducedMotion()) ambientFloor(host);") === "CONFORMS");
     T("L13: an unguarded floor diverges even where the floor is granted — L8 is not repealed",
@@ -1430,8 +1441,32 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
       m13("Rhyme Instrument",
         "function ambientFloor(c){return 0;}\nuseEffect(()=>{let r=matchMedia('(prefers-reduced-motion: reduce)').matches;return ambientFloor(h,r);},[]);")
         === "CONFORMS");
-    T("L13: but a declaration in BTC's own source is still the violation",
-      m13("BTC Terminal", "function ambientFloor(c){return 0;}") === "DIVERGES");
+
+    /* BTC at 2.34: granted, and the grant is bounded. Each condition is dropped in turn, because a
+       three-part boundary that is only ever tested all-present is a boundary nobody has measured. */
+    T("L13: BTC's floor conforms when it names the granted surface, fixed, mounted outside the column",
+      m13("BTC Terminal", BTC_OK_OWN, BTC_OK_RAW + BTC_OK_OWN) === "CONFORMS",
+      L13.measure(mk("BTC Terminal", BTC_OK_OWN, BTC_OK_RAW + BTC_OK_OWN)).detail);
+    T("L13: and it still owes L8 a guard — an unguarded floor on the granted surface diverges",
+      m13("BTC Terminal", 'OCCVM_FLOOR.ambientFloor(el, false, 0);', BTC_OK_RAW + 'occvm-floor OCCVM_FLOOR.ambientFloor(el, false, 0);') === "DIVERGES");
+    T("L13: a floor that does not name the granted surface diverges — the grant is to a surface",
+      m13("BTC Terminal", 'ambientFloor(document.getElementById("chart"), reducedMotion());',
+          BTC_OK_RAW + 'ambientFloor(document.getElementById("chart"), reducedMotion());') === "DIVERGES");
+    T("L13: and a SECOND floor diverges however well the first is bounded — one grant, one surface",
+      m13("BTC Terminal", BTC_OK_OWN + 'OCCVM_FLOOR.ambientFloor(other, reducedMotion());',
+          BTC_OK_RAW + BTC_OK_OWN + 'OCCVM_FLOOR.ambientFloor(other, reducedMotion());') === "DIVERGES");
+    T("L13: a floor whose surface is not position:fixed diverges — a box inside the page is not the ground",
+      m13("BTC Terminal", BTC_OK_OWN,
+          '#occvm-floor{position:absolute;inset:0}\n<div id="floor-mount"></div>\n<div class="wrap">' + BTC_OK_OWN) === "DIVERGES");
+    T("L13: a floor mounted INSIDE the content column diverges — that is the subtree §5's surfaces live in",
+      m13("BTC Terminal", BTC_OK_OWN,
+          '#occvm-floor{position:fixed;inset:0}\n<div class="wrap"><div id="floor-mount"></div>' + BTC_OK_OWN) === "DIVERGES");
+    /* and the shipped tool is measured through the runner's own reader, not a fixture at all */
+    {
+      const real = LA13.TOOLS.map(t => LA13.readTool(t)).filter(Boolean).find(t => /BTC/.test(t.name));
+      T("L13: and the tool that actually ships passes the same measure through readTool",
+        !real || L13.measure(real).state === "CONFORMS", real && L13.measure(real).detail);
+    }
 
     /* THE SHAPE THE RUNNER ACTUALLY PRODUCES. Every assertion above builds its own {name, own} object,
        and until 2.22 readTool returned {raw, own} — so L13's per-tool grant read `undefined` for the

@@ -520,8 +520,8 @@ Completed at **1.5**. Before it, Rhyme had no `<button>`, no `aria-*`, no `role`
 ### OCCVM-L10 — the substrate layer
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **CONFORMS** — 2 consumer(s) of the shared field, no vein trace
-> - Rhyme Instrument: **CONFORMS** — 1 consumer(s) of the shared field, no vein trace
+> - BTC Terminal: **CONFORMS** — 2 direct consumer(s) and 1 through the shared floor of the field, no vein trace
+> - Rhyme Instrument: **CONFORMS** — 0 direct consumer(s) and 1 through the shared floor of the field, no vein trace
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -1001,7 +1001,7 @@ and that is the honest form of it.
 ### OCCVM-L13 — ambient motion
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
-> - BTC Terminal: **UNADOPTED** — no ambient floor in this tool
+> - BTC Terminal: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded, on the page ground alone
 > - Rhyme Instrument: **CONFORMS** — 1 floor call site(s), each reduced-motion guarded
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
@@ -1042,12 +1042,28 @@ immediately.
 | tool | ambient floor | why |
 |---|---|---|
 | **Rhyme Instrument** | **granted**, on the draft face — and since 2.24 the same field stands as a **still frame** on every other slab | a reading surface is a document. Nothing on it encodes an outcome, and the surface a writer stares at for an hour is the one place a floor earns its keep. A still frame is not motion, so the grant's scope is unchanged: the field *moves* only on the draft face. |
-| **BTC Terminal** | **withheld**, from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal. §7.6 of the handoff forbids exactly that trade. |
+| **BTC Terminal** | **granted at 2.34 on the page ground alone** — the fixed layer under the content column; still **withheld** from the canvas and from every surface §5 governs | every moving mark on the sweep means something — green means your call is winning, and getting that backwards is the most dangerous possible bug in that tool. A drifting decorative mass drawn in `PAL`, beside marks that carry win/lose, is noise presented next to signal, and §7.6 of the handoff forbids exactly that trade. **None of that reasoning is repealed; it is why the grant is bounded to a surface rather than given to the tool.** The ground carries no mark, no number and no outcome colour. |
 
-The withholding is a **decision, not an omission**, and it is reversible the way a law is reversible — by
-editing this table with a reason — never by a commit that quietly adds a floor and lets the audit catch up.
-The auditor measures the split: a floor appearing in BTC's own source reads DIVERGED, whatever it looks
-like.
+The withholding was a **decision, not an omission**, and the grant is the same: reversible the way a law
+is reversible — by editing this table with a reason — never by a commit that quietly adds a floor and
+lets the audit catch up. What changed at 2.34 is the *scope*, and the boundary is measured rather than
+promised. `law-audit.js` requires three things of BTC's floor, each of them something a stylesheet or a
+markup file can actually state: the call names the granted surface's id; that id is declared
+`position:fixed`, so it is a layer over the page rather than a box inside it; and its mount sits
+**outside the content column**, so no rearrangement of a panel can carry it into one. A floor that fails
+any of the three reads DIVERGED, exactly as any floor at all used to.
+
+**What a static check cannot say is named here rather than implied**: that no §5 surface's own pixels
+moved. That is `test/page-load.js`'s, driven on a real DOM, and the split is deliberate — a measure that
+claimed to prove it from source text would be the kind of proxy 2.14 and 2.32 both had to undo.
+
+*What the owner is actually getting, measured, because a grant should not oversell itself.* Tiles cover
+**87.6% of a 390×844 viewport and 93.5% of 1100×1400**, so the live ground is **6.5–12.4% of the screen**
+— gutters and the gaps between panels. The other nine tenths carries the *same field* as a still frame
+through `.tile::before`, which exists only because the tiles are opaque. So the picture today is a moving
+frame around a still one. That is a real limitation of this grant and not a defect in it: the layer the
+floor paints on is the page ground, and how much of the page ground a reader sees is a question about the
+*vessel*, which L2's other half now derives and neither tool yet wears.
 
 **Two further bounds, both narrow.** A floor never draws on a surface carrying an outcome colour or a
 measured value. And **modulation is not what makes it legal**: a real value may scale a floor's intensity
@@ -1521,7 +1537,7 @@ law are generated from that run.
 | **L10** | the substrate layer | IN FORCE | CONFORMS | CONFORMS |
 | **L11** | yield | UNMEASURED | UNADOPTED | UNMEASURED |
 | **L12** | the material | IN FORCE | CONFORMS | CONFORMS |
-| **L13** | ambient motion | IN FORCE | UNADOPTED | CONFORMS |
+| **L13** | ambient motion | IN FORCE | CONFORMS | CONFORMS |
 
 **9 in force · 0 diverged · 4 unmeasured · 0 unadopted**
 

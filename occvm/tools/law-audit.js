@@ -260,12 +260,24 @@ const LAWS = [
          Now: each tool must consume the shared field (OCCVM_GLOBULES.field, or its still svg), and no
          tool may still call the vein generator or the fallback it once guarded. */
       const field = (tool.own.match(/OCCVM_GLOBULES\.(field|svg)\s*\(/g) || []).length;
+      /* 2.34 — CONSUMPTION THROUGH A MOUNTED PART COUNTS, and this measure silently stopped seeing it
+         at 2.31. The floor moved into occvm/floor.js, `own` strips every spliced fence, and Rhyme's
+         only consumer of the field went with it — so this read UNADOPTED for a tool whose whole draft
+         face is the field, and nothing surfaced because the rollup does not count a per-tool
+         UNADOPTED. Caught two releases later while reading an unrelated run.
+         A tool that mounts a shared part which consumes the field IS consuming it; the alternative
+         reading is that moving code into the spine un-adopts every law it satisfied, which would make
+         every future part a silent regression. What the measure must NOT accept is a tool that neither
+         calls the generator nor mounts anything that does — that is the absence the 2.25 re-authoring
+         was written to catch, and it still fails. */
+      const viaPart = (tool.own.match(/OCCVM_FLOOR\.ambientFloor\s*\(/g) || []).length;
       const veins = (tool.own.match(/OCCVM_VEINS\.field\s*\(/g) || []).length;
       const legacy = (tool.own.match(/(?<!function\s)veinLayerLegacy\s*\(|(?<!function\s)veinSVGLegacy\s*\(/g) || []).length;
       if (veins || legacy)
         return { state: "DIVERGES", detail: `${veins} vein-generator call(s), ${legacy} drawn-fallback call(s) — the crystal is still being drawn` };
-      if (!field) return { state: "UNADOPTED", detail: "no consumer of the globule field" };
-      return { state: "CONFORMS", detail: `${field} consumer(s) of the shared field, no vein trace` };
+      if (!field && !viaPart) return { state: "UNADOPTED", detail: "no consumer of the globule field, direct or through a part" };
+      return { state: "CONFORMS",
+               detail: `${field} direct consumer(s)${viaPart ? ` and ${viaPart} through the shared floor` : ""} of the field, no vein trace` };
     } },
 
   { id: "L11", name: "yield",
@@ -311,15 +323,46 @@ const LAWS = [
          must not be counted as an unguarded one. Found the first time a real floor was built, at 2.22:
          a granted, correctly guarded floor read DIVERGED on the line that declares it. */
       const sites = [...tool.own.matchAll(/ambientFloor\s*\(/g)];
-      const decl = /function\s+ambientFloor\s*\(/.test(tool.own);
       const calls = sites.filter(m => !/function\s+$/.test(tool.own.slice(Math.max(0, m.index - 10), m.index)));
       if (!sites.length)
         return { state: "UNADOPTED", detail: "no ambient floor in this tool" };
-      if (!RHYME)
-        return { state: "DIVERGES",
-                 detail: `${calls.length} call site(s)${decl ? " and a generator declared here" : ""} — L13 withholds the floor from this tool` };
       if (!calls.length)
         return { state: "UNADOPTED", detail: "a floor generator is declared but nothing calls it" };
+
+      /* BTC's grant is SURFACE-BOUNDED and the boundary is measured, not trusted (2.34). L13 withheld
+         the floor from this tool outright from 2.15 to 2.33, and the reasoning is not repealed — it is
+         why the grant is bounded rather than tool-wide: every moving mark on the sweep means something,
+         and a drifting decorative mass beside marks that carry win/lose is §7.6's trade. So the floor
+         is granted on the PAGE GROUND and nowhere else, and what is checked here is that the mount
+         cannot be anywhere else.
+         Three static conditions, and each is something a stylesheet or a markup file can actually say:
+         the call names the granted surface's id; that id is declared position:fixed, so it is a layer
+         over the page rather than a box inside it; and its mount sits OUTSIDE the content column, so
+         no rearrangement of a panel can carry it into one. What a static check cannot say — that no
+         §5 surface's own pixels moved — is page-load.js's, driven, and is named here so the gap is on
+         the record rather than implied. */
+      if (!RHYME) {
+        const ID = "occvm-floor", MOUNT = "floor-mount";
+        /* ONE floor, and the tool's own source names the surface it mounts on. The first draft of this
+           looked for the id within 400 characters of the call, which is proximity rather than a
+           property: it would pass a second floor mounted anywhere as long as the first one was
+           declared nearby, and it failed a faithful fixture for a formatting reason. A single call
+           site plus a named surface cannot be satisfied by a floor somewhere else. */
+        const namesSurface = calls.length === 1 && tool.own.indexOf(ID) >= 0;
+        const decl = new RegExp("#" + ID + "\\s*\\{[^}]*position:\\s*fixed").test(tool.raw);
+        const mountIdx = tool.raw.indexOf('id="' + MOUNT + '"');
+        const wrapIdx = tool.raw.indexOf('<div class="wrap"');
+        const outside = mountIdx >= 0 && wrapIdx >= 0 && mountIdx < wrapIdx;
+        const bad = [];
+        if (!namesSurface) bad.push(calls.length === 1
+          ? "the tool's own source does not name the granted surface"
+          : `${calls.length} floor call sites — the grant is one surface, so it is one floor`);
+        if (!decl) bad.push(`#${ID} is not declared position:fixed`);
+        if (!outside) bad.push(`#${MOUNT} is not mounted ahead of the content column`);
+        if (bad.length)
+          return { state: "DIVERGES",
+                   detail: `${calls.length} floor call site(s) outside the grant — ${bad.join("; ")}` };
+      }
       /* Granted is not unguarded: L8 still governs, so every call site must sit inside a reduced-motion
          guard. Checked at the call rather than file-wide, because both tools already carry the string
          somewhere and a file-wide match would pass a floor that ignores the setting entirely. */
@@ -331,7 +374,8 @@ const LAWS = [
         ? { state: "DIVERGES",
             detail: `${unguarded} of ${calls.length} floor call site(s) unguarded by prefers-reduced-motion` }
         : { state: "CONFORMS",
-            detail: `${calls.length} floor call site(s), each reduced-motion guarded` };
+            detail: `${calls.length} floor call site(s), each reduced-motion guarded` +
+                    (RHYME ? "" : ", on the page ground alone") };
     } }
 ];
 
