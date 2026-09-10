@@ -4,24 +4,35 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current deploy: `build-20260910065029` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current deploy: `build-20260910130216` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.29** (§12): the pigment palettes, the metaball globule field and its
-whole build order, and one confidence vocabulary across the panels. *Verified on both hosts by stamp at
-2026-09-10 06:56 UTC — `btc-terminal.pages.dev` and the GitHub Pages fallback both read
-`build-20260910065029`, and both carry this release rather than a cached stamp: ten `OCCVM_PIGMENTS`
-references, the spliced `pigments.js` fence, three `confchip` sites, four `--globules-size` sites and
-**zero** `OCCVM_MINERALS`. Rhyme's GitHub Pages read `build-20260910070104` at 07:03 UTC, 45 s after
-the push, its service worker naming `tome-build-20260910070104` and its page carrying the goo filter,
-the coil and the heat gain — re-stamped deliberately, see 2.30.* Earlier lines: `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+correction, and OCCVM through **2.34** (§12): the pigment palettes, the metaball globule field and its
+whole build order, one confidence vocabulary across the panels, the React island (§13), and the
+ambient floor on this tool's page ground under L13's bounded grant. *Verified by stamp on both hosts
+at 2026-09-10 13:05:55 and 13:05:56 UTC, on the first poll — `btc-terminal.pages.dev` and the GitHub
+Pages fallback both read `build-20260910130216`. **That is an upper bound on the landing time, not a
+measurement of it:** the push completed at 13:04:50 and the first poll was 65 s later, so both hosts
+had it at or before 13:05:55 and nothing here says when. Corroborated as this release rather than a
+cached stamp, which is corroboration and not the verification (§7.3): two `occvm-floor` sites, two
+`floor-mount` sites and six `OCCVM_FLOOR` references on each host, and the reference surface at
+`/occvm/reference/` carrying four `OCCVM_GLASS` references, `paintVessel`, `paintFloor` and the `l13`
+section — the page that shipped dead for one commit, alive on the wire. Rhyme's GitHub Pages read
+`build-20260910123606` at 13:06:28 UTC, 47 s after its push, its service worker naming
+`tome-build-20260910123606`; that stamp was minted by 2.30's rule when the content changed and
+preserved by every build since, so it identifies what it stamps without a deliberate re-cut.* Earlier
+lines: `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **9,033 lines, 816 KB, 302 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **9,526 lines, 848 KB, 302 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
-inside the sentence promising it would not recur. Counted again here, and the count now excludes the
-spliced dependency: 142,929 bytes of that total is React, and 152,580 the whole island, whose minified UMD puts nine names at
+inside the sentence promising it would not recur. Counted again at every release since, this one
+included, and the count excludes the spliced dependency. The island is **156,881 bytes** as spliced,
+of which the vendor payload is **142,586** and the three components 13,499 — the rest is fence
+comments. *The figures here previously read 142,929 and 152,580 under a boundary that counted the
+fences into the vendor half; React is byte-identical and pinned, and the difference is the measure,
+not the dependency.* Its minified UMD puts nine names at
 line-start (`D Df Id M Td mb oe oj y`) that are inside its own IIFE and are not this tool's
 namespace. §7.1's duplicate check is scoped the same way, in CI and in `test/react.js`.* **§10 (audit addendum) corrects and extends
 §1–§9; §11 is the pre-registered standard governing the shock programme. Where they disagree, the later section wins.**
@@ -2760,6 +2771,20 @@ structural checks now run locally, either of which would have caught it: every f
 at its top level is defined in it, and every id its script paints into exists in its markup. The L13
 specimen it was missing is there too — three still frames of the shared floor, and the first seed shows
 a merged dumbbell, which is 2.33's correction visible rather than described.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`47aea62` here,
+`752bbec` in Rhyme), CI green on both mains through the API (BTC run 111, Rhyme run 75) before either
+was reported. Verified by stamp, never by feature grep: both BTC hosts read `build-20260910130216`
+and Rhyme's GitHub Pages `build-20260910123606`, times and the bound on them in the header. This
+tool's live surface moves from 2.29 to 2.34 in one step — the React island and its lockbar, `Cast`,
+the frame gate, the shared floor part, the vessel on the reference surface, 2.33's canvas correction,
+and the floor itself on the page ground. Rhyme's moves from 2.30 to 2.34: the floor leaves its own
+source for the shared part, and its canvas merges two drops for the first time since 2.28.
+
+*One thing this deploy does not close, stated because the grant should not oversell itself.* The live
+ground is 6.5–12.4% of the screen and the rest of the field is still the frozen `.tile::before`
+overlay, so what ships is a moving frame around a still one. Retiring that overlay is the vessel's
+job, and the vessel is derived and worn by nothing (2.32).
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
