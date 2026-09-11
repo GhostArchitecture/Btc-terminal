@@ -983,8 +983,14 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("every palette-written token PAL carries is resolved from the page, not from its own literal",
     Object.keys(PALo).filter(k => PALL[k] && slotOfEarly[PALL[k]]).length === 8,
     Object.keys(PALo).filter(k => PALL[k]).join(" "));
-  T("and the keys with no live token are exactly the three nothing writes",
-    Object.keys(PALo).filter(k => !PALL[k]).sort().join(" ") === "boneDim bronze field",
+  /* 2.41 RETIRES THE THIRD NAME IN THIS CLAUSE, and names why. It read "boneDim bronze field" from
+     2.27 until now, and it was true: --field was a fixed :root literal nothing wrote. The ground is
+     sundial-written from 2.41 (L3 finally reaching the page ground), so a guard demanding it stay a
+     literal would refuse correct code — the 2.15/2.21/2.27 class, a stale claim with a test wrapped
+     around it. Only `field` leaves the list; boneDim and bronze are still moved by nothing and are
+     still asserted here, so the clause keeps its whole load-bearing half. */
+  T("and the keys with no live token are exactly the two nothing writes",
+    Object.keys(PALo).filter(k => !PALL[k]).sort().join(" ") === "boneDim bronze",
     Object.keys(PALo).filter(k => !PALL[k]).join(" "));
   const slotOf = slotOfEarly;
   for (const k in PALo) {
@@ -1681,9 +1687,17 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     T("all eight palette-written tokens the canvas paints with are live — none left behind as a literal",
       ["mal", "malLo", "ruby", "rubyLo", "gilt", "giltB", "giltC", "verd"].every(k => map[k]),
       Object.keys(map).join(","));
-    T("and the three keys nothing moves are NOT live — a static token read per minute is a no-op",
-      !map.field && !map.boneDim && !map.bronze,
-      "field/boneDim/bronze are fixed :root declarations; they stay literals until something writes them");
+    /* 2.41: the same retirement one file-section along, and the replacement is strictly stronger.
+       The old clause asserted a NEGATIVE about three keys; two of them still hold and are kept. For
+       the third the interesting property is no longer "nobody writes it" but WHO writes it, which is
+       the same distinction the outcome-colour clause above turns on: a ground the PALETTE moved
+       would mean a choice of green had an opinion about the page floor. */
+    T("and the two keys nothing moves are NOT live — a static token read per minute is a no-op",
+      !map.boneDim && !map.bronze,
+      "boneDim/bronze are fixed :root declarations; they stay literals until something writes them");
+    T("the page ground IS live, and it is live because the SUNDIAL moves it, never the palette",
+      !!map.field && written.has(map.field) && !byPalette.has(map.field),
+      "2.41: --field is the substrate's shadow face, so the ground carries the one light (L3)");
     T("the literals survive as the fallback — jsdom resolves no custom property and must still paint",
       /^#[0-9a-f]{6}$/i.test(R29("PAL.bone")) && /^#[0-9a-f]{6}$/i.test(R29("PAL.boneLo")));
     T("a junk resolved value never reaches the palette",
@@ -2338,6 +2352,75 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
     const gj = fsV.readFileSync(pathV.join(__dirname, "..", "occvm", "golden", "btc", "tokens.json"), "utf8");
     const rims = new Set(Object.values(JSON.parse(gj).cases).map(c => c.tokens["--vessel-rim"]));
     T("and the golden record shows it moving with the light: three instants, three rims", rims.size === 3);
+  }
+}
+
+/* ── 2.41 — OCCVM-L3 reaches the page ground ──────────────────────────────────────────────────
+   The last surface the one light did not reach. Through 2.40 `--field` and `--field-hi` were fixed
+   :root literals, so both tools painted the same ground at noon and at midnight while every surface
+   above them moved: measured, BTC's frame median was 6.22 L* at high sun against 4.43 at night, and
+   75% of the frame sat under 10 L* at NOON. Rhyme was worse and fully static — median 2.4 L* at
+   every instant — because it typed the two hexes as bare literals rather than reading a token.
+
+   What is asserted here is the DERIVATION and not a brightness. The ground is the substrate's own
+   shadow face, which the material already derives, so there is no number to drift: the guard fails
+   if the ground stops being that face, and fails if it stops moving. A guard on "is it bright
+   enough" would be an authored threshold wearing a measurement's coat. */
+{
+  const fs41 = require("fs"), path41 = require("path");
+  const h41 = load();
+  const at = (elev) => h41.R(`OCCVM_SUN.respond({elev:${elev},az:180})`);
+  const day = at(56), dusk = at(3), night = at(-39);
+
+  T("the sundial writes the page ground at all",
+    day["--field"] !== undefined && day["--field-hi"] !== undefined,
+    Object.keys(day).filter(k => /field/.test(k)).join(",") || "neither");
+
+  /* the role assignment, at every elevation rather than at one */
+  T("the ground IS the substrate's shadow face, and its top IS the substrate base — every instant",
+    [day, dusk, night].every(t => t["--field"] === t["--sub-lo"] && t["--field-hi"] === t["--sub"]),
+    [day, dusk, night].map(t => t["--field"] + "/" + t["--sub-lo"]).join(" "));
+
+  /* and it MOVES: a ground that resolves per minute to one value is the no-op 2.17 refused */
+  T("the ground carries the day rather than resolving to one colour per minute",
+    new Set([day["--field"], dusk["--field"], night["--field"]]).size === 3,
+    [day["--field"], dusk["--field"], night["--field"]].join(" "));
+  T("and night is still the darkest of the three, so the day did not invert",
+    parseInt(night["--field"].slice(1), 16) < parseInt(day["--field"].slice(1), 16));
+
+  /* neither tool may re-acquire a second source of truth for the ground (L3). The fallback
+     declaration is permitted and is the only permitted site — SPINE.md 2ad, the same grant the
+     substrate's own fallback has. Comments are stripped first: a guard that reads its own prose has
+     been the defect five releases running. */
+  const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const GROUND_HEX = /#(?:09080d|100e16)\b/gi;
+  /* TWO fallback forms are permitted and both are named rather than sniffed. The CSS custom-property
+     declaration is SPINE.md 2ad's grant: a page must paint a ground before the part runs. The PAL map
+     entry is the SAME grant one file along, recorded at 2.17 — jsdom resolves no custom property, and
+     a canvas palette that silently became empty strings would paint nothing while every assertion
+     passed. Anything else is a second source of truth for the ground (L3).
+     This clause found a real third site on its first run: PAL's own literal, which the first draft
+     counted as a violation because the pattern only knew the CSS form. */
+  const FALLBACK = /(?:--field(?:-hi)?\s*:\s*|field\s*:\s*")#(?:09080d|100e16)/gi;
+  for (const [label, file] of [["BTC", "index.html"],
+                               ["Rhyme", "../Rhyme-Instrument/tome-src/20_style.css"]]) {
+    const f = path41.join(__dirname, "..", file);
+    if (!fs41.existsSync(f)) { T(`${label}: ground literal check skipped, not passed — sibling absent`, true); continue; }
+    const body = strip(fs41.readFileSync(f, "utf8"));
+    const hits = (body.match(GROUND_HEX) || []).length;
+    const fb = (body.match(FALLBACK) || []).length;
+    T(`${label}: the ground hexes appear only as a declared fallback, never in a rule`,
+      hits === fb && fb >= 1, `${hits} occurrences, ${fb} of them a permitted fallback`);
+  }
+  /* and where the ground IS restated as a fallback, the copies must agree — the whole of L3's claim.
+     A PAL literal that drifted from the :root declaration would paint one ground on the canvas and
+     another on the page for the entire span before the first sunTick. */
+  {
+    const html41 = fs41.readFileSync(path41.join(__dirname, "..", "index.html"), "utf8");
+    const rootFb = (/--field\s*:\s*(#[0-9a-f]{6})/i.exec(strip(html41)) || [])[1];
+    const palFb  = (/PAL\s*=\s*\{\s*field\s*:\s*"(#[0-9a-f]{6})"/i.exec(strip(html41)) || [])[1];
+    T("the ground's two fallbacks carry the same value, so the canvas and the page cannot disagree",
+      !!rootFb && !!palFb && rootFb.toLowerCase() === palFb.toLowerCase(), `${rootFb} vs ${palFb}`);
   }
 }
 

@@ -231,6 +231,8 @@ var OCCVM_SUN = (function () {
        relationship being structural instead of remembered. */
     var boneLo = mix(bone, EDGE, 0.25);
 
+    var subHi = mix(sub, [255, 255, 255], faceMix(sub, [255, 255, 255], MAT_HI, e));
+    var subLo = mix(sub, [0, 0, 0], faceMix(sub, [0, 0, 0], MAT_LO, e));
     return {
       "--lx": lx.toFixed(3),
       "--ly": ly.toFixed(3),
@@ -276,8 +278,27 @@ var OCCVM_SUN = (function () {
       "--nglow": (6 * phosphor + 3 * moonLight).toFixed(2) + "px",
       "--nglow-s": (3 * phosphor + 1.5 * moonLight).toFixed(2) + "px",
       "--sub": hex(sub),
-      "--sub-hi": hex(mix(sub, [255, 255, 255], faceMix(sub, [255, 255, 255], MAT_HI, e))),
-      "--sub-lo": hex(mix(sub, [0, 0, 0], faceMix(sub, [0, 0, 0], MAT_LO, e))),
+      "--sub-hi": hex(subHi),
+      "--sub-lo": hex(subLo),
+      /* 2.41 — OCCVM-L3 REACHES THE PAGE GROUND, which is the last surface it did not.
+         2.35 measured this and deferred it: `--field` and `--field-hi` were fixed :root literals
+         (#09080d and #100e16), so the tools painted the same ground at noon and at midnight while
+         every surface above them moved. Measured before the change, BTC's frame median was 6.22 L*
+         at high sun against 4.43 at night — the day barely reached the picture, and 75% of the
+         frame sat under 10 L* at NOON.
+
+         THE GROUND ADDS NO CONSTANT. It is the substrate's own shadow face, which the material
+         model already derives (2.4, from rheology's faceRatios): the page ground is the part of the
+         material no light reaches directly, and the gradient runs up from it to the substrate's
+         base. So `--field` IS `--sub-lo` and `--field-hi` IS `--sub`, by role rather than by a new
+         number, and the whole day's motion comes free with them. This is a role assignment and is
+         named as one — it is not a third face ratio, because the material defines exactly two and
+         inventing a third would be an authored constant wearing a derivation's coat.
+
+         Both keep their :root fallbacks in each tool: a page must paint a ground before this part
+         runs, and jsdom resolves no custom property at all (SPINE.md 2ad). */
+      "--field": hex(subLo),
+      "--field-hi": hex(sub),
       "--bone": hex(bone),
       "--bone-lo": hex(boneLo)
     };
