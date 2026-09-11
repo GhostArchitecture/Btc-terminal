@@ -15,21 +15,18 @@ side** — a peanut may rejoin at the coil, and above `R[1]` a body sheds its th
 coarsening forever, and **the one light finally reaching the page ground** — the last surface it did
 not touch, which is why both tools painted the same ground at noon and at midnight, and **the palettes
 saturated** — every authored role to the greatest chroma sRGB holds at its own hue, hue untouched and
-the positive/negative and positive/active separations held as a floor. ***2.42 IS BUILT AND NOT
-DEPLOYED.*** `build-20260911122148` is the stamp in this repository; the last stamp actually verified on
-a host is `build-20260911004539` (2.41), and the verification below is that deploy's, left in place
-rather than rewritten around a poll that has not happened. Deploying is the owner's call and §7.3's
-procedure is only meaningful once a push has landed. *Verified by
-stamp, and **all three readings are brackets this time**, because the poll was started BEFORE the
-push rather than after it — 2.40's two bounds were an artefact of when I began looking, not of the
-hosts. Every hit here has a recorded miss immediately before it: GitHub Pages for BTC missed at
-01:10:30 and hit `build-20260911004539` at **01:10:36**; Cloudflare missed at 01:10:36 and hit at
-**01:10:42**; Rhyme missed at 01:10:47 and hit `build-20260911003555` at **01:10:52**. Rhyme's
-service worker on the wire names `tome-build-20260911003555`, the same stamp. Corroborated as this
-release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
-hosts serve the sundial's `"--field": hex(subLo)` write and `PAL`'s live `field` key; Rhyme serves
-that write plus `background: var(--field)` and the band reading `var(--field-hi)`.* Earlier
-lines: `build-20260910232759` / 2.40 (23:42 UTC, two of its three readings BOUNDS rather than brackets — see the 2.40 entry), `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+the positive/negative and positive/active separations held as a floor. *Verified by
+stamp, and **all three readings are brackets**, by the method 2.41 established: the poller was started
+BEFORE the push, so twelve poll rounds of misses precede it and every hit carries a recorded miss
+immediately before it. Cloudflare missed at 13:05:19 and hit `build-20260911122148` at **13:05:27**;
+GitHub Pages for BTC missed at 13:05:27 and hit at **13:05:33**; Rhyme missed at 13:05:53 and hit
+`build-20260911120957` at **13:05:59**. Rhyme's service worker on the wire names
+`tome-build-20260911120957`, the same stamp. Corroborated as this release rather than a cached stamp,
+which is corroboration and not the verification (§7.3): both BTC hosts serve the saturated obsidian —
+`#ffde00` gilt and `#00d180` positive — and `--pg-lo`; Rhyme serves `.cast.pgsw`, `--pg-lo`, the card's
+`L.giltC`, and **zero** `var(--m,` sites, which is the retirement visible on the wire rather than
+asserted.* Earlier
+lines: `build-20260911004539` / 2.41 (01:10 UTC), `build-20260910232759` / 2.40 (23:42 UTC, two of its three readings BOUNDS rather than brackets — see the 2.40 entry), `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **10,324 lines, 907 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
@@ -3797,6 +3794,35 @@ the token and once for Rhyme gaining the pair. `test/occvm.js` **590 → 713**; 
 not move** (2.35's rule): what changed is the nine palette-written tokens' values at three instants on
 all three surfaces, plus one new *name*, `--pg-lo`, which records no value because it lives on a button
 rather than on `:root`.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`f8e8e93` here,
+`e96b96c` in Rhyme), CI green on both branch heads through the API before either merged — BTC run 146
+(both jobs, all steps, golden included) and Rhyme run 99 (all 17 steps, the tome-src regeneration guard
+among them), read job by job rather than off the rollup. CI on both mains after: BTC run 147, green,
+both jobs.
+
+**All three stamp readings are brackets**, times in the header, by the method 2.41 established rather
+than by luck. The content is corroborated on the wire beside the stamp, which matters more than usual
+this release because the change IS colour: both BTC hosts serve `#ffde00` and `#00d180`, and Rhyme
+serves `.cast.pgsw` and **zero** `var(--m,` sites — the retirement readable on the deployed artifact.
+
+*What a reader sees change, and it is not what 2.41 changed.* Every colour that carries meaning is at
+the strongest sRGB holds at its own hue: green is a harder green, red a harder red, and the gilt goes
+from champagne to a signal yellow. **The page is no brighter** — median lightness is unmoved to two
+decimals at every instant in both tools, which is the whole difference between this release and the
+last one. What moves is the ink: p99 chroma up 13–21% on BTC. And in Rhyme the palette picker is five
+palettes rather than four bronze buttons and one colour, so the row shows what it is offering before
+you take it.
+
+*What this deploy does not close.* **Gilt is dimmer against its own substrate** — `--gilt-a` 14.32 →
+12.90 at high sun, `--gilt-c` 2.57 → **2.21** — and that is the direct cost of the band the pass was
+given. It is binary rather than adjustable: gilt has zero chroma headroom upward, so holding its
+lightness returns the whole 2.40× and leaves it unchanged. Beneath it sits a pre-existing one this
+release surfaces rather than causes: `--gilt-c` as a text colour has never cleared a contrast
+threshold. Carried unchanged: 2.36's sweep-tile seam at 3.41 L\* at high sun, the mixing half of the
+coil (Task #29), Rhyme's open-face serif parity at 3.49 L\*, the "no declaration computes to its
+initial value" property guarded for one class only, ~13 fps desktop frame cost from `backdrop-filter`
+across 21 tiles, and the chart island (§13.5) deferred with its cost measured.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
