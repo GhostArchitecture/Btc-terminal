@@ -23,68 +23,82 @@
  * confirmed and failed read alike. Measured rather than promised: the smallest positive/negative
  * separation across the five is CIEDE2000 62.3, against the shipped build's own 73.1.
  *
- * WHAT IS AUTHORED AND WHAT IS NOT. Six values per palette are AUTHORED — the four fixed roles and the
- * decorative accent and highlight. No hex among them is derived from a spectrum, a compound or a
- * measurement, and they are labelled authored because a table of colours that looked derived would be
- * the dishonest version. Seven per palette are DERIVED: each is its parent's hex moved by the offset
- * (dL, chroma ratio, dh in CIE L*C*h) that the SHIPPED build already puts between that same pair. The
- * generator's header carries the argument for why those two classes are drawn where they are.
+ * WHAT IS AUTHORED AND WHAT IS NOT — RE-DRAWN AT 2.42. Until 2.42 six values per palette were authored
+ * outright. Now only their HUE is: each of the six is put through a saturation pass that takes it to the
+ * greatest chroma sRGB holds at that hue, with lightness free inside an authored +/-5 L* band and chosen
+ * by wherever in the band the chroma maximum falls. So a shipped role is authored in hue, maximal in
+ * chroma, and derived in lightness. The 2.27 authored input is kept verbatim in OCCVM_PIGMENT_AUTHORED,
+ * because the record of what a person chose must survive the pass that supersedes it. Seven per palette
+ * are DERIVED from those roles: each is its parent's hex moved by the offset (dL, chroma ratio, dh in
+ * CIE L*C*h) that the PRE-PALETTE build already put between that same pair.
  *
- * OBSIDIAN IS THE ANCHOR AND SELECTING IT IS A NO-OP — measured, not claimed. Its six authored values
- * are this tool's current literals, and the derivation applied to them reproduces the other seven
- * BYTE-IDENTICALLY. Both suites assert that; a change to the derivation that moved today's build would
- * fail before it shipped.
+ * SEPARATIONS ARE HELD ACROSS THE PASS, AND THE BACKOFF IS RECORDED. No palette's positive/negative or
+ * positive/active CIEDE2000 separation is allowed below the value it had before saturation. `active`
+ * gives first where they would collide, by bisection on one scalar from its authored value to its own
+ * maximum; OCCVM_PIGMENT_SATURATION carries that scalar per role, so the cost is a number in the source
+ * rather than something absorbed. It costs `acid` almost all of its active headroom (1.05x against an
+ * available 1.51x) and `deepwater` and `sunset` some of theirs.
+ *
+ * THE ANCHOR ROUND-TRIP IS THE DERIVATION'S, NOT OBSIDIAN'S. Applying the offsets to the values they
+ * were measured off reproduces those values BYTE-IDENTICALLY. Both suites assert it. It used to be
+ * stated as "selecting obsidian is a no-op", which held only while obsidian and the anchor were the same
+ * six hexes; 2.42 saturates obsidian with every other palette, so that sentence is RETIRED — it was a
+ * migration guarantee for a migration that fired at 2.27, and exempting the default from a pass applied
+ * to the other four would be the local exception L6 exists to prevent. The round-trip itself survives
+ * untouched, because it was never a fact about that palette.
  *
  * ONE MEASURED NEGATIVE, RECORDED RATHER THAN TUNED AWAY. PIGMENT-PALETTES pins `active` to
  * verdigris-adjacent, and three palettes author it 4-16 degrees off that hue, closest to `positive` in
- * `sunset` (1 degree, separated by lightness alone). The shipped build's own positive/active separation
- * is CIEDE2000 14.8; `sunset` reads 11.7 and is the only palette below it. Rotating its `active` onto
- * the verdigris hue was tried and reaches 13.6 — still short, because the limit is its low-chroma green
- * `positive`, not the hue of its `active`. Clearing the floor would mean re-authoring a role hex by eye,
- * which is what this system refuses everywhere else, so the value ships as the plan authors it and the
- * number is on the record. The separation table is asserted per palette, so any change to it must be
- * re-recorded rather than absorbed.
+ * `sunset` (1 degree, separated by lightness alone). The pre-palette build's own positive/active
+ * separation is CIEDE2000 14.8; `sunset` read 11.7 and is the only palette below it. Rotating its
+ * `active` onto the verdigris hue was tried and reaches 13.6 — still short, because the limit is its
+ * low-chroma green `positive`, not the hue of its `active`. Clearing the floor would mean re-authoring
+ * a role hex by eye, which is what this system refuses everywhere else, so it ships short and the number
+ * is on the record. 2.42 does not repair it and does not worsen it: the saturation pass holds every
+ * palette at or above its own pre-pass separation, so sunset's 11.7 becomes 11.8 rather than 10.8 — but
+ * it is still the one below the old build's 14.8. The separation table is asserted per palette, so any
+ * change to it must be re-recorded rather than absorbed.
  */
 var OCCVM_PIGMENTS = {
   astro: {
     label: "the original — the 1963 Astro, red-orange wax in clear liquid",
     handles: { positive: "Verdigris Bloom", negative: "Ember", gilt: "Filament", active: "Patina", m: "Lava", hi: "Molten" },
     /* authored */
-    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#ff6b35", hi: "#f7931e",
+    positive: "#00d180", negative: "#ff0056", gilt: "#ffde00", active: "#04ab91", m: "#ff4b01", hi: "#ff9300",
     /* derived from the authored parent by the shipped build's own L*C*h offset */
-    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#9e3c17", lo: "#b8461d",
+    positiveLo: "#02794b", negativeLo: "#7a002d", giltB: "#cf9a00", giltC: "#704b00", activeLo: "#126557", mlo: "#942900", lo: "#b03000",
   },
   deepwater: {
     label: "blue on clear — the cool counterpart, high contrast against the vessel",
     handles: { positive: "Sea Glass", negative: "Coral Signal", gilt: "Brass Cap", active: "Shallow", m: "Cobalt Drift", hi: "Ice Column" },
     /* authored */
-    positive: "#4ecdc4", negative: "#e0475f", gilt: "#ffd97d", active: "#45938a", m: "#2e6fd9", hi: "#8fc9ff",
+    positive: "#00dfd5", negative: "#ff0056", gilt: "#ffcc00", active: "#23a095", m: "#007bfc", hi: "#6bbdff",
     /* derived from the authored parent by the shipped build's own L*C*h offset */
-    positiveLo: "#2d7873", negativeLo: "#6b1a2e", giltB: "#d89300", giltC: "#744700", activeLo: "#25514d", mlo: "#003677", lo: "#004492",
+    positiveLo: "#178782", negativeLo: "#7a002d", giltB: "#cb8a00", giltC: "#683f00", activeLo: "#175c56", mlo: "#00418c", lo: "#0050a8",
   },
   acid: {
     label: "green on purple — unmistakably synthetic, unmistakably of its era",
     handles: { positive: "Acid Bloom", negative: "Wine Fault", gilt: "Ultraviolet Gilt", active: "Reactor", m: "Blacklight", hi: "Ooze" },
     /* authored */
-    positive: "#7fff4f", negative: "#d6336c", gilt: "#ffe66d", active: "#5cb85c", m: "#9d4edd", hi: "#b6ff3f",
+    positive: "#52ff00", negative: "#fd0076", gilt: "#ffe400", active: "#57ba59", m: "#970cff", hi: "#a9ff00",
     /* derived from the authored parent by the shipped build's own L*C*h offset */
-    positiveLo: "#55a33d", negativeLo: "#600b31", giltB: "#d4a200", giltC: "#765200", activeLo: "#3b713c", mlo: "#541e7e", lo: "#662998",
+    positiveLo: "#3ba220", negativeLo: "#79003d", giltB: "#d19f00", giltC: "#725000", activeLo: "#39733b", mlo: "#49007e", lo: "#5c00a0",
   },
   sunset: {
     label: "yellow into orange — the lamp that reads as lit even when it is not",
     handles: { positive: "Palm Green", negative: "Rust", gilt: "Late Sun", active: "Frond", m: "Marigold", hi: "Peach Glass" },
     /* authored */
-    positive: "#52b788", negative: "#c9432f", gilt: "#ffc857", active: "#40916c", m: "#ffb627", hi: "#ffd6a5",
+    positive: "#00cb88", negative: "#fd0011", gilt: "#ffbe00", active: "#13a16e", m: "#ffb300", hi: "#ffc476",
     /* derived from the authored parent by the shipped build's own L*C*h offset */
-    positiveLo: "#276449", negativeLo: "#5b1011", giltB: "#d28400", giltC: "#6b3b00", activeLo: "#204f3a", mlo: "#aa7918", lo: "#c18816",
+    positiveLo: "#00744e", negativeLo: "#770010", giltB: "#c87d00", giltC: "#613500", activeLo: "#0e5c3f", mlo: "#a97602", lo: "#c08600",
   },
   obsidian: {
-    label: "the current build, preserved — selecting it is a no-op, and that is measured",
+    label: "the build this system grew from, saturated with the rest — no longer a no-op, see the header",
     handles: { positive: "Malachite", negative: "Ruby", gilt: "Gilt", active: "Verdigris", m: "Amethyst", hi: "Amethyst Light" },
     /* authored */
-    positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#8d5cf0", hi: "#c9a6ff",
+    positive: "#00d180", negative: "#ff0056", gilt: "#ffde00", active: "#04ab91", m: "#7b44ff", hi: "#bd95ff",
     /* derived from the authored parent by the shipped build's own L*C*h offset */
-    positiveLo: "#1c6a45", negativeLo: "#6b1a2e", giltB: "#d9a52c", giltC: "#7a5510", activeLo: "#23574c", mlo: "#4a2a8c", lo: "#5a36a8",
+    positiveLo: "#02794b", negativeLo: "#7a002d", giltB: "#cf9a00", giltC: "#704b00", activeLo: "#126557", mlo: "#381592", lo: "#4720b1",
   },
 };
 
@@ -117,13 +131,63 @@ var OCCVM_PIGMENT_OFFSETS = {
 
 /* Measured separation between the roles a reader must never confuse (CIEDE2000). Recorded, not computed
    at runtime: a number in the source that the suite checks is a number somebody has to re-record when it
-   moves, which is the whole point. The shipped build's own posActive is 14.8 and is the floor. */
+   moves, which is the whole point. The pre-palette build's own posActive is 14.8. */
 var OCCVM_PIGMENT_SEPARATION = {
-  astro: { posNeg: 73.1, posActive: 14.8 },
-  deepwater: { posNeg: 64.4, posActive: 16.6 },
-  acid: { posNeg: 89.0, posActive: 18.1 },
-  sunset: { posNeg: 62.3, posActive: 11.7 },
-  obsidian: { posNeg: 73.1, posActive: 14.8 },
+  astro: { posNeg: 85.8, posActive: 15.2 },
+  deepwater: { posNeg: 75.0, posActive: 16.8 },
+  acid: { posNeg: 97.4, posActive: 18.3 },
+  sunset: { posNeg: 76.5, posActive: 11.8 },
+  obsidian: { posNeg: 85.8, posActive: 15.2 },
+};
+
+/* 2.42 — WHAT WAS AUTHORED, kept beside what ships. These are the 2.27 hexes, verbatim and untouched by
+   the saturation pass; OCCVM_PIGMENTS above carries what they become. The pass may only move lightness
+   (within OCCVM_PIGMENT_BAND) and chroma (to the sRGB edge), never hue, so each row here and its shipped
+   counterpart name the same colour at a different strength. Kept because a record of what a person chose
+   must survive the pass that supersedes it, and because the suite re-derives the shipped table from this
+   one rather than trusting either. */
+var OCCVM_PIGMENT_AUTHORED = {
+  astro: { positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#ff6b35", hi: "#f7931e" },
+  deepwater: { positive: "#4ecdc4", negative: "#e0475f", gilt: "#ffd97d", active: "#45938a", m: "#2e6fd9", hi: "#8fc9ff" },
+  acid: { positive: "#7fff4f", negative: "#d6336c", gilt: "#ffe66d", active: "#5cb85c", m: "#9d4edd", hi: "#b6ff3f" },
+  sunset: { positive: "#52b788", negative: "#c9432f", gilt: "#ffc857", active: "#40916c", m: "#ffb627", hi: "#ffd6a5" },
+  obsidian: { positive: "#3fbf7e", negative: "#e0475f", gilt: "#ffe9a3", active: "#3f9a86", m: "#8d5cf0", hi: "#c9a6ff" },
+};
+
+/* How far lightness may travel to find chroma. The one authored number the 2.42 pass adds; everything
+   else in it is a search. The 8-bit round can put a SHIPPED value a fraction outside this — the band
+   bounds what is asked for, not what sRGB can spell. */
+var OCCVM_PIGMENT_BAND = 5;
+
+/* 2.42 — THE COST OF HOLDING THE SEPARATIONS, per palette, recorded rather than absorbed. `t` is each
+   role's position between its authored value (0) and its own maximum chroma inside the band (1); `floor`
+   is the separation that role set had BEFORE the pass, which is what the backoff is held against. A role
+   below 1 gave up chroma so a reader would not lose a distance they already had.
+   `t` IS A REPORT, NOT AN INPUT, and the four decimals are why that has to be said. The bisection
+   carries full precision; re-deriving a role from the rounded figure here lands one 8-bit code away
+   (measured: deepwater's active comes back #23a195 against the shipped #23a095). Anything checking this
+   table must re-run the pass, which is what both suites do. */
+var OCCVM_PIGMENT_SATURATION = {
+  astro: { floor: { posNeg: 73.1, posActive: 14.8 }, t: { positive: 1.0000, negative: 1.0000, gilt: 1.0000, active: 0.9789, m: 1.0000, hi: 1.0000 } /* backed off: active: 0.9789 */ },
+  deepwater: { floor: { posNeg: 64.4, posActive: 16.6 }, t: { positive: 1.0000, negative: 1.0000, gilt: 1.0000, active: 0.7377, m: 1.0000, hi: 1.0000 } /* backed off: active: 0.7377 */ },
+  acid: { floor: { posNeg: 89.0, posActive: 18.1 }, t: { positive: 1.0000, negative: 1.0000, gilt: 1.0000, active: 0.1119, m: 1.0000, hi: 1.0000 } /* backed off: active: 0.1119 */ },
+  sunset: { floor: { posNeg: 62.3, posActive: 11.7 }, t: { positive: 1.0000, negative: 1.0000, gilt: 1.0000, active: 0.8861, m: 1.0000, hi: 1.0000 } /* backed off: active: 0.8861 */ },
+  obsidian: { floor: { posNeg: 73.1, posActive: 14.8 }, t: { positive: 1.0000, negative: 1.0000, gilt: 1.0000, active: 0.9789, m: 1.0000, hi: 1.0000 } /* backed off: active: 0.9789 */ },
+};
+
+/* 2.42 — THE ANCHOR ROUND-TRIP, as data so a suite can assert it without re-running the generator. These
+   are the seven ramp values the offsets were measured off; applying those offsets to the parents they
+   were measured from must reproduce them byte for byte. This is a property of the DERIVATION and is why
+   the derived column is one rule rather than twenty choices. It is no longer a claim about `obsidian`:
+   see the header. */
+var OCCVM_PIGMENT_ANCHOR = {
+  positiveLo: "#1c6a45",
+  negativeLo: "#6b1a2e",
+  giltB: "#d9a52c",
+  giltC: "#7a5510",
+  activeLo: "#23574c",
+  mlo: "#4a2a8c",
+  lo: "#5a36a8",
 };
 
 /* Writing a palette is one call in both tools. Returns the palette so a caller can read a slot it does
@@ -137,4 +201,6 @@ function occvmApplyPigment(name, style) {
 if (typeof module !== "undefined") module.exports = {
   PIGMENTS: OCCVM_PIGMENTS, TOKENS: OCCVM_PIGMENT_TOKENS, DEFAULT: OCCVM_PIGMENT_DEFAULT,
   OFFSETS: OCCVM_PIGMENT_OFFSETS, SEPARATION: OCCVM_PIGMENT_SEPARATION, apply: occvmApplyPigment,
+  AUTHORED: OCCVM_PIGMENT_AUTHORED, BAND: OCCVM_PIGMENT_BAND, SATURATION: OCCVM_PIGMENT_SATURATION,
+  ANCHOR: OCCVM_PIGMENT_ANCHOR,
 };

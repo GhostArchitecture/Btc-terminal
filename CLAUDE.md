@@ -4,16 +4,22 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current build: `build-20260911004539` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current build: `build-20260911122148` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.41** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.42** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
 a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
 screen edge, the Fresnel rim on the column's walls, and **the coil measured and then closed on one
 side** — a peanut may rejoin at the coil, and above `R[1]` a body sheds its thinnest bond rather than
 coarsening forever, and **the one light finally reaching the page ground** — the last surface it did
-not touch, which is why both tools painted the same ground at noon and at midnight. *Verified by
+not touch, which is why both tools painted the same ground at noon and at midnight, and **the palettes
+saturated** — every authored role to the greatest chroma sRGB holds at its own hue, hue untouched and
+the positive/negative and positive/active separations held as a floor. ***2.42 IS BUILT AND NOT
+DEPLOYED.*** `build-20260911122148` is the stamp in this repository; the last stamp actually verified on
+a host is `build-20260911004539` (2.41), and the verification below is that deploy's, left in place
+rather than rewritten around a poll that has not happened. Deploying is the owner's call and §7.3's
+procedure is only meaningful once a push has landed. *Verified by
 stamp, and **all three readings are brackets this time**, because the poll was started BEFORE the
 push rather than after it — 2.40's two bounds were an artefact of when I began looking, not of the
 hosts. Every hit here has a recorded miss immediately before it: GitHub Pages for BTC missed at
@@ -25,13 +31,13 @@ hosts serve the sundial's `"--field": hex(subLo)` write and `PAL`'s live `field`
 that write plus `background: var(--field)` and the band reading `var(--field-hi)`.* Earlier
 lines: `build-20260910232759` / 2.40 (23:42 UTC, two of its three readings BOUNDS rather than brackets — see the 2.40 entry), `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **10,253 lines, 901 KB, 303 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **10,324 lines, 907 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
 299 against a measured 8,530 / 664 KB / 301 for the three releases from 2.27 to 2.30 — the 2.14 defect
 inside the sentence promising it would not recur. Counted again at every release since, this one
-included, and the count excludes the spliced dependency. *At 2.39 the function figure read **302** against a measured **303**, counted by the header's own stated method — 312 line-start declarations less the nine inside React's vendor fences, enumerated from the fences rather than from the list of names. A drift of one is the 2.14 class at its smallest, and it is corrected here rather than quietly overwritten, because the sentence above promises this is counted every release. At 2.40 the line and byte figures moved with the splice — 10,078 / 888 KB against a measured **10,229 / 900 KB** — and the function count did not, holding at 303 by the same method. The island's byte figure is deliberately NOT restated: `react/` and `vendor/` have not moved since 2.34, and my re-measurement disagreed with the recorded 156,947 by five bytes on a span boundary I could not reproduce, so restating it would report an instrument as a change — 2.26's error in a different coordinate.* The island is **156,947 bytes** as spliced,
+included, and the count excludes the spliced dependency. *At 2.39 the function figure read **302** against a measured **303**, counted by the header's own stated method — 312 line-start declarations less the nine inside React's vendor fences, enumerated from the fences rather than from the list of names. A drift of one is the 2.14 class at its smallest, and it is corrected here rather than quietly overwritten, because the sentence above promises this is counted every release. At 2.40 the line and byte figures moved with the splice — 10,078 / 888 KB against a measured **10,229 / 900 KB** — and the function count did not, holding at 303 by the same method. At 2.42 they moved with the splice again — the saturation pass and its record add ~5 KB to `pigments.js` — and the function count held at 303 for the third release running, counted by the same method rather than carried. The island's byte figure is deliberately NOT restated: `react/` and `vendor/` have not moved since 2.34, and my re-measurement disagreed with the recorded 156,947 by five bytes on a span boundary I could not reproduce, so restating it would report an instrument as a change — 2.26's error in a different coordinate.* The island is **156,947 bytes** as spliced,
 of which the vendor payload is **142,586** and the three components 13,499 — the rest is fence
 comments. *Two measurement corrections live in that sentence, and neither is a change to the file.
 It read 156,881 one release ago because that count was taken over CHARACTERS and this one is taken
@@ -299,8 +305,8 @@ Suite (`npm test`, after `npm install` for jsdom):
   not a to-do list, until the next round of findings lands here.
 
 Always run the whole suite before a push; a change in one module has repeatedly broken another. `npm test` is
-currently **1,024 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
-occvm 582, rheology 77, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
+currently **1,155 assertions across 8 harnesses** (invariants 80, sweep 35, page-load 34, h-protocol 89, prereg 84,
+occvm 713, rheology 77, react 43) — *unchanged in total at 2.35 and not unchanged in content: eight of
 `occvm`'s assertions were retired with the configuration they described and eight replaced them, so a
 reader watching only the number would see nothing happen. The composition is what moved, and §12's 2.35
 entry names every retirement.* The figure here read 231 across 5, then 715, then 875, long after each had
@@ -3650,6 +3656,147 @@ untouched, Rhyme's open-face serif parity still misses by 3.49 L\*, the "no decl
 its initial value" property is guarded only for the one class that shipped, desktop frame cost is
 still ~13 fps from `backdrop-filter` across 21 tiles, and the chart island (§13.5) stays deferred with
 its cost measured.
+
+**2.42 — the palettes saturate, and hue is the only thing left authored in a role.** The owner's
+call: *saturate the colors, and in Rhyme ditch bronze in the ui picker for a new colour selection in
+each palette.* Two asks; the first turned out to be a change to what "authored" means here.
+
+**WHAT THE PASS IS.** Each of the six authored roles now goes to the greatest chroma sRGB holds **at
+its own hue**, with lightness free inside an authored **±5 L\*** band and chosen by wherever in that
+band the chroma maximum falls. So a shipped role is **authored in hue, maximal in chroma, derived in
+lightness** — one authored number added (`SAT_BAND`) and nothing else, because the search is a ternary
+maximisation over a unimodal gamut boundary and a bisection to the edge, which carries no grid
+resolution and no step size to pick. The 2.27 hexes are kept verbatim beside the result in
+`OCCVM_PIGMENT_AUTHORED`: the record of what a person chose has to survive the pass that supersedes it.
+
+**HUE NEVER MOVES, AND THE 8-BIT ROUND IS NAMED RATHER THAN IGNORED.** Which colour means what is L6's
+whole content and this does not touch it. But sRGB cannot spell every (L, C, h), so the *realised* hue
+drifts — measured at a worst case of **0.5242°** across all thirty roles, below any hue JND, pinned
+under one degree so a real rotation cannot hide in the quantum. Lightness leaves the band by at most
+**0.0687 L\*** for the same reason. **The band bounds what is asked for, not what sRGB can spell**, and
+both halves are asserted: the RULE from the generator's own source, the RESULT from the shipped hexes.
+
+**THE SEPARATIONS BECAME A FLOOR, AND THE COST IS RECORDED PER PALETTE.** Saturating every role at once
+pulls some palettes' positive and active together, so each is backed off until neither its
+positive/negative nor its positive/active CIEDE2000 separation sits below its own **pre-pass** value.
+`active` gives first, by bisection on one scalar; `positive` gives only if backing `active` all the way
+out will not clear the floor, which in the shipped five it never has to.
+
+| palette | pos/neg | pos/active | active's chroma | what it gave |
+|---|---|---|---|---|
+| astro | 73.1 → **85.8** | 14.8 → **15.2** | 1.34× | t 0.979 |
+| deepwater | 64.4 → **75.0** | 16.6 → **16.8** | 1.34× of an available 1.43× | t 0.738 |
+| acid | 89.0 → **97.4** | 18.1 → **18.3** | **1.05× of an available 1.51×** | t 0.112 |
+| sunset | 62.3 → **76.5** | 11.7 → **11.8** | 1.39× | t 0.886 |
+| obsidian | 73.1 → **85.8** | 14.8 → **15.2** | 1.34× | t 0.979 |
+
+`acid` pays nearly the whole bill — its active is effectively unmoved so its positive could take 1.21×.
+**Every palette's pos/neg widens** and none of the five comes out below where it went in.
+
+**AND SUNSET IS STILL THE ONE BELOW THE OLD BUILD'S 14.8.** 2.27 recorded that as the one measured
+negative; the floor rule holds it at 11.7 → 11.8 rather than letting it fall to the 10.8 an
+unconstrained pass gives, and it does not repair it. Recorded again rather than quietly re-based.
+
+**WHAT THIS RETIRES, NAMED WITH ITS REASON.** *"Selecting obsidian is a no-op"* is retired. It was a
+**migration** guarantee, made at 2.27 so a pre-2.27 reader's stored `mineral` landed somewhere
+resembling what they had; that migration fired eight releases ago and the sentence has been a
+description since. Exempting the default from a pass applied to the other four would be the local
+exception L6 exists to prevent, and the instruction was to saturate the colours rather than four fifths
+of them. **The anchor round-trip is NOT retired** — it was never a fact about obsidian but about the
+derivation, and it is asserted directly against `ANCHOR` now that the two have stopped being one table.
+The retirement is itself asserted as a negative, so the old sentence cannot come back by accident.
+
+**ONE MEASURED COST, RECORDED AND NOT REPAIRED.** Gilt is the only role whose chroma maximum sits
+*below* its authored lightness, so saturating it darkens it — and gilt is a light colour on a dark
+ground, so it **loses** contrast where every other role gains. Against the live substrate at high sun:
+`--gilt-a` 14.32 → **12.90**, `--gilt-b` 7.70 → **6.80**, `--gilt-c` 2.57 → **2.21**; positive
+7.36 → 8.57, active 5.07 → 5.95, negative 4.30 → 4.43. **The trade is binary rather than a dial:**
+measured, gilt has **zero** chroma headroom upward — at its authored L 92.7 sRGB holds no more than
+C 36.8 at that hue — so constraining its lightness to non-decreasing returns the entire 2.40× and
+leaves gilt exactly where it started. Not repaired here, because repairing it means a gilt-contrast
+criterion authored the same afternoon as the change it would justify, which is what 2.41 refused for
+panel definition.
+
+*And it surfaces a pre-existing one.* **`--gilt-c` as a text colour has never cleared a contrast
+threshold** — 2.57 before this release and 2.21 after, both far under WCAG AA's 4.5 and under
+AA-large's 3. Two real use sites (one CSS `color:`, one inline `<em>`). This release worsens it by 14%
+and did not create it; closing it is a decision about whether gilt's dark end may carry text at all.
+
+**WHAT THE SATURATION IS WORTH ON THE PAGE**, driven in Chromium at the three pinned instants with
+clock, timezone and seed pinned as `occvm/golden/record.js` pins them, the release before against the
+release after, nothing but the palette moving:
+
+| | mean chroma | pixels with C ≥ 10 | p99 chroma | median L\* |
+|---|---|---|---|---|
+| BTC phone, low sun | 6.37 → 6.77 | 9.99% → 10.81% | 38.87 → **46.93** | 14.32 → 14.20 |
+| BTC phone, high sun | 6.64 → 7.05 | 13.20% → 13.94% | 37.03 → **41.71** | 12.31 → 12.28 |
+| BTC phone, night | 9.83 → 10.27 | 19.16% → 19.44% | 38.18 → **45.55** | 5.85 → 5.83 |
+| Rhyme desk, low sun | 7.00 → 7.34 | 13.47% → **17.78%** | 33.82 → 34.05 | 10.45 → 10.45 |
+| Rhyme desk, high sun | 6.77 → 7.16 | 17.03% → **19.79%** | 33.72 → 33.72 | 7.48 → 7.48 |
+| Rhyme desk, night | 9.28 → 9.64 | 25.35% → **26.59%** | 35.39 → 35.52 | 3.97 → 3.97 |
+
+**Median lightness is unmoved to two decimals, which is the test that this is saturation and not a
+brightness knob** — 2.41 moved that figure by five L\* and this moves it by none. **The frame mean is a
+weak instrument here and is reported as one:** most of a frame is dark substrate with no chroma to
+gain, so the informative columns are the p99 (the coloured ink, up **13–21%** on BTC) and the coloured
+share. Rhyme's p99 barely moves while its coloured share jumps most — that is the picker, not the
+roles: five bronze buttons became five palette colours.
+
+**THE PICKER: RHYME'S WAS THE INVERSE OF BTC'S, AND THE ASK RESOLVES IT.** BTC has had the right
+arrangement since 2.27 — each unselected swatch wears its own palette's accent, the selected one drops
+the override and reads the live tokens, so the row shows four offers and one applied state. Rhyme was
+bronze at rest and took a colour **only once selected**, so the row read as four unlabelled buttons and
+one coloured one and **the offer was invisible until after it was taken**. `.cast.pgsw` is the fix, and
+it adds **no hex**: `--pg`/`--pg-lo` are set inline from each palette's own `m`/`mlo`, and the selected
+swatch reads `--pigment`/`--pigment-lo`, the same ramp after `applyPigment()` has written it. 2.37
+settled what *selected* means across the two tools; this settles what an *offer* looks like.
+
+*BTC moves one line in the same direction.* Its unselected swatch was mixing its accent **45% toward
+black** to invent a dark end while the palette already ships one, so the offer and the applied state
+were drawn by two different rules. It reads `--pg-lo` now. Both tools, one rule.
+
+*And `--m` is retired.* 2.37 kept it with the note *"a swatch that names its own colour is not a
+state"* — true, and it meant a fallback chain on **every** `.cast` in Rhyme serving exactly five of
+them. The picker has its own rule now, so `.cast.on` is the active colour and nothing else, which is
+what 2.37 was arguing for and could not finish. `pgsw` joins `patina` as a **named** modifier rather
+than an open `className` prop: Cast is the one control and the one a11y contract, and an open class
+would let any caller give it a skin.
+
+**RHYME'S SHARE CARD HAS NEVER FOLLOWED THE PALETTE, AND 2.42 IS THE RELEASE THAT MAKES THAT VISIBLE.**
+`m.m` reached its ground radial from 2.27 and stopped there: the **gilt ramp** and the binding **seam**
+were typed hexes on a canvas, so a palette change never touched them — BTC's 2.17 `PAL` defect one tool
+along. Every one of those values moves in this release, so the card would have painted obsidian's old
+gilt whatever the page wore. They resolve through the page now, in the same `light()` the card already
+used for `--sub` and `--bone`. **`--field` joins them for the same reason one release later:** it
+became sundial-written at 2.41 and this canvas kept `#09080d`, so the card's ground sat at midnight
+while the page moved with the day. *The 2.41 guard could not see any of it — it scans the STYLESHEET,
+and the card is JavaScript.* Widened here to that file, and verified to bite.
+
+*A slip of mine, caught by the guard I was writing rather than by review.* My first draft gave the
+card's `--field` fallback a hex I invented — a **third** copy of a value that already has two, which is
+the L3 defect arriving inside the repair for it. It is the `:root` declaration's own value now.
+
+**Four guard classes, all verified to bite.** Retyping a shipped hex fails **15** assertions, because
+the table is pinned to the RULE — every shipped role must be what `saturate()` produces from the hex
+kept beside it, and every ramp member its saturated parent moved by the recorded offset. Letting the
+search vary hue fails **42**. Removing the backoff fails **13**. In Rhyme, restoring the bronze on the
+picker and restoring `--m` each fail the named 2.42 clause; restoring a gilt literal or the ground
+literal in the card each fail the widened 2.41 clause.
+
+*One correction, because it caught me first.* `OCCVM_PIGMENT_SATURATION`'s `t` is recorded to four
+decimals and is **a report, not an input** — the bisection carries full precision, and re-deriving a
+role from the rounded figure lands one 8-bit code away (deepwater's active comes back `#23a195`
+against the shipped `#23a095`). My first backoff guard did exactly that and failed on correct code. It
+re-runs the pass now, and states the property as the two facts that bracket it — full chroma
+**breaches** the floor, the shipped position **clears** it — rather than as a distance, because the
+output is quantised and the separation is a step function of `t`.
+
+`--pg-lo` registered in SPINE.md §6b; the census refused the change until it was, twice over — once for
+the token and once for Rhyme gaining the pair. `test/occvm.js` **590 → 713**; §6's total **1,032 →
+1,155**. Rhyme **125 → 126**. **Golden holds at 585 and the composition is stated because the total did
+not move** (2.35's rule): what changed is the nine palette-written tokens' values at three instants on
+all three surfaces, plus one new *name*, `--pg-lo`, which records no value because it lives on a button
+rather than on `:root`.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
