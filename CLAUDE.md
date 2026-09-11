@@ -4,24 +4,26 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current build: `build-20260911004539` (not yet deployed — 2.41 is on the branch) — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current build: `build-20260911004539` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
-correction, and OCCVM through **2.40** (§12): the pigment palettes, the metaball globule field and its
+correction, and OCCVM through **2.41** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
 floor on the page ground, the field drawn once with the tiles frosted over it, the safe area read as
 a token, and **L2's vessel worn** — the field bounded by the content column instead of running to the
 screen edge, the Fresnel rim on the column's walls, and **the coil measured and then closed on one
 side** — a peanut may rejoin at the coil, and above `R[1]` a body sheds its thinnest bond rather than
-coarsening forever. *Verified by stamp, and NOT every reading is a bracket this time, which is the
-distinction worth keeping: both BTC hosts were already serving `build-20260910232759` at the **first**
-poll, 23:42:23 UTC, so those are upper BOUNDS with no preceding miss recorded and I cannot say when
-they landed. Rhyme is a real bracket — missed three times and at **23:42:40**, hit
-`build-20260910232610` at **23:42:46**. Its service worker on the wire names
-`tome-build-20260910232610`, the same stamp, and its artifact really changed, so that poll answers the
-question it was asked. Corroborated as this release rather than a cached stamp, which is corroboration
-and not the verification (§7.3): both BTC hosts serve `overCeiling`, `CARRIER` and the lazy
-`retractMs` reader; Rhyme's page serves the shed criterion.* Earlier
-lines: `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
+coarsening forever, and **the one light finally reaching the page ground** — the last surface it did
+not touch, which is why both tools painted the same ground at noon and at midnight. *Verified by
+stamp, and **all three readings are brackets this time**, because the poll was started BEFORE the
+push rather than after it — 2.40's two bounds were an artefact of when I began looking, not of the
+hosts. Every hit here has a recorded miss immediately before it: GitHub Pages for BTC missed at
+01:10:30 and hit `build-20260911004539` at **01:10:36**; Cloudflare missed at 01:10:36 and hit at
+**01:10:42**; Rhyme missed at 01:10:47 and hit `build-20260911003555` at **01:10:52**. Rhyme's
+service worker on the wire names `tome-build-20260911003555`, the same stamp. Corroborated as this
+release rather than a cached stamp, which is corroboration and not the verification (§7.3): both BTC
+hosts serve the sundial's `"--field": hex(subLo)` write and `PAL`'s live `field` key; Rhyme serves
+that write plus `background: var(--field)` and the band reading `var(--field-hi)`.* Earlier
+lines: `build-20260910232759` / 2.40 (23:42 UTC, two of its three readings BOUNDS rather than brackets — see the 2.40 entry), `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
 the deployment hold covered.* One file, **10,253 lines, 901 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
@@ -3619,6 +3621,35 @@ scope the owner set for this release and is on the record rather than in it.
 `test/occvm.js` **582 → 590**; §6's total **1,024 → 1,032**. Rhyme **124 → 125**. Golden **573 → 585**,
 the delta being exactly `--field` and `--field-hi` at three instants on all three surfaces and no
 existing recorded value moving.
+
+**Deployed.** `main` took the branch as one merge commit in each repository (`8ffd8b0` here,
+`6eb60fb` in Rhyme), CI green on both branch heads through the API before either merged — BTC run 141
+(both jobs, 25 steps, golden included) and Rhyme run 96 (all 17 steps, the tome-src regeneration guard
+among them), read job by job rather than off the rollup.
+
+**All three stamp readings are brackets, and the reason is a change of method rather than of luck.**
+2.40 reported two of its three as BOUNDS because the poll began after the push and both BTC hosts
+were already serving by the first read — an artefact of when I started looking, not of the hosts. This
+time the poller was started **before** the push, so every hit carries a recorded miss immediately
+before it: GitHub Pages for BTC missed at 01:10:30 and hit at **01:10:36**, Cloudflare missed at
+01:10:36 and hit at **01:10:42**, Rhyme missed at 01:10:47 and hit at **01:10:52**. Five pre-push
+misses are on the record too, which is what makes them brackets at all.
+
+*What a reader sees change, and it is the whole page rather than a panel.* The ground under everything
+now moves with the day instead of sitting at the same near-black at noon and at midnight. On a phone
+the median pixel goes 9.1 → 14.2 L\* at dusk and 8.6 → 12.5 at high sun, and the share of the frame
+under 10 L\* — effectively the share that reads as black — falls from 58% to **16%** at dusk. In Rhyme
+the change is larger still: its ground was completely static at 2.4 L\*, and a desktop frame that was
+94% near-black at every hour is now 4% at dusk. **Night is left where it was in both**, so the tools
+still go dark after dark; what they stopped doing is being dark at noon.
+
+*What this deploy does not close.* 2.36's sweep-tile seam is still open at one end of the day — 4.60
+L\* at high sun before this release, 3.41 after, against the 1.14 the text tiles vary among
+themselves — and it was outside the scope set for 2.41. The mixing half of the coil (Task #29) is
+untouched, Rhyme's open-face serif parity still misses by 3.49 L\*, the "no declaration computes to
+its initial value" property is guarded only for the one class that shipped, desktop frame cost is
+still ~13 fps from `backdrop-filter` across 21 tiles, and the chart island (§13.5) stays deferred with
+its cost measured.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
