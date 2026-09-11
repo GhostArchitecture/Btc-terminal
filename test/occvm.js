@@ -883,13 +883,128 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   const P6 = require("../occvm/pigments.js");
   const gen6 = require("../occvm/tools/derive-pigments.js");
 
-  /* the anchor round-trips: obsidian's derived values ARE this tool's shipped literals, byte for byte.
-     This is what makes "selecting obsidian is a no-op" a measurement. A change to the derivation that
-     moved today's build fails here before it can ship. */
-  for (const [child] of gen6.DERIVED)
-    T(`obsidian's derived ${child} reproduces the shipped literal byte-identically`,
-      P6.PIGMENTS.obsidian[child].toLowerCase() === gen6.ANCHOR[child].toLowerCase(),
-      `${P6.PIGMENTS.obsidian[child]} vs ${gen6.ANCHOR[child]}`);
+  /* THE ANCHOR ROUND-TRIP, RE-POINTED AT 2.42 AND NAMED AS A RETIREMENT. This read
+     `P6.PIGMENTS.obsidian[child] === gen6.ANCHOR[child]` and was labelled "what makes selecting
+     obsidian a no-op". That clause is RETIRED, because 2.42 puts obsidian through the same saturation
+     pass as the other four and the no-op was a migration guarantee whose migration fired at 2.27 —
+     exempting the default from a pass applied to every other palette would be the local exception L6
+     exists to prevent. It is retired rather than deleted: what it was really testing is a property of
+     the DERIVATION, which survives untouched and is asserted here in the stronger form. Apply each
+     offset to the parent it was measured from and the child it was measured to must come back byte for
+     byte — and the table of those children is carried in the shipped file too, so a suite can check it
+     without running the generator and the two cannot drift. */
+  for (const [child, parent] of gen6.DERIVED) {
+    T(`the derivation round-trips its own anchor at ${child}`,
+      gen6.apply(gen6.ANCHOR[parent], gen6.OFFSETS[child]).toLowerCase() === gen6.ANCHOR[child].toLowerCase(),
+      `${gen6.apply(gen6.ANCHOR[parent], gen6.OFFSETS[child])} vs ${gen6.ANCHOR[child]}`);
+    T(`the shipped anchor record agrees with the generator at ${child}`,
+      P6.ANCHOR[child].toLowerCase() === gen6.ANCHOR[child].toLowerCase(),
+      `${P6.ANCHOR[child]} vs ${gen6.ANCHOR[child]}`);
+  }
+  /* and the retirement is asserted as a negative, so nobody restores the old sentence by accident:
+     obsidian is NOT the anchor any more, it is the anchor put through the pass. */
+  T("obsidian ships saturated rather than as the anchor, which is what 2.42 retired",
+    P6.PIGMENTS.obsidian.positive.toLowerCase() !== gen6.ANCHOR.positive.toLowerCase() &&
+    P6.AUTHORED.obsidian.positive.toLowerCase() === gen6.ANCHOR.positive.toLowerCase(),
+    `${P6.PIGMENTS.obsidian.positive} shipped, ${P6.AUTHORED.obsidian.positive} authored`);
+
+  /* 2.42 — THE WHOLE TABLE IS RE-DERIVED FROM WHAT WAS AUTHORED, which is the guard the rest lean on.
+     Every shipped role must be exactly what the saturation rule produces from the 2.27 hex kept beside
+     it. Pin the OUTPUT and a later edit can retype a hex; pin the RULE and it cannot — the six roles
+     and the seven ramp members both fall out of this one clause. */
+  {
+    const ROLES6 = ["positive", "negative", "gilt", "active", "m", "hi"];
+    for (const k of Object.keys(P6.PIGMENTS)) {
+      const re = gen6.saturate(P6.AUTHORED[k]);
+      for (const r of ROLES6)
+        T(`${k}'s ${r} is what the saturation rule produces from its authored hex`,
+          P6.PIGMENTS[k][r].toLowerCase() === re.roles[r].toLowerCase(),
+          `${P6.PIGMENTS[k][r]} vs ${re.roles[r]}`);
+      for (const [child, parent] of gen6.DERIVED)
+        T(`${k}'s ${child} is its saturated parent moved by the recorded offset`,
+          P6.PIGMENTS[k][child].toLowerCase() === gen6.apply(re.roles[parent], gen6.OFFSETS[child]).toLowerCase(),
+          `${P6.PIGMENTS[k][child]} vs ${gen6.apply(re.roles[parent], gen6.OFFSETS[child])}`);
+    }
+  }
+
+  /* 2.42 — HUE IS THE ONLY THING STILL AUTHORED IN A ROLE, so it is the one axis the pass may not move.
+     Asserted twice, because the two halves fail differently. The RULE: `peak` and `lerpRole` both carry
+     the parent's own `h` through untouched, read off the generator's source. The RESULT: the shipped
+     hex's hue, which is NOT identical, because 8-bit sRGB cannot spell every (L, C, h) — measured at a
+     worst case of 0.5242 degrees across all thirty roles, below any hue JND and pinned at 1 degree so a
+     real rotation cannot hide inside the quantum. The distinction matters: the band is a bound on what
+     is asked for, not on what sRGB can spell, and the same is true of the hue. */
+  {
+    const src6 = fs6.readFileSync(path6.join(ROOT6, "occvm/tools/derive-pigments.js"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    T("the saturation search never varies hue — it maximises chroma over L at a fixed h",
+      /function peak\([^)]*\)\s*\{[\s\S]*?maxChromaAt\(a, p\.h\)[\s\S]*?maxChromaAt\(b, p\.h\)/.test(src6) &&
+      /function lerpRole[\s\S]*?return toHex\(p\.L \+ t \* \(pk\.L - p\.L\), p\.C \+ t \* \(pk\.C - p\.C\), p\.h\)/.test(src6));
+    let worstH = 0, worstL = 0;
+    for (const k of Object.keys(P6.PIGMENTS)) for (const r of ["positive", "negative", "gilt", "active", "m", "hi"]) {
+      const a = gen6.toLch(P6.AUTHORED[k][r]), z = gen6.toLch(P6.PIGMENTS[k][r]);
+      let dh = Math.abs(z.h - a.h); if (dh > 180) dh = 360 - dh;
+      worstH = Math.max(worstH, dh);
+      worstL = Math.max(worstL, Math.abs(z.L - a.L) - P6.BAND);
+    }
+    T("no shipped role's hue moved more than the 8-bit round can account for (< 1 deg)",
+      worstH < 1, `worst ${worstH.toFixed(4)} deg`);
+    T("no shipped role's lightness left the authored band by more than the 8-bit round (< 0.25 L*)",
+      worstL < 0.25, `worst excursion ${worstL.toFixed(4)} L*`);
+    T("the band is an authored number and is the only one the pass adds", P6.BAND === 5, String(P6.BAND));
+  }
+
+  /* 2.42 — CHROMA IS MAXIMAL WHERE NOTHING FORCED IT DOWN. A role the backoff left alone (t = 1) must
+     sit on the sRGB boundary: no greater chroma exists at its hue anywhere in the band. Measured by
+     re-running the peak search, so this fails if the search is ever weakened rather than if a digit
+     changes. A role the backoff DID move is checked by the clause below instead. */
+  for (const k of Object.keys(P6.PIGMENTS)) {
+    const t6 = P6.SATURATION[k].t;
+    for (const r of ["positive", "negative", "gilt", "active", "m", "hi"]) {
+      if (t6[r] < 1) continue;
+      const want = gen6.peak(P6.AUTHORED[k][r], P6.BAND), got = gen6.toLch(P6.PIGMENTS[k][r]);
+      T(`${k}'s ${r} sits at the greatest chroma sRGB holds at its hue inside the band`,
+        Math.abs(got.C - want.C) < 1.0, `${got.C.toFixed(2)} vs peak ${want.C.toFixed(2)}`);
+    }
+  }
+
+  /* 2.42 — THE BACKOFF IS HELD AGAINST THE PRE-PASS SEPARATION AND ITS COST IS RECORDED. Two clauses:
+     no palette may come out of the pass below where it went in, and a role that gave up chroma must
+     have given up exactly enough — sitting AT its floor rather than short of it, since a backoff that
+     overshoots is chroma thrown away for nothing and one that undershoots is the floor breached. */
+  for (const k of Object.keys(P6.PIGMENTS)) {
+    const f6 = P6.SATURATION[k].floor, t6 = P6.SATURATION[k].t, p = P6.PIGMENTS[k];
+    T(`${k} comes out of the saturation pass no worse than it went in`,
+      gen6.de00(p.positive, p.negative) >= f6.posNeg - 0.05 &&
+      gen6.de00(p.positive, p.active) >= f6.posActive - 0.05,
+      `pos/neg ${gen6.de00(p.positive, p.negative).toFixed(2)} vs floor ${f6.posNeg}, ` +
+      `pos/act ${gen6.de00(p.positive, p.active).toFixed(2)} vs floor ${f6.posActive}`);
+    T(`${k}'s recorded pre-pass floors are the authored table's own separations`,
+      Math.abs(gen6.de00(P6.AUTHORED[k].positive, P6.AUTHORED[k].negative) - f6.posNeg) < 0.05 &&
+      Math.abs(gen6.de00(P6.AUTHORED[k].positive, P6.AUTHORED[k].active) - f6.posActive) < 0.05);
+    /* A role that gave chroma must have given it for a reason and no more than the reason needs. Stated
+       as the two facts that bracket it rather than as a distance from the floor: going all the way to
+       the maximum BREACHES the floor (so the backoff was necessary) and the shipped position does not
+       (so it was sufficient). A distance test cannot be written here — `lerpRole` emits an 8-bit hex,
+       so the separation is a STEP function of t and the bisection lands on the last code before the
+       breach, which for astro sits 0.36 above its floor and for deepwater 0.09 below the figure a
+       re-derivation from the rounded `t` reports. The recorded `t` is a report; this re-runs the pass. */
+    const gave = ["positive", "negative", "gilt", "active", "m", "hi"].filter(r => t6[r] < 1);
+    if (gave.length) {
+      const re = gen6.saturate(P6.AUTHORED[k]);
+      const pkA = gen6.peak(P6.AUTHORED[k].active, P6.BAND);
+      const atMax = gen6.de00(re.roles.positive, gen6.lerpRole(P6.AUTHORED[k].active, pkA, 1));
+      T(`${k}'s backoff was necessary — full chroma on active breaches its floor (${gave.join(", ")})`,
+        atMax < f6.posActive, `${atMax.toFixed(3)} against floor ${f6.posActive}`);
+      T(`${k}'s backoff was sufficient — the shipped position clears the floor`,
+        gen6.de00(p.positive, p.active) >= f6.posActive - 0.05,
+        `${gen6.de00(p.positive, p.active).toFixed(3)} against ${f6.posActive}`);
+    }
+  }
+  /* and `active` is the giver, never `positive` — the role a reader reads most keeps its chroma. */
+  T("where the separations bind it is active that gives, not positive",
+    Object.keys(P6.SATURATION).every(k => P6.SATURATION[k].t.positive === 1),
+    JSON.stringify(Object.keys(P6.SATURATION).map(k => [k, P6.SATURATION[k].t.active.toFixed(3)])));
 
   /* the decorative ladder is monotone in L* in every palette — mlo < lo < m < hi. Authored `m` and `hi`
      plus a derived pair can only be checked this way; PIGMENT-PALETTES' own table is NOT ordered by
@@ -942,10 +1057,16 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
 
   h5.R("applyPigment()");
   const rs5 = h5.ctx.document.documentElement.style;
-  T("--pigment resolves to the palette's decorative accent", rs5.getPropertyValue("--pigment") === "#8d5cf0");
-  T("--pigment-lo resolves to its deep", rs5.getPropertyValue("--pigment-lo") === "#4a2a8c");
+  /* 2.42 — these three read the palette rather than three typed hexes. They were digits, and 2.42
+     moved all three; a test that names a value it is supposed to be checking the PROVENANCE of fails
+     on correct code the first time that value legitimately changes, which is the 2.14 class inside
+     the guard meant to catch it. */
+  T("--pigment resolves to the palette's decorative accent",
+    rs5.getPropertyValue("--pigment") === P6.PIGMENTS[P6.DEFAULT].m, rs5.getPropertyValue("--pigment"));
+  T("--pigment-lo resolves to its deep",
+    rs5.getPropertyValue("--pigment-lo") === P6.PIGMENTS[P6.DEFAULT].mlo, rs5.getPropertyValue("--pigment-lo"));
   T("--ruby-lo now has a token to resolve from — 1.9 deleted it as dead weight and PAL kept the literal",
-    rs5.getPropertyValue("--ruby-lo") === "#6b1a2e");
+    rs5.getPropertyValue("--ruby-lo") === P6.PIGMENTS[P6.DEFAULT].negativeLo, rs5.getPropertyValue("--ruby-lo"));
 
   const fieldObsidian = vein(h5);
   h5.R("setPalette('astro')");
@@ -954,7 +1075,8 @@ const NIGHT = 1757214000000; /* 2026-09-07T03:00:00Z — sun well down */
   T("the outcome colours follow the palette — this is the 2.27 widening, asserted rather than assumed",
     rs5.getPropertyValue("--malachite") === P6.PIGMENTS.astro.positive &&
     rs5.getPropertyValue("--ruby") === P6.PIGMENTS.astro.negative);
-  T("--pigment follows the switch to astro's accent", rs5.getPropertyValue("--pigment") === "#ff6b35");
+  T("--pigment follows the switch to astro's accent",
+    rs5.getPropertyValue("--pigment") === P6.PIGMENTS.astro.m, rs5.getPropertyValue("--pigment"));
   const fieldAstro = h5.ctx.document.documentElement.style["--globules"];
   T("the globule field's colour changes with the palette, same seed", fieldObsidian !== fieldAstro);
 

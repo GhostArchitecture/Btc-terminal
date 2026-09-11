@@ -325,7 +325,7 @@ golden set a delta it cannot attribute.
 
 > **STATE: IN FORCE** — measured by `occvm/tools/law-audit.js`, not asserted.
 > - BTC Terminal: **CONFORMS** — 16 casts, all light-derived or inset
-> - Rhyme Instrument: **CONFORMS** — 25 casts, all light-derived or inset
+> - Rhyme Instrument: **CONFORMS** — 26 casts, all light-derived or inset
 >
 > *This block is generated. If it disagrees with the tools, the tools are what is true.*
 
@@ -374,12 +374,53 @@ A surface that is merely important is not gilt. A number that settles something 
 
 A palette is not a remapping of meaning; it is a choice of *which* green and *which* red. Nothing a
 reader can select makes a won window and a lost one read alike, and that is measured rather than
-promised: the smallest positive/negative separation across the shipped five is **CIEDE2000 62.3**
-(`sunset`), against this system's own **73.1**. `OCCVM_PIGMENT_SEPARATION` carries the table and both
-suites assert it, so a palette edit that narrowed the gap would have to re-record the number.
+promised: the smallest positive/negative separation across the shipped five is **CIEDE2000 76.5**
+(`sunset`), against this system's own pre-palette **73.1**. `OCCVM_PIGMENT_SEPARATION` carries the table
+and both suites assert it, so a palette edit that narrowed the gap would have to re-record the number.
 
 **Everything else is open** — the decorative accent and its ladder, the globule field's tint, ambient
 surface wash. Nothing depends on those, so nothing breaks when they change.
+
+#### 2.42 — hue is the only thing still authored in a role, and the separations are a floor
+
+Saturation is a change to *which* green, not to *whether* green means positive, so it sits inside this
+law rather than beside it. Every one of the six authored roles now goes to the greatest chroma sRGB
+holds **at its own hue**, with lightness free inside an authored ±5 L\* band and chosen by wherever in
+that band the chroma maximum falls. The band is the one authored number the pass adds; the search is a
+ternary maximisation over a unimodal gamut boundary and a bisection to the edge, so it carries no grid
+and no step size. **Hue never moves**, which is the whole of the table above — and because 8-bit sRGB
+cannot spell every (L, C, h), the *realised* hue drifts by at most **0.5242°** across all thirty roles,
+measured, below any hue JND and pinned under one degree so a real rotation cannot hide in the quantum.
+
+**The separations became a floor rather than a record.** Saturating every role at once pulls some
+palettes' positive and active together, so each palette is backed off until neither its
+positive/negative nor its positive/active CIEDE2000 separation sits below the value it had *before* the
+pass. `active` gives first, by bisection on one scalar from its authored value to its own maximum,
+because `positive` is the role a reader reads most; `positive` gives only if backing `active` all the
+way out still will not clear the floor, and in the shipped five it never has to.
+**The cost is per palette and recorded rather than absorbed** — `OCCVM_PIGMENT_SATURATION` carries each
+role's scalar. It costs `acid` nearly all of its active headroom (**1.05×** against an available 1.51×),
+`deepwater` and `sunset` some of theirs, and astro and obsidian almost none.
+
+**What this retires, with its reason.** *"Selecting obsidian is a no-op"* is retired. It was a migration
+guarantee, made at 2.27 so a pre-2.27 reader's stored `mineral` could land somewhere resembling what
+they already had; that migration fired eight releases ago and the sentence has been a description since.
+Exempting the default from a pass applied to the other four would be the local exception this law exists
+to prevent. **The anchor round-trip is NOT retired** — it was never a fact about that palette but about
+the derivation, and it is asserted directly against the anchor now that the two have stopped being the
+same table.
+
+**One measured cost, recorded and not repaired, because repairing it would need a criterion invented
+the same afternoon.** Gilt is the only role whose chroma maximum lies *below* its authored lightness, so
+saturating it darkens it, and gilt is a light colour on a dark ground — it therefore **loses** contrast
+where every other role gains. Against the live substrate at high sun: `--gilt-a` 14.32 → **12.90**,
+`--gilt-b` 7.70 → **6.80**, `--gilt-c` 2.57 → **2.21**. The trade is binary rather than a dial: measured,
+gilt has **zero** chroma headroom upward — at its authored L 92.7 sRGB holds no more than C 36.8 at that
+hue — so constraining its lightness to non-decreasing would return the whole 2.40× and leave it exactly
+where it started. **And `--gilt-c` as a text colour never cleared any contrast threshold**: 2.57 before
+this release and 2.21 after, both far under WCAG AA's 4.5 and under AA-large's 3. That is a pre-existing
+weakness this release worsens by 14% and surfaces rather than introduces; it has two real use sites and
+closing it is a decision about whether gilt's dark end may carry text at all.
 
 #### What replaced the mineral set, and why the closed set died with the crystal
 
@@ -1550,11 +1591,21 @@ viewport, a different oval on every tile. A globule's shape was a property of th
 the fluid, and no length in the field meant anything on screen. Tool-local for the same reason
 `--globules` is.
 
-*BTC's `--pg` joins the tool-local row at 2.27* — the palette picker's own swatch colour, set inline on
-each unselected button from that palette's accent so the row is five real swatches rather than five
-labels. The selected button *removes* it and reads the live tokens, which is the whole reason it is a
-token and not a background: the offer and the applied state have to be able to disagree. Tool-local for
-the same reason `--pulse` and `--slide` are — neither spine-declared nor spine-written.
+*`--pg` and `--pg-lo` join the tool-local row — `--pg` in BTC at 2.27, `--pg-lo` beside it and BOTH of
+them in Rhyme at 2.42* — the palette picker's own swatch ramp, set inline on each unselected button from
+that palette's own accent pair so the row is five real swatches rather than five labels. The selected
+button *removes* both and reads the live tokens, which is the whole reason they are tokens and not a
+background: the offer and the applied state have to be able to disagree. Tool-local for the same reason
+`--pulse` and `--slide` are — neither spine-declared nor spine-written.
+
+*Two things changed here at 2.42 and neither is cosmetic.* `--pg-lo` exists because the unselected
+swatch was mixing its accent **45% toward black** to invent a dark end, while the palette already ships
+one (`mlo`); the offer and the applied state were therefore drawn by two different rules, and now they
+are drawn by the same one. And Rhyme gains the pair at all because its picker was the **inverse** of
+this arrangement — bronze at rest, coloured only once selected, so the row read as four unlabelled
+buttons and one coloured one and the offer was invisible until after it was taken. 2.37 settled what
+*selected* means across the two tools; this settles what an *offer* looks like, in the same direction
+and for the same reason.
 
 *BTC's `--globules` joins the tool-local row at 2.25* — the still frame of the globule field, written by
 `globuleLayer()` once per mineral change and read by `body::before`, where `--vein` was — and by
