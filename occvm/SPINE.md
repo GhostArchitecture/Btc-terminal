@@ -1224,10 +1224,17 @@ has drifted from what the part writes is a second source of truth wearing a safe
 
 `--lx --ly --elev --night --dusk-stage --phosphor --fill --rake --sheen --hi-a --cut-a --shade-a --glow
 --lxpx --lypx --nglow --nglow-s --moon-alt --moon-illum --moon-light --moon-x --moon-y --sub --sub-hi
---sub-lo --bone --bone-lo`
+--sub-lo --field --field-hi --bone --bone-lo`
 
 All resolved scalars or hexes, all written by `occvm/sundial.js` at most once a minute, none a `calc()`.
-`--bone-lo` is derived from `--bone` rather than authored beside it (L1). `--dusk-stage`, added at 1.7, is
+`--bone-lo` is derived from `--bone` rather than authored beside it (L1). **`--field` and `--field-hi`
+joined at 2.41 and were tool-local fixed values before that** — they are the page ground, and until then
+they were the last surface the one light did not reach, so both tools painted the same ground at noon
+and at midnight while every surface above them moved. They add no constant: the ground **is** the
+substrate's own shadow face and its top **is** the substrate's base, a role assignment onto two faces
+the material already derives (L12, 2.4), which is why the whole day's motion came free with them. The
+material defines exactly two faces, so a third ratio for "deeper than the shadow face" would have been
+an authored number wearing a derivation's coat and was refused. `--dusk-stage`, added at 1.7, is
 the one entry here that is neither a scalar nor a hex — a discrete stage name — because the quantity it
 carries (which of day/civil/nautical/astronomical/night the instant falls in) has no continuous value. The five `--moon-*`
 entries and `--phosphor` arrived at 1.7: the moon is a second light reaching ink alone (see L9), and it
@@ -1518,6 +1525,21 @@ reaching the page ground, which is 2.17's finding on the canvas one surface alon
 fixed here: making the ground read the sun moves a colour under every surface in the tool and is not
 something a tile change does.
 
+> **CLOSED at 2.41**, by the owner's field report — *the tools are very dark in appearance* — and the
+> ground is §2ab now. The reading that had gone unmeasured for six releases is what an ABSOLUTE
+> measurement showed: every release since 2.35 diffed itself against the release before it, and a
+> quantity that never moves survives that kind of comparison indefinitely. BTC's frame median was
+> **6.22 L\* at high sun against 4.43 at night**, with **75% of the frame under 10 L\* at noon**;
+> Rhyme's median was **2.4 L\* at every instant**, the darkest of either tool and completely static,
+> because it typed the two ground hexes as bare literals rather than reading a token at all.
+> After: BTC's phone median 9.1 → **14.2** at dusk and 8.6 → **12.5** at high sun, its under-10 share
+> 58% → **16%** and 57% → **32%**; Rhyme's desktop median 2.4 → **10.4** at dusk, under-10
+> 94% → **4%**. **Night is left where it was** (5.4 → 5.9 and 2.4 → 4.0), which is the test that this
+> is the light arriving rather than a brightness knob: a knob would have lifted midnight too.
+> *The owner's hypothesis was that the globule field was the cause, and it is refuted rather than
+> adopted:* toggling the field off entirely moves the frame **not at all** — 12.87 mean and 8.64
+> median either way, byte-identical stats.
+
 *BTC's `--globules-size` joins the tool-local row at 2.28* — the pixel dimensions the globule field was
 generated at, written beside `--globules` by the same call and read by `body::before` and every
 `body::before` as its `background-size` (`.tile::before` read it too until 2.35 retired the per-tile
@@ -1568,7 +1590,7 @@ biaxial) for substrate and vein alike; since 2.5 it is a yield-stress fluid (L12
 | **Mineral** | `--mineral --mineral-lo --vein-hi --vein-lo` | **become material properties.** The three-mineral set stays closed with its fixed meanings (L6); what changes is that a mineral carries hardness, cleavage, birefringence and luster rather than two hexes. | Nothing at the token level. A tool that wants the new properties opts in. |
 | **Vein → Globules** | `--globules` (BTC, written by `globuleLayer()`); `--vein-density --vein --veins` all **retired at 2.25/2.24** | **`--vein-habit` retired at 2.8, by measurement** (L10): a suspension has no direction to be anisotropic along, and the sticking-probability axis does not express on the lattice. `--vein-density` is the volume fraction; the generator is DLCA and reads no substance module. | Stop passing `habit`; nothing else. The generator ignores the argument for a 1.1-era caller. |
 | **Face** | `--mono --serif --sans --t-num` | **unchanged.** A typeface is not a mineral. `--sans` is BTC-local and stays OS-supplied by deliberate design — the roadmap's own non-goal for a sans. | Nothing. |
-| **Tool-local semantics** | BTC: `--up --down --err --field --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo --globules`; Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse --slide` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
+| **Tool-local semantics** | BTC: `--up --down --err --rule --glass --lit --shade --ink2 --malachite --malachite-lo --ruby --amethyst --amethyst-lo --globules` (`--field` and `--field-hi` left this row at 2.41 for §2ab, and `--field-hi` now governs both tools rather than BTC alone); Rhyme: `--thick --bthick --stone-h --pad --c --k --text --heat --m --vk --pulse --slide` | **not spine, not promised, unchanged by 2.0.** These name a tool's own subject matter. | Nothing. They are yours. |
 
 ### What the audit found once it stopped trusting the checkout
 

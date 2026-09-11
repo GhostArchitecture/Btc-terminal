@@ -4,7 +4,7 @@ A single-file browser instrument for Kalshi's 15-minute and hourly BTC markets: 
 calibrated probability engine, and self-grading ledgers under pre-registered decision rules. **No execution path
 exists anywhere in this tool and none should be added.** Everything it does is measurement.
 
-Current build: `build-20260910232759` — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
+Current build: `build-20260911004539` (not yet deployed — 2.41 is on the branch) — §10's 22 fixes, the K1 ledger repair, the full **H-protocol
 measurement layer** (§11) with the shock programme **closed** (§11's banner), the `reversal` citation
 correction, and OCCVM through **2.40** (§12): the pigment palettes, the metaball globule field and its
 whole build order, one confidence vocabulary across the panels, the React island (§13), the ambient
@@ -23,7 +23,7 @@ and not the verification (§7.3): both BTC hosts serve `overCeiling`, `CARRIER` 
 `retractMs` reader; Rhyme's page serves the shed criterion.* Earlier
 lines: `build-20260910210243` / 2.38 (21:35 UTC), `build-20260910192734` / 2.37 (19:34 UTC), `build-20260910174353` / 2.36 (17:46 UTC), `build-20260910144317` / 2.35 (14:46 UTC), `build-20260910130216` / 2.34 (13:05 UTC), `build-20260910065029` / 2.29 (06:56 UTC), `build-20260909232758` / 2.26, `build-20260909230353` / 2.24 (23:13
 UTC), `build-20260909203905` / 2.23 (22:29 UTC), and `build-20260909114959` / 2.12 for the eleven releases
-the deployment hold covered.* One file, **10,229 lines, 900 KB, 303 top-level functions of its own**, one pinned dependency
+the deployment hold covered.* One file, **10,253 lines, 901 KB, 303 top-level functions of its own**, one pinned dependency
 (React 18.3.1, spliced — §13), zero build step. *These figures were 6,331 / ~428 KB / 286 for three
 releases after they stopped being true; counted, not quoted, at 2.14. The sentence that used to end
 here said they were "re-counted at every release since", and they were not: they read 8,181 / 640 KB /
@@ -3522,6 +3522,103 @@ cycle is sourced from — and lateral transport along the coil. Carried unchange
 serif parity misses by 3.49 L\* (SPINE.md §6b), the "no declaration computes to its initial value"
 property is guarded only for the one class that shipped, desktop frame cost is still ~13 fps from
 `backdrop-filter` across 21 tiles, and the chart island (§13.5) is deferred with its cost measured.
+
+**2.41 — the one light reaches the page ground, and the owner's hypothesis is refuted by the first
+toggle.** The field report: *the tools are very dark in appearance, probably leftovers from the
+substrate layer.* Half right, and the half it misses is the one that mattered.
+
+**THE GLOBULE FIELD IS NOT THE CAUSE, and that is measured rather than argued.** Toggling it off
+entirely on a frozen page moves the frame **not at all**: mean 12.87 and median 8.64 either way,
+byte-identical statistics. The substrate decoration is a sub-threshold wash and always was. What is
+dark is the surface underneath it — and the substrate proper (`--sub`) is the one thing that *does*
+move with the light, so the layer named in the hypothesis is the layer doing its job.
+
+**WHAT WAS DARK IS THE PAGE GROUND, AND IT NEVER READ THE LIGHT.** `--field` sat at L\* 2.4 and
+`--field-hi` at 4.4, identical at all three pinned instants, because the sundial writes `--sub`,
+`--sub-hi`, `--sub-lo`, `--bone`, `--bone-lo` and nothing else. The light was computed every minute
+and then covered up. Measured absolutely — which is the whole reason this survived six releases:
+**every release since 2.35 diffed itself against the release before it, and a quantity that never
+moves is invisible to that comparison.** 2.35 recorded the finding (`L3` not reaching the page
+ground) and deferred the fix because it moves a colour under every surface; this is that fix.
+
+**Rhyme was worse and for a second reason.** Its median pixel read **2.4 L\* at noon and 2.4 at
+midnight** — no day at all — because it typed `#09080d` and `#100e16` as **bare literals** in
+`html, body`, the body gradient and the 2.36 safe-area band: three copies of two values BTC held as
+tokens. BTC promoted `--field-hi` out of a literal at 2.36 *precisely* so the band and the page could
+not drift; this tool never did. That is L3, and the ground change forced it — a static band over a
+moving ground would have sat visibly lighter than the page at noon.
+
+**THE FIX ADDS NO CONSTANT.** The ground **is** the substrate's own shadow face and its top **is** the
+substrate's base: `--field` = `--sub-lo`, `--field-hi` = `--sub`, both already derived from the
+material's face ratios at 2.4, both already written every tick. A role assignment onto two faces that
+exist, named as one — the material defines exactly two faces, so inventing a third ratio for "deeper
+than the shadow face" would have been an authored number wearing a derivation's coat. `--field` and
+`--field-hi` are **§2ab** now and left BTC's tool-local row.
+
+| | median L\* | under 10 L\* |
+|---|---|---|
+| BTC phone, dusk | 9.1 → **14.2** | 58% → **16%** |
+| BTC phone, high sun | 8.6 → **12.5** | 57% → **32%** |
+| BTC phone, night | 5.4 → 5.9 | 84% → 82% |
+| Rhyme desk, dusk | 2.4 → **10.4** | 94% → **4%** |
+| Rhyme desk, high sun | 2.4 → **7.5** | 94% → 77% |
+| Rhyme desk, night | 2.4 → 4.0 | 95% → 94% |
+
+**Night barely moves, and that is the test that this is light rather than a brightness knob** — a knob
+would have lifted midnight too. The ground now reads 10.4 / 7.5 / 4.0 L\* at dusk / high sun / night,
+brightest at dusk because `SUB_DUSK` is the warmest of the sundial's three anchors, which is the day
+model this system already had rather than anything this release chose.
+
+**THE TILE FILL WAS REOPENED AT THE OWNER'S DIRECTION AND THE MEASUREMENT SAYS IT DOES NOT MOVE.**
+2.35 fixed `--tile-fill` at 38% against a criterion — a serif on a tile must read no worse than the
+same serif on the bare ground beside it — and on the brighter ground that criterion is satisfied at
+**every** fill from 38% to 100% (parity +12.90 at 38%, +7.92 at 100%, by 2.37's constructed-twin
+method), so it no longer discriminates. What settles it is that raising the fill does not brighten the
+tool: median 9.70 → 9.65 and the near-black share gets **worse**, 53% → 58%, because an opaque tile
+covers brightened ground with darker substrate. All of the gain is the ground's. **38% stands, and the
+negative is the output** — the same disposition 2.26 reached when its whole result was that the
+shipped values were right. *One number was produced and NOT adopted:* panel definition (tile interior
+against the gutter beside it) falls 6.95 → 5.53 at high sun and a higher fill restores it, but that is
+a criterion invented in this session, and moving a shipped value by a standard authored the same
+afternoon is the thing this project refuses everywhere else.
+
+*A measurement error of mine, caught by re-running rather than by reasoning.* The first panel-definition
+figures were **negative** — tiles apparently darker than the page around them — because at 1200px the
+content column leaves a 10px gutter and "the ground just outside the tile" was sampling the tile's own
+neighbour. Re-measured at 1600px where the gutter is 210px, every value is positive. A number that
+described no pixel pair that exists, which is 2.26's error in a third coordinate.
+
+**One guard clause retired in two places, named with its reason.** 2.27 asserted that `--field`,
+`--bone-dim` and `--bronze-a` are *"the three keys nothing writes"* and must stay literals — true when
+written, and it would now refuse correct code, which is the 2.15/2.21/2.27 class. Only `field` leaves;
+`boneDim` and `bronze` still hold and are still asserted. What replaces it is stronger: the ground is
+live **because the sundial moves it, never the palette** — the same distinction the outcome-colour
+clause turns on, since a ground the palette moved would mean a choice of green had an opinion about
+the page floor. `PAL` gains `field` accordingly, or the canvas would have kept painting a frozen
+ground colour (2.17's finding, one token along).
+
+**The new guard found a third BTC site on its first run** — `PAL`'s own `field:"#09080d"` literal,
+which the first draft counted as a violation because its pattern only knew the CSS form. That literal
+is a legitimate fallback under the grant 2.17 already records (jsdom resolves no custom property, and
+a palette that silently became empty strings would paint nothing while every assertion passed). The
+clause now names **both** permitted fallback forms and adds the property that makes them safe: the two
+fallbacks must carry the **same value**, or the canvas and the page would disagree for the whole span
+before the first `sunTick`. **All five new clauses verified to bite:** breaking the role assignment
+fails one, removing the write fails four, a bare literal restored in Rhyme fails one, and drifting
+`PAL`'s fallback fails the agreement clause.
+
+**Recorded and NOT fixed: 2.36's sweep-tile seam has reopened at one end of the day.** The sweep tile
+mixes its fill toward `--field-hi`, while the ground it sits beside also carries a radial whose alpha
+is `calc(.10*var(--elev) + .05*var(--night))` — sun-dependent, and absent from the tile's substitute
+for "the ground". Measured: **0.73 L\* at night against 4.60 at high sun**, where the text tiles vary
+1.14 among themselves. 2.36 measured it at one configuration and never checked the other end, which is
+2.35's own "no single fill holds parity at both ends of the day" arriving on the seam instead of the
+serif. 2.41's ground narrows it to **3.41** as a side effect and does not close it. It was outside the
+scope the owner set for this release and is on the record rather than in it.
+
+`test/occvm.js` **582 → 590**; §6's total **1,024 → 1,032**. Rhyme **124 → 125**. Golden **573 → 585**,
+the delta being exactly `--field` and `--field-hi` at three instants on all three surfaces and no
+existing recorded value moving.
 
 **Open against this tool:** none. `OCCVM-D1` and `OCCVM-D6` are closed (SPINE.md §6, §7); 1.7 and 1.8 close
 no numbered defect — 1.7 completes L9's dusk-stage refinement and the `--bloom` deletion it named in
